@@ -426,6 +426,27 @@
     {
       "layout_id": "content",
       "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Onboarding happens once; the service cycle then repeats every quarter"}
+      ],
+      "pattern": {
+        "name": "cycle-intake",
+        "values": {
+          "intake": [
+            {"label": "Sign contract", "description": "Scope and service levels agreed"},
+            {"label": "Onboard", "description": "Data migrated, users trained"}
+          ],
+          "loop": [
+            {"label": "Plan the quarter", "description": "Agree priorities with the client"},
+            {"label": "Deliver", "description": "Run the service to the agreed levels", "highlight": true},
+            {"label": "Review", "description": "Report results against the targets"},
+            {"label": "Improve", "description": "Fix root causes, adjust the scope"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Self-service can close the growth gap within 18 months"}
       ],
       "pattern": {

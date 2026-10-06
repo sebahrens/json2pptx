@@ -411,6 +411,24 @@ var rules = []rule{
 		itemMax:   8,
 	},
 
+	// Cycle intake — linear steps that feed a recurring loop
+	{
+		pattern:   "cycle-intake",
+		keywords:  []string{"onboarding then recurring", "intake into the cycle", "intake into the loop", "pipeline feeding the loop", "feeding the loop", "feeds the loop", "feeds the cycle", "acquire then retain loop", "then the recurring", "linear intake", "cycle with intake", "loop with intake", "intake then loop", "onboarding then the cycle"},
+		baseScore: 0.94,
+		rationale: "1-3 linear intake arrows feeding a recurring loop of 3-8 numbered phases: one-off steps lead into a cycle that then repeats",
+		itemMin:   3,
+		itemMax:   8,
+	},
+	{
+		pattern:   "cycle-intake",
+		keywords:  []string{"intake", "onboarding then", "then recurring", "entry into the cycle", "leads into a loop"},
+		baseScore: 0.68,
+		rationale: "Cycle intake when a short linear lead-in feeds a loop of 3-8 phases",
+		itemMin:   3,
+		itemMax:   8,
+	},
+
 	// Process flow
 	{
 		pattern:   "process-flow",

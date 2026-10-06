@@ -1,0 +1,716 @@
+{
+  "col_gap": 0.01,
+  "row_gap": 0.01,
+  "columns": [
+    14.258,
+    0.485,
+    14.258,
+    0.485,
+    2.666,
+    33,
+    1.212,
+    2.424,
+    31.213
+  ],
+  "rows": [
+    {
+      "min_height": 30.067,
+      "max_height": 30.067,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 48.145,
+      "max_height": 48.145,
+      "cells": [
+        {},
+        {},
+        {},
+        {},
+        {},
+        {
+          "row_span": 15,
+          "fit": "contain",
+          "layers": [
+            {
+              "frame": {
+                "x": 0,
+                "y": 0,
+                "w": 1,
+                "h": 1
+              },
+              "shape": {
+                "geometry": "blockArc",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 10980000,
+                  "adj2": 16020000,
+                  "adj3": 20000
+                }
+              },
+              "name": "segment-1"
+            },
+            {
+              "frame": {
+                "x": 0,
+                "y": 0,
+                "w": 1,
+                "h": 1
+              },
+              "shape": {
+                "geometry": "blockArc",
+                "fill": "accent1",
+                "line": "none",
+                "adjustments": {
+                  "adj1": 16380000,
+                  "adj2": 21420000,
+                  "adj3": 20000
+                }
+              },
+              "name": "segment-2"
+            },
+            {
+              "frame": {
+                "x": 0,
+                "y": 0,
+                "w": 1,
+                "h": 1
+              },
+              "shape": {
+                "geometry": "blockArc",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 180000,
+                  "adj2": 5220000,
+                  "adj3": 20000
+                }
+              },
+              "name": "segment-3"
+            },
+            {
+              "frame": {
+                "x": 0,
+                "y": 0,
+                "w": 1,
+                "h": 1
+              },
+              "shape": {
+                "geometry": "blockArc",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 5580000,
+                  "adj2": 10620000,
+                  "adj3": 20000
+                }
+              },
+              "name": "segment-4"
+            },
+            {
+              "frame": {
+                "x": 0.162069,
+                "y": 0.162069,
+                "w": 0.110177,
+                "h": 0.110177
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "accent1",
+                "line": "none",
+                "text": {
+                  "paragraphs": [
+                    {
+                      "content": "1",
+                      "size": 12,
+                      "bold": true,
+                      "color": "lt1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "align": "ctr",
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "badge-1"
+            },
+            {
+              "frame": {
+                "x": 0.727754,
+                "y": 0.162069,
+                "w": 0.110177,
+                "h": 0.110177
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "lt1",
+                "line": "none",
+                "text": {
+                  "paragraphs": [
+                    {
+                      "content": "2",
+                      "size": 12,
+                      "bold": true,
+                      "color": "accent1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "align": "ctr",
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "badge-2"
+            },
+            {
+              "frame": {
+                "x": 0.727754,
+                "y": 0.727754,
+                "w": 0.110177,
+                "h": 0.110177
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "accent1",
+                "line": "none",
+                "text": {
+                  "paragraphs": [
+                    {
+                      "content": "3",
+                      "size": 12,
+                      "bold": true,
+                      "color": "lt1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "align": "ctr",
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "badge-3"
+            },
+            {
+              "frame": {
+                "x": 0.162069,
+                "y": 0.727754,
+                "w": 0.110177,
+                "h": 0.110177
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "accent1",
+                "line": "none",
+                "text": {
+                  "paragraphs": [
+                    {
+                      "content": "4",
+                      "size": 12,
+                      "bold": true,
+                      "color": "lt1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "align": "ctr",
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "badge-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "min_height": 41,
+      "max_height": 41,
+      "cells": [
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "1",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "t",
+              "inset_left": 0,
+              "inset_top": 3,
+              "inset_right": 0,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Plan the quarter",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Agree priorities with the client",
+                  "size": 12,
+                  "color": "dk1",
+                  "alpha": 70,
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_left": 6,
+              "inset_top": 3,
+              "inset_right": 2,
+              "inset_bottom": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 4,
+      "max_height": 4,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 23,
+      "max_height": 23,
+      "cells": [
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {
+          "row_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "2",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "t",
+              "inset_left": 0,
+              "inset_top": 3,
+              "inset_right": 0,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {
+          "row_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Deliver",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Run the service to the agreed levels",
+                  "size": 12,
+                  "color": "dk1",
+                  "alpha": 70,
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_left": 6,
+              "inset_top": 3,
+              "inset_right": 2,
+              "inset_bottom": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 11,
+      "max_height": 11,
+      "cells": [
+        {
+          "row_span": 5,
+          "shape": {
+            "geometry": "homePlate",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 4,
+              "inset_left": 4,
+              "inset_right": 4,
+              "inset_top": 4,
+              "paragraphs": [
+                {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Sign contract",
+                  "size": 12
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 32500
+            }
+          }
+        },
+        {},
+        {
+          "row_span": 5,
+          "bleed_left": 13,
+          "shape": {
+            "geometry": "chevron",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 4,
+              "inset_left": 4,
+              "inset_right": 4,
+              "inset_top": 4,
+              "paragraphs": [
+                {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Onboard",
+                  "size": 12
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 32500
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 7,
+      "max_height": 7,
+      "cells": [
+        {},
+        {},
+        {
+          "row_span": 3,
+          "shape": {
+            "geometry": "rightArrow",
+            "fill": "accent1",
+            "line": "none",
+            "adjustments": {
+              "adj1": 50000,
+              "adj2": 60000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 4,
+      "max_height": 4,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 7,
+      "max_height": 7,
+      "cells": [
+        {},
+        {},
+        {},
+        {
+          "row_span": 4,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "3",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "t",
+              "inset_left": 0,
+              "inset_top": 3,
+              "inset_right": 0,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {
+          "row_span": 4,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Review",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Report results against the targets",
+                  "size": 12,
+                  "color": "dk1",
+                  "alpha": 70,
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_left": 6,
+              "inset_top": 3,
+              "inset_right": 2,
+              "inset_bottom": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 11,
+      "max_height": 11,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 4,
+      "max_height": 4,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 19,
+      "max_height": 19,
+      "cells": [
+        {
+          "row_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Scope and service levels agreed",
+                  "size": 12,
+                  "color": "dk1",
+                  "alpha": 70,
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "t",
+              "inset_left": 2,
+              "inset_top": 2,
+              "inset_right": 2,
+              "inset_bottom": 2
+            }
+          }
+        },
+        {},
+        {
+          "row_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Data migrated, users trained",
+                  "size": 12,
+                  "color": "dk1",
+                  "alpha": 70,
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "t",
+              "inset_left": 2,
+              "inset_top": 2,
+              "inset_right": 2,
+              "inset_bottom": 2
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 4,
+      "max_height": 4,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 12,
+      "max_height": 12,
+      "cells": [
+        {},
+        {},
+        {},
+        {},
+        {
+          "row_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "4",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "t",
+              "inset_left": 0,
+              "inset_top": 3,
+              "inset_right": 0,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {
+          "row_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Improve",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Fix root causes, adjust the scope",
+                  "size": 12,
+                  "color": "dk1",
+                  "alpha": 70,
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_left": 6,
+              "inset_top": 3,
+              "inset_right": 2,
+              "inset_bottom": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 29,
+      "max_height": 29,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 48.145,
+      "max_height": 48.145,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 30.067,
+      "max_height": 30.067,
+      "cells": [
+        {}
+      ]
+    }
+  ],
+  "vertical_align": "middle"
+}
