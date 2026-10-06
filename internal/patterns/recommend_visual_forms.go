@@ -373,6 +373,7 @@ var visualNameAliases = map[string][]string{
 	"named_pattern:scqa-summary":           {"scqa"},
 	"named_pattern:exec-summary":           {"executive summary", "exec summary"},
 	"named_pattern:before-after":           {"before after", "before and after"},
+	"named_pattern:cycle-ring":             {"cycle ring", "segmented cycle", "pdca", "flywheel"},
 	"diagram:gantt":                        {"gantt chart", "gantt plan"},
 	"diagram:org_chart":                    {"org chart", "organisation chart", "organization chart", "organigram"},
 	"diagram:porters_five_forces":          {"five forces", "porter s five forces"},

@@ -1,0 +1,120 @@
+{
+  "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
+  "output_filename": "cycle-ring.pptx",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Running the Plant as a Learning Loop"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Cycle ring pattern examples"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Every improvement runs the same four-step loop"}
+      ],
+      "pattern": {
+        "name": "cycle-ring",
+        "values": {
+          "center": {"label": "Continuous improvement"},
+          "phases": [
+            {"label": "Plan", "description": "Set the target and the hypothesis to test"},
+            {"label": "Do", "description": "Run the change in one pilot plant"},
+            {"label": "Check", "description": "Compare results against the baseline"},
+            {"label": "Act", "description": "Standardise what worked and scale it"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Retention is won in the service phase of the customer lifecycle"}
+      ],
+      "pattern": {
+        "name": "cycle-ring",
+        "values": {
+          "phases": [
+            {"label": "Awareness", "description": "Referrals bring 4 in 10 leads"},
+            {"label": "Consideration", "description": "Buyers compare three vendors"},
+            {"label": "Purchase", "description": "Contract signed in 21 days"},
+            {"label": "Onboarding", "description": "First value inside 30 days"},
+            {"label": "Adoption", "description": "Seven in ten seats active weekly"},
+            {"label": "Service", "description": "Churn risk peaks at first ticket", "highlight": true},
+            {"label": "Renewal", "description": "Decision made 90 days ahead"},
+            {"label": "Advocacy", "description": "Promoters refer the next buyer"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "The flywheel turns faster with every new seller on the marketplace"}
+      ],
+      "pattern": {
+        "name": "cycle-ring",
+        "values": {
+          "center": {"label": "Marketplace flywheel", "sublabel": "FY26 growth engine"},
+          "phases": [
+            {"label": "More sellers", "description": "Lower fees attract 1,200 new sellers a quarter"},
+            {"label": "Wider selection", "description": "Catalogue grows 18% a year"},
+            {"label": "Better experience", "description": "Buyers find the item on the first search"},
+            {"label": "More traffic", "description": "Repeat visits rise to 3.4 a month"},
+            {"label": "Lower cost", "description": "Scale cuts fulfilment cost per order by 9%"},
+            {"label": "Lower prices", "description": "Savings fund the next fee reduction"}
+          ]
+        },
+        "overrides": {"style": "arrows"}
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "The monthly operating rhythm closed 14 of 16 actions on time"}
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "gap": 12,
+        "segments": [
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "cycle-ring",
+              "values": {
+                "phases": [
+                  {"label": "Forecast"},
+                  {"label": "Performance review"},
+                  {"label": "Decide and commit"},
+                  {"label": "Execute"},
+                  {"label": "Close the books"}
+                ]
+              }
+            }
+          },
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "metric-list",
+              "values": {
+                "items": [
+                  {"label": "Actions closed on time", "value": "14 of 16"},
+                  {"label": "Forecast accuracy", "value": "96%"},
+                  {"label": "Days to close the books", "value": "4"}
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

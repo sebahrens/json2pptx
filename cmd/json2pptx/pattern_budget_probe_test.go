@@ -2248,3 +2248,33 @@ func bmcProbeCell(values *patterns.BMCCanvasValues, name string) *patterns.BMCCe
 		return nil
 	}
 }
+
+// Run with JSON2PPTX_CYCLE_RING_BUDGET_PROBE=1 to measure the readable
+// description budget per phase count (labels at their own budget) and the
+// label budget without descriptions, on every shipped template.
+func TestCycleRingBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_CYCLE_RING_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_CYCLE_RING_BUDGET_PROBE=1")
+	}
+	for phases := 4; phases <= 8; phases++ {
+		labelLen := 28
+		if phases >= 7 {
+			labelLen = 24
+		}
+		desc := probeReadableBudget(t, "cycle-ring", 90, func(length int) any {
+			v := &patterns.CycleRingValues{}
+			for i := 0; i < phases; i++ {
+				v.Phases = append(v.Phases, patterns.CycleRingPhase{Label: budgetProbeCopy(labelLen), Description: budgetProbeCopy(length)})
+			}
+			return v
+		})
+		label := probeReadableBudget(t, "cycle-ring", 28, func(length int) any {
+			v := &patterns.CycleRingValues{}
+			for i := 0; i < phases; i++ {
+				v.Phases = append(v.Phases, patterns.CycleRingPhase{Label: budgetProbeCopy(length)})
+			}
+			return v
+		})
+		t.Logf("phases=%d description budget=%d (label %d) label-only budget=%d", phases, desc, labelLen, label)
+	}
+}

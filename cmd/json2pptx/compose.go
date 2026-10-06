@@ -672,7 +672,9 @@ func segmentRowCells(g *jsonschema.ShapeGridInput, rowIdx, n, segIdx int, warnin
 			}
 			break
 		}
-		if c != nil && row.MaxHeight > 0 {
+		// A cell that spans rows is as tall as all of them: capping it at
+		// its first row's height shrank a ring / hub cell to one ladder row.
+		if c != nil && row.MaxHeight > 0 && c.RowSpan <= 1 {
 			copyCell := *c
 			if copyCell.MaxHeight == 0 || row.MaxHeight < copyCell.MaxHeight {
 				copyCell.MaxHeight = row.MaxHeight

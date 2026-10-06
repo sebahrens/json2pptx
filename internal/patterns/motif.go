@@ -104,6 +104,7 @@ var patternMotifs = map[string]patternMotif{
 	"comparison-2col": {base: MotifOpenColumns,
 		overrideStyles: map[string]Motif{"tiles": MotifTiles}},
 	"contact-directory": {base: MotifOpenColumns},
+	"cycle-ring":        {base: MotifDiagram},
 	"driver-tree":       {base: MotifDiagram},
 	"dual-org-ladder": {base: MotifOpenColumns,
 		overrideStyles: map[string]Motif{"tiles": MotifTiles}},

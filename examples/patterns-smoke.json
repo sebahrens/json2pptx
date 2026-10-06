@@ -774,6 +774,24 @@
     {
       "layout_id": "content",
       "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Every improvement runs the same four-step loop"}
+      ],
+      "pattern": {
+        "name": "cycle-ring",
+        "values": {
+          "center": {"label": "Continuous improvement"},
+          "phases": [
+            {"label": "Plan", "description": "Set the target and the hypothesis to test"},
+            {"label": "Do", "description": "Run the change in one pilot plant"},
+            {"label": "Check", "description": "Compare results against the baseline", "highlight": true},
+            {"label": "Act", "description": "Standardise what worked and scale it"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Three actions start the pilot in October"}
       ],
       "pattern": {

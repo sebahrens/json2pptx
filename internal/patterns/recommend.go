@@ -339,6 +339,24 @@ var rules = []rule{
 		itemMax:   6,
 	},
 
+	// Cycle ring — a closed ring of 4-8 phases
+	{
+		pattern:   "cycle-ring",
+		keywords:  []string{"cycle", "pdca", "plan-do-check-act", "plan do check act", "continuous improvement", "lifecycle", "life cycle", "operating rhythm", "flywheel", "virtuous circle", "closed loop", "feedback loop", "recurring loop"},
+		baseScore: 0.92,
+		rationale: "Closed ring of 4-8 phase segments with numbered badges and outside labels for a cycle that repeats",
+		itemMin:   4,
+		itemMax:   8,
+	},
+	{
+		pattern:   "cycle-ring",
+		keywords:  []string{"cyclical", "recurring", "rhythm", "cadence", "loop back", "repeats", "iterative"},
+		baseScore: 0.76,
+		rationale: "Cycle ring when the phases recur and the last one leads back to the first",
+		itemMin:   4,
+		itemMax:   8,
+	},
+
 	// Process flow
 	{
 		pattern:   "process-flow",

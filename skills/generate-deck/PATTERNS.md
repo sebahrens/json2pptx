@@ -37,10 +37,10 @@ Do NOT hand-roll shape grids when a named pattern exists.
 ### Copy budgets and what happens when text does not fit
 
 **Per-pattern copy targets** (BMC cells, driver-tree leaves, comparison rows,
-roadmap activities, team bios, metric details, swimlane steps, KPI captions,
+team bios, KPI captions,
 …) live in each field's `show_pattern` description, measured at default sizes
 for every supported count. Limits: `state-shift-hub` takes 3–4 pairs,
-`dual-org-ladder` at most 4 rows.
+`dual-org-ladder` at most 4 rows, `cycle-ring` 4–8 phases.
 
 Budgets assume the template's full content area. On a short or narrow
 template, or under a `takeaway`, content-sized patterns (`exec-summary`,
