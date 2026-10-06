@@ -1,0 +1,522 @@
+{
+  "gap": 4,
+  "row_gap": 8,
+  "columns": [
+    16,
+    21,
+    21,
+    21,
+    21
+  ],
+  "rows": [
+    {
+      "min_height": 19,
+      "max_height": 19,
+      "cells": [
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 2,
+              "inset_left": 4,
+              "inset_right": 26,
+              "inset_top": 0,
+              "paragraphs": [
+                {
+                  "content": "Segment",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "b"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 2,
+              "inset_left": 4,
+              "inset_right": 26,
+              "inset_top": 0,
+              "paragraphs": [
+                {
+                  "content": "Prospect",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "b"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 2,
+              "inset_left": 4,
+              "inset_right": 26,
+              "inset_top": 0,
+              "paragraphs": [
+                {
+                  "content": "Meet",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "b"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 2,
+              "inset_left": 4,
+              "inset_right": 26,
+              "inset_top": 0,
+              "paragraphs": [
+                {
+                  "content": "Retain",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "b"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 96,
+      "max_height": 96,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "homePlate",
+            "fill": "accent1",
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_left": 4,
+              "inset_right": 4,
+              "paragraphs": [
+                {
+                  "content": "DESIGN PROCESS",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 22917
+            }
+          },
+          "accent_bar": {
+            "position": "left",
+            "color": "accent1",
+            "width": 4
+          }
+        },
+        {
+          "bleed_left": 22,
+          "shape": {
+            "geometry": "chevron",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 30000,
+              "lumOff": 70000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_left": 4,
+              "inset_right": 4,
+              "paragraphs": [
+                {
+                  "content": "DESIGN",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 22917
+            }
+          }
+        },
+        {
+          "bleed_left": 22,
+          "shape": {
+            "geometry": "chevron",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 30000,
+              "lumOff": 70000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_left": 4,
+              "inset_right": 4,
+              "paragraphs": [
+                {
+                  "content": "EDIT",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 22917
+            }
+          }
+        },
+        {
+          "bleed_left": 22,
+          "shape": {
+            "geometry": "chevron",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 30000,
+              "lumOff": 70000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_left": 4,
+              "inset_right": 4,
+              "paragraphs": [
+                {
+                  "content": "ASSETS",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 22917
+            }
+          }
+        },
+        {
+          "bleed_left": 22,
+          "shape": {
+            "geometry": "chevron",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 30000,
+              "lumOff": 70000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_left": 4,
+              "inset_right": 4,
+              "paragraphs": [
+                {
+                  "content": "UX / UI",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 22917
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 96,
+      "max_height": 96,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "homePlate",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 60000,
+              "lumOff": 40000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_left": 4,
+              "inset_right": 4,
+              "paragraphs": [
+                {
+                  "content": "PRODUCTION",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 22917
+            }
+          }
+        },
+        {
+          "bleed_left": 22,
+          "shape": {
+            "geometry": "chevron",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 15000,
+              "lumOff": 85000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_left": 4,
+              "inset_right": 4,
+              "paragraphs": [
+                {
+                  "content": "PROTOTYPE",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 22917
+            }
+          }
+        },
+        {
+          "bleed_left": 22,
+          "shape": {
+            "geometry": "chevron",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 15000,
+              "lumOff": 85000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_left": 4,
+              "inset_right": 4,
+              "paragraphs": [
+                {
+                  "content": "DEVELOP",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 22917
+            }
+          }
+        },
+        {
+          "bleed_left": 22,
+          "shape": {
+            "geometry": "chevron",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 15000,
+              "lumOff": 85000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_left": 4,
+              "inset_right": 4,
+              "paragraphs": [
+                {
+                  "content": "USER TESTING",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 22917
+            }
+          }
+        },
+        {
+          "bleed_left": 22,
+          "shape": {
+            "geometry": "chevron",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 15000,
+              "lumOff": 85000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_left": 4,
+              "inset_right": 4,
+              "paragraphs": [
+                {
+                  "content": "RELEASE",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 22917
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 19,
+      "max_height": 19,
+      "cells": [
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0,
+              "inset_left": 4,
+              "inset_right": 26,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "+5% wallet",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0,
+              "inset_left": 4,
+              "inset_right": 26,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "+5% win",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0,
+              "inset_left": 4,
+              "inset_right": 26,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "+15% coverage",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0,
+              "inset_left": 4,
+              "inset_right": 26,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "-3% attrition",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
