@@ -245,7 +245,10 @@ func TestDualOrgLadderDenseTitleWarningReachesFitReportAcrossTemplates(t *testin
 		values.Rows = append(values.Rows, patterns.DualOrgLadderRow{ANameField: "Alex Chen", ATitle: "Programme Lead", BNameField: "Bob Jones", BTitle: "Partner"})
 	}
 	values.Rows[2].ATitle = strings.Repeat("T", 66)
-	assertBudgetFindingAcrossTemplates(t, "dual-org-ladder", values, "rows[2].a_title", "about 62 title characters")
+	assertBudgetFindingAcrossTemplates(t, "dual-org-ladder", values, "rows[2].a_title", "about 62 title characters", &patterns.DualOrgLadderOverrides{Style: "lines"})
+	// The default bands only run short when name and title are both long.
+	values.Rows[2].ANameField = strings.Repeat("N", 56)
+	assertBudgetFindingAcrossTemplates(t, "dual-org-ladder", values, "rows[2].a_title", "about 60 title characters beside a name over 51")
 }
 
 func TestStateShiftHubDenseDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {

@@ -169,8 +169,9 @@
   },
   {
     "pattern_name": "dual-org-ladder",
-    "row_count": 5,
+    "row_count": 6,
     "cell_counts": [
+      3,
       3,
       3,
       3,
