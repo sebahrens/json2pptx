@@ -524,8 +524,23 @@ jobs:
     # when a test reads testing.Short() and is in neither group
     # (go-slide-creator-c9w86). The other packages' tests of that kind run in
     # render-integration.
-    timeout-minutes: 30
+    #
+    # Two legs share the selection 'Corpus|AcrossTemplates' so neither nears
+    # the time limit: the tests named "Corpus", and the "AcrossTemplates"
+    # tests that are not also named "Corpus" (go-slide-creator-efhg2).
+    timeout-minutes: 45
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: corpus
+            run: "Corpus"
+            skip: "^$"
+          - leg: across-templates
+            run: "AcrossTemplates"
+            skip: "Corpus"
+    name: corpus-headless (${{ matrix.leg }})
     steps:
       - uses: actions/checkout@v5
 
@@ -541,7 +556,7 @@ jobs:
             libreoffice-impress libreoffice-common librsvg2-bin
 
       - name: Run corpus headless round-trip
-        run: go test -tags=integration ./cmd/json2pptx/... -run 'Corpus|AcrossTemplates' -count=1 -timeout=30m -v
+        run: go test -tags=integration ./cmd/json2pptx/... -run '${{ matrix.run }}' -skip '${{ matrix.skip }}' -count=1 -timeout=40m -v
 
   render-integration:
     # Exercises the tool-gated render and SVG-conversion tests that skip by

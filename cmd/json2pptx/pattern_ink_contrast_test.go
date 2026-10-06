@@ -313,6 +313,12 @@ func TestPatternInkContrastOnLocalTemplateCorpus(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// Under -short (the sharded race step) the audit keeps the one
+		// template whose geometry the stand-in borrows, and the stand-in;
+		// the corpus job runs every template (go-slide-creator-efhg2).
+		if testing.Short() && name != "midnight-blue" {
+			continue
+		}
 		themes = append(themes, themed{name, ctx})
 		if name == "midnight-blue" {
 			themes = append(themes, themed{"soft-darks-orange", softDarkOrangeContext(ctx)})

@@ -115,7 +115,7 @@ must be requested with `-tags=integration`:
   test that reads `testing.Short()` is run without `-short` by no CI job.
 
 **CI:** the `corpus-headless` job runs
-`go test -tags=integration ... -run 'Corpus|AcrossTemplates'`, without `-short`
+`go test -tags=integration ... -run 'Corpus|AcrossTemplates'` (as two parallel legs: the tests named `Corpus`, and the `AcrossTemplates` tests not named `Corpus`), without `-short`
 and without `-race`.
 
 ### The sharded race step and its time budget
