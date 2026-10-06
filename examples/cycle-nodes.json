@@ -1,0 +1,177 @@
+{
+  "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
+  "output_filename": "cycle-nodes.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Cycle Nodes"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Recurring loops as numbered circles joined by arrows"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Every plant change runs one plan-do-check-act loop"}
+      ],
+      "pattern": {
+        "name": "cycle-nodes",
+        "values": {
+          "steps": [
+            {"label": "Plan", "description": "Set the target and the test for it"},
+            {"label": "Do", "description": "Run the change on one line first"},
+            {"label": "Check", "description": "Compare the result with the target"},
+            {"label": "Act", "description": "Standardise what worked, then repeat"}
+          ],
+          "highlight": 3
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Three moves keep the pricing engine learning"}
+      ],
+      "pattern": {
+        "name": "cycle-nodes",
+        "values": {
+          "steps": [
+            {"label": "Sense demand", "description": "Read orders, stock and competitor prices every night"},
+            {"label": "Reprice", "description": "Move list prices inside the guardrails set by category leads"},
+            {"label": "Learn", "description": "Feed the margin and volume response back into the model"}
+          ],
+          "center": {"label": "Pricing loop"},
+          "highlight": 1
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "The release train repeats six steps every fortnight"}
+      ],
+      "pattern": {
+        "name": "cycle-nodes",
+        "values": {
+          "steps": [
+            {"label": "Groom backlog", "description": "Rank requests against the quarter's goals"},
+            {"label": "Commit scope", "description": "Teams sign up to what fits the sprint"},
+            {"label": "Build", "description": "Ship behind feature flags every day"},
+            {"label": "Harden", "description": "Regression, load and security checks"},
+            {"label": "Release", "description": "Roll out to 5% of users, then to all"},
+            {"label": "Review", "description": "Usage and incidents reset the backlog"}
+          ],
+          "highlight": 5
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Eight steps close the books and reopen them each month"}
+      ],
+      "pattern": {
+        "name": "cycle-nodes",
+        "values": {
+          "steps": [
+            {"label": "Cut-off", "description": "Freeze postings on day one"},
+            {"label": "Accruals", "description": "Book open orders and receipts"},
+            {"label": "Reconcile", "description": "Clear bank and intercompany items"},
+            {"label": "Consolidate", "description": "Roll up the 14 legal entities"},
+            {"label": "Review", "description": "Controllers challenge variances"},
+            {"label": "Report", "description": "Flash figures reach the board"},
+            {"label": "Forecast", "description": "Update the rolling outlook"},
+            {"label": "Reopen", "description": "Release the next period"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Customer feedback flows back against the delivery order"}
+      ],
+      "pattern": {
+        "name": "cycle-nodes",
+        "values": {
+          "steps": [
+            {"label": "Listen", "description": "Collect tickets, reviews and call notes"},
+            {"label": "Cluster", "description": "Group the themes by product area"},
+            {"label": "Decide", "description": "Owners pick the top three fixes"},
+            {"label": "Fix", "description": "Ship the change within one sprint"},
+            {"label": "Tell", "description": "Close the loop with every reporter"}
+          ],
+          "highlight": 3
+        },
+        "overrides": {"direction": "counter_clockwise"}
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "The agent repeats four moves until the task is done"}
+      ],
+      "pattern": {
+        "name": "cycle-nodes",
+        "values": {
+          "steps": [
+            {"label": "Sense"},
+            {"label": "Decide"},
+            {"label": "Act"},
+            {"label": "Learn"}
+          ],
+          "center": {"label": "Agent loop"},
+          "highlight": 2
+        },
+        "overrides": {"labels": "inside"}
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "The improvement loop already pays for itself"}
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "segments": [
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "cycle-nodes",
+              "values": {
+                "steps": [
+                  {"label": "Plan", "description": "Pick one loss to remove"},
+                  {"label": "Do", "description": "Trial it on a single line"},
+                  {"label": "Check", "description": "Measure against the target"},
+                  {"label": "Act", "description": "Make the fix the standard"}
+                ],
+                "highlight": 4
+              }
+            }
+          },
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "metric-list",
+              "values": {
+                "items": [
+                  {"value": "38", "label": "Loops closed this year", "detail": "Up from 11 in the year before"},
+                  {"value": "6 wk", "label": "Median loop length", "detail": "Down from 15 weeks"},
+                  {"value": "€4.2m", "label": "Run-rate savings", "detail": "Audited by plant finance"}
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

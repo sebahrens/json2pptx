@@ -408,6 +408,24 @@
     {
       "layout_id": "content",
       "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Every plant change runs one plan-do-check-act loop"}
+      ],
+      "pattern": {
+        "name": "cycle-nodes",
+        "values": {
+          "steps": [
+            {"label": "Plan", "description": "Set the target and the test for it"},
+            {"label": "Do", "description": "Run the change on one line first"},
+            {"label": "Check", "description": "Compare the result with the target"},
+            {"label": "Act", "description": "Standardise what worked, then repeat"}
+          ],
+          "highlight": 3
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Self-service can close the growth gap within 18 months"}
       ],
       "pattern": {

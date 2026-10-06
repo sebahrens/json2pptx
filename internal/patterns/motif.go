@@ -105,6 +105,7 @@ var patternMotifs = map[string]patternMotif{
 		overrideStyles: map[string]Motif{"tiles": MotifTiles}},
 	"concentric-rings":  {base: MotifDiagram},
 	"contact-directory": {base: MotifOpenColumns},
+	"cycle-nodes":       {base: MotifDiagram},
 	"cycle-ring":        {base: MotifDiagram},
 	"driver-tree":       {base: MotifDiagram},
 	"dual-org-ladder": {base: MotifOpenColumns,
