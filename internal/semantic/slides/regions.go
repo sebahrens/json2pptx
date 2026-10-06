@@ -436,11 +436,11 @@ func CompileRegions(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	}
 
 	builds := make([]regionBuild, len(regions))
-	besideCycle := arrangement == ArrangeColumns && hasRegionKind(regions, RegionCycle)
+	anchors := regionAnchors(arrangement, regions)
 	for i, r := range regions {
-		b, berr := compileRegion(in, i, r)
-		if berr == nil && besideCycle && strField(r, "kind") == RegionText {
-			b, berr = regionTextBesideCycle(r)
+		b, berr := compileRegion(in, i, r, anchors[i])
+		if berr == nil && anchors[i] != "" && strField(r, "kind") == RegionText {
+			b, berr = regionTextBesideCycle(r, anchors[i])
 		}
 		if berr != nil {
 			return nil, nil, fmt.Errorf("regions[%d]: %w", i, berr)
@@ -448,7 +448,7 @@ func CompileRegions(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		builds[i] = b
 	}
 
-	grid, cellPaths := regionGrid(arrangement, axis, stack, builds)
+	grid, cellPaths := regionGrid(arrangement, axis, stack, builds, !cycleLeadsStack(arrangement, regions))
 	stampCompilerSource(grid, regionsGridSource, 0)
 	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title", ShapeGrid: grid}
 	links := titleLink(slide, in)
@@ -525,7 +525,7 @@ func regionsSourceLine(body map[string]any) (string, string) {
 // regionGrid lays the compiled regions out for the arrangement. It returns the
 // grid and each region's cell path relative to the grid
 // (".rows[0].cells[1].grid.rows[0].cells[0]").
-func regionGrid(arrangement string, axis, stack []float64, builds []regionBuild) (*deckinput.ShapeGridInput, []string) {
+func regionGrid(arrangement string, axis, stack []float64, builds []regionBuild, rebalanceStack bool) (*deckinput.ShapeGridInput, []string) {
 	paths := make([]string, len(builds))
 	cellAt := func(r, c int) string { return fmt.Sprintf(".rows[%d].cells[%d]", r, c) }
 	switch arrangement {
@@ -539,10 +539,15 @@ func regionGrid(arrangement string, axis, stack []float64, builds []regionBuild)
 	case ArrangeMainLeft, ArrangeMainRight:
 		// The stack's stamp lets the engine re-split it by the measured need
 		// of a text region when it expands the stack (go-slide-creator-18dqh).
-		side := &deckinput.ShapeGridInput{Source: jsonschema.CompilerRegionsStackSource, Columns: json.RawMessage("1"), Rows: []deckinput.GridRowInput{
+		// Beside a cycle the two regions meet at the stack's seam instead
+		// (regionAnchors), which a re-split would move to the column's foot.
+		side := &deckinput.ShapeGridInput{Columns: json.RawMessage("1"), Rows: []deckinput.GridRowInput{
 			{Height: stack[0], Cells: []*deckinput.GridCellInput{builds[1].cell}},
 			{Height: stack[1], Cells: []*deckinput.GridCellInput{builds[2].cell}},
 		}}
+		if rebalanceStack {
+			side.Source = jsonschema.CompilerRegionsStackSource
+		}
 		mainCol, sideCol := 0, 1
 		cols := axis
 		if arrangement == ArrangeMainRight {
@@ -595,7 +600,17 @@ func shareColumns(shares []float64) json.RawMessage {
 
 // compileRegion builds one region's cell: its content, under its heading when
 // it has one (and an image's caption beneath it).
-func compileRegion(in Input, idx int, r map[string]any) (regionBuild, error) {
+//
+// anchor is where a region that stands beside a cycle region places a visual
+// that is only as tall as its content (see regionAnchors): "center", "bottom"
+// or "top"; "" is the region's own placement. A ring is centred in its column
+// and has no top edge, so a KPI row, a stat, a timeline or a table is set on
+// the ring's centre line with its heading directly above it, instead of
+// hanging from the top of the column as a thin band over white space
+// (go-slide-creator-n3q0o; the text region's own case is
+// regionTextBesideCycle). A chart or an image fills its cell and keeps its
+// heading on top.
+func compileRegion(in Input, idx int, r map[string]any, anchor string) (regionBuild, error) {
 	if r == nil {
 		return regionBuild{}, fmt.Errorf("a region must be an object")
 	}
@@ -631,12 +646,29 @@ func compileRegion(in Input, idx int, r map[string]any) (regionBuild, error) {
 	if kind == RegionImage {
 		caption = strField(r, "caption")
 	}
-	if heading == "" && caption == "" {
+	// bandPt is the height of the content row of a region anchored beside a
+	// cycle; 0 leaves the content the rest of the cell.
+	bandPt := 0.0
+	if anchor != "" {
+		bandPt = regionBandBesideCyclePt(r)
+	}
+	if bandPt > 0 && heading == "" && len(content.cell.Pattern) > 0 {
+		// A pattern places its own content-sized block in the cell.
+		if err := anchorPatternCell(content.cell, anchor); err != nil {
+			return regionBuild{}, err
+		}
+		return content, nil
+	}
+	if heading == "" && caption == "" && bandPt == 0 {
 		return content, nil
 	}
 	// A heading or caption is its own content-sized row, so the region's
 	// visual keeps the rest of the cell instead of sharing a text box with it.
 	g := &deckinput.ShapeGridInput{Columns: json.RawMessage("1"), RowGap: 4}
+	if bandPt > 0 {
+		// Heading and band are one block, placed in the cell as a whole.
+		g.VerticalAlign = anchor
+	}
 	var links []SourceLink
 	if heading != "" {
 		g.Rows = append(g.Rows, deckinput.GridRowInput{MinHeight: regionHeadingRowPt, MaxHeight: regionHeadingRowPt, Cells: []*deckinput.GridCellInput{
@@ -645,7 +677,7 @@ func compileRegion(in Input, idx int, r map[string]any) (regionBuild, error) {
 		links = append(links, SourceLink{RawPath: fmt.Sprintf(".grid.rows[%d].cells[0]", len(g.Rows)-1), SemanticPath: RegionHeadingField(r)})
 	}
 	contentRow := len(g.Rows)
-	g.Rows = append(g.Rows, deckinput.GridRowInput{Cells: []*deckinput.GridCellInput{content.cell}})
+	g.Rows = append(g.Rows, deckinput.GridRowInput{MaxHeight: bandPt, Cells: []*deckinput.GridCellInput{content.cell}})
 	prefix := fmt.Sprintf(".grid.rows[%d].cells[0]", contentRow)
 	links = append(links, SourceLink{RawPath: prefix, SemanticPath: ""})
 	for _, l := range content.links {
@@ -831,6 +863,93 @@ func regionImage(r map[string]any) (regionBuild, error) {
 	}, nil
 }
 
+// Heights (points on the standard slide) of the content row of a region
+// centred in a column beside a cycle region. The band is as tall as the
+// region's visual draws itself in a column of a full-height content area, so
+// heading and visual read as one block; the compiler knows no font metrics, so
+// these are the measured heights of the patterns' own bands
+// (go-slide-creator-n3q0o).
+const (
+	regionKPIBandPt      = 110.0 // a kpi-Nup row: the figure, a two-line caption and the dividers
+	regionStatBandPt     = 150.0 // a stat-hero figure with its label and context line
+	regionTimelineBandPt = 130.0 // dates, the line and two-line stop labels
+	regionTableRowPt     = 34.0  // one table line, the header included, with the cell margins a nested table loses
+)
+
+// regionBandBesideCyclePt is the height of a region's content row when the
+// region stands in a column beside a cycle region, or 0 for a region whose
+// visual fills the column (a chart, an image) or is placed by its own rule (a
+// text region, see regionTextBesideCycle; the cycle itself).
+func regionBandBesideCyclePt(r map[string]any) float64 {
+	switch strField(r, "kind") {
+	case RegionKPIs:
+		return regionKPIBandPt
+	case RegionStat:
+		return regionStatBandPt
+	case RegionTimeline:
+		return regionTimelineBandPt
+	case RegionTable:
+		rows, _ := r["rows"].([]any)
+		return regionTableRowPt * float64(len(rows)+1)
+	}
+	return 0
+}
+
+// Anchors of a region beside a cycle region: the shape grid's vertical_align
+// values.
+const (
+	regionAnchorCenter = "center"
+	regionAnchorBottom = "bottom"
+	regionAnchorTop    = "top"
+)
+
+// regionAnchors is each region's anchor beside a cycle region ("" where the
+// region keeps its own placement):
+//
+//   - columns holding a cycle: every other region is centred on the ring's
+//     centre line;
+//   - main_left / main_right led by a cycle: the upper region of the stack
+//     sits on the stack's seam and the lower one hangs from it, so the two
+//     read as one group beside the ring instead of a band at the top of the
+//     column and a few lines at its foot (go-slide-creator-tgfdn).
+func regionAnchors(arrangement string, regions []map[string]any) []string {
+	out := make([]string, len(regions))
+	switch {
+	case arrangement == ArrangeColumns && hasRegionKind(regions, RegionCycle):
+		for i, r := range regions {
+			if strField(r, "kind") != RegionCycle {
+				out[i] = regionAnchorCenter
+			}
+		}
+	case cycleLeadsStack(arrangement, regions):
+		out[1], out[2] = regionAnchorBottom, regionAnchorTop
+	}
+	return out
+}
+
+// cycleLeadsStack reports whether the arrangement is a main region beside a
+// two-region stack and the main region is a cycle.
+func cycleLeadsStack(arrangement string, regions []map[string]any) bool {
+	return (arrangement == ArrangeMainLeft || arrangement == ArrangeMainRight) &&
+		len(regions) == 3 && strField(regions[0], "kind") == RegionCycle
+}
+
+// anchorPatternCell sets vertical_align on a cell's nested pattern, so the
+// engine places the pattern's content-sized block in the cell.
+func anchorPatternCell(cell *deckinput.GridCellInput, anchor string) error {
+	var p deckinput.PatternInput
+	if err := json.Unmarshal(cell.Pattern, &p); err != nil {
+		return fmt.Errorf("decode nested pattern: %w", err)
+	}
+	p.VerticalAlign = anchor
+	raw, err := json.Marshal(p)
+	if err != nil {
+		return fmt.Errorf("encode nested pattern: %w", err)
+	}
+	cell.Pattern = raw
+	return nil
+}
+
 // hasRegionKind reports whether any region is of the given kind.
 func hasRegionKind(regions []map[string]any, kind string) bool {
 	for _, r := range regions {
@@ -841,12 +960,13 @@ func hasRegionKind(regions []map[string]any, kind string) bool {
 	return false
 }
 
-// regionTextBesideCycle is a text region in a column next to a cycle region:
-// heading and text are one block centred on the ring's axis. A ring is centred
-// in its column and has no top edge to hang the text from, so the top-anchored
+// regionTextBesideCycle is a text region next to a cycle region: heading and
+// text are one block, centred on the ring's axis in a column and set against
+// the seam in a stack (anchor, see regionAnchors). A ring is centred in its
+// column and has no top edge to hang the text from, so the top-anchored
 // heading row a chart's neighbour takes left the text above the ring and an
 // empty band under it (go-slide-creator-7q1yc).
-func regionTextBesideCycle(r map[string]any) (regionBuild, error) {
+func regionTextBesideCycle(r map[string]any, anchor string) (regionBuild, error) {
 	paras, links, err := regionTextParagraphs(r)
 	if err != nil {
 		return regionBuild{}, err
@@ -855,7 +975,14 @@ func regionTextBesideCycle(r map[string]any) (regionBuild, error) {
 		paras = append([]regionParagraph{{Content: heading, Bold: true}}, paras...)
 		links = append([]SourceLink{{RawPath: ".shape.text", SemanticPath: RegionHeadingField(r)}}, links...)
 	}
-	return regionBuild{cell: textCell(paras, "ctr"), links: links}, nil
+	vAlign := "ctr"
+	switch anchor {
+	case regionAnchorBottom:
+		vAlign = "b"
+	case regionAnchorTop:
+		vAlign = "t"
+	}
+	return regionBuild{cell: textCell(paras, vAlign), links: links}, nil
 }
 
 func regionText(r map[string]any) (regionBuild, error) {

@@ -242,7 +242,44 @@ func ringCentreFit(ctx ExpandContext, spec ringSpec, sidePt float64, label, subl
 	if label == "" {
 		return shapegrid.MinTextSizePt, true
 	}
-	return sshFitHubLabel(ctx, label, ringCentreMaxPt, w, h)
+	size, ok := sshFitHubLabel(ctx, label, ringCentreMaxPt, w, h)
+	if !ok {
+		return size, false
+	}
+	// The model's line count is not the writer's: a face set wider than the
+	// theme font's metrics (abstract's Tenorite, where it is substituted)
+	// broke a one-word label in a small hole — "Monthl / y" in a 50% region
+	// (go-slide-creator-t5ndl). The label keeps the largest size at which the
+	// writer needs no more lines than the model counted and every word has
+	// ringCentreWordShare of the width to spare.
+	for s := size; s >= shapegrid.MinTextSizePt; s-- {
+		if ringCentreHolds(ctx, label, s, w, h) {
+			return s, true
+		}
+	}
+	return shapegrid.MinTextSizePt, false
+}
+
+// ringCentreWordShare is the share of the hole's text width a word of the
+// centre label may take by the theme font's metrics: the rest is what a
+// renderer's own, wider face may add.
+const ringCentreWordShare = 0.85
+
+// ringCentreHolds reports whether the centre label at sizePt keeps every word
+// whole in a text box w wide with room to spare, and takes no more height
+// than h by the writer's own measure.
+func ringCentreHolds(ctx ExpandContext, label string, sizePt, w, h float64) bool {
+	if ringBreaksWord(ctx, label, sizePt, w*ringCentreWordShare) {
+		return false
+	}
+	lines := measuredLines(label, ctx.Theme.BodyFont, true, sizePt, w)
+	if float64(lines)*sizePt*contentLineHeight > h {
+		return false
+	}
+	inset := [4]float64{ringCentreInsetPt, ringCentreInsetPt, ringCentreInsetPt, ringCentreInsetPt}
+	text := ringTextJSON("ctr", "ctr", &inset, ringPara{Content: pptx.ConvertMarkdownEmphasis(label), Size: sizePt, Bold: true})
+	written := writtenFitHeightPt(ctx.themeFonts(), text, w+2*ringCentreInsetPt, 0)
+	return written <= float64(lines)*sizePt*sizingLineSpacing+2*ringCentreInsetPt+ringLabelSlackPt
 }
 
 // ringCentreLayer is the unfilled text layer in the hole: the bold label at
