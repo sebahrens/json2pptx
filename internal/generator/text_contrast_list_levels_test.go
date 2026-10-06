@@ -152,7 +152,7 @@ func TestInheritedTextContrastSeesPastUnusedLevelColours(t *testing.T) {
 	slide := bodySlide("Financial Performance Summary")
 	shape := &slide.CommonSlideData.ShapeTree.Shapes[0]
 	shape.TextBody.ListStyle.Inner = `<a:lvl2pPr><a:defRPr sz="1600"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl2pPr>`
-	if !shapeNamesNoColor(shape) {
+	if !levelNamesNoColor(shape, 1) {
 		t.Fatal("a colour on an unused level made the shape count as naming its text colour")
 	}
 	if swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), bgHex, theme, 1, override); len(swaps) != 1 {
@@ -163,7 +163,138 @@ func TestInheritedTextContrastSeesPastUnusedLevelColours(t *testing.T) {
 	shape = &bodySlide("Detail").CommonSlideData.ShapeTree.Shapes[0]
 	shape.TextBody.ListStyle.Inner = `<a:lvl2pPr><a:defRPr sz="1600"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl2pPr>`
 	shape.TextBody.Paragraphs[0].Properties = &paragraphPropertiesXML{Level: &level}
-	if shapeNamesNoColor(shape) {
+	if levelNamesNoColor(shape, 2) {
 		t.Error("a colour on the level the paragraph uses is the lstStyle pass's to fix")
+	}
+}
+
+// masterWithLightSecondLevel styles first-level body text in a colour that
+// reads on the inverted section layout (bg1 -> dk1) and second-level text in
+// one that does not (tx1 -> lt1, white on white).
+const masterWithLightSecondLevel = `<?xml version="1.0"?>
+<p:sldMaster xmlns:p="p" xmlns:a="a">
+ <p:txStyles>
+  <p:bodyStyle><a:lvl1pPr><a:defRPr sz="2000"><a:solidFill><a:schemeClr val="bg1"/></a:solidFill></a:defRPr></a:lvl1pPr><a:lvl2pPr marL="457200"><a:defRPr sz="1600"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl2pPr></p:bodyStyle>
+ </p:txStyles>
+</p:sldMaster>`
+
+func runFill(run *runXML) string {
+	if run.RunProperties == nil {
+		return ""
+	}
+	return run.RunProperties.Inner
+}
+
+// The inherited pass resolves each level a paragraph sits on from that level's
+// own fragment: a second-level bullet whose master colour is white on white is
+// fixed, and the first-level text beside it, which reads, is left as it is.
+// The pass used to resolve the first level only and pin every run to one
+// colour, so the bullet stayed invisible (go-slide-creator-50xzk).
+func TestInheritedTextContrastResolvesEachUsedLevel(t *testing.T) {
+	theme := modernLikeTheme()
+	layout := []byte(invertedSectionLayout)
+	override := parseLayoutColorMapOverride(layout)
+	bgHex := extractLayoutBackgroundColor(layout, theme)
+	level := 1
+
+	slide := bodySlide("Revenue grew", "driven by renewals")
+	shape := &slide.CommonSlideData.ShapeTree.Shapes[0]
+	shape.TextBody.Paragraphs[1].Properties = &paragraphPropertiesXML{Level: &level}
+	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithLightSecondLevel), bgHex, theme, 3, override)
+	if len(swaps) != 1 {
+		t.Fatalf("got %d swaps, want 1 (the second level): %+v", len(swaps), swaps)
+	}
+	if swaps[0].OriginalColor != "#FFFFFF" || swaps[0].Source != inheritedSourceMaster || swaps[0].SlideIndex != 3 {
+		t.Errorf("swap = %+v, want the master's white second-level colour on slide 3", swaps[0])
+	}
+	if fill := runFill(&shape.TextBody.Paragraphs[0].Runs[0]); strings.Contains(fill, "<a:solidFill>") {
+		t.Errorf("first-level run, whose colour reads, was pinned: %s", fill)
+	}
+	if fill := runFill(&shape.TextBody.Paragraphs[1].Runs[0]); !strings.Contains(fill, "<a:solidFill>") {
+		t.Errorf("second-level run was not given a readable colour: %q", fill)
+	}
+
+	// The same deck with no second-level paragraph: nothing uses the failing
+	// level, so nothing is changed or reported.
+	flat := bodySlide("Revenue grew", "driven by renewals")
+	if swaps := enforceInheritedTextContrast(flat, layout, []byte(masterWithLightSecondLevel), bgHex, theme, 3, override); len(swaps) != 0 {
+		t.Errorf("an unused failing level drew swaps: %+v", swaps)
+	}
+}
+
+// A list style that states a colour on one used level leaves the other used
+// levels to the layout and master: the lstStyle pass owns the first, and the
+// inherited pass still resolves the rest instead of skipping the whole shape.
+func TestInheritedTextContrastFixesLevelsTheListStyleLeavesAlone(t *testing.T) {
+	theme := modernLikeTheme()
+	layout := []byte(invertedSectionLayout)
+	override := parseLayoutColorMapOverride(layout)
+	bgHex := extractLayoutBackgroundColor(layout, theme)
+	level := 1
+
+	slide := bodySlide("Financial Performance Summary", "Detail")
+	shape := &slide.CommonSlideData.ShapeTree.Shapes[0]
+	shape.TextBody.ListStyle.Inner = `<a:lvl2pPr><a:defRPr sz="1600"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl2pPr>`
+	shape.TextBody.Paragraphs[1].Properties = &paragraphPropertiesXML{Level: &level}
+	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), bgHex, theme, 1, override)
+	if len(swaps) != 1 {
+		t.Fatalf("white-on-white first-level text beside a coloured second level drew %d swaps, want 1: %+v", len(swaps), swaps)
+	}
+	if fill := runFill(&shape.TextBody.Paragraphs[1].Runs[0]); strings.Contains(fill, "<a:solidFill>") {
+		t.Errorf("the level the list style colours was pinned as well: %s", fill)
+	}
+}
+
+// A layout list style that styles only a deeper level says nothing about the
+// first level's colour; that level's colour is the master's.
+func TestLayoutLevelStyleDoesNotLendDeeperLevelsToTheFirst(t *testing.T) {
+	layout := []byte(strings.Replace(invertedSectionLayout,
+		`<p:txBody><a:lstStyle/></p:txBody></p:sp>`,
+		`<p:txBody><a:lstStyle><a:lvl2pPr><a:defRPr sz="1600"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl2pPr></a:lstStyle></p:txBody></p:sp>`, 1))
+	idx := 1
+	ph := &placeholderXML{Type: "body", Index: &idx}
+	if got := layoutPlaceholderLevelStyle(layout, ph, 1); got != "" {
+		t.Errorf("level 1 fragment = %q, want none", got)
+	}
+	if got := layoutPlaceholderLevelStyle(layout, ph, 2); !strings.Contains(got, `val="accent1"`) {
+		t.Errorf("level 2 fragment = %q, want the layout's lvl2pPr", got)
+	}
+	fragment, source := inheritedTextStyleFragment(layout, []byte(masterWithTx1Body), ph, 1)
+	if source != inheritedSourceMaster || !strings.Contains(fragment, `val="tx1"`) {
+		t.Errorf("level 1 resolved from %q (%s), want the master's first level", source, fragment)
+	}
+}
+
+// ContentListLevels answers with the levels the population code writes: a
+// top-level bullet at the layout's first bulleted level and an indented
+// sub-bullet one below it, body text at the first level.
+func TestContentListLevels(t *testing.T) {
+	tests := []struct {
+		name string
+		item ContentItem
+		base int
+		want []int
+	}{
+		{"flat bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: []string{"One", "Two"}}, 0, []int{0}},
+		{"nested bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: []string{"One", "  Sub", "Two"}}, 0, []int{0, 1}},
+		{"nested bullets on a master whose first level is unmarked", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: []string{"One", "  Sub"}}, 1, []int{1, 2}},
+		{"text", ContentItem{PlaceholderID: "body", Type: ContentText, Value: "A sentence."}, 1, []int{0}},
+		{"body and nested bullets", ContentItem{PlaceholderID: "body", Type: ContentBodyAndBullets,
+			Value: BodyAndBulletsContent{Body: "Lead", Bullets: []string{"One", "  Sub"}}}, 1, []int{0, 1, 2}},
+		{"no text", ContentItem{PlaceholderID: "body", Type: ContentText, Value: ""}, 0, nil},
+		{"not text content", ContentItem{PlaceholderID: "body", Type: ContentImage}, 0, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ContentListLevels(tt.item, tt.base)
+			if len(got) != len(tt.want) {
+				t.Fatalf("levels = %v, want %v", got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Fatalf("levels = %v, want %v", got, tt.want)
+				}
+			}
+		})
 	}
 }

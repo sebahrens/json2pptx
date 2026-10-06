@@ -61,6 +61,14 @@ const (
 // repository, so the fixture reproduces its shape on a shipped one.
 func midnightBlueWithSectionNumberStyle(t *testing.T, replacement string) string {
 	t.Helper()
+	return midnightBlueWithPatchedPart(t, sectionNumberLayoutPart, shippedSectionNumberLvl, replacement)
+}
+
+// midnightBlueWithPatchedPart writes a copy of midnight-blue in which the one
+// occurrence of shipped in the named part reads replacement, and returns the
+// directory holding it.
+func midnightBlueWithPatchedPart(t *testing.T, part, shipped, replacement string) string {
+	t.Helper()
 	r, err := zip.OpenReader(filepath.Join(testutil.TemplatesDir(), "midnight-blue.pptx"))
 	if err != nil {
 		t.Fatal(err)
@@ -75,7 +83,7 @@ func midnightBlueWithSectionNumberStyle(t *testing.T, replacement string) string
 	w := zip.NewWriter(f)
 	patched := false
 	for _, entry := range r.File {
-		if entry.Name != sectionNumberLayoutPart {
+		if entry.Name != part {
 			if err := w.Copy(entry); err != nil {
 				t.Fatal(err)
 			}
@@ -90,10 +98,10 @@ func midnightBlueWithSectionNumberStyle(t *testing.T, replacement string) string
 		if err != nil {
 			t.Fatal(err)
 		}
-		if bytes.Count(body, []byte(shippedSectionNumberLvl)) != 1 {
-			t.Fatalf("%s no longer carries the section-number list style this fixture patches", entry.Name)
+		if bytes.Count(body, []byte(shipped)) != 1 {
+			t.Fatalf("%s no longer carries the markup this fixture patches: %s", entry.Name, shipped)
 		}
-		body = bytes.Replace(body, []byte(shippedSectionNumberLvl), []byte(replacement), 1)
+		body = bytes.Replace(body, []byte(shipped), []byte(replacement), 1)
 		header := entry.FileHeader
 		header.Method = zip.Deflate
 		dst, err := w.CreateHeader(&header)
@@ -106,7 +114,7 @@ func midnightBlueWithSectionNumberStyle(t *testing.T, replacement string) string
 		patched = true
 	}
 	if !patched {
-		t.Fatalf("midnight-blue has no %s", sectionNumberLayoutPart)
+		t.Fatalf("midnight-blue has no %s", part)
 	}
 	if err := w.Close(); err != nil {
 		t.Fatal(err)
@@ -121,15 +129,22 @@ func midnightBlueWithSectionNumberStyle(t *testing.T, replacement string) string
 // generate swaps for a one-section deck on the template in templatesDir.
 func sectionDeckContrastDecisions(t *testing.T, templatesDir string) (predicted, actual map[contrastDecision]bool) {
 	t.Helper()
+	return deckContrastDecisions(t, templatesDir, SlideInput{
+		// Named outright: a deck that opens on a section is laid out as a title.
+		SlideType: "section", LayoutID: "slideLayout4",
+		Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Market analysis")}},
+	})
+}
+
+// deckContrastDecisions returns what validate predicts and what generate swaps
+// for a one-slide deck on the midnight-blue copy in templatesDir.
+func deckContrastDecisions(t *testing.T, templatesDir string, slide SlideInput) (predicted, actual map[contrastDecision]bool) {
+	t.Helper()
 	layouts, theme, width, height := fitReportGeometry("midnight-blue", templatesDir)
 	if layouts == nil || theme == nil {
 		t.Fatal("cannot analyze the fixture template")
 	}
-	input := &PresentationInput{Template: "midnight-blue", OutputFilename: "list-level-parity.pptx", Slides: []SlideInput{{
-		// Named outright: a deck that opens on a section is laid out as a title.
-		SlideType: "section", LayoutID: "slideLayout4",
-		Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Market analysis")}},
-	}}}
+	input := &PresentationInput{Template: "midnight-blue", OutputFilename: "list-level-parity.pptx", Slides: []SlideInput{slide}}
 	applyDefaults(input)
 	resolveCanonicalLayoutIDs(input.Slides, layouts)
 	predicted, err := contrastDecisionsFromFindings(contrastPredictions(collectFitFindings(input, layouts, width, height, theme)))
@@ -193,4 +208,86 @@ func TestContrastParityIgnoresUnusedListLevels(t *testing.T) {
 			t.Errorf("lt2 on the section number's own level was not swapped: %v", actual)
 		}
 	})
+}
+
+// The body placeholder of midnight-blue's One Content layout and the second
+// body level of its master, as shipped: the layout leaves every level to the
+// master, whose levels are all dk2.
+const (
+	contentLayoutPart      = "ppt/slideLayouts/slideLayout2.xml"
+	shippedContentBodyList = `<p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/>`
+	masterPart             = "ppt/slideMasters/slideMaster1.xml"
+	shippedMasterBodyLvl2  = `<a:defRPr sz="1800" kern="1200"><a:solidFill><a:schemeClr val="dk2"/>`
+)
+
+// bulletContentSlide is a One Content slide whose body carries the given bullets; a
+// bullet with leading whitespace is a sub-bullet, one list level down.
+func bulletContentSlide(bullets ...string) SlideInput {
+	return SlideInput{
+		SlideType: "content", LayoutID: "slideLayout2",
+		Content: []ContentInput{
+			{PlaceholderID: "title", Type: "text", TextValue: strPtr("Renewals carried the quarter")},
+			{PlaceholderID: "body", Type: "bullets", BulletsValue: &bullets},
+		},
+	}
+}
+
+func decisionsSwap(decisions map[contrastDecision]bool, original string) bool {
+	for decision := range decisions {
+		if decision.Original == original {
+			return true
+		}
+	}
+	return false
+}
+
+// TestContrastParityOnUsedDeeperListLevel is go-slide-creator-50xzk: a
+// low-contrast colour on the SECOND list level of a body placeholder, which a
+// sub-bullet does use. Generate swaps it; validate used to model the first
+// level only and said nothing. The colour is stated once by the layout's own
+// list style (the lstStyle pass fixes it) and once by the master's body style
+// (the inherited pass fixes it), and in both the prediction now names the
+// swap. The same templates with no sub-bullet draw neither.
+func TestContrastParityOnUsedDeeperListLevel(t *testing.T) {
+	nested := bulletContentSlide("Renewals grew", "  Enterprise led", "Churn fell")
+	flat := bulletContentSlide("Renewals grew", "Enterprise led", "Churn fell")
+	const lt2 = "#E8ECF1"
+
+	predicted, actual := deckContrastDecisions(t, testutil.TemplatesDir(), nested)
+	if !reflect.DeepEqual(predicted, actual) {
+		t.Fatalf("shipped template is out of parity before the fixture is applied: predicted=%v actual=%v", predicted, actual)
+	}
+	if decisionsSwap(actual, lt2) {
+		t.Fatalf("shipped template already swaps %s: %v", lt2, actual)
+	}
+
+	fixtures := []struct {
+		name, part, shipped, replacement string
+	}{
+		{"layout list style", contentLayoutPart, shippedContentBodyList,
+			strings.Replace(shippedContentBodyList, `<a:lstStyle/>`, `<a:lstStyle>`+lowContrastLvl2+`</a:lstStyle>`, 1)},
+		{"master body style", masterPart, shippedMasterBodyLvl2,
+			strings.Replace(shippedMasterBodyLvl2, `val="dk2"`, `val="lt2"`, 1)},
+	}
+	for _, fixture := range fixtures {
+		t.Run(fixture.name, func(t *testing.T) {
+			dir := midnightBlueWithPatchedPart(t, fixture.part, fixture.shipped, fixture.replacement)
+
+			predicted, actual := deckContrastDecisions(t, dir, nested)
+			if !reflect.DeepEqual(predicted, actual) {
+				t.Errorf("sub-bullet on the low-contrast level: predicted=%v actual=%v", predicted, actual)
+			}
+			if !decisionsSwap(actual, lt2) {
+				t.Errorf("lt2 on the level the sub-bullet uses was not swapped: %v", actual)
+			}
+
+			predicted, actual = deckContrastDecisions(t, dir, flat)
+			if !reflect.DeepEqual(predicted, actual) {
+				t.Errorf("no sub-bullet: predicted=%v actual=%v", predicted, actual)
+			}
+			if decisionsSwap(actual, lt2) || decisionsSwap(predicted, lt2) {
+				t.Errorf("a level no bullet uses drew a decision: predicted=%v actual=%v", predicted, actual)
+			}
+		})
+	}
 }

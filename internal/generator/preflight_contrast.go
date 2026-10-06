@@ -56,6 +56,12 @@ type ContrastPreflightPair struct {
 	// shape-grid cell is NOT one of these: its fill and text were chosen
 	// together.
 	AuthorBackground bool
+	// Inherited marks a placeholder colour the slide does not state: it comes
+	// from the master's text style (or a layout fragment the slide does not
+	// copy), so the render-time inherited pass fixes it. That pass replaces a
+	// failing colour with a template text colour, where the pass over colours
+	// the slide states preserves the hue (go-slide-creator-50xzk).
+	Inherited bool
 }
 
 // PredictCompiledGridContrast runs the same contrast pass used by generation on
@@ -182,12 +188,11 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		// render-time pass would. This keeps the predicted color identical to
 		// the contrast_autofixed swap. replacement_mode discloses which branch
 		// produced it.
-		snap := p.AuthorBackground || (p.Source == "shape_grid" && gridSnapsToPalette)
-		replacement, mode := contrastReplacement(p.Foreground, fg, bg, themeColors, threshold, snap)
-		newRatio := replacement.ContrastWith(bg)
-		if !contrastSwapWorthwhile(ratio, newRatio) {
+		replacement, mode, swapped := preflightReplacement(p, fg, bg, themeColors, threshold)
+		if !swapped {
 			continue // the renderer keeps the authored colour too
 		}
+		newRatio := replacement.ContrastWith(bg)
 		source := p.Source
 		if source == "" {
 			source = "preflight"
@@ -228,6 +233,22 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		})
 	}
 	return findings
+}
+
+// preflightReplacement returns the colour the render-time pass that owns the
+// pair would replace fg with, the replacement_mode that names the branch, and
+// whether that pass makes the swap at all.
+func preflightReplacement(p ContrastPreflightPair, fg, bg svggen.Color, themeColors []types.ThemeColor, threshold float64) (svggen.Color, string, bool) {
+	ratio := fg.ContrastWith(bg)
+	if p.Inherited {
+		// enforceInheritedTextContrast: a template text colour, kept only
+		// when it reads better than what it replaces.
+		pick := pickThemeTextColor(bg, themeColors, threshold).Color
+		return pick, contrastModeFlip, pick.ContrastWith(bg) > ratio
+	}
+	snap := p.AuthorBackground || (p.Source == "shape_grid" && gridSnapsToPalette)
+	replacement, mode := contrastReplacement(p.Foreground, fg, bg, themeColors, threshold, snap)
+	return replacement, mode, contrastSwapWorthwhile(ratio, replacement.ContrastWith(bg))
 }
 
 func applyPreflightForegroundMods(fg svggen.Color, fgHex string, mods types.BackgroundColorModifiers, bg svggen.Color) (svggen.Color, string) {

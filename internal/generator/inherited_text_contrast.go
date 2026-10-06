@@ -45,9 +45,6 @@ var phAttrsRegexp = regexp.MustCompile(`<p:ph\s*([^/>]*)/?>`)
 // lstStyleRegexp matches an <a:lstStyle> element and captures its body.
 var lstStyleRegexp = regexp.MustCompile(`(?s)<a:lstStyle>(.*?)</a:lstStyle>`)
 
-// lvl1PrRegexp matches the first-level paragraph properties of a list style.
-var lvl1PrRegexp = regexp.MustCompile(`(?s)<a:lvl1pPr[^>]*>.*?</a:lvl1pPr>`)
-
 // solidFillSchemeRegexp captures the scheme color of the first solidFill in a
 // fragment; solidFillSRGBRegexp does the same for a literal sRGB value.
 var (
@@ -74,26 +71,43 @@ func masterStyleForPlaceholder(phType string) string {
 	}
 }
 
-// inheritedTextStyleFragment returns the styling fragment a placeholder inherits
-// and where it came from. It looks in the layout's matching placeholder first,
-// then the master's text styles — the renderer's own order.
-func inheritedTextStyleFragment(layoutXML, masterXML []byte, ph *placeholderXML) (fragment, source string) {
+// inheritedTextStyleFragment returns the styling fragment one list level
+// (1-based, as in lvlNpPr) of a placeholder inherits and where it came from. It
+// looks in the layout's matching placeholder first, then the master's text
+// styles — the renderer's own order.
+func inheritedTextStyleFragment(layoutXML, masterXML []byte, ph *placeholderXML, level int) (fragment, source string) {
 	if ph == nil {
 		return "", ""
 	}
-	if frag := layoutPlaceholderLevelStyle(layoutXML, ph); frag != "" {
+	if frag := layoutPlaceholderLevelStyle(layoutXML, ph, level); frag != "" {
 		return frag, inheritedSourceLayout
 	}
-	if frag := masterTextStyleLevel(masterXML, masterStyleForPlaceholder(ph.Type)); frag != "" {
+	if frag := masterTextStyleLevel(masterXML, masterStyleForPlaceholder(ph.Type), level); frag != "" {
 		return frag, inheritedSourceMaster
 	}
 	return "", ""
 }
 
-// layoutPlaceholderLevelStyle returns the lvl1 list-style fragment of the layout
-// shape holding the same placeholder, or "" when the layout leaves it to the
-// master.
-func layoutPlaceholderLevelStyle(layoutXML []byte, ph *placeholderXML) string {
+// listStyleLevelElement returns the <a:lvlNpPr> element of a list style for a
+// 1-based level, "" when the style does not define that level.
+func listStyleLevelElement(lstStyleInner string, level int) string {
+	for _, loc := range listLevelRegexp.FindAllStringSubmatchIndex(lstStyleInner, -1) {
+		if lstStyleInner[loc[2]:loc[3]] == strconv.Itoa(level) {
+			return lstStyleInner[loc[0]:loc[1]]
+		}
+	}
+	return ""
+}
+
+// layoutPlaceholderLevelStyle returns the list-style fragment for one level
+// (1-based) of the layout shape holding the same placeholder, or "" when the
+// layout leaves that level to the master.
+//
+// A list style that defines no first level styles it through whatever it
+// states outside the level elements; the other levels' elements are not the
+// first level's style, so they are left out of that answer (a colour stated
+// on lvl2pPr alone used to be read as the first level's).
+func layoutPlaceholderLevelStyle(layoutXML []byte, ph *placeholderXML, level int) string {
 	for _, sp := range layoutShapeRegexp.FindAllString(string(layoutXML), -1) {
 		if !placeholderMatches(sp, ph) {
 			continue
@@ -102,10 +116,13 @@ func layoutPlaceholderLevelStyle(layoutXML []byte, ph *placeholderXML) string {
 		if body == nil {
 			return ""
 		}
-		if lvl := lvl1PrRegexp.FindString(body[1]); lvl != "" {
+		if lvl := listStyleLevelElement(body[1], level); lvl != "" {
 			return lvl
 		}
-		return body[1]
+		if level == 1 {
+			return strings.TrimSpace(listLevelRegexp.ReplaceAllString(body[1], ""))
+		}
+		return ""
 	}
 	return ""
 }
@@ -174,9 +191,10 @@ func attrValue(attrs, name string) string {
 	return ""
 }
 
-// masterTextStyleLevel returns the lvl1 fragment of one of the master's
-// <p:txStyles> entries (titleStyle / bodyStyle / otherStyle).
-func masterTextStyleLevel(masterXML []byte, style string) string {
+// masterTextStyleLevel returns the fragment for one level (1-based) of one of
+// the master's <p:txStyles> entries (titleStyle / bodyStyle / otherStyle). A
+// style that defines no first level answers with its whole body for level 1.
+func masterTextStyleLevel(masterXML []byte, style string, level int) string {
 	if style == "" {
 		return ""
 	}
@@ -185,10 +203,13 @@ func masterTextStyleLevel(masterXML []byte, style string) string {
 	if m == nil {
 		return ""
 	}
-	if lvl := lvl1PrRegexp.FindString(string(m[1])); lvl != "" {
+	if lvl := listStyleLevelElement(string(m[1]), level); lvl != "" {
 		return lvl
 	}
-	return string(m[1])
+	if level == 1 {
+		return string(m[1])
+	}
+	return ""
 }
 
 // inheritedColorFromFragment resolves the text color a styling fragment implies,
@@ -220,22 +241,29 @@ func inheritedTextThreshold(fragment string) float64 {
 	return contrastThresholdFor(pt, bold)
 }
 
-// shapeNamesNoColor reports whether a shape leaves its text color entirely
-// inherited. A shape that names a color anywhere is the existing pass's job:
+// levelNamesNoColor reports whether a shape leaves the text color of one list
+// level (1-based) entirely inherited. A level that names a color — in the
+// shape's list style or on one of its runs — is the existing pass's job:
 // rewriting it here would double-fix it and record two swaps for one change.
-func shapeNamesNoColor(shape *shapeXML) bool {
+//
+// The question is asked per level because a list style may state a colour on
+// one level a shape uses and leave another to the layout or master: the
+// lstStyle pass fixes the first, and the second still needs resolving here
+// (go-slide-creator-50xzk). A colour the slide states on a level no paragraph
+// uses colours nothing, and the lstStyle pass skips it too
+// (go-slide-creator-6s2w4).
+func levelNamesNoColor(shape *shapeXML, level int) bool {
 	if shape.TextBody == nil {
 		return false
 	}
-	// Only the levels the text sits on count: a colour the slide states on a
-	// level no paragraph uses colours nothing, and the lstStyle pass skips it
-	// too (go-slide-creator-6s2w4). Counting it here would leave the text's
-	// real, inherited colour to neither pass.
-	if shape.TextBody.ListStyle != nil && listStyleNamesColorOnUsedLevel(shape.TextBody.ListStyle.Inner, usedListLevels(shape)) {
+	if shape.TextBody.ListStyle != nil && listStyleNamesColorOnUsedLevel(shape.TextBody.ListStyle.Inner, map[int]bool{level: true}) {
 		return false
 	}
 	for pi := range shape.TextBody.Paragraphs {
 		para := &shape.TextBody.Paragraphs[pi]
+		if paragraphListLevel(para) != level {
+			continue
+		}
 		for ri := range para.Runs {
 			rPr := para.Runs[ri].RunProperties
 			if rPr != nil && strings.Contains(rPr.Inner, "<a:solidFill>") {
@@ -261,14 +289,17 @@ func shapeHasText(shape *shapeXML) bool {
 	return false
 }
 
-// pinRunColors writes an explicit solid fill onto every run of a shape. The
-// color goes on the runs rather than the shape's lstStyle because a lstStyle
-// level only styles its own outline level: a lvl1pPr color would leave a
-// second-level bullet as invisible as it was.
-func pinRunColors(shape *shapeXML, hex string) {
+// pinRunColors writes an explicit solid fill onto every run of a shape that
+// sits on the given list level (1-based). The color goes on the runs rather
+// than the shape's lstStyle so the slide states exactly what was checked: the
+// paragraphs of one level, at that level's inherited colour.
+func pinRunColors(shape *shapeXML, level int, hex string) {
 	fill := fmt.Sprintf(`<a:solidFill><a:srgbClr val="%s"/></a:solidFill>`, strings.TrimPrefix(strings.ToUpper(hex), "#"))
 	for pi := range shape.TextBody.Paragraphs {
 		para := &shape.TextBody.Paragraphs[pi]
+		if paragraphListLevel(para) != level {
+			continue
+		}
 		for ri := range para.Runs {
 			run := &para.Runs[ri]
 			if run.RunProperties == nil {
@@ -305,24 +336,7 @@ func enforceInheritedTextContrastExcept(slide *slideXML, layoutXML, masterXML []
 		}
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
 		ph := shape.NonVisualProperties.NvPr.Placeholder
-		if ph == nil || !shapeHasText(shape) || !shapeNamesNoColor(shape) {
-			continue
-		}
-		fragment, source := inheritedTextStyleFragment(layoutXML, masterXML, ph)
-		if fragment == "" {
-			continue
-		}
-		hex, _ := inheritedColorFromFragment(fragment, override, themeColors)
-		if hex == "" && source == inheritedSourceLayout {
-			// A layout can override only the font size or weight. Its colorless
-			// lvl1 fragment must not mask the color supplied by master txStyles.
-			masterFragment := masterTextStyleLevel(masterXML, masterStyleForPlaceholder(ph.Type))
-			hex, _ = inheritedColorFromFragment(masterFragment, override, themeColors)
-			if hex != "" {
-				source = inheritedSourceMaster
-			}
-		}
-		if hex == "" {
+		if ph == nil || !shapeHasText(shape) {
 			continue
 		}
 		effectiveBG := bgHex
@@ -333,36 +347,78 @@ func enforceInheritedTextContrastExcept(slide *slideXML, layoutXML, masterXML []
 		if bgErr != nil {
 			continue
 		}
-		current, perr := svggen.ParseColor(hex)
-		if perr != nil {
-			continue
+		// Each level the text sits on is resolved and judged on its own: its
+		// colour and size come from that level's fragment. One colour fixed the
+		// same way on several levels is one decision, recorded once.
+		used := usedListLevels(shape)
+		recorded := map[string]bool{}
+		for level := 1; level <= 9; level++ {
+			if !used[level] || !levelNamesNoColor(shape, level) {
+				continue
+			}
+			swap, ok := inheritedLevelSwap(layoutXML, masterXML, ph, level, bg, themeColors, override)
+			if !ok {
+				continue
+			}
+			pinRunColors(shape, level, swap.ReplacedColor)
+			key := swap.OriginalColor + ">" + swap.ReplacedColor + "@" + swap.Source
+			if recorded[key] {
+				continue
+			}
+			recorded[key] = true
+			swap.SlideIndex = slideIndex
+			swap.Path = slidepath.Slide(slideIndex)
+			swaps = append(swaps, swap)
 		}
-		threshold := inheritedTextThreshold(fragment)
-		before := current.ContrastWith(bg)
-		if before >= threshold {
-			continue
-		}
-		// pickThemeTextColor ends in a tonal shade of the background, so it
-		// always has an answer; a pick that is no better than what it replaces
-		// would be a change for nothing, so leave the slide alone.
-		pick := pickThemeTextColor(bg, themeColors, threshold)
-		after := pick.Color.ContrastWith(bg)
-		if after <= before {
-			continue
-		}
-		pinRunColors(shape, pick.Hex)
-		swaps = append(swaps, ContrastSwap{
-			OriginalColor:   strings.ToUpper(current.Hex()),
-			ReplacedColor:   pick.Hex,
-			BackgroundColor: strings.ToUpper(bg.Hex()),
-			RatioBefore:     before,
-			RatioAfter:      after,
-			SlideIndex:      slideIndex,
-			Path:            slidepath.Slide(slideIndex),
-			Source:          source,
-		})
 	}
 	return swaps
+}
+
+// inheritedLevelSwap resolves the colour one list level (1-based) of a
+// placeholder inherits and, when it fails WCAG on bg, the replacement for it.
+func inheritedLevelSwap(layoutXML, masterXML []byte, ph *placeholderXML, level int, bg svggen.Color, themeColors []types.ThemeColor, override map[string]string) (ContrastSwap, bool) {
+	fragment, source := inheritedTextStyleFragment(layoutXML, masterXML, ph, level)
+	if fragment == "" {
+		return ContrastSwap{}, false
+	}
+	hex, _ := inheritedColorFromFragment(fragment, override, themeColors)
+	if hex == "" && source == inheritedSourceLayout {
+		// A layout can override only the font size or weight. Its colorless
+		// level fragment must not mask the color supplied by master txStyles.
+		masterFragment := masterTextStyleLevel(masterXML, masterStyleForPlaceholder(ph.Type), level)
+		hex, _ = inheritedColorFromFragment(masterFragment, override, themeColors)
+		if hex != "" {
+			source = inheritedSourceMaster
+		}
+	}
+	if hex == "" {
+		return ContrastSwap{}, false
+	}
+	current, perr := svggen.ParseColor(hex)
+	if perr != nil {
+		return ContrastSwap{}, false
+	}
+	threshold := inheritedTextThreshold(fragment)
+	before := current.ContrastWith(bg)
+	if before >= threshold {
+		return ContrastSwap{}, false
+	}
+	// pickThemeTextColor ends in a tonal shade of the background, so it
+	// always has an answer; a pick that is no better than what it replaces
+	// would be a change for nothing, so leave the slide alone.
+	pick := pickThemeTextColor(bg, themeColors, threshold)
+	after := pick.Color.ContrastWith(bg)
+	if after <= before {
+		return ContrastSwap{}, false
+	}
+	return ContrastSwap{
+		OriginalColor:   strings.ToUpper(current.Hex()),
+		ReplacedColor:   pick.Hex,
+		BackgroundColor: strings.ToUpper(bg.Hex()),
+		RatioBefore:     before,
+		RatioAfter:      after,
+		Source:          source,
+	}, true
 }
 
 // masterXMLForLayout reads the slide master a layout inherits from. It returns
