@@ -93,7 +93,7 @@ var circularFamily = []circularMember{
 type circularPlacement struct {
 	name         string
 	narrow, half bool
-	slide  func(pattern string) string // the slide's pattern / compose / shape_grid member
+	slide        func(pattern string) string // the slide's pattern / compose / shape_grid member
 	// valuesPath is the JSON pointer of the pattern's values on the slide.
 	valuesPath string
 	skip       []string

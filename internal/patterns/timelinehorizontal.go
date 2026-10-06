@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
@@ -444,7 +445,7 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 
 	return &jsonschema.ShapeGridInput{
 		Columns:       json.RawMessage(fmt.Sprintf(`%d`, n)),
-		ColGap:        ctx.Gap(timelineDotsColGapPt),
+		ColGap:        timelineDotsColGap(ctx, *stops),
 		RowGap:        rowGap,
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
@@ -549,7 +550,7 @@ func measureTimelineDots(ctx ExpandContext, stops TimelineHorizontalValues, ovr 
 // (many stops, a regions cell) keep the pattern's own sizes.
 func timelineStopsHoldLeadStep(ctx ExpandContext, stops TimelineHorizontalValues) bool {
 	contentW, _ := contentAreaPt(ctx)
-	textW := equalColumnWidthPt(contentW, len(stops), ctx.Gap(timelineDotsColGapPt)) - 2*defaultShapeInsetLRPt
+	textW := equalColumnWidthPt(contentW, len(stops), timelineDotsColGap(ctx, stops)) - 2*defaultShapeInsetLRPt
 	font := ctx.Theme.BodyFont
 	for _, stop := range stops {
 		if stop.Date != "" && measuredLines(stop.Date, font, true, scaleLeadPt, textW*0.9) > 1 {
@@ -571,6 +572,38 @@ func timelineStopsHoldLeadStep(ctx ExpandContext, stops TimelineHorizontalValues
 	return true
 }
 
+// timelineDotsColGap is the gap between the stop columns of the dots style:
+// timelineDotsColGapPt, or timelineDotsTightColGapPt when a word of a date or
+// a label would not stay whole in its column at the wide gap. Four stops in a
+// third of the slide spend 48pt on gaps while "November" is a point short of
+// its column (go-slide-creator-k2tid). The words are measured at the sizes the
+// pattern falls back to (a 12pt date and label), so the gap depends on the
+// copy and the area alone and every stage of the measurement sees the same
+// columns.
+func timelineDotsColGap(ctx ExpandContext, stops TimelineHorizontalValues) float64 {
+	gap, tight := ctx.Gap(timelineDotsColGapPt), ctx.Gap(timelineDotsTightColGapPt)
+	if tight >= gap || len(stops) < 2 {
+		return gap
+	}
+	dateSize, labelSize := scaleBodyPt, shapegrid.MinTextSizePt
+	contentW, _ := contentAreaPt(ctx)
+	textW := (equalColumnWidthPt(contentW, len(stops), gap) - 2*defaultShapeInsetLRPt) / pptx.StandInWordFitSlack
+	font := ctx.Theme.BodyFont
+	for _, stop := range stops {
+		for _, word := range strings.Fields(stop.Date) {
+			if measuredLines(word, font, true, dateSize, textW) > 1 {
+				return tight
+			}
+		}
+		for _, word := range strings.Fields(stop.Label) {
+			if measuredLines(word, font, true, labelSize, textW) > 1 {
+				return tight
+			}
+		}
+	}
+	return gap
+}
+
 // measureTimelineDotsAt measures one stage of measureTimelineDots.
 func measureTimelineDotsAt(ctx ExpandContext, stops TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any, accent string, labelSize float64, trim timelineTrim) timelineDotsFit {
 	dateSize := ResolveSize(ovr.DateSize, scaleBodyPt)
@@ -578,7 +611,7 @@ func measureTimelineDotsAt(ctx ExpandContext, stops TimelineHorizontalValues, ov
 	n := len(stops)
 	font := ctx.Theme.BodyFont
 	contentW, contentH := contentAreaPt(ctx)
-	colW := equalColumnWidthPt(contentW, n, ctx.Gap(timelineDotsColGapPt))
+	colW := equalColumnWidthPt(contentW, n, timelineDotsColGap(ctx, stops))
 	textW := colW - 2*defaultShapeInsetLRPt
 	pad := 2*defaultShapeInsetTBPt + 4
 
@@ -655,6 +688,9 @@ const (
 	timelineDotSizePt = 18.0
 	// timelineDotsColGapPt separates stop columns in dots style.
 	timelineDotsColGapPt = 16.0
+	// timelineDotsTightColGapPt is the gap the columns fall back to when a
+	// date or label word does not fit its column at timelineDotsColGapPt.
+	timelineDotsTightColGapPt = 8.0
 	// timelineDotsRowGapPt separates the date, axis and stop rows.
 	timelineDotsRowGapPt = 6.0
 	// timelineDotsMinRowGapPt is the least a scaled row gap gets: a grid's
