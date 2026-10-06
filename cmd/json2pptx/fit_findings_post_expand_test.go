@@ -598,3 +598,12 @@ func TestCycleRingDenseDescriptionWarningReachesFitReportAcrossTemplates(t *test
 	values.Phases[5].Description = budgetProbeCopy(51) // one over the 7-8 phase budget
 	assertBudgetFindingAcrossTemplates(t, "cycle-ring", values, "phases[5].description is 51 characters", "with 8 phases use about 50")
 }
+
+func TestCycleFigureEightDenseDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.CycleFigureEightValues{}
+	for i := 0; i < 8; i++ {
+		values.Phases = append(values.Phases, patterns.CycleRingPhase{Label: "Phase name", Description: "One short line"})
+	}
+	values.Phases[5].Description = budgetProbeCopy(41) // one over the budget of a four-phase lobe
+	assertBudgetFindingAcrossTemplates(t, "cycle-figure-eight", values, "phases[5].description is 41 characters", "with 4 phases on a lobe use about 40")
+}

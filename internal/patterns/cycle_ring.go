@@ -702,28 +702,7 @@ func (p *cycleRing) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 	}
 	places := []ringPlacement{{X0: lay.x0, X1: lay.x0 + lay.side, Y0: lay.y0, Y1: lay.y0 + lay.side, Cell: ringCell(layers...)}}
 
-	for i, ph := range v.Phases {
-		row := lay.rows[i]
-		desc := ""
-		if lay.showDesc {
-			desc = strings.TrimSpace(ph.Description)
-		}
-		// Right of the ring: numeral, then the label. Left of it, mirrored.
-		align := "l"
-		numX0 := lay.w - lay.labelW - ringNumberColPt
-		labelX0, labelX1 := lay.w-lay.labelW, lay.w
-		if row.side == ringSideLeft {
-			align = "r"
-			numX0 = lay.labelW
-			labelX0, labelX1 = 0, lay.labelW
-		}
-		places = append(places,
-			ringPlacement{X0: numX0, X1: numX0 + ringNumberColPt, Y0: row.y0, Y1: row.y1,
-				Cell: ringNumberCell(ctx, i+1, paint.Accents[i], lay.labelPt, align)},
-			ringPlacement{X0: labelX0, X1: labelX1, Y0: row.y0, Y1: row.y1,
-				Cell: ringLabelTextCell(ringLabelText(strings.TrimSpace(ph.Label), desc, lay.labelPt, lay.descPt, align))},
-		)
-	}
+	places = append(places, lay.labelPlaces(ctx, v.Phases, paint.Accents)...)
 
 	grid, err := ringLattice(places, lay.w, lay.h)
 	if err != nil {
@@ -731,4 +710,34 @@ func (p *cycleRing) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 	}
 	grid.VerticalAlign = "middle"
 	return grid, nil
+}
+
+// labelPlaces is the numeral and label cell of every phase on its row: right
+// of the figure the numeral, then the label; left of it, mirrored. The label
+// columns are the outer labelW of the block on either side.
+// cycle-figure-eight places the labels of its two lobes with it too.
+func (l *cycleRingLayout) labelPlaces(ctx ExpandContext, phases []CycleRingPhase, accents []string) []ringPlacement {
+	places := make([]ringPlacement, 0, 2*len(phases))
+	for i, ph := range phases {
+		row := l.rows[i]
+		desc := ""
+		if l.showDesc {
+			desc = strings.TrimSpace(ph.Description)
+		}
+		align := "l"
+		numX0 := l.w - l.labelW - ringNumberColPt
+		labelX0, labelX1 := l.w-l.labelW, l.w
+		if row.side == ringSideLeft {
+			align = "r"
+			numX0 = l.labelW
+			labelX0, labelX1 = 0, l.labelW
+		}
+		places = append(places,
+			ringPlacement{X0: numX0, X1: numX0 + ringNumberColPt, Y0: row.y0, Y1: row.y1,
+				Cell: ringNumberCell(ctx, i+1, accents[i], l.labelPt, align)},
+			ringPlacement{X0: labelX0, X1: labelX1, Y0: row.y0, Y1: row.y1,
+				Cell: ringLabelTextCell(ringLabelText(strings.TrimSpace(ph.Label), desc, l.labelPt, l.descPt, align))},
+		)
+	}
+	return places
 }

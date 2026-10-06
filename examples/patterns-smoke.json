@@ -846,6 +846,27 @@
     {
       "layout_id": "content",
       "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Release is where the build loop hands over to the run loop"}
+      ],
+      "pattern": {
+        "name": "cycle-figure-eight",
+        "values": {
+          "left_label": "Build",
+          "right_label": "Run",
+          "phases": [
+            {"label": "Plan", "description": "Rank the backlog by customer value"},
+            {"label": "Code", "description": "Small changes, reviewed in a day"},
+            {"label": "Test", "description": "Automated checks gate every merge"},
+            {"label": "Release", "description": "Ship behind a feature flag", "highlight": true},
+            {"label": "Operate", "description": "On-call owns the service level"},
+            {"label": "Monitor", "description": "Usage and incidents feed the plan"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Three actions start the pilot in October"}
       ],
       "pattern": {

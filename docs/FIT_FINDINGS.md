@@ -1330,6 +1330,8 @@ Text exceeds the height available to it. The `split_at_row` fix includes a `row`
 
 On a **named pattern that measures its own area** it is the pattern's refusal, at `refuse`: a `kpi-Nup` row whose area (a DeckSpec `kpis` region, a compose segment, a grid cell, author `bounds`) cannot hold a 24pt value over a 12pt caption even without its vertical text margin. The path is the pattern's `values` (`/slides/0/shape_grid/rows/0/cells/0/pattern/values` for a nested pattern; a DeckSpec finding maps to `slides[i].regions[k]`), there is no fix kind — the message names the height needed and the height available — and generation refuses the slide with the same message, so validate and render agree (go-slide-creator-uj9zq). It replaces the info-level row finding ("row content ~93pt exceeds max_height 66pt") such a row used to get while its number was drawn over its label.
 
+`cycle-figure-eight` refuses the same way when its area is under 580pt wide or 140pt tall (a horizontal 50% or 60% compose segment, a nested cell): two lobes with a label column either side do not fit, and the pattern does not draw a broken figure. Its finding does carry a fix — `swap_pattern` with `params.suggested: [{"from": "cycle-figure-eight", "to": "cycle-ring", "rationale": …}]` — because `cycle-ring` draws the same phases as one ring with a numbered legend in a narrow area; the message also names the other way out, a full-width (vertical) compose segment (go-slide-creator-7io2h).
+
 ```json
 {
   "pattern": "kpi-4up",
