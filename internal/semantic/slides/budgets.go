@@ -134,7 +134,7 @@ var kindBudgets = map[string][]Budget{
 		{Field: "intake", MinItems: 1, MaxItems: 3, Note: "style intake"},
 		{Field: "intake[].label", MaxChars: 24, Note: "its description holds 60"},
 		{Field: "phases[].label", MaxChars: 28, Note: "ring and nodes; 26 on figure_eight and radial, 24 on concentric"},
-		{Field: "phases[].description", MaxChars: 90, Note: "ring; 70 on nodes and concentric, 60 on figure_eight (40 once a loop holds four phases) and radial"},
+		{Field: "phases[].description", MaxChars: 90, Note: "ring; 70 on nodes, intake and concentric, 60 on figure_eight (40 once a loop holds four phases) and radial; intake tightens with its counts (about 30 with 2 intake steps and 6 phases, 22 with 3 and 6; measured at render)"},
 		{Field: "center", MaxChars: 24, Note: "its sublabel holds 32"},
 	},
 	"process": {

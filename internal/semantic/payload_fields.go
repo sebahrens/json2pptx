@@ -163,6 +163,9 @@ var archTierKeys = keyGroups(
 // cyclePhaseKeys are the keys a cycle phase object may carry.
 var cyclePhaseKeys = keyGroups([]string{"label", "name", "title"}, []string{"description", "detail"}, []string{"highlight"})
 
+// cycleIntakeKeys are the keys a cycle intake step may carry.
+var cycleIntakeKeys = keyGroups([]string{"label", "name", "title"}, []string{"description", "detail"})
+
 // cycleShapeFields are the fields a cycle slide and a cycle region share: the
 // phases, the style that picks the picture and what the styles add to it. The
 // names ride in every tools/list, so the contract keeps to one spelling per
@@ -173,10 +176,10 @@ func cycleShapeFields() map[string]payloadField {
 			itemKeySchemas: map[string]any{"highlight": map[string]any{"type": "boolean"}}}
 	}
 	return map[string]payloadField{
-		"phases": phases("The phases in order: strings or {label, description?, highlight?}. ring 4–8 (label ≤28 chars, description ≤90), nodes 3–8 (≤28, ≤70), intake 3–8 (≤26, ≤70), figure_eight 4–8 (≤26, ≤60; ≤40 once a loop holds four), radial 4–8 items around the center (≤26, ≤60), concentric 3–5 layers, innermost first (≤24, ≤70)."),
+		"phases": phases("The phases in order: strings or {label, description?, highlight?}. ring 4–8 (label ≤28 chars, description ≤90), nodes 3–8 (≤28, ≤70), intake 3–8 (≤26, ≤70, less as steps and phases add up: about 30 with 2 intake steps and 6 phases), figure_eight 4–8 (≤26, ≤60; ≤40 once a loop holds four), radial 4–8 items around the center (≤26, ≤60), concentric 3–5 layers, innermost first (≤24, ≤70)."),
 		"steps":  phases("Alias for phases."),
 		"items":  phases("Alias for phases."),
-		"intake": {typ: "array", itemStrings: true, itemKeys: cyclePhaseKeys[:5],
+		"intake": {typ: "array", itemStrings: true, itemKeys: cycleIntakeKeys,
 			desc: "intake: the 1–3 one-off steps that feed the loop, in order: strings or {label (≤24 chars), description? (≤60)}. Naming them selects style intake."},
 		"style": {typ: "string", enum: slides.CycleStyles,
 			desc: "The picture. One ordered loop: ring (default) or nodes; one-off steps feeding a loop: intake; two coupled loops on a full-width slide: figure_eight; peers around a center: radial; things that contain one another: concentric. Unset, a loop of 3 is drawn as nodes."},
