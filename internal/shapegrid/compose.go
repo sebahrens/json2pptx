@@ -2,6 +2,7 @@ package shapegrid
 
 import (
 	"encoding/json"
+	"maps"
 	"math"
 	"sort"
 	"strings"
@@ -82,6 +83,30 @@ const (
 	// card. A box holding a sentence reads as a card up to there and as a
 	// slab past it.
 	composeBandCardAspect = 1.25
+	// composeZoomFill is the share of the area a full-slide exhibit
+	// (Grid.ComposeZoom) is scaled towards when its content needs clearly
+	// less: set at the optical centre it then leaves about a seventh of the
+	// area above it and a sixth under it, the margins a dense block has.
+	// Its rows grow at most composeBandMaxScale, the same limit a band has.
+	composeZoomFill = 0.70
+	// composeZoomTwoStepMin is the row growth from which the exhibit's type
+	// may take two steps instead of one (12→18pt is 1.5x): type follows the
+	// rows, it does not outgrow them.
+	composeZoomTwoStepMin = 1.35
+	// composeZoomHeadingPt is the top of the zoom's word ladder
+	// (12→14→18→24pt), reached only by a level that has smaller text under
+	// it; the smallest level stops at the 18pt lead step, the largest body
+	// size any type_scale mode sets. Short content is not a billboard.
+	composeZoomHeadingPt = 24.0
+	// composeZoomAirMax is how far the rows grow when no type step fits them:
+	// taller rows around unchanged text are only air, and a filled tile grown
+	// further reads as an empty box (go-slide-creator-wntyw).
+	composeZoomAirMax = 1.35
+	// composeZoomLabelWords: under a zoom step a one-line paragraph of up to
+	// this many words stays on its line (the one-step policy holds
+	// ComposeLabelMaxWords): a sublabel or caption stepped past its box wraps
+	// to an orphaned last word.
+	composeZoomLabelWords = 8
 )
 
 // composeRowScales are the row-height and row-gap growths tried with a type
@@ -125,6 +150,44 @@ type composePlan struct {
 	brokenToken bool
 	// rowScale is the row growth the plan's grid was scaled by.
 	rowScale float64
+	// figureScale is the growth of display figures under the plan; zero means
+	// composeFigureScale, one type step's worth.
+	figureScale float64
+	// labelWords is the longest paragraph, in words, the step must keep on
+	// the one line it sat on; zero means ComposeLabelMaxWords.
+	labelWords int
+}
+
+// labelMaxWords is the word count up to which a one-line paragraph stays on
+// its line under plan.
+func (p *composePlan) labelMaxWords() int {
+	if p.labelWords > 0 {
+		return p.labelWords
+	}
+	return ComposeLabelMaxWords
+}
+
+// zoomHeadingPt is the off-scale heading size the plan's step writes
+// (composeZoomHeadingPt), which the render snap must leave alone; zero when
+// the plan sets none.
+func (p *composePlan) zoomHeadingPt() float64 {
+	if p == nil {
+		return 0
+	}
+	for _, next := range p.sizes {
+		if next == composeZoomHeadingPt {
+			return next
+		}
+	}
+	return 0
+}
+
+// figureGrowth is the growth display figures take under plan.
+func (p *composePlan) figureGrowth() float64 {
+	if p == nil || p.figureScale <= 0 {
+		return composeFigureScale
+	}
+	return p.figureScale
 }
 
 // composable reports whether the composition policy governs grid.
@@ -189,7 +252,116 @@ func resolveComposed(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, 
 		}
 	}
 	chosen, plan = bandScaled(grid, chosen, plan, fill)
+	chosen, plan = zoomScaled(grid, chosen, plan, fill)
 	return resolveGrid(grownLoneRow(chosen, plan), alloc, plan)
+}
+
+// zoomScaled returns the grid and plan of a sparse full-slide exhibit
+// (Grid.ComposeZoom) scaled as a whole towards composeZoomFill of its area:
+// the rows grow by one factor (at most composeBandMaxScale) and the type
+// follows them up the zoom ladder, two steps where the rows grow by
+// composeZoomTwoStepMin or more, else one — the largest step whose text
+// still fits its cells without breaking a word or wrapping a label. Every
+// size moves grid-wide, so text of one role keeps one size across its peers.
+// When no step fits the taller rows the block keeps the type it had and
+// takes at most composeZoomAirMax of row growth. chosen and plan are what
+// the one-step policy settled on and fill the share of the area the unscaled
+// block takes; a block already at the target keeps them.
+func zoomScaled(grid, chosen *Grid, plan *composePlan, fill float64) (*Grid, *composePlan) {
+	if !grid.ComposeZoom || fill <= 0 {
+		return chosen, plan
+	}
+	// A block already near the target keeps its rows: its type may still
+	// take a step the rows as they are have room for.
+	k := math.Max(math.Min(composeZoomFill/fill, composeBandMaxScale), 1)
+	if k <= plan.rowScale {
+		return chosen, plan
+	}
+	fits := func(k float64, sizes map[float64]float64, figures float64, labelWords int) bool {
+		trial := &composePlan{place: true, sizes: sizes, rowScale: k, figureScale: figures, labelWords: labelWords}
+		_, err := resolveGrid(scaledGrid(grid, k), pptx.NewShapeIDAllocator(nil), trial)
+		return err == nil && !trial.brokenToken && trial.worst <= composeFitMargin
+	}
+	type step struct {
+		sizes   map[float64]float64
+		figures float64
+	}
+	var steps []step
+	if k >= composeZoomTwoStepMin {
+		steps = append(steps, step{zoomStep(grid, 2), composeFigureScale * composeFigureScale})
+	}
+	steps = append(steps, step{zoomStep(grid, 1), composeFigureScale})
+	// A step the one-step policy already took is held to that policy's own
+	// label rule: the zoom then only adds row height to it.
+	words := func(sizes map[float64]float64) int {
+		if len(plan.sizes) > 0 && maps.Equal(sizes, plan.sizes) {
+			return 0
+		}
+		return composeZoomLabelWords
+	}
+	for _, s := range steps {
+		if len(s.sizes) > 0 && fits(k, s.sizes, s.figures, words(s.sizes)) {
+			return scaledGrid(grid, k), &composePlan{place: true, sizes: s.sizes, rowScale: k, figureScale: s.figures}
+		}
+	}
+	// One step that wraps onto more lines than the target's rows hold may
+	// still fit the tallest rows a stepped block is allowed (composeMaxFill).
+	if top := math.Min(composeMaxFill/fill, composeBandMaxScale); top > k+0.02 && len(plan.sizes) == 0 {
+		if s := steps[len(steps)-1]; len(s.sizes) > 0 && fits(top, s.sizes, s.figures, composeZoomLabelWords) {
+			return scaledGrid(grid, top), &composePlan{place: true, sizes: s.sizes, rowScale: top, figureScale: s.figures}
+		}
+	}
+	k = math.Min(k, composeZoomAirMax)
+	if k <= math.Max(plan.rowScale, 1) {
+		return chosen, plan
+	}
+	if len(plan.sizes) > 0 && !fits(k, plan.sizes, plan.figureScale, 0) {
+		return chosen, plan
+	}
+	if _, err := resolveGrid(scaledGrid(grid, k), pptx.NewShapeIDAllocator(nil), &composePlan{place: true}); err != nil {
+		return chosen, plan
+	}
+	return scaledGrid(grid, k), &composePlan{place: true, sizes: plan.sizes, rowScale: k, figureScale: plan.figureScale}
+}
+
+// zoomStep maps each word size the grid renders to the size it takes after
+// steps steps up the zoom ladder (12→14→18→24pt). As in typeStep a level
+// moves only while it stays under the level above it. The smallest level
+// stops at the lead step and the others at composeZoomHeadingPt, so a block
+// of one size never passes 18pt and a heading passes it only over smaller
+// text.
+func zoomStep(grid *Grid, steps int) map[float64]float64 {
+	levels := wordLevels(grid)
+	cur := append([]float64(nil), levels...)
+	for s := 0; s < steps; s++ {
+		above := math.Inf(1)
+		for i, pt := range cur {
+			limit := composeZoomHeadingPt
+			if i == len(cur)-1 {
+				limit = tokens.TypeScaleLeadPt
+			}
+			next := nextZoomStep(pt)
+			if next > limit || next >= above {
+				next = pt
+			}
+			cur[i], above = next, next
+		}
+	}
+	sizes := map[float64]float64{}
+	for i, pt := range levels {
+		if cur[i] != pt {
+			sizes[pt] = cur[i]
+		}
+	}
+	return sizes
+}
+
+// nextZoomStep is the zoom-ladder step above a rendered word size.
+func nextZoomStep(pt float64) float64 {
+	if pt >= tokens.TypeScaleLeadPt && pt < composeZoomHeadingPt {
+		return composeZoomHeadingPt
+	}
+	return nextWordStep(pt)
 }
 
 // bandScaled returns the grid and plan of a sparse block whose rows are grown
@@ -361,6 +533,24 @@ func scaledGrid(grid *Grid, k float64) *Grid {
 // its hierarchy (and its sizes). Cells pinned to type_scale "compact" are
 // not read: they keep their text.
 func typeStep(grid *Grid) map[float64]float64 {
+	sizes := map[float64]float64{}
+	above := math.Inf(1)
+	for _, pt := range wordLevels(grid) {
+		next := nextWordStep(pt)
+		if next >= above {
+			next = pt
+		}
+		if next != pt {
+			sizes[pt] = next
+		}
+		above = next
+	}
+	return sizes
+}
+
+// wordLevels lists the word sizes the grid renders, largest first. Display
+// figures and cells pinned to type_scale "compact" are not read.
+func wordLevels(grid *Grid) []float64 {
 	seen := map[float64]bool{}
 	for _, row := range grid.Rows {
 		for _, c := range row.Cells {
@@ -385,19 +575,7 @@ func typeStep(grid *Grid) map[float64]float64 {
 		levels = append(levels, pt)
 	}
 	sort.Sort(sort.Reverse(sort.Float64Slice(levels)))
-	sizes := map[float64]float64{}
-	above := math.Inf(1)
-	for _, pt := range levels {
-		next := nextWordStep(pt)
-		if next >= above {
-			next = pt
-		}
-		if next != pt {
-			sizes[pt] = next
-		}
-		above = next
-	}
-	return sizes
+	return levels
 }
 
 func compositeText(c *CompositeSpec) *ShapeSpec {
@@ -432,9 +610,9 @@ func nextWordStep(pt float64) float64 {
 }
 
 // steppedSize returns the size a paragraph rendered at pt takes under sizes.
-func steppedSize(pt float64, figure bool, sizes map[float64]float64) float64 {
+func steppedSize(pt float64, figure bool, sizes map[float64]float64, figureScale float64) float64 {
 	if figure {
-		return math.Max(pt, math.Min(math.Floor(pt*composeFigureScale), composeFigureMaxPt))
+		return math.Max(pt, math.Min(math.Floor(pt*figureScale), composeFigureMaxPt))
 	}
 	if next, ok := sizes[pt]; ok {
 		return next
@@ -500,13 +678,13 @@ func textParagraphSizes(raw json.RawMessage, keepSizes bool) []paragraphSize {
 // stepShapeText returns a private copy of spec with every paragraph at its
 // stepped size; spec itself when nothing moves. Like growShapeText, the copy
 // is what both OOXML generation and preflight read.
-func stepShapeText(spec *ShapeSpec, sizes map[float64]float64, keepSizes bool) *ShapeSpec {
+func stepShapeText(spec *ShapeSpec, sizes map[float64]float64, keepSizes bool, figureScale float64) *ShapeSpec {
 	step := func(size float64, content string, marked bool) (float64, bool) {
 		if strings.TrimSpace(content) == "" {
 			return size, false
 		}
 		r := renderedSizePt(size, content, keepSizes, marked)
-		next := steppedSize(r.pt, r.figure, sizes)
+		next := steppedSize(r.pt, r.figure, sizes, figureScale)
 		return next, next != r.pt
 	}
 	var s string
@@ -612,7 +790,7 @@ func stepFit(plan *composePlan, before, after *ShapeSpec, bounds pptx.RectEmu, o
 		// A short label (a KPI caption, a stop name) that sat on one line
 		// stays on one line: "Logo churn (SMB-" over "weighted)" at the
 		// stepped size reads worse than the label whole at its own size.
-		if text := strings.TrimSpace(p.text); len(strings.Fields(text)) <= ComposeLabelMaxWords && p.role != "kpi-value" {
+		if text := strings.TrimSpace(p.text); len(strings.Fields(text)) <= plan.labelMaxWords() && p.role != "kpi-value" {
 			w0, ok0 := p.tokenWidth(text, parasBefore[i].fontPt)
 			w1, ok1 := p.tokenWidth(text, p.fontPt)
 			if ok0 && ok1 && w0 <= line && w1 > line {

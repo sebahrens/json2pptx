@@ -184,6 +184,7 @@ func resolveCapacityGrid(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCon
 		ComposeGrow:       growsLoneRow(grid),
 		ComposeBand:       scalesToBand(grid),
 		ComposeBandSquare: scalesToBand(grid) && bandScalesToSquare(grid),
+		ComposeZoom:       zoomsSlideBlock(grid),
 		KeepTextSizes:     grid.KeepTextSizes,
 		CanvasScale:       gridCanvasScale(grid, ctx.SlideWidth, ctx.SlideHeight),
 	}

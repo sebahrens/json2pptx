@@ -161,6 +161,13 @@ func TestBareOpenColumnPatternsStillReportUnderused(t *testing.T) {
 		for _, f := range collectGeometryFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
 			reported = reported || f.Code == patterns.ErrCodeSlideUnderused
 		}
+		// A bare timeline alone on a slide is zoomed (shapegrid ComposeZoom,
+		// go-slide-creator-cyyiy): its taller slots clear the coverage
+		// threshold, and the row of short labels is reported as the sparse
+		// single-row flow it is.
+		if !reported && name == "timeline-horizontal" {
+			reported = detectSparseSingleRowFlow(deck.Slides[0].Pattern, 0) != nil
+		}
 		if !reported {
 			t.Errorf("a bare %s must still report SLIDE_UNDERUSED", name)
 		}

@@ -282,8 +282,10 @@ func scaledSize(fontPt, scale float64) float64 {
 // the caption step (footnotes) or at the display step and above. Snapping only
 // shrinks, so fit and readability floors (which sit on scale steps) hold.
 // Like growShapeText it rewrites a private copy consumed by both OOXML
-// generation and preflight; the authored input is untouched.
-func snapShapeTextToScale(spec *ShapeSpec) *ShapeSpec {
+// generation and preflight; the authored input is untouched. keepPt, when
+// set, is a size the composition policy stepped a heading to and that stays
+// as written (compose.go composeZoomHeadingPt).
+func snapShapeTextToScale(spec *ShapeSpec, keepPt float64) *ShapeSpec {
 	if spec == nil || len(spec.Text) == 0 {
 		return spec
 	}
@@ -293,7 +295,7 @@ func snapShapeTextToScale(spec *ShapeSpec) *ShapeSpec {
 	}
 	changed := false
 	snap := func(size float64, marked bool, texts ...string) (float64, bool) {
-		if size <= 0 || keepsFigureSize(size, marked) {
+		if size <= 0 || keepsFigureSize(size, marked) || (keepPt > 0 && size == keepPt) {
 			return size, false
 		}
 		for _, t := range texts {

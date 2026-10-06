@@ -157,6 +157,13 @@ type Grid struct {
 	// stopping at composeBandMaxScale: a step box that holds a sentence
 	// reads as a card up to there, and as a slab past it.
 	ComposeBandSquare bool
+	// ComposeZoom lets the composition policy scale a sparse block as a
+	// whole towards composeZoomFill of the area (compose.go zoomScaled): rows
+	// at most composeBandMaxScale times as tall, type up to two steps of the
+	// zoom ladder while it fits. Callers set it for a slide's own full-slide
+	// pattern exhibit (go-slide-creator-cyyiy); a compose segment, a nested
+	// cell and a supporting band keep their content size.
+	ComposeZoom bool
 	// DefaultGapPt is the column / row gap (points) used when ColGap / RowGap
 	// are unset: the template grid's gutter_pt (ContentZone.GutterPt), else
 	// the built-in 8pt (go-slide-creator-5ms8c).
