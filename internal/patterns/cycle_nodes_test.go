@@ -335,8 +335,8 @@ func TestCycleNodesInsideLabelsMeasuredWarning(t *testing.T) {
 		t.Fatalf("validate: %v", err)
 	}
 	w := p.PostExpandWarnings(ctx, wide, inside)
-	if len(w) != 1 || !strings.HasPrefix(w[0], ErrCodeBodyTooLong+":") || !strings.Contains(w[0], "steps[1].label") || !strings.Contains(w[0], `"outside"`) {
-		t.Errorf("warnings = %v, want one BODY_TOO_LONG naming steps[1].label and labels \"outside\"", w)
+	if len(w) != 1 || !strings.HasPrefix(w[0], ErrCodeNodeLabelTooLong+":") || !strings.Contains(w[0], "steps[1].label") || !strings.Contains(w[0], `"outside"`) {
+		t.Errorf("warnings = %v, want one NODE_LABEL_TOO_LONG naming steps[1].label and labels \"outside\"", w)
 	}
 	// The same label fits outside the ring.
 	if w := p.PostExpandWarnings(ctx, wide, nil); len(w) != 0 {

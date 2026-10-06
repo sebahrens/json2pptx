@@ -1381,8 +1381,28 @@ func convertGridLayers(in []jsonschema.LayerInput) []shapegrid.Layer {
 			Shape: convertShapeSpec(l.Shape),
 			Name:  l.Name,
 		}
+		if l.Shape != nil {
+			out[i].Icon = convertIconSpec(l.Shape.Icon)
+		}
 	}
 	return out
+}
+
+// convertIconSpec converts an icon DTO (a cell's, a shape's or a layer
+// shape's) into the icon the resolver and the writer work on; nil stays nil.
+func convertIconSpec(in *IconInput) *shapegrid.IconSpec {
+	if in == nil {
+		return nil
+	}
+	return &shapegrid.IconSpec{
+		Name:     in.Name,
+		Path:     in.Path,
+		SVGData:  in.SVGData,
+		Alt:      in.Alt,
+		Fill:     in.Fill,
+		Position: in.Position,
+		Scale:    in.Scale,
+	}
 }
 
 // convertGridCell converts a single GridCellInput DTO into a shapegrid.Cell.
@@ -1403,28 +1423,10 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 	if c.Table != nil {
 		cell.TableSpec = c.Table.ToTableSpec()
 	}
-	if c.Icon != nil {
-		cell.Icon = &shapegrid.IconSpec{
-			Name:     c.Icon.Name,
-			Path:     c.Icon.Path,
-			SVGData:  c.Icon.SVGData,
-			Alt:      c.Icon.Alt,
-			Fill:     c.Icon.Fill,
-			Position: c.Icon.Position,
-			Scale:    c.Icon.Scale,
-		}
-	}
+	cell.Icon = convertIconSpec(c.Icon)
 	// Support icon nested inside shape (e.g. {"shape": {"fill": "accent1", "icon": {"name": "shield"}}})
-	if c.Shape != nil && c.Shape.Icon != nil && cell.Icon == nil {
-		cell.Icon = &shapegrid.IconSpec{
-			Name:     c.Shape.Icon.Name,
-			Path:     c.Shape.Icon.Path,
-			SVGData:  c.Shape.Icon.SVGData,
-			Alt:      c.Shape.Icon.Alt,
-			Fill:     c.Shape.Icon.Fill,
-			Position: c.Shape.Icon.Position,
-			Scale:    c.Shape.Icon.Scale,
-		}
+	if c.Shape != nil && cell.Icon == nil {
+		cell.Icon = convertIconSpec(c.Shape.Icon)
 	}
 	if c.Image != nil {
 		imgSpec := &shapegrid.ImageSpec{
@@ -2080,26 +2082,61 @@ func resolveIconPaths(slides []SlideInput, baseDir string, allowList ...string) 
 		if slides[i].ShapeGrid == nil {
 			continue
 		}
-		for j := range slides[i].ShapeGrid.Rows {
-			for k := range slides[i].ShapeGrid.Rows[j].Cells {
-				cell := slides[i].ShapeGrid.Rows[j].Cells[k]
-				if cell == nil {
-					continue
-				}
-				// Resolve icon on cell
-				if cell.Icon != nil {
-					path := slidepath.GridCellField(i, j, k, "icon")
-					findings = append(findings, resolveIconInputPath(cell.Icon, baseDir, i, path, allowList...)...)
-				}
-				// Resolve icon nested inside shape
-				if cell.Shape != nil && cell.Shape.Icon != nil {
-					path := slidepath.GridCellField(i, j, k, "shape/icon")
-					findings = append(findings, resolveIconInputPath(cell.Shape.Icon, baseDir, i, path, allowList...)...)
-				}
+		findings = append(findings, resolveGridIconPaths(slides[i].ShapeGrid, slidepath.ShapeGrid(i), baseDir, i, allowList...)...)
+	}
+	return findings
+}
+
+// resolveGridIconPaths resolves the icons of grid's cells (the cell's, its
+// shape's and its layer shapes') and, recursively, of every nested cell grid
+// under the JSON pointer prefix.
+func resolveGridIconPaths(grid *ShapeGridInput, prefix, baseDir string, slideIdx int, allowList ...string) []diagnostics.Diagnostic {
+	var findings []diagnostics.Diagnostic
+	for j := range grid.Rows {
+		for k, cell := range grid.Rows[j].Cells {
+			if cell == nil {
+				continue
+			}
+			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", prefix, j, k)
+			for _, ref := range gridCellIcons(cell) {
+				findings = append(findings, resolveIconInputPath(ref.icon, baseDir, slideIdx, cellPath+"/"+ref.field, allowList...)...)
+			}
+			if cell.Grid != nil {
+				findings = append(findings, resolveGridIconPaths(cell.Grid, cellPath+"/grid", baseDir, slideIdx, allowList...)...)
 			}
 		}
 	}
 	return findings
+}
+
+// gridCellIcon is one icon a grid cell carries and the JSON field it sits in,
+// relative to the cell ("icon", "shape/icon", "layers/<i>/shape/icon").
+type gridCellIcon struct {
+	icon  *IconInput
+	field string
+}
+
+// gridCellIcons lists every icon of a cell: its own, its shape's overlay and
+// the overlay of each layer shape. Every walker that reads or rewrites icon
+// sources (paths, URLs, alt text) goes through it, so a layer's icon is
+// treated exactly as a cell's.
+func gridCellIcons(cell *GridCellInput) []gridCellIcon {
+	if cell == nil {
+		return nil
+	}
+	var out []gridCellIcon
+	if cell.Icon != nil {
+		out = append(out, gridCellIcon{cell.Icon, "icon"})
+	}
+	if cell.Shape != nil && cell.Shape.Icon != nil {
+		out = append(out, gridCellIcon{cell.Shape.Icon, "shape/icon"})
+	}
+	for i := range cell.Layers {
+		if s := cell.Layers[i].Shape; s != nil && s.Icon != nil {
+			out = append(out, gridCellIcon{s.Icon, fmt.Sprintf("layers/%d/shape/icon", i)})
+		}
+	}
+	return out
 }
 
 // resolveLocalAssetPaths walks every slide and rewrites all relative

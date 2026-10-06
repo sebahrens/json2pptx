@@ -790,8 +790,8 @@ func TestRadialHub_PostExpandWarnings(t *testing.T) {
 		v.Spokes[1].Label = "Infrastructure"
 		v.Center = RadialHubCenter{Label: "Core"}
 		w := p.PostExpandWarnings(rhCtx(300, 200), v, &RadialHubOverrides{Labels: rhLabelsInside})
-		if len(w) != 1 || !strings.Contains(w[0], "spokes[1].label does not fit") {
-			t.Errorf("warnings = %v, want the one label that does not fit its satellite", w)
+		if len(w) != 1 || !strings.HasPrefix(w[0], ErrCodeNodeLabelTooLong+": radial-hub spokes[1].label does not fit") || !strings.Contains(w[0], `"outside"`) {
+			t.Errorf("warnings = %v, want one NODE_LABEL_TOO_LONG for the label that does not fit its satellite", w)
 		}
 	})
 

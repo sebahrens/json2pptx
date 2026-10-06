@@ -189,6 +189,11 @@ func checkGridCell(cell *GridCellInput, slideNum int, cellPath string, cellStyle
 		if layer.Shape != nil {
 			// cell_style defaults are not applied to layers, so none is exempt.
 			findings = append(findings, checkShapeSpec(layer.Shape, slideNum, fmt.Sprintf("%s/layers/%d/shape", cellPath, i), nil)...)
+			if layer.Shape.Icon != nil && layer.Shape.Icon.Fill != "" {
+				if f := checkColorField(layer.Shape.Icon.Fill, slideNum, fmt.Sprintf("%s/layers/%d/shape/icon/fill", cellPath, i)); f != nil {
+					findings = append(findings, *f)
+				}
+			}
 		}
 	}
 

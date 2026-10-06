@@ -21,7 +21,9 @@ import (
 // the capabilities around it, a stakeholder map, an ecosystem. The items are
 // peers of one another and have no order, so the drawing carries no numbers
 // and no arrows: a solid accent hub circle, one thin spoke per item and a
-// neutral satellite disc at the end of each spoke.
+// neutral satellite disc at the end of each spoke. A spoke's optional icon is
+// drawn in its disc (a layer icon), in the ink measured on the disc's fill; in
+// the legend it is also the item's key, in place of the letter.
 //
 // The hub, the spokes and the satellites are layers of ONE square shape-grid
 // cell (ring_common.go), so they stay round in a compose segment or a nested
@@ -47,7 +49,7 @@ type radialHub struct{}
 
 func (p *radialHub) Name() string { return rhName }
 func (p *radialHub) Description() string {
-	return "Central accent hub circle with 4-8 spokes to labelled satellites (hub-and-spoke: operating-model hub, platform and capabilities, stakeholder map, ecosystem); no sequence, no numbers; labels beside the ring, inside the satellites or as a keyed legend"
+	return "Central accent hub circle with 4-8 spokes to labelled satellites, each with an optional icon in its disc (hub-and-spoke: operating-model hub, platform and capabilities, stakeholder map, ecosystem); no sequence, no numbers; labels beside the ring, inside the satellites or as a keyed legend"
 }
 func (p *radialHub) UseWhen() string {
 	return "One central idea that 4-8 peer items all relate to, with no order among them: a platform and the capabilities around it, an operating-model hub, a stakeholder or ecosystem map. Each item takes a short label and an optional one-line description; prefer cycle-ring or cycle-nodes when the items follow one another in a loop, state-shift-hub for today/future pairs around a theme, and icon-row or card-grid when there is no centre"
@@ -72,12 +74,12 @@ func (p *radialHub) ExemplarValues() any {
 	return &RadialHubValues{
 		Center: RadialHubCenter{Label: "Customer data platform", Sublabel: "One governed source"},
 		Spokes: []RadialHubSpoke{
-			{Label: "Marketing", Description: "Audiences and campaign attribution"},
-			{Label: "Sales", Description: "Account insight and next best action"},
-			{Label: "Service", Description: "Full history at every contact"},
-			{Label: "Finance", Description: "Billing and revenue assurance"},
-			{Label: "Risk and compliance", Description: "Consent, retention and audit trail"},
-			{Label: "Product", Description: "Usage signals for roadmap choices"},
+			{Label: "Marketing", Description: "Audiences and campaign attribution", Icon: &IconRef{Name: "speakerphone"}},
+			{Label: "Sales", Description: "Account insight and next best action", Icon: &IconRef{Name: "trending-up"}},
+			{Label: "Service", Description: "Full history at every contact", Icon: &IconRef{Name: "headset"}},
+			{Label: "Finance", Description: "Billing and revenue assurance", Icon: &IconRef{Name: "report-money"}},
+			{Label: "Risk and compliance", Description: "Consent, retention and audit trail", Icon: &IconRef{Name: "shield-check"}},
+			{Label: "Product", Description: "Usage signals for roadmap choices", Icon: &IconRef{Name: "bulb"}},
 		},
 	}
 }
@@ -94,8 +96,9 @@ type RadialHubCenter struct {
 
 // RadialHubSpoke is one satellite.
 type RadialHubSpoke struct {
-	Label       string `json:"label"`
-	Description string `json:"description,omitempty"`
+	Label       string   `json:"label"`
+	Description string   `json:"description,omitempty"`
+	Icon        *IconRef `json:"icon,omitempty"` // drawn in the satellite disc
 }
 
 // RadialHubValues holds the hub, the 4-8 satellites and the optional
@@ -174,6 +177,11 @@ const (
 	// column gap separates it from the ring and its outer edge is the content
 	// edge) and a small one above and below, so eight rows fit a short body.
 	rhLabelInsetTBPt = 3.0
+	// rhIconScale is a satellite icon's side as a share of its disc's
+	// diameter: inside the circle's inscribed square (0.71) with air around it.
+	rhIconScale = 0.55
+	// rhKeyIconScale is a legend key icon's side as a share of the key column.
+	rhKeyIconScale = 0.7
 )
 
 // ---------------------------------------------------------------------------
@@ -184,6 +192,7 @@ func (p *radialHub) Schema() *Schema {
 	spoke := ObjectSchema(map[string]*Schema{
 		"label":       StringSchema(rhLabelMax).WithDescription("Satellite label, e.g. \"Risk and compliance\" (bold; one line reads best, at most 14 characters with labels inside)"),
 		"description": StringSchema(rhDescriptionMax).WithDescription("Optional one-line description under the label (not shown with labels inside). Readable budget by measurement: about 60 characters with 4-6 spokes and 40 with 7-8; expand_pattern reports BODY_TOO_LONG when a label row outgrows its room"),
+		"icon":        IconRefSchema("Optional icon in the satellite disc: bundled name (e.g. \"shield-check\") or {name|path|url|svg_data, fill?, alt?} (not with labels inside; the legend key becomes the icon)"),
 	}, []string{"label"}).WithAdditionalProperties(false)
 
 	valuesSchema := ObjectSchema(map[string]*Schema{
@@ -264,15 +273,29 @@ func (p *radialHub) Validate(values, overrides any, cellOverrides map[int]any) e
 		errs = append(errs, err)
 	}
 
-	inside := ovr.Labels == rhLabelsInside
-	if inside && len(v.Spokes) > rhMaxInsideSpokes {
-		errs = append(errs, errMaxItems(rhName, "spokes", rhMaxInsideSpokes, len(v.Spokes), "(hint: labels inside the satellites hold at most 6 spokes; use overrides.labels outside for 7-8)"))
+	errs = append(errs, rhValidateSpokes(v.Spokes, ovr.Labels == rhLabelsInside)...)
+	if v.Highlight < 0 || v.Highlight > max(len(v.Spokes), rhMinSpokes) {
+		errs = append(errs, errOutOfRange(rhName, "highlight", 0, len(v.Spokes), v.Highlight))
+	}
+	if len(cellOverrides) > 0 {
+		errs = append(errs, newValidationError(rhName, "cell_overrides", ErrCodeUnknownKey,
+			"radial-hub: cell_overrides are not supported (use overrides)", RemoveFieldFix("cell_overrides")))
+	}
+	return errors.Join(errs...)
+}
+
+// rhValidateSpokes checks every spoke's label, description and icon; inside is
+// true when the satellites carry the labels.
+func rhValidateSpokes(spokes []RadialHubSpoke, inside bool) []error {
+	var errs []error
+	if inside && len(spokes) > rhMaxInsideSpokes {
+		errs = append(errs, errMaxItems(rhName, "spokes", rhMaxInsideSpokes, len(spokes), "(hint: labels inside the satellites hold at most 6 spokes; use overrides.labels outside for 7-8)"))
 	}
 	labelMax := rhLabelMax
 	if inside {
 		labelMax = rhInsideLabelMax
 	}
-	for i, s := range v.Spokes {
+	for i, s := range spokes {
 		path := fmt.Sprintf("spokes[%d].label", i)
 		switch n := runeLen(s.Label); {
 		case strings.TrimSpace(s.Label) == "":
@@ -289,15 +312,19 @@ func (p *radialHub) Validate(values, overrides any, cellOverrides map[int]any) e
 		case n > rhDescriptionMax:
 			errs = append(errs, errMaxLength(rhName, path, rhDescriptionMax, n))
 		}
+		if s.Icon == nil {
+			continue
+		}
+		path = fmt.Sprintf("spokes[%d].icon", i)
+		if inside && !s.Icon.IsEmpty() {
+			errs = append(errs, newValidationError(rhName, path, ErrCodeUnknownKey,
+				fmt.Sprintf("radial-hub: %s is not shown with overrides.labels inside (a satellite holds its label only); remove it or use labels outside", path),
+				RemoveFieldFix(path)))
+			continue
+		}
+		errs = append(errs, validateIconRef(rhName, path, *s.Icon)...)
 	}
-	if v.Highlight < 0 || v.Highlight > max(len(v.Spokes), rhMinSpokes) {
-		errs = append(errs, errOutOfRange(rhName, "highlight", 0, len(v.Spokes), v.Highlight))
-	}
-	if len(cellOverrides) > 0 {
-		errs = append(errs, newValidationError(rhName, "cell_overrides", ErrCodeUnknownKey,
-			"radial-hub: cell_overrides are not supported (use overrides)", RemoveFieldFix("cell_overrides")))
-	}
-	return errors.Join(errs...)
+	return errs
 }
 
 // ---------------------------------------------------------------------------
@@ -647,8 +674,9 @@ func rhWordWidthPt(ctx ExpandContext, word string, bold bool, sizePt float64) fl
 }
 
 // PostExpandWarnings reports, by measurement, a label row that outgrows the
-// room beside the ring, a label that does not fit its satellite and a hub
-// label that does not fit the hub circle at the readable floor.
+// room beside the ring (BODY_TOO_LONG), a label that does not fit its
+// satellite (NODE_LABEL_TOO_LONG, whose fix moves the labels outside) and a hub
+// label that does not fit the hub circle at the readable floor (BODY_TOO_LONG).
 func (p *radialHub) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*RadialHubValues)
 	if !ok || v == nil || len(v.Spokes) < rhMinSpokes || len(v.Spokes) > rhMaxSpokes {
@@ -662,8 +690,8 @@ func (p *radialHub) PostExpandWarnings(ctx ExpandContext, values, overrides any)
 	for i, it := range lay.items {
 		switch {
 		case lay.mode == rhLabelsInside && !it.inside:
-			warnings = append(warnings, fmt.Sprintf("%s: radial-hub spokes[%d].label does not fit its %.0fpt satellite at %.0fpt (a word breaks or the label runs past the circle); keep it to one or two words of at most about 8 characters each, or use overrides.labels outside",
-				ErrCodeBodyTooLong, i, lay.satDia*lay.side(), lay.bodySize))
+			warnings = append(warnings, fmt.Sprintf("%s: radial-hub spokes[%d].label does not fit its %.0fpt satellite at %.0fpt (a word breaks or the label runs past the circle); keep it to one or two words of at most about 8 characters each, or remove overrides.labels so the labels stand \"outside\" the ring",
+				ErrCodeNodeLabelTooLong, i, lay.satDia*lay.side(), lay.bodySize))
 		case lay.mode != rhLabelsInside && it.need > it.text.h()+0.5:
 			field := "description"
 			if strings.TrimSpace(v.Spokes[i].Description) == "" {
@@ -750,10 +778,14 @@ func (p *radialHub) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 		tone := rhSatelliteTone(accent, i, v.Highlight == i+1, ovr.CellAccentMode)
 		shape := &jsonschema.ShapeSpecInput{Geometry: "ellipse", Fill: tone.fillJSON(), Line: noLine}
 		ink := readableTextOn(ctx, tone, "dk1")
-		switch lay.mode {
-		case rhLabelsInside:
+		icon := rhSpokeIcon(v.Spokes[i], iconFillOn(ctx, shape.Fill, accent), rhIconScale)
+		switch {
+		case lay.mode == rhLabelsInside:
 			shape.Text = rhCircleText(rhPara{Content: pptx.ConvertMarkdownEmphasis(v.Spokes[i].Label), Size: lay.bodySize, Bold: true, Color: ink})
-		case rhLabelsLegend:
+		case icon != nil:
+			// The icon fills the disc; in the legend it is the item's key too.
+			shape.Icon = icon
+		case lay.mode == rhLabelsLegend:
 			shape.Text = rhCircleText(rhPara{Content: rhKey(i), Size: lay.bodySize, Bold: true, Color: ink})
 		}
 		layers = append(layers, jsonschema.LayerInput{
@@ -778,6 +810,12 @@ func (p *radialHub) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 		case lay.mode == rhLabelsLegend:
 			align, anchor = "l", "t"
 			keyCell := rhTextCell(rhKeyText(rhPara{Content: rhKey(i), Size: lay.labelSize, Bold: true, Color: accentInk}))
+			if icon := rhSpokeIcon(v.Spokes[i], accentInk, rhKeyIconScale); icon != nil {
+				// Same mark as in the disc, on the label's first line.
+				icon.Position = "top"
+				keyCell = rhTextCell(nil)
+				keyCell.Shape.Icon = icon
+			}
 			places = append(places, ringPlacement{X0: it.text.x0 - rhKeyColPt, X1: it.text.x0, Y0: it.text.y0, Y1: it.text.y1, Cell: keyCell})
 		case it.side == ringSideBottom:
 			anchor = "t"
@@ -793,6 +831,20 @@ func (p *radialHub) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 	}
 	grid.VerticalAlign = "center"
 	return grid, nil
+}
+
+// rhSpokeIcon is a spoke's icon as a centred shape overlay in fill, its side
+// scale of the shape's shorter side unless the author set one; nil without an
+// icon.
+func rhSpokeIcon(s RadialHubSpoke, fill string, scale float64) *jsonschema.IconInput {
+	if s.Icon == nil {
+		return nil
+	}
+	icon := s.Icon.Resolve(fill, "center")
+	if icon != nil && icon.Scale == 0 {
+		icon.Scale = scale
+	}
+	return icon
 }
 
 // rhKey is the legend key of item i: A, B, C ...

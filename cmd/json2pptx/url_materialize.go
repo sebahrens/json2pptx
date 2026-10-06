@@ -124,11 +124,8 @@ func (m *urlMaterialization) restoreGrid(grid *ShapeGridInput, swap func(path, u
 			if cell.Image != nil {
 				swap(&cell.Image.Path, &cell.Image.URL)
 			}
-			if cell.Icon != nil {
-				swap(&cell.Icon.Path, &cell.Icon.URL)
-			}
-			if cell.Shape != nil && cell.Shape.Icon != nil {
-				swap(&cell.Shape.Icon.Path, &cell.Shape.Icon.URL)
+			for _, ref := range gridCellIcons(cell) {
+				swap(&ref.icon.Path, &ref.icon.URL)
 			}
 			if cell.Grid != nil {
 				m.restoreGrid(cell.Grid, swap)

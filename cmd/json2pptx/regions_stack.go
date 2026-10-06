@@ -161,7 +161,7 @@ func regionPatternFits(cell *jsonschema.GridCellInput, ctx patterns.ExpandContex
 		return false
 	}
 	for _, w := range warnings {
-		for _, code := range []string{patterns.ErrCodeBodyTooLong, patterns.ErrCodeFitOverflow, patterns.ErrCodeTextExceedsShape, patterns.ErrCodeHeadlineTooLong} {
+		for _, code := range []string{patterns.ErrCodeBodyTooLong, patterns.ErrCodeNodeLabelTooLong, patterns.ErrCodeFitOverflow, patterns.ErrCodeTextExceedsShape, patterns.ErrCodeHeadlineTooLong} {
 			if strings.HasPrefix(w, code) {
 				return false
 			}

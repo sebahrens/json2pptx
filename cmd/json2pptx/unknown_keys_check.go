@@ -454,6 +454,12 @@ func checkGridLayerUnknownKeys(raw json.RawMessage, path string) []*patterns.Val
 	}
 	if v, ok := obj["shape"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.ShapeSpecInput{}), path+"/shape")...)
+		var shape map[string]json.RawMessage
+		if json.Unmarshal(v, &shape) == nil {
+			if icon, ok := shape["icon"]; ok {
+				warnings = append(warnings, checkUnknownKeysForType(icon, reflect.TypeOf(jsonschema.IconInput{}), path+"/shape/icon")...)
+			}
+		}
 	}
 	return warnings
 }

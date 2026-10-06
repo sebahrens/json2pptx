@@ -155,7 +155,7 @@ type GridCellInput struct {
 // exactly like a cell's shape; findings name it <cell path>/layers/<index>.
 type LayerInput struct {
 	Frame LayerFrameInput `json:"frame"`           // Position and size as fractions (0..1) of the cell's fitted bounds
-	Shape *ShapeSpecInput `json:"shape,omitempty"` // The shape: geometry, fill, line, text, rotation, flip_h, adjustments (required; "icon" is not supported on a layer)
+	Shape *ShapeSpecInput `json:"shape,omitempty"` // The shape: geometry, fill, line, text, rotation, flip_h, adjustments, icon (required)
 	Name  string          `json:"name,omitempty"`  // Optional stable id quoted in validation errors (e.g. "segment-3")
 }
 

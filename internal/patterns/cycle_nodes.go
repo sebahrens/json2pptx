@@ -26,7 +26,9 @@ import (
 //
 // Labels stand outside the ring in two clean columns, each row beside its
 // node's height and led by the step number that the node carries: the number
-// is the cue that ties a label to its circle. Rows are lattice cells
+// is the cue that ties a label to its circle. A step's optional icon takes the
+// numeral's place in the node; the number stays beside the label, and the
+// loop's order is still read from 12 o'clock along the arrows. Rows are lattice cells
 // (ringLattice), so nothing can overlap whatever size the grid resolves at.
 // In an area too narrow for two label columns (a compose half) the labels move
 // to one legend column beside the ring; overrides.labels "inside" puts short
@@ -40,7 +42,7 @@ type cycleNodes struct{}
 
 func (c *cycleNodes) Name() string { return "cycle-nodes" }
 func (c *cycleNodes) Description() string {
-	return "Recurring loop of 3-8 numbered circles on a ring joined by curved arrows, each step labelled outside the ring (label + optional description), with an optional centre label and one highlighted step"
+	return "Recurring loop of 3-8 numbered circles on a ring joined by curved arrows, each step labelled outside the ring (label + optional description; an optional icon takes the number's place in the circle), with an optional centre label and one highlighted step"
 }
 func (c *cycleNodes) UseWhen() string {
 	return "A closed loop of 3-8 discrete steps that returns to its start (plan-do-check-act, sense-decide-act-learn, a feedback or continuous-improvement cycle) where the steps and the hand-offs between them are the message; prefer cycle-ring when the phases form one continuous filled ring, cycle-intake when linear steps feed the loop, and numbered-step-strip or process-flow when the sequence does not return to the start"
@@ -79,8 +81,9 @@ func (c *cycleNodes) ExemplarValues() any {
 
 // CycleNodesStep is one step of the loop.
 type CycleNodesStep struct {
-	Label       string `json:"label"`
-	Description string `json:"description,omitempty"`
+	Label       string   `json:"label"`
+	Description string   `json:"description,omitempty"`
+	Icon        *IconRef `json:"icon,omitempty"` // replaces the numeral in the node
 }
 
 // CycleNodesCenter is the optional label in the middle of the ring.
@@ -173,7 +176,10 @@ const (
 	// cycleNodesNumeralShare is the largest numeral as a share of its node's
 	// diameter.
 	cycleNodesNumeralShare = 0.40
-	cycleNodesInkContrast  = 4.5
+	// cycleNodesIconScale is a node icon's side as a share of the node's
+	// diameter: inside the circle's inscribed square with air around it.
+	cycleNodesIconScale   = 0.5
+	cycleNodesInkContrast = 4.5
 )
 
 // cycleNodesLegendWidthFracs are the shares of the width the ring takes in
@@ -195,6 +201,7 @@ func (c *cycleNodes) Schema() *Schema {
 	step := ObjectSchema(map[string]*Schema{
 		"label":       StringSchema(cycleNodesLabelMax).WithDescription("Step name, e.g. \"Plan\". Readable budget: about 28 characters with 3-6 steps, 22 with 7-8; 14 (two short words) with labels \"inside\""),
 		"description": StringSchema(cycleNodesDescMax).WithDescription("Optional one-sentence detail under the label. Readable budget: about 70 characters with 3-6 steps, 40 with 7-8 (in a compose half about 50 with 3-5 steps, 20 with 6-7, none with 8); BODY_TOO_LONG names the step that outgrows its row. Not drawn with labels \"inside\""),
+		"icon":        IconRefSchema("Optional icon in the node in place of its number (the number stays beside the label): bundled name or {name|path|url|svg_data, fill?, alt?}. Not with labels \"inside\""),
 	}, []string{"label"}).WithAdditionalProperties(false)
 
 	valuesSchema := ObjectSchema(map[string]*Schema{
@@ -301,7 +308,7 @@ func validateCycleNodesSteps(steps []CycleNodesStep, inside bool) []error {
 	if inside && n > cycleNodesInsideMaxSteps {
 		errs = append(errs, newValidationError(name, "overrides.labels", ErrCodeInvalidShape,
 			fmt.Sprintf("cycle-nodes: labels \"inside\" holds at most %d steps (got %d): the nodes of a larger ring are too small for a label — use labels \"outside\"", cycleNodesInsideMaxSteps, n),
-			RemoveFieldFix("overrides.labels")))
+			OutsideLabelsFix()))
 	}
 	for i, s := range steps {
 		labelPath := fmt.Sprintf("steps[%d].label", i)
@@ -313,7 +320,7 @@ func validateCycleNodesSteps(steps []CycleNodesStep, inside bool) []error {
 		case inside && l > cycleNodesInsideLabelMax:
 			errs = append(errs, newValidationError(name, labelPath, ErrCodeMaxLength,
 				fmt.Sprintf("cycle-nodes: %s is %d characters; a label set inside its node holds at most %d — shorten it or use labels \"outside\"", labelPath, l, cycleNodesInsideLabelMax),
-				RemoveFieldFix("overrides.labels")))
+				OutsideLabelsFix()))
 		}
 		descPath := fmt.Sprintf("steps[%d].description", i)
 		switch l := runeLen(s.Description); {
@@ -324,6 +331,17 @@ func validateCycleNodesSteps(steps []CycleNodesStep, inside bool) []error {
 				fmt.Sprintf("cycle-nodes: %s is set but labels \"inside\" draws no descriptions — remove it or use labels \"outside\"", descPath),
 				RemoveFieldFix(descPath)))
 		}
+		if s.Icon == nil {
+			continue
+		}
+		iconPath := fmt.Sprintf("steps[%d].icon", i)
+		if inside && !s.Icon.IsEmpty() {
+			errs = append(errs, newValidationError(name, iconPath, ErrCodeInvalidShape,
+				fmt.Sprintf("cycle-nodes: %s is set but with labels \"inside\" the node carries the label — remove it or use labels \"outside\"", iconPath),
+				RemoveFieldFix(iconPath)))
+			continue
+		}
+		errs = append(errs, validateIconRef(name, iconPath, *s.Icon)...)
 	}
 	return errs
 }
@@ -668,9 +686,10 @@ func cycleNodesPlain(s string) string {
 }
 
 // PostExpandWarnings reports, by measurement on the current template, the
-// steps whose label rows cannot hold their text at the 12pt floor, an inside
-// label that does not fit its node and a centre label that does not fit the
-// ring.
+// steps whose label rows cannot hold their text at the 12pt floor
+// (BODY_TOO_LONG), an inside label that does not fit its node
+// (NODE_LABEL_TOO_LONG, whose fix moves the labels outside) and a centre label
+// that does not fit the ring (BODY_TOO_LONG).
 func (c *cycleNodes) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*CycleNodesValues)
 	if !ok || v == nil || len(v.Steps) < ringMinItems || len(v.Steps) > ringMaxItems {
@@ -684,8 +703,8 @@ func (c *cycleNodes) PostExpandWarnings(ctx ExpandContext, values, overrides any
 	if lay.mode == cycleNodesLabelsInside {
 		for i, fits := range lay.nodeFits {
 			if !fits {
-				warnings = append(warnings, fmt.Sprintf("%s: cycle-nodes steps[%d].label does not fit its %.0fpt node at %.0fpt on %d lines (a word breaks or the label runs past the circle); keep inside labels to two short words, or set overrides.labels to \"outside\"",
-					ErrCodeBodyTooLong, i, lay.dia*lay.side, cycleNodesFloorPt, cycleNodesInsideLines))
+				warnings = append(warnings, fmt.Sprintf("%s: cycle-nodes steps[%d].label does not fit its %.0fpt node at %.0fpt on %d lines (a word breaks or the label runs past the circle); keep inside labels to two short words, or remove overrides.labels so the labels stand \"outside\" the ring",
+					ErrCodeNodeLabelTooLong, i, lay.dia*lay.side, cycleNodesFloorPt, cycleNodesInsideLines))
 			}
 		}
 	} else if !lay.rowsFit {
@@ -774,6 +793,16 @@ func (c *cycleNodes) Expand(ctx ExpandContext, values, overrides any, _ map[int]
 			return ringNodePaint{Fill: p.fill, Text: ringNodeTextJSON("ctr", "ctr", cycleNodesNodeInsetPt,
 				ringNodePara{Content: pptx.ConvertMarkdownEmphasis(v.Steps[i].Label), Size: lay.nodePt, Bold: true, Color: p.labelInk})}
 		}
+		if icon := v.Steps[i].Icon; icon != nil && !icon.IsEmpty() {
+			// The icon takes the numeral's place and its ink (measured on the
+			// node's own fill), so marks and numerals on one ring share a
+			// colour; the number cue beside the label stays.
+			in := icon.Resolve(p.ink, "center")
+			if in.Scale == 0 {
+				in.Scale = cycleNodesIconScale
+			}
+			return ringNodePaint{Fill: p.fill, Icon: in}
+		}
 		return ringNodePaint{Fill: p.fill, Text: ringNodeTextJSON("ctr", "ctr", -1,
 			ringNodePara{Content: strconv.Itoa(i + 1), Size: lay.numeralPt, Bold: true, Color: p.ink})}
 	})...)
@@ -818,7 +847,7 @@ func (c *cycleNodes) Expand(ctx ExpandContext, values, overrides any, _ map[int]
 // cycleNodesPaint is the colouring of one step.
 type cycleNodesPaint struct {
 	fill     json.RawMessage
-	ink      string // numeral in the node
+	ink      string // numeral, or icon, in the node
 	labelInk string // label in the node (labels inside)
 	cueInk   string // number cue beside the label
 }

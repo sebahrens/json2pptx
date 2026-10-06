@@ -249,7 +249,7 @@ func TestRadialHubBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := radialHubValues(6, 0, 0)
 	values.Spokes[4].Label = "Risk"
 	values.Spokes[1].Label = "Infrastructure" // 14 characters in one word: allowed by the schema, too wide for a satellite
-	assertBudgetFindingAcrossTemplates(t, "radial-hub", values, "spokes[1].label", "does not fit its", map[string]string{"labels": "inside"})
+	assertPatternFindingAcrossTemplates(t, patterns.ErrCodeNodeLabelTooLong, "radial-hub", values, "spokes[1].label", "does not fit its", map[string]string{"labels": "inside"})
 }
 
 // A horizontal compose segment of 50% and 60%, a vertical segment and a

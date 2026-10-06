@@ -145,11 +145,15 @@ func patternExpansionDiagnostics(name string, result patternExpansionResult) []d
 			path += "/" + dottedPathToPointer(field[1])
 		}
 		severity := diagnostics.SeverityWarning
-		if code == patterns.ErrCodeBodyTooLong || code == patterns.ErrCodeTextExceedsShape || code == patterns.ErrCodeChartPlaceholderEmpty {
+		if code == patterns.ErrCodeBodyTooLong || code == patterns.ErrCodeNodeLabelTooLong || code == patterns.ErrCodeTextExceedsShape || code == patterns.ErrCodeChartPlaceholderEmpty {
 			severity = diagnostics.SeverityError
 		}
+		var fix *diagnostics.Fix
+		if f := patternWarningFix(code); f != nil {
+			fix = &diagnostics.Fix{Kind: f.Kind, Params: f.Params}
+		}
 		ds = append(ds, diagnostics.Diagnostic{
-			Code: code, Message: message, Path: path, Severity: severity,
+			Code: code, Message: message, Path: path, Severity: severity, Fix: fix,
 			Details: map[string]any{"pattern": name},
 		})
 	}

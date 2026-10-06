@@ -21,7 +21,7 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | "Today vs target" | `comparison` (2 aligned columns) | Rows correspond; keep it to ~6. |
 | "This is the sequence" | `process` (3–6 steps with descriptions → numbered rows; 7–8 or bare labels → flow boxes) | A straight sequence, not a branching flowchart. |
 | "It repeats: the last phase leads back to the first" | raw `cycle-ring` (4–8 phases) | A lifecycle, PDCA, an operating rhythm, a flywheel. One `highlight` phase at most; `style: arrows` for chasing arrows. Not for a sequence that runs once (use `process`); 3 phases or stations joined by arrows are `cycle-nodes`. |
-| "The work repeats in a loop" | `cycle-nodes` (raw path; 3–8 steps as numbered circles joined by arrows) | Use when the steps return to the start and the hand-offs matter (plan-do-check-act, a feedback loop). Avoid for a sequence that ends — that is `process`. Prefer `cycle-ring` when the phases are one continuous ring. `highlight` one step; in a split half the labels become a legend. Pending the `cycle` kind (go-slide-creator-53v5u). |
+| "The work repeats in a loop" | `cycle-nodes` (raw path; 3–8 steps as numbered circles joined by arrows) | Use when the steps return to the start and the hand-offs matter (plan-do-check-act, a feedback loop). Avoid for a sequence that ends — that is `process`. Prefer `cycle-ring` when the phases are one continuous ring. `highlight` one step; in a split half the labels become a legend; a step's `icon` replaces the number in its circle. Pending the `cycle` kind (go-slide-creator-53v5u). |
 | "When things happen" | `timeline` (3–7 dated stops) · `roadmap` (3–6 phases, 0–4 `parallel_tracks`) | An `end_date` turns a timeline into bars. |
 | "Who does what by when" | `next_steps` | 2–6 actions `{action, owner, date}`, 0–3 `decisions`. Always the closer. |
 | "Who we are" | `team` (1–8, `photo` or initials `photo_label`) | Role on every card. |
@@ -113,7 +113,8 @@ slide ready to run for any pattern or diagram candidate.
 `radial-hub` (raw path) — "everything relates to the centre": one hub with
 4–8 unordered peers around it (a platform and its capabilities, an
 operating-model hub, a stakeholder or ecosystem map). Short labels, at most a
-one-line description each; `highlight` one spoke when the title argues it.
+one-line description each; `highlight` one spoke when the title argues it;
+give each spoke an `icon` (a bundled name) so the discs are not empty.
 Avoid it when the items follow one another (use a `process`, or the cycle
 patterns), when they are today/future pairs (`state-shift-hub`) and when there
 is no centre (`pillars`, a card grid). In a half-width split it falls back to

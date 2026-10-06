@@ -50,10 +50,13 @@ func gridHasURLReferences(grid *ShapeGridInput) bool {
 			if cell == nil {
 				continue
 			}
-			if (cell.Image != nil && cell.Image.URL != "") ||
-				(cell.Icon != nil && cell.Icon.URL != "") ||
-				(cell.Shape != nil && cell.Shape.Icon != nil && cell.Shape.Icon.URL != "") {
+			if cell.Image != nil && cell.Image.URL != "" {
 				return true
+			}
+			for _, ref := range gridCellIcons(cell) {
+				if ref.icon.URL != "" {
+					return true
+				}
 			}
 			if cell.Grid != nil && gridHasURLReferences(cell.Grid) {
 				return true
@@ -128,11 +131,8 @@ func resolveGridURLs(grid *ShapeGridInput, prefix string, slideIdx int, resolver
 			if cell.Image != nil {
 				findings = appendURLFinding(findings, resolveURLField(&cell.Image.URL, &cell.Image.Path, false, cellPath+"/image/url", "image", slideIdx, resolver))
 			}
-			if cell.Icon != nil {
-				findings = appendURLFinding(findings, resolveURLField(&cell.Icon.URL, &cell.Icon.Path, true, cellPath+"/icon/url", "icon", slideIdx, resolver))
-			}
-			if cell.Shape != nil && cell.Shape.Icon != nil {
-				findings = appendURLFinding(findings, resolveURLField(&cell.Shape.Icon.URL, &cell.Shape.Icon.Path, true, cellPath+"/shape/icon/url", "icon", slideIdx, resolver))
+			for _, ref := range gridCellIcons(cell) {
+				findings = appendURLFinding(findings, resolveURLField(&ref.icon.URL, &ref.icon.Path, true, cellPath+"/"+ref.field+"/url", "icon", slideIdx, resolver))
 			}
 			if cell.Grid != nil {
 				findings = append(findings, resolveGridURLs(cell.Grid, cellPath+"/grid", slideIdx, resolver)...)

@@ -782,6 +782,18 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodePlaceholderOverflow, ErrCodeBulletNestingDeep},
 	},
+	ErrCodeNodeLabelTooLong: {
+		Code:        ErrCodeNodeLabelTooLong,
+		Summary:     "A label set inside a circle of a circular pattern does not fit it at the readable size.",
+		Severity:    "review",
+		WhenEmitted: "A cycle-nodes step or a radial-hub spoke is labelled inside its circle (overrides.labels \"inside\") and the pattern's post-expand measurement finds that the label, at 12pt in the template's face, breaks a word or runs past the circle's text square. The character limit of an inside label (14) is necessary, not sufficient: one long word can be inside it and still wider than the circle.",
+		RemediationSteps: []string{
+			"Apply the finding's fix with repair_slide: fix.kind remove_key with params {key: \"labels\"} removes overrides.labels, so the labels return to their default place outside the ring (a legend beside it in a narrow area). The same text fits there.",
+			"Or keep the labels inside and shorten the label at the finding's path to one or two short words (about 8 characters a word).",
+			"A label in the centre of the ring (center.label) that does not fit is reported as BODY_TOO_LONG instead: it has no outside place.",
+		},
+		RelatedCodes: []string{ErrCodeBodyTooLong, ErrCodeTextExceedsShape},
+	},
 	ErrCodeBulletNestingDeep: {
 		Code:        ErrCodeBulletNestingDeep,
 		Summary:     "A bullet list nests more than two levels deep.",
