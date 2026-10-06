@@ -541,7 +541,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"kpi-inline":                   0,
 	"labeled-rows":                 5.0,
 	"matrix-2x2":                   8.2,
-	"metric-list":                  7.8,
+	"metric-list":                  7.6,
 	"next-steps":                   6.0,
 	"numbered-step-strip":          4.8,
 	"phase-roadmap":                6.5, // midnight-blue edge-art clearance narrows the column (oa0ru)
@@ -621,7 +621,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"kpi-inline":                   0,
 	"labeled-rows":                 6.2,
 	"matrix-2x2":                   9.4,
-	"metric-list":                  8.6,
+	"metric-list":                  7.6,
 	"next-steps":                   6.7,
 	"numbered-step-strip":          5.8,
 	"phase-roadmap":                7.4,

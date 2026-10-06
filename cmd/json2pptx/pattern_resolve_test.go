@@ -920,10 +920,10 @@ func calloutBandCells(t *testing.T, row jsonschema.GridRowInput) (bar, text *jso
 
 func TestCalloutTakeawaySpec_Emphasis(t *testing.T) {
 	cases := map[string]patterns.TakeawaySpec{
-		"":            {Text: "x"},
-		"bold":        {Text: "x"},
-		"italic":      {Text: "x", Italic: true},
-		"bold-italic": {Text: "x", Italic: true},
+		"":            {Text: "x", Emphasis: "bar"},
+		"bold":        {Text: "x", Emphasis: "bar"},
+		"italic":      {Text: "x", Emphasis: "bar", Italic: true},
+		"bold-italic": {Text: "x", Emphasis: "bar", Italic: true},
 		"subtle":      {Text: "x", Emphasis: "subtle"},
 		"strong":      {Text: "x", Emphasis: "strong"},
 	}
