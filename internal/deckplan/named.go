@@ -306,18 +306,18 @@ var (
 	// cueNamedTableStrong names a table outright, ahead of a "phase" in its
 	// column list reading as a roadmap.
 	cueNamedTableStrong = regexp.MustCompile(`(?i)\b(?:pricing|price lists?|line items?|rate cards?|registers?|fee schedules?|fees?)\b`)
-	cueNamedRegister  = regexp.MustCompile(`(?i)\b(?:owners?|due dates?|severity|register)\b`)
-	cueNamedFindings  = regexp.MustCompile(`(?i)\bfindings?\b`)
-	cueNamedRAG       = regexp.MustCompile(`(?i)\b(?:red|amber|green|rag)\b`)
-	cueNamedCompare   = regexp.MustCompile(`(?i)\b(?:two columns?|side[- ]by[- ]side|before (?:and|vs\.?|/|→|versus) after|(?:current|today|as-is|now) (?:vs\.?|versus|and|against|/|→|to) (?:the\s+)?(?:target|to-be|future|tomorrow|after|fy\d{2,4})|ladder)\b`)
-	cueNamedVsHead    = regexp.MustCompile(`(?i)\b([\p{L}\d-]+)\s+(?:vs\.?|versus)\s+([\p{L}\d-]+)\b`)
-	cueNamedArrow     = regexp.MustCompile(`\d[^,;]*?\s(?:→|->|⇒|to)\s(?:under\s+|over\s+|about\s+|below\s+|above\s+)?[+\-−]?\d`)
-	cueNamedMaturity  = regexp.MustCompile(`(?i)\bmaturity\b`)
-	cueNamedTarget    = regexp.MustCompile(`(?i)\btarget\b`)
-	cueNamedKPI       = regexp.MustCompile(`(?i)\b(?:kpis?|metrics|dashboard|scorecard|at a glance|headline (?:numbers|figures)|key (?:numbers|figures)|status board)\b`)
-	cueNamedPillars   = regexp.MustCompile(`(?i)\b(?:pillars?|themes)\b`)
-	cueNamedSeries    = regexp.MustCompile(`(?i)\byear[- ]on[- ]year\b|\byear[- ]by[- ]year\b|\btrends?\b|\bover time\b|\bchart\b`)
-	cueNamedAppendix  = regexp.MustCompile(`(?i)\b(?:appendix|appendices|back-?up)\b`)
+	cueNamedRegister    = regexp.MustCompile(`(?i)\b(?:owners?|due dates?|severity|register)\b`)
+	cueNamedFindings    = regexp.MustCompile(`(?i)\bfindings?\b`)
+	cueNamedRAG         = regexp.MustCompile(`(?i)\b(?:red|amber|green|rag)\b`)
+	cueNamedCompare     = regexp.MustCompile(`(?i)\b(?:two columns?|side[- ]by[- ]side|before (?:and|vs\.?|/|→|versus) after|(?:current|today|as-is|now) (?:vs\.?|versus|and|against|/|→|to) (?:the\s+)?(?:target|to-be|future|tomorrow|after|fy\d{2,4})|ladder)\b`)
+	cueNamedVsHead      = regexp.MustCompile(`(?i)\b([\p{L}\d-]+)\s+(?:vs\.?|versus)\s+([\p{L}\d-]+)\b`)
+	cueNamedArrow       = regexp.MustCompile(`\d[^,;]*?\s(?:→|->|⇒|to)\s(?:under\s+|over\s+|about\s+|below\s+|above\s+)?[+\-−]?\d`)
+	cueNamedMaturity    = regexp.MustCompile(`(?i)\bmaturity\b`)
+	cueNamedTarget      = regexp.MustCompile(`(?i)\btarget\b`)
+	cueNamedKPI         = regexp.MustCompile(`(?i)\b(?:kpis?|metrics|dashboard|scorecard|at a glance|headline (?:numbers|figures)|key (?:numbers|figures)|status board)\b`)
+	cueNamedPillars     = regexp.MustCompile(`(?i)\b(?:pillars?|themes)\b`)
+	cueNamedSeries      = regexp.MustCompile(`(?i)\byear[- ]on[- ]year\b|\byear[- ]by[- ]year\b|\btrends?\b|\bover time\b|\bchart\b`)
+	cueNamedAppendix    = regexp.MustCompile(`(?i)\b(?:appendix|appendices|back-?up)\b`)
 )
 
 // Guidance per named kind.
@@ -326,6 +326,7 @@ var namedGuidance = map[string]string{
 	"matrix_2x2":        "The heat map: the brief's axes and every named item placed in its quadrant (a medium rating sits with high — move it if the brief means otherwise); the title names the quadrant that needs action.",
 	"risk_heatmap":      "The heat map: every named risk with its own likelihood and impact (low / medium / high), placed on the grid; the title names the risk that needs action.",
 	"image_case":        "The picture beside its story: set image.path (or keep image_label until the file exists), the body, up to 3 result metrics and the callouts the brief asks for; the title states the result.",
+	"cycle":             cycleGuidance,
 	"architecture":      "The stack top to bottom: one tier per layer with its components, the cross-cutting concerns as rails, never as another tier.",
 	"team":              "Who delivers: one card per person with name, role and the one line that makes them credible; a headshot via members[].photo.",
 	"decision":          "The options the brief enumerates, the recommended one marked, and the recommendation as the band beneath; the title names the choice.",
@@ -344,7 +345,7 @@ var namedGuidance = map[string]string{
 
 // namedSlot is the slot name a named kind takes in the storyline.
 var namedSlot = map[string]string{
-	"bridge": "bridge", "matrix_2x2": "risks", "risk_heatmap": "risks", "image_case": "case", "architecture": "architecture",
+	"bridge": "bridge", "matrix_2x2": "risks", "risk_heatmap": "risks", "image_case": "case", "architecture": "architecture", "cycle": "cycle",
 	"team": "team", "decision": "options", "option_matrix": "options", "roadmap": "roadmap",
 	"process": "plan", "table": "table", "comparison": "comparison", "kpi_snapshot": "context",
 	"chart_insight": "evidence", "pillars": "framework", "regions": "regions",
@@ -355,6 +356,7 @@ var namedSlot = map[string]string{
 var namedChapter = map[string]string{
 	"bridge": chapterSituation, "matrix_2x2": chapterSituation, "risk_heatmap": chapterSituation, "image_case": chapterSituation,
 	"architecture": chapterSituation, "table": chapterSituation, "comparison": chapterSituation,
+	"cycle":        chapterSituation,
 	"kpi_snapshot": chapterSituation, "chart_insight": chapterSituation, "pillars": chapterSituation,
 	"regions": chapterSituation, "team": chapterPlan, "decision": chapterPlan,
 	"option_matrix": chapterOptions, "roadmap": chapterPlan, "process": chapterPlan,
@@ -412,6 +414,7 @@ var namedRules = []namedRule{
 		}},
 	{kind: "image_case", match: func(_ *namedSlide, _, all string) bool { return cueNamedImage.MatchString(all) }},
 	{kind: "architecture", match: func(_ *namedSlide, _, all string) bool { return cueNamedArch.MatchString(all) }},
+	{kind: "cycle", match: func(n *namedSlide, _, all string) bool { return namesCycle(n, all) }},
 	{kind: "team", match: func(n *namedSlide, head, all string) bool {
 		return cueNamedTeamHead.MatchString(head) || (head == "" && cueNamedTeamHead.MatchString(all)) || (cueNamedTeam.MatchString(head) && len(n.items) > 0)
 	}},
@@ -828,6 +831,8 @@ func namedFields(n *namedSlide) map[string]any {
 		return riskHeatmapFields(n)
 	case "architecture":
 		return architectureFields(n)
+	case "cycle":
+		return cycleFields(n)
 	case "process":
 		return processFields(n)
 	case "table":
@@ -914,9 +919,9 @@ func bridgeFields(n *namedSlide) map[string]any {
 }
 
 var (
-	namedMetric = regexp.MustCompile(`(?i)(?:(?:EUR|USD|GBP|CHF)\s?|[$€£¥]\s?)?[+\-−±]?\d[\d,]*(?:\.\d+)?(?:[\s-]?(?:bn|mm|m|k|pts?|points?|bps|x|FTE|h|hours?|days?|weeks?|months?|years?)\b|\s?%)?`)
-	namedOrdinal = regexp.MustCompile(`^\d+(?:st|nd|rd|th)\b`)
-	namedStatus  = regexp.MustCompile(`(?i)\b(within(?: appetite| limit| tolerance)?|amber|breached|red|green|on track|off track|at risk)\b`)
+	namedMetric    = regexp.MustCompile(`(?i)(?:(?:EUR|USD|GBP|CHF)\s?|[$€£¥]\s?)?[+\-−±]?\d[\d,]*(?:\.\d+)?(?:[\s-]?(?:bn|mm|m|k|pts?|points?|bps|x|FTE|h|hours?|days?|weeks?|months?|years?)\b|\s?%)?`)
+	namedOrdinal   = regexp.MustCompile(`^\d+(?:st|nd|rd|th)\b`)
+	namedStatus    = regexp.MustCompile(`(?i)\b(within(?: appetite| limit| tolerance)?|amber|breached|red|green|on track|off track|at risk)\b`)
 	namedLinkLead  = regexp.MustCompile(`(?i)^(?:is|was|are|were|at|of|to|takes|took|has|have|with|and|about|the|a|an)\s+`)
 	namedLinkTrail = regexp.MustCompile(`(?i)\s+(?:is|was|are|were|at|of|to|takes|took|has|have|with|and|about|the|a|an)$`)
 )
@@ -1507,7 +1512,7 @@ func tablePlaceholderRows(sentence string, headers []any, count int) []any {
 var (
 	// namedArrowSplit captures the arrow between a before and an after value;
 	// the split point is the end of group 1 and the start of group 2.
-	namedArrowSplit = regexp.MustCompile(`(\s(?:→|->|⇒|to)\s)((?:under\s+|over\s+|about\s+|below\s+|above\s+)?[+\-−]?\d)`)
+	namedArrowSplit  = regexp.MustCompile(`(\s(?:→|->|⇒|to)\s)((?:under\s+|over\s+|about\s+|below\s+|above\s+)?[+\-−]?\d)`)
 	namedTargetEvery = regexp.MustCompile(`(?i)\btarget\s+(\d+(?:\.\d+)?)\s+(?:everywhere|across the board|for all|in every domain)(?:\s+by\s+(\w+))?`)
 )
 

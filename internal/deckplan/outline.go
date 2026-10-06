@@ -93,6 +93,7 @@ var (
 	outlineCase     = outlineKind{"case", "image_case", "image-text-split", "evidence", namedGuidance["image_case"], 3}
 	outlineMatrix   = outlineKind{"risks", "matrix_2x2", "matrix-2x2", "framework", namedGuidance["matrix_2x2"], 3}
 	outlineHeatmap  = outlineKind{"risks", "risk_heatmap", "risk-heatmap", "framework", namedGuidance["risk_heatmap"], 3}
+	outlineCycle    = outlineKind{"cycle", "cycle", "cycle-ring", "framework", cycleGuidance, 2}
 	outlineRegions  = outlineKind{"regions", "regions", "", "evidence", regionsGuidance, 4}
 	outlinePillars  = outlineKind{"framework", "pillars", "stylish-panels", "framework", namedGuidance["pillars"], 3}
 )
@@ -100,7 +101,7 @@ var (
 // outlineKindByName maps a kind the vocabulary names to its outline slide.
 var outlineKindByName = map[string]outlineKind{
 	"bridge": outlineBridge, "image_case": outlineCase, "matrix_2x2": outlineMatrix, "risk_heatmap": outlineHeatmap, "regions": outlineRegions,
-	"architecture": outlineArch, "team": outlineTeam, "table": outlineTable, "comparison": outlineCompare,
+	"cycle": outlineCycle, "architecture": outlineArch, "team": outlineTeam, "table": outlineTable, "comparison": outlineCompare,
 	"option_matrix": outlineOptions, "decision": outlineAsk, "roadmap": outlineRoadmap, "process": outlineProcess,
 	"kpi_snapshot": outlineKPIs, "chart_insight": outlineChart, "pillars": outlinePillars,
 	"next_steps": outlineClosing, "executive_summary": outlineAnswer,
@@ -735,8 +736,8 @@ func regionsOutlineItem(text string) *regionRequest {
 }
 
 var (
-	regionsJoiner      = regexp.MustCompile(`(?i)\b(?:beside|alongside|next to|on the left|on the right|side by side|split with)\b`)
-	outlineRegionCues  = []regionCue{
+	regionsJoiner     = regexp.MustCompile(`(?i)\b(?:beside|alongside|next to|on the left|on the right|side by side|split with)\b`)
+	outlineRegionCues = []regionCue{
 		{regexp.MustCompile(`(?i)\b(?:(?:line|bar|column|area|pie|donut|trend)\s+)?(?:charts?|graphs?)\b`), "chart"},
 		{regexp.MustCompile(`(?i)\b(?:kpis|metrics|scorecard|kpi tiles)\b`), "kpis"},
 		{regexp.MustCompile(`(?i)\b(?:(?:share|headline|big|hero|key)\s+number|headline|big number|stat|kpi)\b`), "stat"},
