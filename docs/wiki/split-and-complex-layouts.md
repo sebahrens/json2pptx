@@ -558,6 +558,10 @@ side-by-side region with the fix in the message — use `ring` there, or
 `arrangement: rows`. In a stacked group a cycle region takes at least 60% of
 the height. A `text` region in a column beside the cycle is set as one block
 (heading, then body) centred on the ring's axis rather than hung from the top.
+A `kpis`, `stat`, `timeline` or `table` region in such a column is centred on
+the same line, with its `heading` directly above it; a `chart` or an `image`
+fills the column's height under a top heading. In `main_left` / `main_right`
+the two stacked regions keep their halves of the column.
 
 ```yaml
 meta:

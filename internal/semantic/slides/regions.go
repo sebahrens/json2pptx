@@ -438,7 +438,7 @@ func CompileRegions(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	builds := make([]regionBuild, len(regions))
 	besideCycle := arrangement == ArrangeColumns && hasRegionKind(regions, RegionCycle)
 	for i, r := range regions {
-		b, berr := compileRegion(in, i, r)
+		b, berr := compileRegion(in, i, r, besideCycle)
 		if berr == nil && besideCycle && strField(r, "kind") == RegionText {
 			b, berr = regionTextBesideCycle(r)
 		}
@@ -595,7 +595,16 @@ func shareColumns(shares []float64) json.RawMessage {
 
 // compileRegion builds one region's cell: its content, under its heading when
 // it has one (and an image's caption beneath it).
-func compileRegion(in Input, idx int, r map[string]any) (regionBuild, error) {
+//
+// besideCycle says the region is a column next to a cycle region. A ring is
+// centred in its column and has no top edge, so a region that is only as tall
+// as its content — a KPI row, a stat, a timeline, a table — is centred on the
+// ring's centre line with its heading directly above it, instead of hanging
+// from the top of the column as a thin band over white space
+// (go-slide-creator-n3q0o; the text region's own case is
+// regionTextBesideCycle). A chart or an image fills its column's height and
+// keeps its heading on top.
+func compileRegion(in Input, idx int, r map[string]any, besideCycle bool) (regionBuild, error) {
 	if r == nil {
 		return regionBuild{}, fmt.Errorf("a region must be an object")
 	}
@@ -631,12 +640,29 @@ func compileRegion(in Input, idx int, r map[string]any) (regionBuild, error) {
 	if kind == RegionImage {
 		caption = strField(r, "caption")
 	}
-	if heading == "" && caption == "" {
+	// bandPt is the height of the content row of a region centred beside a
+	// cycle; 0 leaves the content the rest of the cell.
+	bandPt := 0.0
+	if besideCycle {
+		bandPt = regionBandBesideCyclePt(r)
+	}
+	if bandPt > 0 && heading == "" && len(content.cell.Pattern) > 0 {
+		// A pattern places its own content-sized block: centre it in the cell.
+		if err := centrePatternCell(content.cell); err != nil {
+			return regionBuild{}, err
+		}
+		return content, nil
+	}
+	if heading == "" && caption == "" && bandPt == 0 {
 		return content, nil
 	}
 	// A heading or caption is its own content-sized row, so the region's
 	// visual keeps the rest of the cell instead of sharing a text box with it.
 	g := &deckinput.ShapeGridInput{Columns: json.RawMessage("1"), RowGap: 4}
+	if bandPt > 0 {
+		// Heading and band are one block, centred in the column.
+		g.VerticalAlign = "center"
+	}
 	var links []SourceLink
 	if heading != "" {
 		g.Rows = append(g.Rows, deckinput.GridRowInput{MinHeight: regionHeadingRowPt, MaxHeight: regionHeadingRowPt, Cells: []*deckinput.GridCellInput{
@@ -645,7 +671,7 @@ func compileRegion(in Input, idx int, r map[string]any) (regionBuild, error) {
 		links = append(links, SourceLink{RawPath: fmt.Sprintf(".grid.rows[%d].cells[0]", len(g.Rows)-1), SemanticPath: RegionHeadingField(r)})
 	}
 	contentRow := len(g.Rows)
-	g.Rows = append(g.Rows, deckinput.GridRowInput{Cells: []*deckinput.GridCellInput{content.cell}})
+	g.Rows = append(g.Rows, deckinput.GridRowInput{MaxHeight: bandPt, Cells: []*deckinput.GridCellInput{content.cell}})
 	prefix := fmt.Sprintf(".grid.rows[%d].cells[0]", contentRow)
 	links = append(links, SourceLink{RawPath: prefix, SemanticPath: ""})
 	for _, l := range content.links {
@@ -829,6 +855,54 @@ func regionImage(r map[string]any) (regionBuild, error) {
 		}},
 		links: []SourceLink{{RawPath: ".image", SemanticPath: ".image"}},
 	}, nil
+}
+
+// Heights (points on the standard slide) of the content row of a region
+// centred in a column beside a cycle region. The band is as tall as the
+// region's visual draws itself in a column of a full-height content area, so
+// heading and visual read as one block; the compiler knows no font metrics, so
+// these are the measured heights of the patterns' own bands
+// (go-slide-creator-n3q0o).
+const (
+	regionKPIBandPt      = 110.0 // a kpi-Nup row: the figure, a two-line caption and the dividers
+	regionStatBandPt     = 150.0 // a stat-hero figure with its label and context line
+	regionTimelineBandPt = 130.0 // dates, the line and two-line stop labels
+	regionTableRowPt     = 34.0  // one table line, the header included, with the cell margins a nested table loses
+)
+
+// regionBandBesideCyclePt is the height of a region's content row when the
+// region stands in a column beside a cycle region, or 0 for a region whose
+// visual fills the column (a chart, an image) or is placed by its own rule (a
+// text region, see regionTextBesideCycle; the cycle itself).
+func regionBandBesideCyclePt(r map[string]any) float64 {
+	switch strField(r, "kind") {
+	case RegionKPIs:
+		return regionKPIBandPt
+	case RegionStat:
+		return regionStatBandPt
+	case RegionTimeline:
+		return regionTimelineBandPt
+	case RegionTable:
+		rows, _ := r["rows"].([]any)
+		return regionTableRowPt * float64(len(rows)+1)
+	}
+	return 0
+}
+
+// centrePatternCell sets vertical_align "center" on a cell's nested pattern,
+// so the engine centres the pattern's content-sized block in the cell.
+func centrePatternCell(cell *deckinput.GridCellInput) error {
+	var p deckinput.PatternInput
+	if err := json.Unmarshal(cell.Pattern, &p); err != nil {
+		return fmt.Errorf("decode nested pattern: %w", err)
+	}
+	p.VerticalAlign = "center"
+	raw, err := json.Marshal(p)
+	if err != nil {
+		return fmt.Errorf("encode nested pattern: %w", err)
+	}
+	cell.Pattern = raw
+	return nil
 }
 
 // hasRegionKind reports whether any region is of the given kind.
