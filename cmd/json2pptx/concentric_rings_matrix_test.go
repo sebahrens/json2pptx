@@ -131,8 +131,11 @@ type crEllipse struct {
 	solidAccent  bool
 }
 
+// crRingMinEMU separates a ring (an ellipse wider than 15pt) from a leader dot.
+const crRingMinEMU = 15 * 12700
+
 // crEllipses returns the ellipse shapes of the slide in drawing order. Rings
-// and leader dots are both ellipses; rings are the ones wider than 0.5in.
+// and leader dots are both ellipses; rings are the ones wider than 15pt.
 func crEllipses(t *testing.T, xml string) (rings, dots []crEllipse) {
 	t.Helper()
 	for _, sp := range strings.Split(xml, "<p:sp>")[1:] {
@@ -155,7 +158,10 @@ func crEllipses(t *testing.T, xml string) (rings, dots []crEllipse) {
 			spPr = sp[:i]
 		}
 		e.solidAccent = crSolidRe.MatchString(spPr)
-		if e.cx > 457200 {
+		// A leader dot is 5pt across. The core of five layers in a half-width
+		// segment on the narrowest content area (abstract, whose body ends
+		// short of its diagonal line, go-slide-creator-bvv3v) is 26pt.
+		if e.cx > crRingMinEMU {
 			rings = append(rings, e)
 		} else {
 			dots = append(dots, e)
