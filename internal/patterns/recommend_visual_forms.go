@@ -371,6 +371,7 @@ var visualNameAliases = map[string][]string{
 	"named_pattern:value-chain":            {"value chain"},
 	"named_pattern:driver-tree":            {"driver tree", "value driver tree", "issue tree"},
 	"named_pattern:radial-hub":             {"hub and spoke", "hub-and-spoke", "radial hub", "stakeholder map", "ecosystem map"},
+	"named_pattern:cycle-nodes":            {"cycle nodes", "basic cycle", "pdca cycle", "plan do check act"},
 	"named_pattern:scqa-summary":           {"scqa"},
 	"named_pattern:concentric-rings":       {"concentric rings", "concentric circles", "onion model", "onion diagram", "nested circles", "stacked venn"},
 	"named_pattern:exec-summary":           {"executive summary", "exec summary"},
