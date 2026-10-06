@@ -329,7 +329,7 @@ func TestCycleStyleCountsMatchThePatterns(t *testing.T) {
 // own heading row.
 func TestTextRegionBesideACycleIsCentred(t *testing.T) {
 	text := map[string]any{"kind": "text", "heading": "What changed", "bullets": []any{"Rework is down", "One owner per phase"}}
-	b, err := regionTextBesideCycle(text)
+	b, err := regionTextBesideCycle(text, regionAnchorCenter)
 	if err != nil {
 		t.Fatal(err)
 	}

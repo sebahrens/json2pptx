@@ -561,7 +561,9 @@ the height. A `text` region in a column beside the cycle is set as one block
 A `kpis`, `stat`, `timeline` or `table` region in such a column is centred on
 the same line, with its `heading` directly above it; a `chart` or an `image`
 fills the column's height under a top heading. In `main_left` / `main_right`
-the two stacked regions keep their halves of the column.
+with the cycle as the main region, the two stacked regions meet in the middle
+of the column: the upper one sits on the seam between them and the lower one
+hangs from it.
 
 ```yaml
 meta:
