@@ -74,6 +74,7 @@ Initial slide kinds:
 - `timeline`
 - `matrix_2x2`
 - `risk_heatmap`
+- `cycle`
 - `framework`
 - `image_case`
 - `process`
@@ -98,6 +99,7 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 | `matrix_2x2` | `matrix-2x2` | `x_axis`, `y_axis`, `quadrants: [{header, body?}] x4` | exactly 4 headed quadrants and both axes named; header ≤80 chars, body ≤200, x axis ≤16, y axis ≤60, axis end ≤11 |
 | `framework` (`bmc`) | `bmc-canvas` | `sections: {key_partners…revenue_streams}` | all 9 cells present; ≤10 items each, ≤200 chars per item |
 | `risk_heatmap` | `risk-heatmap` | `items: [{name, likelihood, impact}]`, `size?` (3 or 5), `likelihood_label?`, `impact_label?`, `likelihood_levels?`, `impact_levels?` (the legend wording, `tier_labels`, is a raw-pattern field) | 1–20 risks, name ≤40 chars, every level on the grid (`low` / `medium` / `high`, 1–size, or a level label); otherwise bullets that keep each risk's two ratings |
+| `cycle` | by `style`: `ring` → `cycle-ring`, `nodes` → `cycle-nodes`, `intake` → `cycle-intake`, `figure_eight` → `cycle-figure-eight`, `radial` → `radial-hub`, `concentric` → `concentric-rings` | `phases: [string \| {label, description?, highlight?}]` (aliases `steps`, `items`), `style?`, `center?` (a string or `{label, sublabel?}`), `highlight?` (a phase's label or 1-based position), `intake?` (style `intake`), `left_label?`, `right_label?`, `left_count?` (style `figure_eight`) | the style's count (ring, figure_eight, radial 4–8; nodes, intake 3–8; concentric 3–5; intake steps 1–3) and the pattern's own text budgets, checked by the pattern's validator; `radial` needs `center`. Unset, `style` is `ring`, `nodes` for three phases, `intake` when `intake` steps are given. Otherwise a numbered list, with `SEMANTIC_PATTERN_DEGRADED` at the list or the over-long field. A field the style does not draw (`center` on `figure_eight` / `concentric`, `left_label` off `figure_eight`, `intake` off `intake`) is `SEMANTIC_UNKNOWN_FIELD`. Also a `regions` kind (`figure_eight` only where the region spans the slide's width) |
 | `framework` (`swot`, `porters_five_forces`) | *native diagram, no pattern* | `sections: {strengths…threats}` / `{rivalry…buyers}` | all 4 / all 5 parts present |
 | `image_case` | `image-text-split` | `body` or `bullets` (+ `image?` (`fit: contain` keeps a whole screenshot), `callouts?: [{label, x, y, units?}]`, `eyebrow?`, `heading?`, `metrics?`, `caption?`, `image_side?`, `image_width_pct?`) | body ≤300 chars, eyebrow ≤30, heading ≤80, ≤5 bullets ≤140 each, ≤3 metrics, ≤6 callouts with a label ≤40; `image_width_pct` 30–60 (default 45) reaches the pattern's `overrides.image_width_pct` — a wide `contain` screenshot wants 55–60 — and a value outside the range is `SEMANTIC_FIELD_TYPE` |
 | `decision` | `numbered-step-strip` / `card-grid` | `options: [{label, detail?, recommended?}]`, `recommendation`, `recommended?` | 3–6 options (label ≤60 chars, detail ≤180), exactly 2 each with a detail, or 7–12 each with a detail (label ≤80, detail ≤160) |

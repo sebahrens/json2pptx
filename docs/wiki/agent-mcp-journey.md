@@ -56,7 +56,8 @@ body ([storyline-and-structure.md](storyline-and-structure.md)).
 slides a brief names on the kind vocabulary (bridge / walk → `bridge`, photo /
 screenshot / comparable → `image_case`, schedule / register → `table`, options
 with a recommendation → `decision` or `option_matrix`, phases → `roadmap`,
-likelihood × impact → `risk_heatmap`, "chart on the left, number on the right"
+likelihood × impact → `risk_heatmap`, a loop / lifecycle / flywheel / hub and
+spoke → `cycle` with its `style`, "chart on the left, number on the right"
 → `regions`, one closer), fills the kinds' structured fields from the brief's
 sentences, and never ellipsises a title — the four journey briefs went from
 13–28 unplaced facts to 0–4 (`go-slide-creator-xbwlt`). Still read

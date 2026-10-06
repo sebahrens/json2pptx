@@ -159,7 +159,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindCycle: {
 		Kind:            KindCycle,
-		Summary:         "A loop, a hub or nested rings: the phases in order and a style. One ordered loop is ring (default; 4–8 segments) or nodes (3–8 circles joined by arrows); 1–3 one-off intake steps feeding a loop of 3–8 are intake; two coupled loops on a full-width slide are figure_eight (4–8); 4–8 peers around a center are radial; 3–5 things that contain one another are concentric (innermost first). highlight marks the one accent phase. Outside the style's count or text budgets it degrades to a numbered list. A sequence that does not loop back is process.",
+		Summary:         "A loop, flywheel or lifecycle, a hub with spokes, or nested rings: the phases in order and a style. One ordered loop is ring (default; 4–8 segments) or nodes (3–8 circles joined by arrows); 1–3 one-off intake steps feeding a loop of 3–8 are intake; two coupled loops on a full-width slide are figure_eight (4–8); 4–8 peers around a center are radial; 3–5 things that contain one another are concentric (innermost first). highlight marks the one accent phase. Outside the style's count or text budgets it degrades to a numbered list. A sequence that does not loop back is process.",
 		RequiredFields:  []string{"phases"},
 		RequiredAliases: map[string][]string{"phases": {"steps", "items"}},
 		TypicalFields:   []string{"title", "style", "intake", "center", "highlight", "left_label", "right_label", "takeaway"},
