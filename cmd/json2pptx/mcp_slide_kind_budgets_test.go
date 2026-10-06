@@ -229,9 +229,18 @@ func wordsWithin(n int) string {
 // tighter of the template's two content layouts, so the tightest quote equals
 // it and none is below it); the stat's combined stack finding quotes the
 // reported combined budget.
+//
+// Each template is two renders and a catalogue measured on it. The short race
+// run takes the two templates at the ends of the range the budgets cover —
+// modern, the shortest content area, and business-template, the largest slide
+// — and the integration corpus job every template (go-slide-creator-efhg2).
 func TestSlideKindBudgetsAgreeWithRenderFindings(t *testing.T) {
 	titleCodes := map[string]bool{"title_wraps": true, "TITLE_OVERFLOW": true, "TITLE_TRUNCATED": true, "TITLE_WRAPS_DENSE": true}
-	for _, name := range budgetTemplates(t) {
+	templates := budgetTemplates(t)
+	if testing.Short() {
+		templates = []string{"modern", "business-template"}
+	}
+	for _, name := range templates {
 		t.Run(name, func(t *testing.T) {
 			budgets := listSlideKindBudgets(t, map[string]any{"template": name})
 			takeaway := budgets.budget(t, "kpi_snapshot", "takeaway")

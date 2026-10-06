@@ -81,12 +81,17 @@ func patchHarnessCorpus(t *testing.T) map[string]map[string]any {
 }
 
 // shortHarnessDeck reports whether a corpus deck is part of the short run:
-// the cases of the review, and one kind past and at its documented count.
+// the cases of the review, and one kind past and at its documented count. That
+// kind is executive_summary: past its count it is offered three patches, one
+// of them verified, for a fifth of what decision costs. A decision at its
+// count is the same search for the cut that clears a table as "option matrix
+// with a detail line" above, a minute under -race each
+// (go-slide-creator-efhg2); the long run applies every kind's.
 func shortHarnessDeck(name string) bool {
 	switch name {
 	case "unknown key on a list entry", "over-full summary", "option matrix with a detail line",
 		"unknown key and an undrawn body", "architecture tier", "twelve flaws (nothing is stored)",
-		"over decision", "full decision":
+		"over executive_summary", "full executive_summary":
 		return true
 	}
 	return false

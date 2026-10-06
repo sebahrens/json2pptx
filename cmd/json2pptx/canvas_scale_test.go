@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -45,15 +46,31 @@ func TestExemplarDeckUsesTheContentArea(t *testing.T) {
 		patterns.ErrCodeVerticalImbalance:   true,
 	}
 	for _, tpl := range []string{"business-template", "midnight-blue"} {
-		a := loadTemplateAnalysis(t, tpl)
-		deck := exemplarDeck(t)
-		for _, f := range collectFitFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
+		for _, f := range exemplarDeckFitFindings(t, tpl) {
 			if balance[f.Code] && supportingBandPatterns[f.Pattern] == "" {
 				t.Errorf("%s: %s exemplar: %s: %s", tpl, f.Pattern, f.Code, f.Message)
 			}
 		}
 	}
 }
+
+// exemplarDeckFitFindings is the fit report of the exemplar deck on a
+// template, collected once per test binary: the two tests below both read
+// business-template's, and one collection is every exemplar expanded and
+// measured (go-slide-creator-efhg2). The findings are shared; read them only.
+func exemplarDeckFitFindings(t *testing.T, tpl string) []patterns.FitFinding {
+	t.Helper()
+	if cached, ok := exemplarFitFindings.Load(tpl); ok {
+		return cached.([]patterns.FitFinding)
+	}
+	a := loadTemplateAnalysis(t, tpl)
+	deck := exemplarDeck(t)
+	findings := collectFitFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme)
+	exemplarFitFindings.Store(tpl, findings)
+	return findings
+}
+
+var exemplarFitFindings sync.Map
 
 // underusedSweepTemplates are the templates the exemplar sweep measures:
 // -short takes the two whose exemplars sat nearest their thresholds
@@ -93,6 +110,9 @@ func TestExemplarsClearTheUnderusedThreshold(t *testing.T) {
 		deck := exemplarDeck(t)
 		measured := 0
 		thinnest := slideUsage{frac: 1}
+		held, widest := 0, slideUsage{}
+		// One measurement of the deck serves both rules: each reads the same
+		// usage of a slide.
 		collectGeometry(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme, func(u slideUsage) {
 			if supportingBandPatterns[u.pattern] != "" {
 				return
@@ -105,32 +125,13 @@ func TestExemplarsClearTheUnderusedThreshold(t *testing.T) {
 				t.Errorf("%s: %s exemplar covers %.1f%% of the content area against a %.0f%% threshold: under the %.1f-point margin",
 					tpl, u.pattern, 100*u.frac, 100*u.threshold, 100*exemplarUnderusedMargin)
 			}
-		})
-		if measured < 40 {
-			t.Errorf("%s: only %d exemplars were measured", tpl, measured)
-		}
-		// Coverage is not the whole rule: a block that clears its threshold
-		// may still be a strip over an empty lower third
-		// (slideLowerBandMaxFrac). Every full-slide exemplar clears that too,
-		// by exemplarLowerBandMargin — the kpi-Nup rows, a value-chain and a
-		// process-flow are grown into the free height
-		// (go-slide-creator-i7yju, -kgfs1) — and none reports its own
-		// pattern as sparse.
-		sparse := map[string]bool{
-			patterns.ErrCodeSlideUnderused:       true,
-			patterns.ErrCodeVerticalImbalance:    true,
-			patterns.ErrCodeSparseSingleRowFlow:  true,
-			patterns.ErrCodeFlowDiamondNoContent: true,
-		}
-		for _, f := range collectFitFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
-			if sparse[f.Code] && supportingBandPatterns[f.Pattern] == "" {
-				t.Errorf("%s: %s exemplar: %s: %s", tpl, f.Pattern, f.Code, f.Message)
-			}
-		}
-		deck = exemplarDeck(t)
-		held, widest := 0, slideUsage{}
-		collectGeometry(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme, func(u slideUsage) {
-			if supportingBandPatterns[u.pattern] != "" || heroStatementPatterns[u.pattern] {
+			// Coverage is not the whole rule: a block that clears its threshold
+			// may still be a strip over an empty lower third
+			// (slideLowerBandMaxFrac). Every full-slide exemplar clears that
+			// too, by exemplarLowerBandMargin — the kpi-Nup rows, a value-chain
+			// and a process-flow are grown into the free height
+			// (go-slide-creator-i7yju, -kgfs1).
+			if heroStatementPatterns[u.pattern] {
 				return
 			}
 			held++
@@ -142,8 +143,23 @@ func TestExemplarsClearTheUnderusedThreshold(t *testing.T) {
 					tpl, u.pattern, 100*u.lowerBand, 100*exemplarLowerBandMargin)
 			}
 		})
+		if measured < 40 {
+			t.Errorf("%s: only %d exemplars were measured", tpl, measured)
+		}
 		if held < 40 {
 			t.Errorf("%s: only %d exemplars were held to the lower-third rule", tpl, held)
+		}
+		// And none reports its own pattern as sparse.
+		sparse := map[string]bool{
+			patterns.ErrCodeSlideUnderused:       true,
+			patterns.ErrCodeVerticalImbalance:    true,
+			patterns.ErrCodeSparseSingleRowFlow:  true,
+			patterns.ErrCodeFlowDiamondNoContent: true,
+		}
+		for _, f := range exemplarDeckFitFindings(t, tpl) {
+			if sparse[f.Code] && supportingBandPatterns[f.Pattern] == "" {
+				t.Errorf("%s: %s exemplar: %s: %s", tpl, f.Pattern, f.Code, f.Message)
+			}
 		}
 		t.Logf("%s: widest lower band %s at %.1f%%", tpl, widest.pattern, 100*widest.lowerBand)
 		t.Logf("%s: thinnest exemplar %s at %.1f%% against %.0f%%", tpl, thinnest.pattern, 100*thinnest.frac, 100*thinnest.threshold)

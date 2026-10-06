@@ -355,9 +355,10 @@ func delightGoodDefaults(t *testing.T) {
 // An over-full slide is refused with the field to cut, not shrunk until it
 // fits.
 func delightRefusesUnreadable(t *testing.T) {
-	mc := refusalTestConfig(t)
-	res := mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": decodeSpecObject(t, overfullExecSummarySpec), "template": "modern"})
-	env := deckSpecEnvelope(t, res)
+	// The validate of the over-full summary on modern that the test binary
+	// asks once.
+	answer := overfullOnModernVerdicts(t)
+	env := answer.Validate
 	if env.OK {
 		t.Fatal("the over-full executive summary validates on modern")
 	}
@@ -365,7 +366,11 @@ func delightRefusesUnreadable(t *testing.T) {
 		t.Errorf("no blocking finding on the over-full slide: %+v", env.Findings)
 	}
 	// The readable minimum, and a field of the slide to cut.
-	wantAll(t, "the response", structuredText(t, res), `"min_font_pt":12`, "/slides/1/points/")
+	raw, err := json.Marshal(answer.ValidateStructured)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantAll(t, "the response", string(raw), `"min_font_pt":12`, "/slides/1/points/")
 }
 
 // The template listing an agent picks a name from is one small row each.

@@ -7,5 +7,15 @@
 # The agent-journey fixtures: the short parity corpus (shortParityRun), the
 # short patch harness (shortPatchHarnessRun) and the twelve-flaw journey
 # (twelveFlawRoundTrips). TestAgentJourneyMetrics reads all three; the others
-# each make or read one of them.
-TestAgentJourneyMetrics TestDeckSpecFindingParityCorpus TestEveryDeckSpecFindingPathResolves TestEveryEmittedPatchClearsItsFinding TestDeckSpecAdviceNamesOnlyFieldsOfTheKind TestTwelveFlawDraftCleanInThreeRoundTrips
+# each make or read one of them. The short parity corpus reads the over-full
+# summary's answer on modern (overfullOnModernVerdicts), and so do the last
+# three tests of the group.
+TestAgentJourneyMetrics TestDeckSpecFindingParityCorpus TestEveryDeckSpecFindingPathResolves TestEveryEmittedPatchClearsItsFinding TestDeckSpecAdviceNamesOnlyFieldsOfTheKind TestTwelveFlawDraftCleanInThreeRoundTrips TestAgentJourneyDelights TestDeckSpecRootCauseCarriesSymptoms TestValidateDeckSpecEchoesAndWarnsAboutTemplate
+#
+# What `json2pptx semantic kinds <kind>` prints, one run of the built binary
+# per kind (semanticKindDetailText): the first test asks, the second reads.
+TestSemanticKindsMatchesListSlideKinds TestSemanticKindExamplesValidate
+#
+# The fit report of the exemplar deck on business-template
+# (exemplarDeckFitFindings): both tests read it.
+TestExemplarDeckUsesTheContentArea TestExemplarsClearTheUnderusedThreshold
