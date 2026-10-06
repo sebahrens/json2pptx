@@ -121,6 +121,24 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 	if err != nil {
 		return nil, nil, err
 	}
+	// A pattern may choose another lattice in its own rectangle than in the
+	// probe's full area: a ring's labels move from a column either side into
+	// one legend, an onion drops the pad columns that centred it. A horizontal
+	// segment's width includes one gap per column it spans, so the rectangle
+	// the probe's columns gave is then off by a gap per column of difference
+	// and the pattern sizes its text for a width it does not get
+	// (go-slide-creator-uhe09). Restate the rectangles from the columns the
+	// segments really have and expand in those; two passes settle every
+	// pattern whose lattice depends on its width.
+	sizedFrom := probeGrids
+	for pass := 0; pass < 2 && c.Direction == "horizontal" && !sameColumnCounts(sizedFrom, expandedGrids); pass++ {
+		sizedFrom = expandedGrids
+		segmentBounds = composeSegmentBounds(c, ctx, sizedFrom, sizes)
+		expandedGrids, warnings, err = expandComposeSegments(c, ctx, segmentBounds, reg)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 
 	// Merge based on direction
 	var merged *jsonschema.ShapeGridInput
@@ -156,6 +174,20 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 	}
 
 	return merged, warnings, nil
+}
+
+// sameColumnCounts reports whether two expansions of the same segments have
+// the same column count segment by segment.
+func sameColumnCounts(a, b []*jsonschema.ShapeGridInput) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if inferColumnCount(a[i]) != inferColumnCount(b[i]) {
+			return false
+		}
+	}
+	return true
 }
 
 // expandComposeSegments runs the leaf expansion with optional per-segment
