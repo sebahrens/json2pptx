@@ -578,13 +578,14 @@ Every circular pattern draws alone on a slide and beside a second zone: a
 horizontal compose segment (50%, 60%, on either side), a vertical segment
 above a strip, and a `pattern` nested in a shape-grid cell. Each pattern
 chooses its own narrow layout from the rectangle it is given — there is no
-family-wide switch and no finding for it — and the ring cell is `fit:
-"contain"`, so the circle stays a circle whatever the cell's shape.
+family-wide switch and no finding for it — and the ring is fitted to a square
+in every one of them (a fit-`contain` cell, or the `fit-height` spine of the
+outside-label layouts), so the circle stays a circle whatever the cell's shape.
 
 | Pattern | In a narrow area | Smallest area |
 |---------|------------------|---------------|
 | `cycle-ring` | Under about 450pt wide (a 50% segment, a nested cell) the labels leave their two outside columns for one numbered legend right of a smaller ring (`labels: "legend"` by itself); descriptions are left off with `BODY_TOO_LONG` when the list cannot hold them. A 60% segment on a 13.33in template keeps the outside columns | 330 × 180pt verified at 8 phases |
-| `cycle-nodes` | When two outside label columns would be under 120pt each (a 50% segment) the labels become one numbered legend right of the ring; a 60% segment keeps the outside columns | 330 × 180pt verified at 8 steps |
+| `cycle-nodes` | When two outside label columns would be under 120pt each (a 50% segment) the labels become one numbered legend right of the ring; so does a 60% segment on a 13.33in template, while a full-width vertical segment keeps the labels beside their nodes | 330 × 180pt verified at 8 steps |
 | `cycle-intake` | When lane, ring and a 96pt list do not fit side by side (most 50% and 60% segments, a nested cell) the layout stacks: the lane across the top, a down arrow into 12 o'clock, the list left of the ring; intake descriptions are left off with `BODY_TOO_LONG`. A full-width vertical segment keeps the side-by-side layout, and eight phases in one shorter than about 200pt report `BODY_TOO_LONG` for the list rows | 330 × 200pt verified at 3 + 8 |
 | `cycle-figure-eight` | Refuses: an area under 580pt wide or 140pt tall is a `fit_overflow` validation error at the pattern's `values` whose fix is `swap_pattern` → `cycle-ring`, the same finding from validate and generate. That is every 50% and 60% horizontal segment and every half-width cell on the shipped templates. A full-width vertical segment is fine | 580 × 140pt |
 | `radial-hub` | Without room for two 110pt label columns, or when the hub of the ring that fits could not hold its label, the labels become a keyed legend (A, B, C … in the satellites, the list on the right). Wider templates keep the outside columns in a 50% segment | 330 × 180pt verified at 8 spokes |
@@ -598,8 +599,10 @@ without descriptions are the copy a ring holds beside a second zone.
 The gate is `TestCircularSplitMatrixAcrossTemplates`
 (`cmd/json2pptx/circular_split_matrix_test.go`): each pattern × six placements
 × every template × its smallest and largest count, asserting from the resolved
-grid that every round layer is a square, that no text cell overlaps a round
-layer or another text cell, that nothing is written under 12pt, and that
+grid that every round layer's fitted bounds are a square, that no text cell
+reaches into a round layer's circle or overlaps another text cell (a label
+that follows the curve may stand inside the ring's bounding square, so the
+circle is what is tested), that nothing is written under 12pt, and that
 validate and generate return the same verdict. A new circular pattern joins
 `circularFamily` there (`TestCircularSplitMatrixCoversTheFamily` fails until
 it does); the shared helpers are in `circular_helpers_test.go`.

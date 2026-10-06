@@ -335,8 +335,11 @@ func assertCircularCell(t *testing.T, mc *mcpConfig, tpl *circularTemplate, deck
 	// (c) Text cells clear the circle and each other.
 	for i, a := range d.texts {
 		for _, c := range d.round {
-			if over := circularOverlapPt(a.bounds, c.Bounds); over > 1 {
-				t.Errorf("text %q (%s) overlaps the %s layer %q (%s) by %.1fpt", a.text, circularRectPt(a.bounds), c.ShapeSpec.Geometry, c.LayerName, circularRectPt(c.Bounds), over)
+			// The circle inscribed in the layer's square, not the square: a
+			// label that follows the curve stands inside the ring's bounding
+			// box, a constant gap from the circle itself.
+			if over := circularDiscOverlapPt(a.bounds, c.Bounds); over > 1 {
+				t.Errorf("text %q (%s) reaches %.1fpt into the circle of the %s layer %q (%s)", a.text, circularRectPt(a.bounds), over, c.ShapeSpec.Geometry, c.LayerName, circularRectPt(c.Bounds))
 				break
 			}
 		}

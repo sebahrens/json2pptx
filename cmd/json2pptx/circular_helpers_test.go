@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -214,6 +215,19 @@ func circularOverlapPt(a, b pptx.RectEmu) float64 {
 		return 0
 	}
 	return float64(minI64(w, h)) / 12700
+}
+
+// circularDiscOverlapPt is how far rect reaches into the circle inscribed in
+// frame (a round layer's square), in points; 0 or less when it stays outside.
+// A ring's labels follow its curve at a constant gap, so they stand inside
+// the ring's bounding square and only the circle itself says whether they
+// touch it.
+func circularDiscOverlapPt(rect, frame pptx.RectEmu) float64 {
+	cx, cy := float64(frame.X)+float64(frame.CX)/2, float64(frame.Y)+float64(frame.CY)/2
+	radius := float64(minI64(frame.CX, frame.CY)) / 2
+	nx := math.Max(float64(rect.X), math.Min(cx, float64(rect.X+rect.CX)))
+	ny := math.Max(float64(rect.Y), math.Min(cy, float64(rect.Y+rect.CY)))
+	return (radius - math.Hypot(nx-cx, ny-cy)) / 12700
 }
 
 func circularRectPt(r pptx.RectEmu) string {

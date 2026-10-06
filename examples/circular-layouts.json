@@ -160,8 +160,8 @@
         "name": "cycle-intake",
         "values": {
           "intake": [
-            {"label": "Qualify", "description": "Fit scored before the first call"},
-            {"label": "Onboard", "description": "Live inside 30 days"}
+            {"label": "Qualify", "description": "Scored for fit"},
+            {"label": "Onboard", "description": "Live in 30 days"}
           ],
           "center": {"label": "Each year"},
           "loop": [
