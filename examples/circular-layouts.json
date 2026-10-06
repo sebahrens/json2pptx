@@ -1,0 +1,399 @@
+{
+  "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
+  "output_filename": "circular-layouts.pptx",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Operating Model Review: Loops, Hubs and Layers"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "The circular layout family, alone and in split layouts"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Four loops run the business; each has one step that sets its pace"}
+      ],
+      "pattern": {
+        "name": "exec-summary",
+        "values": {
+          "points": [
+            {"lead": "Planning stalls at funding.", "support": "Releasing money takes three weeks of a two-month cycle."},
+            {"lead": "Plants learn in six-week loops.", "support": "Those that close each loop recover twice the capacity."},
+            {"lead": "Renewal is won by month nine.", "support": "The account loop decides it long before the contract date."},
+            {"lead": "One customer record replaces six.", "support": "Connecting risk first removes most duplicates."}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "The planning cycle turns six times a year and stalls at the funding decision"}
+      ],
+      "pattern": {
+        "name": "cycle-ring",
+        "values": {
+          "center": {"label": "Two-month cycle"},
+          "phases": [
+            {"label": "Forecast", "description": "Rolling 18-month demand view"},
+            {"label": "Review results", "description": "Variance against the last plan"},
+            {"label": "Decide", "description": "Trade-offs settled in one meeting"},
+            {"label": "Commit funding", "description": "Release takes three weeks today", "highlight": true},
+            {"label": "Execute", "description": "Teams work to a frozen scope"},
+            {"label": "Track benefits", "description": "Owners report against the case"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Three changes take the funding decision from three weeks to five days"}
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "segments": [
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "cycle-ring",
+              "values": {
+                "phases": [
+                  {"label": "Forecast"},
+                  {"label": "Review results"},
+                  {"label": "Decide"},
+                  {"label": "Commit funding", "highlight": true},
+                  {"label": "Execute"},
+                  {"label": "Track benefits"}
+                ]
+              }
+            }
+          },
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "labeled-rows",
+              "values": {
+                "rows": [
+                  {"label": "WHO", "body": "One funding owner per portfolio, not a committee"},
+                  {"label": "WHAT", "body": "Pre-agreed envelopes released at the decision meeting"},
+                  {"label": "HOW", "body": "Exceptions only above 2M go to the board"}
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Each plant closes one loss per loop before it opens the next"}
+      ],
+      "pattern": {
+        "name": "cycle-nodes",
+        "values": {
+          "highlight": 3,
+          "steps": [
+            {"label": "Pick one loss", "description": "Largest gap on the loss tree"},
+            {"label": "Trial the fix", "description": "One line, two shifts, one owner"},
+            {"label": "Measure the gap", "description": "Same metric before and after"},
+            {"label": "Set the standard", "description": "Update the work instruction"},
+            {"label": "Share it", "description": "Brief the sister plants in a week"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "source": "Plant performance system, 12 plants, last 12 months",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Plants that close the loop every six weeks recover twice the capacity"}
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "segments": [
+          {
+            "size_pct": 60,
+            "pattern": {
+              "name": "cycle-nodes",
+              "values": {
+                "highlight": 3,
+                "steps": [
+                  {"label": "Pick one loss"},
+                  {"label": "Trial the fix"},
+                  {"label": "Measure the gap"},
+                  {"label": "Set the standard"},
+                  {"label": "Share it"}
+                ]
+              }
+            }
+          },
+          {
+            "size_pct": 40,
+            "pattern": {
+              "name": "stat-hero",
+              "values": {
+                "value": "2.1x",
+                "label": "Capacity recovered",
+                "context": "Six-week loops against quarterly reviews"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Two onboarding steps feed an account loop that renews itself"}
+      ],
+      "pattern": {
+        "name": "cycle-intake",
+        "values": {
+          "intake": [
+            {"label": "Qualify", "description": "Fit scored before the first call"},
+            {"label": "Onboard", "description": "Live inside 30 days"}
+          ],
+          "center": {"label": "Each year"},
+          "loop": [
+            {"label": "Activate", "description": "First value in week two"},
+            {"label": "Engage", "description": "Quarterly business review"},
+            {"label": "Renew", "description": "Decision 90 days ahead", "highlight": true},
+            {"label": "Expand", "description": "Second product in year two"},
+            {"label": "Refer", "description": "One in five brings a peer"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Renewal is decided long before the contract date"}
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "segments": [
+          {
+            "size_pct": 40,
+            "pattern": {
+              "name": "labeled-rows",
+              "values": {
+                "rows": [
+                  {"label": "WHY", "body": "Renewals carry seven tenths of revenue"},
+                  {"label": "WHEN", "body": "The account is won or lost by month nine"},
+                  {"label": "WHO", "body": "One account lead owns the whole loop"}
+                ]
+              }
+            }
+          },
+          {
+            "size_pct": 60,
+            "pattern": {
+              "name": "cycle-intake",
+              "values": {
+                "intake": [
+                  {"label": "Qualify"},
+                  {"label": "Onboard"}
+                ],
+                "loop": [
+                  {"label": "Activate"},
+                  {"label": "Engage"},
+                  {"label": "Renew", "highlight": true},
+                  {"label": "Expand"},
+                  {"label": "Refer"}
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Release is where the build loop hands over to the run loop"}
+      ],
+      "pattern": {
+        "name": "cycle-figure-eight",
+        "values": {
+          "left_label": "Build",
+          "right_label": "Run",
+          "phases": [
+            {"label": "Plan", "description": "Scope set from live usage data"},
+            {"label": "Code", "description": "Small changes, reviewed daily"},
+            {"label": "Test", "description": "Automated on every commit"},
+            {"label": "Release", "description": "Weekly, behind feature flags", "highlight": true},
+            {"label": "Operate", "description": "One team carries the pager"},
+            {"label": "Monitor", "description": "Incidents feed the next plan"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "source": "Engineering metrics, trailing two quarters",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Weekly releases cut the time from idea to learning to eleven days"}
+      ],
+      "compose": {
+        "direction": "vertical",
+        "segments": [
+          {
+            "size_pct": 70,
+            "pattern": {
+              "name": "cycle-figure-eight",
+              "values": {
+                "left_label": "Build",
+                "right_label": "Run",
+                "phases": [
+                  {"label": "Plan"},
+                  {"label": "Code"},
+                  {"label": "Test"},
+                  {"label": "Release", "highlight": true},
+                  {"label": "Operate"},
+                  {"label": "Monitor"}
+                ]
+              }
+            }
+          },
+          {
+            "size_pct": 30,
+            "pattern": {
+              "name": "kpi-inline",
+              "values": [
+                {"big": "11d", "small": "Idea to learning"},
+                {"big": "52", "small": "Releases a year"},
+                {"big": "1 in 4", "small": "Changes rolled back"}
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Six functions work from one customer record instead of six copies"}
+      ],
+      "pattern": {
+        "name": "radial-hub",
+        "values": {
+          "center": {"label": "Customer record", "sublabel": "One governed source"},
+          "spokes": [
+            {"label": "Marketing", "description": "Segments built on live consent"},
+            {"label": "Sales", "description": "Pipeline tied to real accounts"},
+            {"label": "Service", "description": "Full history at first contact"},
+            {"label": "Finance", "description": "Billing matches the contract"},
+            {"label": "Risk", "description": "Exposure seen across products"},
+            {"label": "Product", "description": "Usage linked to the buyer"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "source": "Data office baseline, six functions",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Connecting risk first removes most of the duplicate records"}
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "segments": [
+          {
+            "size_pct": 60,
+            "pattern": {
+              "name": "radial-hub",
+              "values": {
+                "center": {"label": "Customer record"},
+                "highlight": 5,
+                "spokes": [
+                  {"label": "Marketing"},
+                  {"label": "Sales"},
+                  {"label": "Service"},
+                  {"label": "Finance"},
+                  {"label": "Risk"},
+                  {"label": "Product"}
+                ]
+              }
+            }
+          },
+          {
+            "size_pct": 40,
+            "pattern": {
+              "name": "stat-hero",
+              "values": {
+                "value": "41%",
+                "label": "Of duplicate records sit in risk",
+                "context": "Six copies of the customer today"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Growth starts from the core and moves outward one ring at a time"}
+      ],
+      "pattern": {
+        "name": "concentric-rings",
+        "values": {
+          "layers": [
+            {"label": "Core business", "description": "Retail banking, where we hold the right to win"},
+            {"label": "Adjacent markets", "description": "Wealth and SME lending, built on the core"},
+            {"label": "Partner ecosystem", "description": "Fintech and insurer alliances that extend reach"},
+            {"label": "New ventures", "description": "Options funded from the venture budget only"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Each ring is funded only when the one inside it pays back"}
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "segments": [
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "concentric-rings",
+              "values": {
+                "layers": [
+                  {"label": "Core business"},
+                  {"label": "Adjacent markets"},
+                  {"label": "Partner ecosystem"},
+                  {"label": "New ventures"}
+                ]
+              }
+            }
+          },
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "labeled-rows",
+              "values": {
+                "rows": [
+                  {"label": "NOW", "body": "Defend the core: two thirds of this year's investment"},
+                  {"label": "NEXT", "body": "Enter adjacent markets once the core returns its cost of capital"},
+                  {"label": "THEN", "body": "Open the ecosystem with partners who bring their own customers"}
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

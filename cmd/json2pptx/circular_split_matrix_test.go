@@ -101,7 +101,7 @@ type circularPlacement struct {
 
 const (
 	circularBullets  = `{"name":"labeled-rows","values":{"rows":[{"label":"WHY","body":"Each cycle starts from last quarter's results"},{"label":"WHO","body":"One owner per phase, named in the charter"},{"label":"HOW","body":"The loop closes before the board meets"}]}}`
-	circularTakeaway = `{"name":"stat-hero","values":{"value":"14 of 16","label":"Actions closed on time","context":"Two slipped by a week"}}`
+	circularTakeaway = `{"name":"stat-hero","values":{"value":"88%","label":"Actions closed on time","context":"14 of 16; two slipped by a week"}}`
 	circularKPIRow   = `{"name":"kpi-inline","values":["71% | Revenue retained","112% | Net retention","1 in 5 | Refer a peer"]}`
 )
 
@@ -282,6 +282,17 @@ func assertCircularCell(t *testing.T, mc *mcpConfig, tpl *circularTemplate, deck
 	for _, f := range collectFitFindings(input, tpl.layouts, tpl.width, tpl.height, &tpl.theme) {
 		if matrixBlockingFitFinding(f) {
 			t.Errorf("refuse-class finding %s at %s: %s", f.Code, f.Path, f.Message)
+			continue
+		}
+		// Nor a text-fit advisory, for the circle or its neighbour: the copy
+		// is short and the placement must hold it. The one documented limit
+		// is cycle-intake's eight list rows in the upper 70% of a short
+		// content area, which the pattern reports instead of shrinking.
+		if f.Code == patterns.ErrCodeBodyTooLong || f.Code == "TEXT_EXCEEDS_SHAPE" {
+			if m.pattern == "cycle-intake" && n == m.max && p.name == "v70-kpi-row" && strings.Contains(f.Message, "cycle-intake loop[") && strings.Contains(f.Message, "list row") {
+				continue
+			}
+			t.Errorf("text-fit finding %s (%s) at %s: %s", f.Code, f.Action, f.Path, f.Message)
 		}
 	}
 

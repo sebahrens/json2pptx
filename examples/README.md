@@ -20,6 +20,7 @@ These pattern-rich decks are the best entry points for AI agents building new de
 | File | Description | Template |
 |------|-------------|----------|
 | `patterns-smoke.json` | Pattern library smoke test: one slide per pattern across a broad slice of the registry (KPI, canvas, matrix, timeline, card-grid, roadmap, heatmap, directory, bios, and more) | midnight-blue |
+| `circular-layouts.json` | The circular family, each pattern once alone and once in a split: `cycle-ring` (and its legend in a 50% segment beside `labeled-rows`), `cycle-nodes` (60% beside a `stat-hero`), `cycle-intake` (stacked, on the right of a 40/60 split), `cycle-figure-eight` (full width above a `kpi-inline` row — it refuses narrower areas), `radial-hub` (60% beside a `stat-hero`) and `concentric-rings` (50% beside `labeled-rows`) | midnight-blue |
 | `cycle-figure-eight.json` | Figure-eight loop: a four-phase plan ↔ deliver loop, a six-phase build ↔ run loop with one highlighted phase, an eight-phase demand ↔ supply loop, and a five-phase loop (`left_count` 2, `thin`) in a vertical compose segment above a KPI strip | midnight-blue |
 | `cycle-ring.json` | Cycle ring: a four-phase PDCA loop with a centre label, an eight-phase customer lifecycle with one highlighted phase, a six-phase flywheel in the `arrows` style, and a 50% compose segment (legend layout) beside a metric list | midnight-blue |
 | `<pattern-name>.json` | Many patterns also have a dedicated deck named after the pattern (e.g. `driver-tree.json`, `waterfall-bridge.json`, `team-bios.json`, `radial-hub.json`) | varies |
