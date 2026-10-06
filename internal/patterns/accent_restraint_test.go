@@ -239,10 +239,11 @@ func TestKPIInline_TintedStyle(t *testing.T) {
 func TestPhaseRoadmap_DatesAlignWithDescriptions(t *testing.T) {
 	v := validPhaseRoadmapValues()
 	grid := expandFor(t, "phase-roadmap", restraintCtx(), v, nil)
-	dates, descs := grid.Rows[2], grid.Rows[3]
-	for i := range dates.Cells {
-		if !strings.Contains(string(dates.Cells[i].Shape.Text), `"align":"l"`) || !strings.Contains(string(descs.Cells[i].Shape.Text), `"align":"l"`) {
-			t.Errorf("column %d: date %s / description %s, want both left-aligned", i, dates.Cells[i].Shape.Text, descs.Cells[i].Shape.Text)
+	// The date range and the description are the paragraphs of one panel
+	// (go-slide-creator-dlfm6).
+	for i, c := range grid.Rows[len(grid.Rows)-1].Cells {
+		if text := string(c.Shape.Text); strings.Count(text, `"align":"l"`) < 3 || strings.Contains(text, `"align":"ctr"`) {
+			t.Errorf("column %d: panel %s, want the date and the description left-aligned", i, text)
 		}
 	}
 }

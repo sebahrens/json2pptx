@@ -195,25 +195,56 @@ func TestPhaseRoadmap_Expand_DefaultLayout(t *testing.T) {
 	if grid == nil {
 		t.Fatal("expected non-nil grid")
 	}
-	// Without milestones: phase row + timeline + date row + description row = 4 rows.
-	if got := len(grid.Rows); got != 4 {
-		t.Fatalf("expected 4 rows without milestones, got %d", got)
+	// Without milestones: the phase band over the row of panels.
+	if got := len(grid.Rows); got != 2 {
+		t.Fatalf("expected 2 rows without milestones, got %d", got)
 	}
-	if got := len(grid.Rows[0].Cells); got != 4 {
-		t.Errorf("expected 4 phase cells, got %d", got)
+	band, panels := grid.Rows[0], grid.Rows[1]
+	if got := len(band.Cells); got != 4 {
+		t.Fatalf("expected 4 phase cells, got %d", got)
 	}
-	// Timeline row spans all phases via a single colspan cell.
-	if len(grid.Rows[1].Cells) != 1 {
-		t.Errorf("expected 1 timeline cell (spanning all columns), got %d", len(grid.Rows[1].Cells))
+	// One continuous band: a pentagon, then chevrons that reach left over the
+	// gap so each notch takes the point before it; no outline, no connector.
+	for i, c := range band.Cells {
+		want := "chevron"
+		if i == 0 {
+			want = "homePlate"
+		}
+		if c.Shape.Geometry != want || string(c.Shape.Line) != `"none"` || (i > 0) != (c.BleedLeft > 0) {
+			t.Errorf("phase %d = %s line %s bleed %.0f, want an interlocking %s", i, c.Shape.Geometry, c.Shape.Line, c.BleedLeft, want)
+		}
 	}
-	if grid.Rows[1].Cells[0].ColSpan != 4 {
-		t.Errorf("expected timeline ColSpan = 4, got %d", grid.Rows[1].Cells[0].ColSpan)
+	if band.Connector != nil {
+		t.Error("the band must not draw connectors between its phases")
 	}
-	if got := len(grid.Rows[2].Cells); got != 4 {
-		t.Errorf("expected 4 date cells, got %d", got)
+	if got := len(panels.Cells); got != 4 {
+		t.Fatalf("expected 4 panels, got %d", got)
 	}
-	if got := len(grid.Rows[3].Cells); got != 4 {
-		t.Errorf("expected 4 description cells, got %d", got)
+	// Each panel is one shape in the lightest neutral surface holding the
+	// date range (bold) over the description; panels share one height.
+	for i, c := range panels.Cells {
+		if c.Shape.Geometry != "rect" || string(c.Shape.Fill) != string(neutralFillJSON(NeutralTint4)) {
+			t.Errorf("panel %d = %s fill %s, want a rect in the lightest neutral", i, c.Shape.Geometry, c.Shape.Fill)
+		}
+		var text struct {
+			Paragraphs []struct {
+				Content string  `json:"content"`
+				Bold    bool    `json:"bold"`
+				Size    float64 `json:"size"`
+			} `json:"paragraphs"`
+		}
+		if err := json.Unmarshal(c.Shape.Text, &text); err != nil || len(text.Paragraphs) != 2 {
+			t.Fatalf("panel %d text = %s (%v), want date + description", i, c.Shape.Text, err)
+		}
+		if d := text.Paragraphs[0]; !d.Bold || d.Size < scaleSubheadPt {
+			t.Errorf("panel %d date range = %+v, want bold at the subhead size", i, d)
+		}
+		if d := text.Paragraphs[1]; d.Bold || d.Size <= 0 {
+			t.Errorf("panel %d description = %+v, want regular text", i, d)
+		}
+	}
+	if panels.MinHeight <= 0 || panels.MinHeight != panels.MaxHeight {
+		t.Errorf("panel row must be pinned to one height, got min=%v max=%v", panels.MinHeight, panels.MaxHeight)
 	}
 
 	// Columns header set from phase count.
@@ -234,9 +265,8 @@ func TestPhaseRoadmap_Expand_ActivePhaseGetsAccent(t *testing.T) {
 		t.Fatalf("Expand failed: %v", err)
 	}
 	// In valid values, phase index 1 is active and should fill with accent1.
-	// Non-active phases use the neutral 8% step — never solid dk1 black, and
-	// never an accent wash competing with the active phase
-	// (go-slide-creator-8xsj3).
+	// Non-active phases are the light tint of the accent — never solid dk1
+	// black, never a second solid accent (go-slide-creator-dlfm6).
 	for i, cell := range grid.Rows[0].Cells {
 		fillRaw := string(cell.Shape.Fill)
 		if fillRaw == `"dk1"` {
@@ -270,8 +300,8 @@ func TestPhaseRoadmap_Expand_ActivePhaseGetsAccent(t *testing.T) {
 		if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil {
 			t.Fatalf("inactive cell[%d] fill %s: %v", i, fillRaw, err)
 		}
-		if fillRaw != neutral8JSON {
-			t.Errorf("inactive cell[%d] fill = %s, want neutral 8%%", i, fillRaw)
+		if fillRaw != string(inactiveTintTone("accent1").fillJSON()) {
+			t.Errorf("inactive cell[%d] fill = %s, want the light accent tint", i, fillRaw)
 		}
 		bg, _ := effectiveFillColor(ctx, fillTone{Color: fill.Color, LumMod: fill.LumMod, LumOff: fill.LumOff})
 		if r := fg.ContrastWith(bg); r < 4.5 {
@@ -315,8 +345,8 @@ func TestPhaseRoadmap_Expand_MinPhases(t *testing.T) {
 	if len(grid.Rows[0].Cells) != 3 {
 		t.Errorf("expected 3 phase cells, got %d", len(grid.Rows[0].Cells))
 	}
-	if grid.Rows[1].Cells[0].ColSpan != 3 {
-		t.Errorf("expected timeline ColSpan = 3, got %d", grid.Rows[1].Cells[0].ColSpan)
+	if len(grid.Rows) != 2 || len(grid.Rows[1].Cells) != 3 {
+		t.Errorf("expected a band over 3 panels, got %d rows", len(grid.Rows))
 	}
 }
 
@@ -337,38 +367,39 @@ func TestPhaseRoadmap_Expand_MaxPhases(t *testing.T) {
 	if len(grid.Rows[0].Cells) != 6 {
 		t.Errorf("expected 6 phase cells, got %d", len(grid.Rows[0].Cells))
 	}
-	if grid.Rows[1].Cells[0].ColSpan != 6 {
-		t.Errorf("expected timeline ColSpan = 6, got %d", grid.Rows[1].Cells[0].ColSpan)
+	// Names alone: the band, and no row of empty panels under it.
+	if len(grid.Rows) != 1 {
+		t.Errorf("expected the band alone for phases without dates or descriptions, got %d rows", len(grid.Rows))
 	}
 }
 
 func TestPhaseRoadmap_Expand_MilestoneRowOnlyWhenSet(t *testing.T) {
 	p, _ := Default().Get("phase-roadmap")
 
-	// No milestone -> 4 rows.
+	// No milestone -> band + panels.
 	grid, err := p.Expand(ExpandContext{}, validPhaseRoadmapValues(), nil, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	if got := len(grid.Rows); got != 4 {
-		t.Errorf("expected 4 rows without milestones, got %d", got)
+	if got := len(grid.Rows); got != 2 {
+		t.Errorf("expected 2 rows without milestones, got %d", got)
 	}
 
-	// Add a milestone on one phase -> 5 rows including a milestone row whose
+	// Add a milestone on one phase -> 3 rows including a milestone row whose
 	// cells without milestone text use no-fill, and the cell with text is a
 	// marker: a small accent diamond beside an unfilled one-line label. The
-	// milestone row renders directly under the timeline rule (row index 2),
-	// above the date labels (go-slide-creator-knue6).
+	// milestone row sits directly on the band (row index 0), over the phase
+	// it belongs to (go-slide-creator-dlfm6).
 	v := validPhaseRoadmapValues()
 	v.Phases[2].Milestone = "Pilot go-live"
 	grid, err = p.Expand(ExpandContext{}, v, nil, nil)
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	if got := len(grid.Rows); got != 5 {
-		t.Fatalf("expected 5 rows with milestones, got %d", got)
+	if got := len(grid.Rows); got != 3 {
+		t.Fatalf("expected 3 rows with milestones, got %d", got)
 	}
-	milestoneRow := grid.Rows[2]
+	milestoneRow := grid.Rows[0]
 	if len(milestoneRow.Cells) != 4 {
 		t.Fatalf("expected 4 milestone cells, got %d", len(milestoneRow.Cells))
 	}
@@ -538,11 +569,17 @@ func TestPhaseRoadmap_ParallelTracks_Expand(t *testing.T) {
 		if err != nil {
 			t.Fatalf("k=%d Expand: %v", k, err)
 		}
-		// The phase row is pinned in points beside tracks: below its 20%
-		// share, never below the fit of a one-line phase name.
-		_, areaH := sizingAreaPt(ExpandContext{})
-		if got := grid.Rows[0].MinHeight; got != grid.Rows[0].MaxHeight || got >= plain.Rows[0].Height*areaH/100 || got < scaleSubheadPt*contentLineHeight+2*rowPadStepsPt[1] {
-			t.Errorf("k=%d phase row = %vpt (max %v), want pinned below %.0fpt and above a one-line name", k, got, grid.Rows[0].MaxHeight, plain.Rows[0].Height*areaH/100)
+		// The band is pinned in points beside tracks: never taller than
+		// alone, never below the fit of a one-line phase name.
+		if got := grid.Rows[0].MinHeight; got != grid.Rows[0].MaxHeight || got > plain.Rows[0].MinHeight || got < scaleSubheadPt*contentLineHeight+2*valueChainArrowInsetPt {
+			t.Errorf("k=%d band = %vpt (max %v), want pinned at most %.0fpt and above a one-line name", k, got, grid.Rows[0].MaxHeight, plain.Rows[0].MinHeight)
+		}
+		// A track speaks the band's language: a pointed bar in its tint.
+		for i, r := range grid.Rows[len(grid.Rows)-1].Cells[0].Grid.Rows {
+			bar := r.Cells[len(r.Cells)-1].Shape
+			if bar.Geometry != "homePlate" || string(bar.Fill) != string(inactiveTintTone("accent1").fillJSON()) {
+				t.Errorf("k=%d track %d = %s fill %s, want a pointed bar in the band's tint", k, i, bar.Geometry, bar.Fill)
+			}
 		}
 		last := grid.Rows[len(grid.Rows)-1]
 		if len(last.Cells) != 1 || last.Cells[0].Grid == nil || last.Cells[0].ColSpan != 4 {

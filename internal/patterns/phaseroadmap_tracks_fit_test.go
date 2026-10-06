@@ -112,8 +112,8 @@ func TestPhaseRoadmapTrackBarsAreOneLineBars(t *testing.T) {
 // Air gives way before type, and the phase name stops at the body floor.
 func TestPhaseRoadmapFitStepsKeepThePhaseNameReadable(t *testing.T) {
 	steps := phaseRoadmapFitSteps(scaleSubheadPt, false)
-	if first := steps[0]; first.rowPad != 0 || first.headerPad != 0 || first.headerSize != 0 {
-		t.Errorf("first step must keep the uniform margins and the header size: %+v", first)
+	if first := steps[0]; first.rowPad != 0 || first.bandPt != 0 || first.headerSize != 0 {
+		t.Errorf("first step must keep the uniform margins, the band height and the header size: %+v", first)
 	}
 	sawSize := false
 	for i, s := range steps {

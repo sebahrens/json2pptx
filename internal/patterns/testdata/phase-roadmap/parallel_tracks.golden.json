@@ -1,217 +1,173 @@
 {
-  "gap": 6,
+  "gap": 4,
   "row_gap": 4,
   "columns": 4,
   "rows": [
     {
-      "min_height": 48,
-      "max_height": 48,
+      "min_height": 50,
+      "max_height": 50,
       "cells": [
         {
           "shape": {
-            "geometry": "rect",
+            "geometry": "homePlate",
+            "type_scale": "compact",
             "fill": {
-              "color": "dk1",
-              "lumMod": 8000,
-              "lumOff": 92000
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
             },
+            "line": "none",
             "text": {
+              "align": "ctr",
+              "inset_bottom": 4,
+              "inset_left": 4,
+              "inset_right": 4,
+              "inset_top": 4,
               "paragraphs": [
                 {
-                  "content": "Plan",
-                  "size": 14,
+                  "align": "ctr",
                   "bold": true,
                   "color": "dk1",
-                  "align": "ctr"
+                  "content": "Plan",
+                  "size": 14
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 32000
             }
           }
         },
         {
+          "bleed_left": 16,
           "shape": {
-            "geometry": "rect",
+            "geometry": "chevron",
+            "type_scale": "compact",
             "fill": "accent1",
+            "line": "none",
             "text": {
+              "align": "ctr",
+              "inset_bottom": 4,
+              "inset_left": 4,
+              "inset_right": 4,
+              "inset_top": 4,
               "paragraphs": [
                 {
-                  "content": "Build",
-                  "size": 14,
+                  "align": "ctr",
                   "bold": true,
                   "color": "lt1",
-                  "align": "ctr"
+                  "content": "Build",
+                  "size": 14
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 32000
             }
           }
         },
         {
+          "bleed_left": 16,
           "shape": {
-            "geometry": "rect",
+            "geometry": "chevron",
+            "type_scale": "compact",
             "fill": {
-              "color": "dk1",
-              "lumMod": 8000,
-              "lumOff": 92000
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
             },
+            "line": "none",
             "text": {
+              "align": "ctr",
+              "inset_bottom": 4,
+              "inset_left": 4,
+              "inset_right": 4,
+              "inset_top": 4,
               "paragraphs": [
                 {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "dk1",
                   "content": "Scale",
-                  "size": 14,
-                  "bold": true,
-                  "color": "dk1",
-                  "align": "ctr"
+                  "size": 14
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 32000
             }
           }
         },
         {
+          "bleed_left": 16,
+          "shape": {
+            "geometry": "chevron",
+            "type_scale": "compact",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "line": "none",
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 4,
+              "inset_left": 4,
+              "inset_right": 4,
+              "inset_top": 4,
+              "paragraphs": [
+                {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Optimize",
+                  "size": 14
+                }
+              ],
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 32000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 104,
+      "max_height": 104,
+      "cells": [
+        {
           "shape": {
             "geometry": "rect",
+            "type_scale": "compact",
             "fill": {
               "color": "dk1",
-              "lumMod": 8000,
-              "lumOff": 92000
+              "lumMod": 4000,
+              "lumOff": 96000
             },
-            "text": {
-              "paragraphs": [
-                {
-                  "content": "Optimize",
-                  "size": 14,
-                  "bold": true,
-                  "color": "dk1",
-                  "align": "ctr"
-                }
-              ],
-              "align": "ctr",
-              "vertical_align": "ctr"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "min_height": 19,
-      "max_height": 19,
-      "cells": [
-        {
-          "col_span": 4,
-          "max_height": 3,
-          "shape": {
-            "geometry": "rect",
-            "fill": "accent1"
-          }
-        }
-      ]
-    },
-    {
-      "min_height": 43,
-      "max_height": 43,
-      "cells": [
-        {
-          "shape": {
-            "geometry": "rect",
-            "fill": "none",
+            "line": "none",
             "text": {
               "align": "l",
               "paragraphs": [
                 {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
                   "content": "Mar–Apr 2025",
-                  "size": 10,
-                  "bold": true,
-                  "color": "dk1",
-                  "align": "l"
-                }
-              ],
-              "vertical_align": "ctr"
-            }
-          }
-        },
-        {
-          "shape": {
-            "geometry": "rect",
-            "fill": "none",
-            "text": {
-              "align": "l",
-              "paragraphs": [
+                  "size": 14,
+                  "space_after": 4
+                },
                 {
-                  "content": "May–Jul 2025",
-                  "size": 10,
-                  "bold": true,
+                  "align": "l",
                   "color": "dk1",
-                  "align": "l"
-                }
-              ],
-              "vertical_align": "ctr"
-            }
-          }
-        },
-        {
-          "shape": {
-            "geometry": "rect",
-            "fill": "none",
-            "text": {
-              "align": "l",
-              "paragraphs": [
-                {
-                  "content": "Aug–Oct 2025",
-                  "size": 10,
-                  "bold": true,
-                  "color": "dk1",
-                  "align": "l"
-                }
-              ],
-              "vertical_align": "ctr"
-            }
-          }
-        },
-        {
-          "shape": {
-            "geometry": "rect",
-            "fill": "none",
-            "text": {
-              "align": "l",
-              "paragraphs": [
-                {
-                  "content": "Nov–Dec 2025",
-                  "size": 10,
-                  "bold": true,
-                  "color": "dk1",
-                  "align": "l"
-                }
-              ],
-              "vertical_align": "ctr"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "min_height": 49,
-      "max_height": 49,
-      "cells": [
-        {
-          "shape": {
-            "geometry": "rect",
-            "type_scale": "compact",
-            "fill": "none",
-            "text": {
-              "paragraphs": [
-                {
                   "content": "Define scope and governance.",
-                  "size": 10,
-                  "color": "dk1",
-                  "align": "l"
+                  "size": 14
                 }
               ],
-              "align": "l",
               "vertical_align": "t"
             }
           }
@@ -220,17 +176,30 @@
           "shape": {
             "geometry": "rect",
             "type_scale": "compact",
-            "fill": "none",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
+            },
+            "line": "none",
             "text": {
+              "align": "l",
               "paragraphs": [
                 {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "May–Jul 2025",
+                  "size": 14,
+                  "space_after": 4
+                },
+                {
+                  "align": "l",
+                  "color": "dk1",
                   "content": "Implement pilot.",
-                  "size": 10,
-                  "color": "dk1",
-                  "align": "l"
+                  "size": 14
                 }
               ],
-              "align": "l",
               "vertical_align": "t"
             }
           }
@@ -239,17 +208,30 @@
           "shape": {
             "geometry": "rect",
             "type_scale": "compact",
-            "fill": "none",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
+            },
+            "line": "none",
             "text": {
+              "align": "l",
               "paragraphs": [
                 {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Aug–Oct 2025",
+                  "size": 14,
+                  "space_after": 4
+                },
+                {
+                  "align": "l",
+                  "color": "dk1",
                   "content": "Roll out to BUs.",
-                  "size": 10,
-                  "color": "dk1",
-                  "align": "l"
+                  "size": 14
                 }
               ],
-              "align": "l",
               "vertical_align": "t"
             }
           }
@@ -258,17 +240,30 @@
           "shape": {
             "geometry": "rect",
             "type_scale": "compact",
-            "fill": "none",
+            "fill": {
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
+            },
+            "line": "none",
             "text": {
+              "align": "l",
               "paragraphs": [
                 {
-                  "content": "Tune cost, capture lessons.",
-                  "size": 10,
+                  "align": "l",
+                  "bold": true,
                   "color": "dk1",
-                  "align": "l"
+                  "content": "Nov–Dec 2025",
+                  "size": 14,
+                  "space_after": 4
+                },
+                {
+                  "align": "l",
+                  "color": "dk1",
+                  "content": "Tune cost, capture lessons.",
+                  "size": 14
                 }
               ],
-              "align": "l",
               "vertical_align": "t"
             }
           }
@@ -301,33 +296,31 @@
                       "text": {
                         "align": "l",
                         "inset_bottom": 7,
+                        "inset_left": 10.173228346456693,
                         "inset_top": 7,
                         "paragraphs": [
                           {
-                            "content": "Enablers",
-                            "size": 12,
+                            "align": "l",
                             "bold": true,
-                            "color": "accent1",
-                            "align": "l"
+                            "color": "dk1",
+                            "content": "Enablers",
+                            "size": 12
                           }
                         ],
                         "vertical_align": "ctr"
                       }
-                    },
-                    "accent_bar": {
-                      "position": "left",
-                      "color": "accent1",
-                      "width": 3
                     }
                   },
                   {
                     "shape": {
-                      "geometry": "rect",
+                      "geometry": "homePlate",
+                      "type_scale": "compact",
                       "fill": {
                         "color": "accent1",
                         "lumMod": 20000,
                         "lumOff": 80000
                       },
+                      "line": "none",
                       "text": {
                         "align": "l",
                         "inset_bottom": 7,
@@ -341,6 +334,9 @@
                           }
                         ],
                         "vertical_align": "ctr"
+                      },
+                      "adjustments": {
+                        "adj": 34483
                       }
                     }
                   }
@@ -352,12 +348,14 @@
                 "cells": [
                   {
                     "shape": {
-                      "geometry": "rect",
+                      "geometry": "homePlate",
+                      "type_scale": "compact",
                       "fill": {
                         "color": "accent1",
                         "lumMod": 20000,
                         "lumOff": 80000
                       },
+                      "line": "none",
                       "text": {
                         "align": "l",
                         "inset_bottom": 7,
@@ -371,6 +369,9 @@
                           }
                         ],
                         "vertical_align": "ctr"
+                      },
+                      "adjustments": {
+                        "adj": 34483
                       }
                     }
                   }
@@ -382,12 +383,14 @@
                 "cells": [
                   {
                     "shape": {
-                      "geometry": "rect",
+                      "geometry": "homePlate",
+                      "type_scale": "compact",
                       "fill": {
                         "color": "accent1",
                         "lumMod": 20000,
                         "lumOff": 80000
                       },
+                      "line": "none",
                       "text": {
                         "align": "l",
                         "inset_bottom": 7,
@@ -401,6 +404,9 @@
                           }
                         ],
                         "vertical_align": "ctr"
+                      },
+                      "adjustments": {
+                        "adj": 34483
                       }
                     }
                   }
