@@ -392,6 +392,7 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"phases": {inject: func(s string) map[string]any {
 			return covCycle(map[string]any{"phases": []any{"Plan", map[string]any{"label": s}, "Check", "Act"}})
 		}, rendered: true},
+		"intake":    {inject: func(s string) map[string]any { return covCycle(map[string]any{"intake": []any{s}}) }, rendered: true},
 		"style":     {inject: func(string) map[string]any { return covCycle(map[string]any{"style": "nodes"}) }, rendered: false, why: "style selects the picture rather than contributing text of its own"},
 		"center":    {inject: func(s string) map[string]any { return covCycle(map[string]any{"center": s}) }, rendered: true},
 		"highlight": {inject: func(string) map[string]any { return covCycle(map[string]any{"highlight": "Check"}) }, rendered: false, why: "highlight names the accent phase rather than contributing text of its own"},

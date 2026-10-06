@@ -381,6 +381,21 @@ var cycleStyleExamples = map[string]map[string]any{
 		"highlight": 2,
 		"takeaway":  "Inspection is the habit the other two depend on.",
 	},
+	"intake": {
+		"kind": "cycle", "style": "intake",
+		"title": "Two onboarding steps feed a quarterly service loop",
+		"intake": []any{
+			map[string]any{"label": "Sign contract", "description": "Scope and service levels agreed"},
+			map[string]any{"label": "Onboard", "description": "Data migrated, users trained"},
+		},
+		"phases": []any{
+			map[string]any{"label": "Plan the quarter", "description": "Agree priorities with the client"},
+			map[string]any{"label": "Deliver", "description": "Run the service to the agreed levels", "highlight": true},
+			map[string]any{"label": "Review", "description": "Report results against the targets"},
+			map[string]any{"label": "Improve", "description": "Fix root causes, adjust the scope"},
+		},
+		"takeaway": "Onboarding happens once; the loop is where the value compounds.",
+	},
 	"figure_eight": {
 		"kind": "cycle", "style": "figure_eight",
 		"title": "Build and run are one loop, not two teams",

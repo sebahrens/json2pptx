@@ -1,0 +1,158 @@
+{
+  "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
+  "output_filename": "cycle-intake.pptx",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "From Signed Contract to a Service That Renews Itself"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Cycle intake pattern examples"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "One kick-off starts a quarterly loop that the client team runs with us"}
+      ],
+      "pattern": {
+        "name": "cycle-intake",
+        "values": {
+          "intake": [
+            {"label": "Kick-off", "description": "Scope, service levels and the joint team agreed in week one"}
+          ],
+          "loop": [
+            {"label": "Plan the quarter", "description": "Agree three priorities with the client sponsor"},
+            {"label": "Deliver", "description": "Run the service to the agreed levels", "highlight": true},
+            {"label": "Review", "description": "Report results against the quarter's targets"},
+            {"label": "Improve", "description": "Fix root causes and adjust the scope"}
+          ],
+          "center": {"label": "Every quarter"}
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Onboarding takes six weeks; the service cycle then repeats every month"}
+      ],
+      "pattern": {
+        "name": "cycle-intake",
+        "values": {
+          "intake": [
+            {"label": "Sign contract", "description": "Scope and service levels agreed"},
+            {"label": "Onboard", "description": "Data migrated, users trained"}
+          ],
+          "loop": [
+            {"label": "Forecast demand", "description": "Rolling 90-day view by region"},
+            {"label": "Plan capacity", "description": "Shifts and stock matched to the forecast"},
+            {"label": "Run operations", "description": "Daily service to the agreed levels"},
+            {"label": "Measure", "description": "Scorecard shared with the client"},
+            {"label": "Adjust", "description": "Root causes fixed before the next cycle"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Three intake gates feed the eight-phase portfolio review that runs every quarter"}
+      ],
+      "pattern": {
+        "name": "cycle-intake",
+        "values": {
+          "intake": [
+            {"label": "Source deals", "description": "Partners log every lead"},
+            {"label": "Screen", "description": "Fit with the fund thesis"},
+            {"label": "Approve", "description": "Committee signs the ticket"}
+          ],
+          "loop": [
+            {"label": "Collect the numbers"},
+            {"label": "Score performance"},
+            {"label": "Review the risks"},
+            {"label": "Rank the portfolio", "highlight": true},
+            {"label": "Rebalance capital"},
+            {"label": "Support the laggards"},
+            {"label": "Prepare the exits"},
+            {"label": "Report to investors"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "New data sources are ingested once, then the model improves in a six-step loop"}
+      ],
+      "pattern": {
+        "name": "cycle-intake",
+        "values": {
+          "intake": [
+            {"label": "Connect source", "description": "Access and contract in place"},
+            {"label": "Profile data", "description": "Quality checked on a sample"},
+            {"label": "Ingest", "description": "History loaded to the lake"}
+          ],
+          "loop": [
+            {"label": "Label", "description": "Experts tag new cases"},
+            {"label": "Train", "description": "Retrain on wider data"},
+            {"label": "Evaluate", "description": "Test on held-out set", "highlight": true},
+            {"label": "Deploy", "description": "Ship to 10% of users"},
+            {"label": "Monitor", "description": "Track model drift"},
+            {"label": "Collect feedback", "description": "Errors become cases"}
+          ]
+        },
+        "overrides": {"loop_style": "nodes"}
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Acquisition feeds a retention loop that now carries 71% of revenue"}
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "gap": 12,
+        "segments": [
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "cycle-intake",
+              "values": {
+                "intake": [
+                  {"label": "Attract"},
+                  {"label": "Convert"}
+                ],
+                "loop": [
+                  {"label": "Activate"},
+                  {"label": "Engage"},
+                  {"label": "Renew"},
+                  {"label": "Expand"},
+                  {"label": "Refer"}
+                ]
+              }
+            }
+          },
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "metric-list",
+              "values": {
+                "items": [
+                  {"label": "Revenue from existing customers", "value": "71%"},
+                  {"label": "Net revenue retention", "value": "112%"},
+                  {"label": "Customers who refer a peer", "value": "1 in 5"}
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -26,6 +26,7 @@ var patternReach = map[string]SlideKind{
 	"comparison-2col":      KindComparison,
 	"concentric-rings":     KindCycle,
 	"cycle-figure-eight":   KindCycle,
+	"cycle-intake":         KindCycle,
 	"cycle-nodes":          KindCycle,
 	"cycle-ring":           KindCycle,
 	"exec-summary":         KindExecutiveSummary,

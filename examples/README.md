@@ -24,6 +24,7 @@ These pattern-rich decks are the best entry points for AI agents building new de
 | `cycle-ring.json` | Cycle ring: a four-phase PDCA loop with a centre label, an eight-phase customer lifecycle with one highlighted phase, a six-phase flywheel in the `arrows` style, and a 50% compose segment (legend layout) beside a metric list | midnight-blue |
 | `<pattern-name>.json` | Many patterns also have a dedicated deck named after the pattern (e.g. `driver-tree.json`, `waterfall-bridge.json`, `team-bios.json`, `radial-hub.json`) | varies |
 | `concentric-rings.json` | Onion model with a side ladder: 3 layers, 5 layers, 4 layers with a highlighted ring, and a 50% compose split beside `labeled-rows` | midnight-blue |
+| `cycle-intake.json` | Linear intake feeding a recurring loop: 1 intake step into a 4-phase loop with a centre label, 2 into 5, 3 into 8 (the maximum), 3 into a 6-step loop in the `nodes` style, and the stacked layout in a 50/50 split beside a metric list | midnight-blue |
 | `cycle-nodes.json` | Recurring loops as numbered circles joined by arrows: 3, 4, 6 and 8 steps, a counter-clockwise loop, labels inside the nodes, and a ring beside a metric list in a 50/50 split (legend labels) | midnight-blue |
 
 ### Testing & QA decks

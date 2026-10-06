@@ -25,6 +25,7 @@ import (
 const (
 	CycleStyleRing        = "ring"
 	CycleStyleNodes       = "nodes"
+	CycleStyleIntake      = "intake"
 	CycleStyleFigureEight = "figure_eight"
 	CycleStyleRadial      = "radial"
 	CycleStyleConcentric  = "concentric"
@@ -32,7 +33,7 @@ const (
 
 // CycleStyles lists the styles in the order the contract documents them; ring
 // is the default.
-var CycleStyles = []string{CycleStyleRing, CycleStyleNodes, CycleStyleFigureEight, CycleStyleRadial, CycleStyleConcentric}
+var CycleStyles = []string{CycleStyleRing, CycleStyleNodes, CycleStyleIntake, CycleStyleFigureEight, CycleStyleRadial, CycleStyleConcentric}
 
 // cycleStyleInfo is what one style compiles to: the pattern, the values list
 // the phases become, and the phase count the pattern holds.
@@ -57,6 +58,11 @@ var cycleStyleTable = map[string]cycleStyleInfo{
 		pattern: "cycle-nodes", list: "steps", min: 3, max: 8, noun: "phase",
 		tooFew:  "a loop needs at least 3 phases; two states are a comparison",
 		tooMany: "merge related phases or split the loop across two cycle slides; a sequence that does not loop back is a process",
+	},
+	CycleStyleIntake: {
+		pattern: "cycle-intake", list: "loop", min: 3, max: 8, noun: "phase",
+		tooFew:  "a loop needs at least 3 phases; steps that never loop back are a process",
+		tooMany: "merge related phases, or move the first of them into intake when they happen once",
 	},
 	CycleStyleFigureEight: {
 		pattern: "cycle-figure-eight", list: "phases", min: 4, max: 8, noun: "phase",
@@ -102,6 +108,10 @@ type cyclePayload struct {
 	// Field is the key the phases were written under.
 	Field string
 	Items []cycleItem
+	// Intake are the linear steps that feed the loop (style intake);
+	// intakeSet reports that the payload carries the field.
+	Intake    []cycleItem
+	intakeSet bool
 	// Center* is the centre text; centerObject reports the {label, sublabel}
 	// form, centerSet that the payload carries the field at all.
 	CenterLabel, CenterSublabel string
@@ -146,25 +156,9 @@ func cyclePhasesField(body map[string]any) string {
 func resolveCycle(body map[string]any) cyclePayload {
 	p := cyclePayload{Authored: NormalizeCycleStyle(strField(body, "style")), Field: cyclePhasesField(body), highlight: -1}
 	raw, _ := body[p.Field].([]any)
-	for i, e := range raw {
-		switch t := e.(type) {
-		case string:
-			if s := strings.TrimSpace(t); s != "" {
-				p.Items = append(p.Items, cycleItem{Label: s, raw: i})
-			}
-		case map[string]any:
-			lk := authoredKey(t, "label", "name", "title")
-			if lk == "" {
-				continue
-			}
-			it := cycleItem{Label: strField(t, lk), raw: i, labelKey: lk, descKey: authoredKey(t, "description", "detail")}
-			if it.descKey != "" {
-				it.Description = strField(t, it.descKey)
-			}
-			it.Highlight, _ = t["highlight"].(bool)
-			p.Items = append(p.Items, it)
-		}
-	}
+	p.Items = readCycleItems(raw)
+	intake, intakeSet := body["intake"].([]any)
+	p.Intake, p.intakeSet = readCycleItems(intake), intakeSet && len(intake) > 0
 
 	switch c := body["center"].(type) {
 	case string:
@@ -206,8 +200,38 @@ func resolveCycle(body map[string]any) cyclePayload {
 		if len(p.Items) == 3 {
 			p.Style = CycleStyleNodes
 		}
+		if len(p.Intake) > 0 {
+			// Steps that feed the loop name the picture themselves.
+			p.Style = CycleStyleIntake
+		}
 	}
 	return p
+}
+
+// readCycleItems resolves a list of phases (or intake steps): strings, or
+// objects carrying a label. Entries with no label are dropped.
+func readCycleItems(raw []any) []cycleItem {
+	var out []cycleItem
+	for i, e := range raw {
+		switch t := e.(type) {
+		case string:
+			if s := strings.TrimSpace(t); s != "" {
+				out = append(out, cycleItem{Label: s, raw: i})
+			}
+		case map[string]any:
+			lk := authoredKey(t, "label", "name", "title")
+			if lk == "" {
+				continue
+			}
+			it := cycleItem{Label: strField(t, lk), raw: i, labelKey: lk, descKey: authoredKey(t, "description", "detail")}
+			if it.descKey != "" {
+				it.Description = strField(t, it.descKey)
+			}
+			it.Highlight, _ = t["highlight"].(bool)
+			out = append(out, it)
+		}
+	}
+	return out
 }
 
 // phaseIndex resolves a slide-level highlight — a 1-based position in the
@@ -242,8 +266,12 @@ func (p cyclePayload) info() (cycleStyleInfo, bool) {
 
 // itemField is the authored path of a phase's label or description.
 func (p cyclePayload) itemField(i int, description bool) string {
-	it := p.Items[i]
-	base := fmt.Sprintf("%s[%d]", p.Field, it.raw)
+	return cycleItemField(p.Field, p.Items[i], description)
+}
+
+// cycleItemField is the authored path of an entry of the named list.
+func cycleItemField(list string, it cycleItem, description bool) string {
+	base := fmt.Sprintf("%s[%d]", list, it.raw)
 	switch {
 	case it.labelKey == "":
 		return base
@@ -286,6 +314,18 @@ func (p cyclePayload) pattern() (deckinput.PatternInput, error) {
 		v := patterns.CycleRingValues{Phases: phases}
 		if p.centerSet {
 			v.Center = &patterns.CycleRingCenter{Label: p.CenterLabel, Sublabel: p.CenterSublabel}
+		}
+		values = v
+	case CycleStyleIntake:
+		v := patterns.CycleIntakeValues{}
+		for _, it := range p.Intake {
+			v.Intake = append(v.Intake, patterns.CycleIntakeStep{Label: it.Label, Description: it.Description})
+		}
+		for i, it := range p.Items {
+			v.Loop = append(v.Loop, patterns.CycleIntakePhase{Label: it.Label, Description: it.Description, Highlight: i == p.highlight})
+		}
+		if p.CenterLabel != "" {
+			v.Center = &patterns.CycleIntakeCenter{Label: p.CenterLabel}
 		}
 		values = v
 	case CycleStyleNodes:
@@ -361,6 +401,10 @@ func CycleIssues(body map[string]any) []CycleIssue {
 			Message: fmt.Sprintf("style %s holds %d–%d %ss; found %d — %s", p.Style, info.min, info.max, info.noun, n, hint),
 		})
 	}
+	if n := len(p.Intake); p.Style == CycleStyleIntake && (n < 1 || n > 3) {
+		out = append(out, CycleIssue{Field: "intake", Min: 1, Max: 3, Required: n == 0,
+			Message: fmt.Sprintf("style intake holds 1–3 intake steps before the loop; found %d — %s", n, map[bool]string{true: "list the one-off steps that feed the loop in intake, or use style ring", false: "merge the intake steps, or draw them as a process slide before the cycle"}[n == 0])})
+	}
 	if p.Style == CycleStyleRadial && p.CenterLabel == "" {
 		out = append(out, CycleIssue{Field: "center", Required: true,
 			Message: "style radial needs center: the idea the items sit around (≤24 chars)"})
@@ -422,7 +466,7 @@ func (p cyclePayload) patternIssues(info cycleStyleInfo) []CycleIssue {
 	for _, f := range findings {
 		field, what, value, known := p.authoredPath(info, f.Path)
 		switch {
-		case f.Path == info.list, f.Path == "highlight", f.Path == "center.label" && f.Code == patterns.ErrCodeRequired:
+		case f.Path == info.list, f.Path == "intake", f.Path == "highlight", f.Path == "center.label" && f.Code == patterns.ErrCodeRequired:
 			// The count, the highlight and the hub are reported above in the
 			// kind's own words.
 			continue
@@ -456,6 +500,15 @@ func (p cyclePayload) authoredPath(info cycleStyleInfo, path string) (field, wha
 		return path, path, p.RightLabel, true
 	case "left_count":
 		return path, path, strconv.Itoa(p.LeftCount), true
+	}
+	if rest, ok := strings.CutPrefix(path, "intake["); ok {
+		idx, tail, _ := strings.Cut(rest, "]")
+		if i, err := strconv.Atoi(idx); err == nil && i >= 0 && i < len(p.Intake) {
+			if tail == ".description" {
+				return cycleItemField("intake", p.Intake[i], true), fmt.Sprintf("intake step %d's description", i+1), p.Intake[i].Description, true
+			}
+			return cycleItemField("intake", p.Intake[i], false), fmt.Sprintf("intake step %d's label", i+1), p.Intake[i].Label, true
+		}
 	}
 	rest, ok := strings.CutPrefix(path, info.list+"[")
 	if !ok {
@@ -497,10 +550,13 @@ func CycleDroppedFields(body map[string]any) []CycleIssue {
 		if p.centerSet {
 			drop("center", "style concentric has no centre, so center is DROPPED; the core is the first of the phases (innermost first)")
 		}
-	case CycleStyleNodes:
+	case CycleStyleNodes, CycleStyleIntake:
 		if p.CenterSublabel != "" {
-			drop("center.sublabel", "style nodes draws a one-line centre, so center.sublabel is DROPPED; use style ring, or fold it into center.label (≤24 chars)")
+			drop("center.sublabel", "style "+p.Style+" draws a one-line centre, so center.sublabel is DROPPED; use style ring, or fold it into center.label (≤24 chars)")
 		}
+	}
+	if p.Style != CycleStyleIntake && p.intakeSet {
+		drop("intake", fmt.Sprintf("intake belongs to style intake (steps that feed the loop), so it is DROPPED on style %s; set style: intake or remove it", p.Style))
 	}
 	if p.Style != CycleStyleFigureEight {
 		for _, key := range []string{"left_label", "right_label", "left_count"} {
@@ -567,11 +623,14 @@ func CompileCycle(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 func (p cyclePayload) links() []SourceLink {
 	info, _ := p.info()
 	links := []SourceLink{{RawPath: ".pattern.values." + info.list, SemanticPath: "." + p.Field}}
-	if p.centerSet && (p.Style == CycleStyleRing || p.Style == CycleStyleNodes || p.Style == CycleStyleRadial) {
+	if p.centerSet && (p.Style == CycleStyleRing || p.Style == CycleStyleNodes || p.Style == CycleStyleRadial || p.Style == CycleStyleIntake) {
 		links = append(links, SourceLink{RawPath: ".pattern.values.center.label", SemanticPath: "." + p.centerField(false)})
-		if p.CenterSublabel != "" && p.Style != CycleStyleNodes {
+		if p.CenterSublabel != "" && p.Style != CycleStyleNodes && p.Style != CycleStyleIntake {
 			links = append(links, SourceLink{RawPath: ".pattern.values.center.sublabel", SemanticPath: ".center.sublabel"})
 		}
+	}
+	if p.Style == CycleStyleIntake {
+		links = append(links, SourceLink{RawPath: ".pattern.values.intake", SemanticPath: ".intake"})
 	}
 	if p.Style == CycleStyleFigureEight {
 		for _, key := range []string{"left_label", "right_label"} {
@@ -590,6 +649,13 @@ func compileCycleFallback(in Input, p cyclePayload) (*deckinput.SlideInput, []So
 	}
 	if p.Style == CycleStyleFigureEight && (p.LeftLabel != "" || p.RightLabel != "") {
 		bullets = append(bullets, strings.Trim(p.LeftLabel+" ↔ "+p.RightLabel, " ↔"))
+	}
+	for _, it := range p.Intake {
+		line := "First: " + it.Label
+		if it.Description != "" {
+			line += " — " + it.Description
+		}
+		bullets = append(bullets, line)
 	}
 	for i, it := range p.Items {
 		line := fmt.Sprintf("%d. %s", i+1, it.Label)

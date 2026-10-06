@@ -130,7 +130,9 @@ var kindBudgets = map[string][]Budget{
 		{Field: "parallel_label", MaxChars: patterns.PhaseRoadmapLabelMax},
 	},
 	"cycle": {
-		{Field: "phases", MinItems: 3, MaxItems: 8, Note: "nodes; ring, figure_eight and radial hold 4–8, concentric 3–5"},
+		{Field: "phases", MinItems: 3, MaxItems: 8, Note: "nodes and intake; ring, figure_eight and radial hold 4–8, concentric 3–5"},
+		{Field: "intake", MinItems: 1, MaxItems: 3, Note: "style intake"},
+		{Field: "intake[].label", MaxChars: 24, Note: "its description holds 60"},
 		{Field: "phases[].label", MaxChars: 28, Note: "ring and nodes; 26 on figure_eight and radial, 24 on concentric"},
 		{Field: "phases[].description", MaxChars: 90, Note: "ring; 70 on nodes and concentric, 60 on figure_eight (40 once a loop holds four phases) and radial"},
 		{Field: "center", MaxChars: 24, Note: "its sublabel holds 32"},

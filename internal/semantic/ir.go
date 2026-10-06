@@ -834,7 +834,7 @@ func otherCompositionCandidates(kind SlideKind, selected string) []CompositionCa
 		if selected == "" {
 			selected = "cycle-ring"
 		}
-		return []CompositionCandidate{{Pattern: selected, Layout: "blank-title", Reason: "the style field picks the picture: ring (cycle-ring, default), nodes (cycle-nodes), figure_eight (cycle-figure-eight), radial (radial-hub) or concentric (concentric-rings)"}}
+		return []CompositionCandidate{{Pattern: selected, Layout: "blank-title", Reason: "the style field picks the picture: ring (cycle-ring, default), nodes (cycle-nodes), intake (cycle-intake), figure_eight (cycle-figure-eight), radial (radial-hub) or concentric (concentric-rings)"}}
 	}
 	if kind == KindRegions {
 		// The arrangement field is the composition choice; there is no

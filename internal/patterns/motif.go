@@ -106,6 +106,7 @@ var patternMotifs = map[string]patternMotif{
 	"concentric-rings":   {base: MotifDiagram},
 	"contact-directory":  {base: MotifOpenColumns},
 	"cycle-figure-eight": {base: MotifDiagram},
+	"cycle-intake":       {base: MotifDiagram},
 	"cycle-nodes":        {base: MotifDiagram},
 	"cycle-ring":         {base: MotifDiagram},
 	"driver-tree":        {base: MotifDiagram},

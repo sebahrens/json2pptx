@@ -198,7 +198,7 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	KindProcess: {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindCycle: {
 		"title": shapeString, "phases": shapeArray, "steps": shapeArray, "items": shapeArray,
-		"style": shapeString, "center": shapeStringOrObject, "highlight": shapeStringOrInteger,
+		"intake": shapeArray, "style": shapeString, "center": shapeStringOrObject, "highlight": shapeStringOrInteger,
 		"left_label": shapeString, "right_label": shapeString, "left_count": shapeNumber, "takeaway": shapeString,
 	},
 	KindRoadmap: {
