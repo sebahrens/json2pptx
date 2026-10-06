@@ -119,7 +119,7 @@ func authoredShapeSources(input *ShapeGridInput, rows []shapegrid.Row, links []s
 			out[i] = gridShapeSource{Path: slidepath.Join(authoredGridCellPath(base, input, o.row, o.col), field), Text: text}
 		}
 		if out[i].Path == "" {
-			out[i].Path = base // a row rule: it belongs to the grid, not to a cell
+			out[i].Path = base // a row rule or band: it belongs to the grid, not to a cell
 		}
 	}
 	return out
@@ -1340,6 +1340,7 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 			Cells:      cells,
 			Connector:  connSpec,
 			Rule:       r.Rule,
+			Band:       r.Band,
 		}
 	}
 	return rows
@@ -1652,6 +1653,16 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 	var imageInserts []generator.ImageInsert
 	var warnings []string
 	var fitFindings []patterns.FitFinding
+
+	// Row bands are the backdrop: behind the connectors and the cells.
+	for _, band := range result.Bands {
+		xml, err := shapegrid.GenerateAccentBarXML(&band)
+		if err != nil {
+			return nil, fmt.Errorf("row band id %d: %w", band.ID, err)
+		}
+		shapes = append(shapes, xml)
+		origins = append(origins, gridShapeOrigin{accentBar: band.Spec})
+	}
 
 	// Connectors are emitted FIRST so they render BEHIND the cells they
 	// connect; otherwise a horizontal arrow drawn between adjacent cells

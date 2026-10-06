@@ -248,6 +248,11 @@ func ValidateTrackWeights(grid *Grid) []error {
 		if row.Rule != "" && row.Rule != "above" && row.Rule != "below" && row.Rule != "both" {
 			errs = append(errs, fmt.Errorf("shape_grid: rows[%d].rule is %q; valid values are \"above\", \"below\" or \"both\" (omit for no rule)", r, row.Rule))
 		}
+		if len(row.Band) > 0 {
+			if _, err := ResolveFillInput(row.Band); err != nil {
+				errs = append(errs, fmt.Errorf("shape_grid: rows[%d].band is not a fill (a colour string or a {color, alpha, lumMod, lumOff} object): %w", r, err))
+			}
+		}
 		for c, cell := range row.Cells {
 			for _, f := range []struct {
 				name string

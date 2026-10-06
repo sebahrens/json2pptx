@@ -58,7 +58,8 @@ func swimlaneDeckSpec(t *testing.T, flow string) (*patterns.SwimlaneValues, patt
 
 func TestSwimlaneDeckSpecFlowDrawsTheStatedOrder(t *testing.T) {
 	values, pat := swimlaneDeckSpec(t, `, "flow": [[0,0],[1,0],[1,1],[2,1],[2,2],[1,2],[0,2]]`)
-	grid, err := pat.Expand(patterns.ExpandContext{}, values, nil, nil)
+	// overrides.style "tiles" draws an arrow between every two steps.
+	grid, err := pat.Expand(patterns.ExpandContext{}, values, &patterns.SwimlaneOverrides{Style: "tiles"}, nil)
 	if err != nil {
 		t.Fatalf("expand: %v", err)
 	}
@@ -89,6 +90,67 @@ func TestSwimlaneDeckSpecFlowDrawsTheStatedOrder(t *testing.T) {
 	}
 	if w := pat.(patterns.PostExpandWarner).PostExpandWarnings(patterns.ExpandContext{}, values, nil); len(w) != 0 {
 		t.Errorf("a stated flow drew findings: %v", w)
+	}
+
+	// The default look follows the same order and leaves out only the arrows
+	// its pentagons make redundant: a step to the next column of its own lane
+	// (go-slide-creator-vx7wk).
+	bands, err := pat.Expand(patterns.ExpandContext{}, values, nil, nil)
+	if err != nil {
+		t.Fatalf("expand bands: %v", err)
+	}
+	var drawn [][2]string
+	for _, link := range bands.Links {
+		drawn = append(drawn, [2]string{label(link.From), label(link.To)})
+	}
+	wantDrawn := [][2]string{{"Submit request", "Triage"}, {"Investigate", "Fix bug"}, {"Deploy", "Resolve"}, {"Resolve", "Approve fix"}}
+	if len(drawn) != len(wantDrawn) {
+		t.Fatalf("bands arrows = %v, want %v", drawn, wantDrawn)
+	}
+	for i := range drawn {
+		if drawn[i] != wantDrawn[i] {
+			t.Errorf("bands arrow %d runs %v, want %v", i, drawn[i], wantDrawn[i])
+		}
+	}
+}
+
+// go-slide-creator-vx7wk: a lane band is the backdrop of its lane. It is
+// written before the hand-off arrows, and the arrows before the tabs and the
+// steps, so nothing is drawn over a label.
+func TestSwimlaneBandsAreWrittenBehindArrowsAndSteps(t *testing.T) {
+	pat, _ := patterns.Default().Get("swimlane")
+	encoded, err := json.Marshal(pat.(patterns.Exemplar).ExemplarValues())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"midnight-blue", "warm-coral"} {
+		geom := loadSchemaMaximaGeometry(t, name)
+		input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
+			SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "swimlane", Values: encoded},
+		}}}
+		specs, _, _, err := convertPresentationSlides(input.Slides, geom.layouts, geom.width, geom.height, nil, nil, "", nil, false)
+		if err != nil || len(specs) != 1 {
+			t.Fatalf("%s: convert: %v (%d slides)", name, err, len(specs))
+		}
+		var order []string
+		for _, fragment := range specs[0].RawShapeXML {
+			xml := string(fragment)
+			switch {
+			case strings.Contains(xml, "<p:cxnSp"):
+				order = append(order, "arrow")
+			case strings.Contains(xml, `prst="homePlate"`):
+				order = append(order, "pentagon")
+			case strings.Contains(xml, `prst="rect"`) && strings.Contains(xml, "<a:solidFill>"):
+				order = append(order, "band") // an empty position is an unpainted rect
+			}
+		}
+		// Three lanes; Report -> Log, Log -> Diagnose, Deploy -> Verify and
+		// Verify -> Confirm change lane (Diagnose -> Deploy does not); three
+		// actor tabs and six steps.
+		want := strings.Repeat("band ", 3) + strings.Repeat("arrow ", 4) + strings.Repeat("pentagon ", 9)
+		if got := strings.Join(order, " ") + " "; got != want {
+			t.Errorf("%s: shapes are written as\n  %s\nwant\n  %s", name, got, want)
+		}
 	}
 }
 

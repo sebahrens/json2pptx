@@ -92,6 +92,7 @@ type GridRowInput struct {
 	Cells      []*GridCellInput    `json:"cells"`
 	Connector  *ConnectorSpecInput `json:"connector,omitempty"` // Optional connector lines between adjacent cells
 	Rule       string              `json:"rule,omitempty"`      // Full-width hairline in the gap "above" / "below" the row, or "both"; takes no height
+	Band       json.RawMessage     `json:"band,omitempty"`      // Fill of a full-width band drawn behind the row
 }
 
 // GridLinkInput is one explicit connector from cell [row, col] to cell

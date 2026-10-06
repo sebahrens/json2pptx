@@ -223,6 +223,11 @@ type Row struct {
 	// of the gap "above" or "below" the row, or "both". It takes no height:
 	// rows keep their place and their index.
 	Rule string
+	// Band, when set, is the fill (a colour string or a {color, ...} object)
+	// of a rectangle as wide as the grid and as tall as the row, drawn behind
+	// the row's cells and behind every connector. It takes no height and no
+	// cell: rows and cells keep their place and their index.
+	Band json.RawMessage
 }
 
 // RowRulePt is the thickness of a row rule.
@@ -509,9 +514,12 @@ type RowOverflow struct {
 // ResolveResult holds the output of grid resolution: resolved cells, connectors, accent bars,
 // and any row overflow diagnostics.
 type ResolveResult struct {
-	Cells        []ResolvedCell
-	Connectors   []ResolvedConnector
-	AccentBars   []ResolvedAccentBar
+	Cells      []ResolvedCell
+	Connectors []ResolvedConnector
+	AccentBars []ResolvedAccentBar
+	// Bands are the row bands (Row.Band), written before everything else so
+	// they sit behind the connectors and the cells.
+	Bands        []ResolvedAccentBar
 	RowOverflows []RowOverflow // Rows whose content exceeded max_height
 	// Composed reports that the block was placed by the composition policy
 	// (compose.go): a sparse content-sized block at the optical centre of its
