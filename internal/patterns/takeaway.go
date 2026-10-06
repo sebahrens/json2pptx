@@ -157,7 +157,7 @@ func TakeawayRow(ctx ExpandContext, s TakeawaySpec, colSpan int, cellWidthPt, ho
 	bandPt := TakeawayBandHeightPt(ctx, s, bandW)
 	spacerPt := TakeawaySpacerPt(hostRowGapPt)
 	return jsonschema.GridRowInput{
-		AutoHeight: true, MinHeight: TakeawayRowHeightPt(ctx, s, cellWidthPt, hostRowGapPt),
+		AutoHeight: true, MinHeight: takeawayNestedHeightPt(ctx, s, cellWidthPt, hostRowGapPt),
 		Cells: []*jsonschema.GridCellInput{{
 			ColSpan: max(colSpan, 1),
 			Grid:    TakeawayGrid(ctx, s, bandW, spacerPt, bandPt),
@@ -177,6 +177,12 @@ func TakeawayRowHeightPt(ctx ExpandContext, s TakeawaySpec, cellWidthPt, hostRow
 		}
 		return h
 	}
+	return takeawayNestedHeightPt(ctx, s, cellWidthPt, hostRowGapPt)
+}
+
+// takeawayNestedHeightPt is the height TakeawayRow claims: the takeaway as a
+// nested grid, with its spacer and the sub-grid insets.
+func takeawayNestedHeightPt(ctx ExpandContext, s TakeawaySpec, cellWidthPt, hostRowGapPt float64) float64 {
 	return TakeawayBandHeightPt(ctx, s, cellWidthPt-2*SubGridInsetPt) + TakeawaySpacerPt(hostRowGapPt) + 2*SubGridInsetPt
 }
 

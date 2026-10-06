@@ -25,8 +25,8 @@ import (
 //   ─────────────────────────────────────────────────────────────────
 //   02   Stand up the data workstream             A. Lee       Nov
 //
-//   ▌ Decisions requested
-//   ▌ • Approve the €2.4M phase-1 budget
+//   █ Decisions requested
+//   █ • Approve the €2.4M phase-1 budget
 //
 // A partner replaces "Thank you" with this. The rows share the agenda's rule
 // language (serif accent numerals, 0.5pt rules, no tiles). The decisions band
@@ -81,7 +81,7 @@ var nextStepsScales = [][3]float64{{scaleLeadPt, scaleSubheadPt, scaleSubheadPt}
 
 func (n *nextSteps) Name() string { return "next-steps" }
 func (n *nextSteps) Description() string {
-	return "Closing next-steps slide: 2-6 numbered action rows (action / owner / date) separated by rules, plus an optional 'Decisions requested' band with a left accent rule"
+	return "Closing next-steps slide: 2-6 numbered action rows (action / owner / date) separated by rules, plus an optional 'Decisions requested' band in a dark neutral fill"
 }
 func (n *nextSteps) UseWhen() string {
 	return "The deck's closing slide: what happens next, who owns each action and by when, and the decisions the audience is asked to take; use it instead of a 'Thank you' closer"
@@ -159,7 +159,7 @@ func (n *nextSteps) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"actions":         ArraySchema(actionSchema, nextStepsMinActions, nextStepsMaxActions).WithDescription("2-6 actions, in the order they happen"),
-			"decisions":       ArraySchema(StringSchema(nextStepsDecisionMax).WithDescription("One decision the audience is asked to take (≤120 chars)"), 0, nextStepsMaxDecisions).WithDescription("0-3 decisions requested, rendered in a band under the actions with a left accent rule (no outline, no fill)"),
+			"decisions":       ArraySchema(StringSchema(nextStepsDecisionMax).WithDescription("One decision the audience is asked to take (≤120 chars)"), 0, nextStepsMaxDecisions).WithDescription("0-3 decisions requested, rendered in a dark neutral band under the actions (bold text, no outline)"),
 			"decisions_label": StringSchema(nextStepsLabelMax).WithDescription("Band label (default \"Decisions requested\")"),
 		},
 		[]string{"actions"},
@@ -260,8 +260,9 @@ type nextStepsLayout struct {
 	padPt                                   float64 // top / bottom text margin of every cell; 0 = the uniform margin
 	decisionSize                            float64
 	numberCol, actionCol, ownerCol, dateCol int
-	// barPct is the width of the leading rule column the decisions band's
-	// accent rule fills; 0 without a band. The numeral cells span it.
+	// barPct is the width of a leading rule column the numeral cells span.
+	// The decisions band is one filled shape now (go-slide-creator-3a1rm) and
+	// takes none, so it is 0; the column logic stays for a bar variant.
 	barPct float64
 }
 

@@ -175,9 +175,10 @@ func TestExecSummary_ExpandStructure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 4 point rows + 3 rules between them + the bottom-line takeaway band.
-	if got := len(grid.Rows); got != 8 {
-		t.Fatalf("rows = %d, want 8", got)
+	// 4 point rows + 3 rules between them + the spacer and the bottom-line
+	// takeaway band.
+	if got := len(grid.Rows); got != 9 {
+		t.Fatalf("rows = %d, want 9", got)
 	}
 	if got := len(grid.Rows[0].Cells); got != 3 {
 		t.Errorf("point row cells = %d, want 3 (number, lead, support)", got)
@@ -197,15 +198,22 @@ func TestExecSummary_ExpandStructure(t *testing.T) {
 	if support.Paragraphs[0].Size < 12 {
 		t.Errorf("support text below 12pt: %v", support.Paragraphs[0].Size)
 	}
-	// The ask is the shared takeaway band (go-slide-creator-7b5o6): no closing
-	// rule, no chevron "BOTTOM LINE" flag, no tinted box — a flush accent bar
-	// beside the statement in bold dk1.
-	bottom := grid.Rows[7].Cells[0]
-	if bottom.ColSpan != 3 || bottom.Grid == nil {
-		t.Fatalf("bottom line should be a takeaway sub-grid spanning all columns, got %+v", bottom)
+	// The ask is the shared takeaway band (go-slide-creator-3a1rm): one filled
+	// cell of this grid spanning every column, flush with the rules above.
+	bottom := grid.Rows[8].Cells[0]
+	if bottom.ColSpan != 3 {
+		t.Fatalf("bottom line should span all columns, got %+v", bottom)
 	}
-	band := bottom.Grid.Rows[len(bottom.Grid.Rows)-1]
-	assertTakeawayBand(t, band, vals.BottomLine)
+	assertTakeawayFilledBand(t, fullThemeCtx(), bottom, vals.BottomLine)
+	bar, err := p.Expand(fullThemeCtx(), vals, &ExecSummaryOverrides{TakeawayEmphasis: TakeawayEmphasisBar}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prev := bar.Rows[len(bar.Rows)-1].Cells[0]
+	if prev.Grid == nil {
+		t.Fatalf("takeaway_emphasis bar should keep the bar look (a nested grid), got %+v", prev)
+	}
+	assertTakeawayBand(t, prev.Grid.Rows[len(prev.Grid.Rows)-1], vals.BottomLine)
 }
 
 func TestExecSummary_ContentSizedHeight(t *testing.T) {
