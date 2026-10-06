@@ -269,7 +269,9 @@ func (th *timelineHorizontal) ganttLayout(ctx ExpandContext, stops []TimelineSto
 				place = "before"
 			}
 			if place == "inside" {
-				barCell.Shape.Text = timelineGanttText(dateLabel, dateSize, timelineGradientTextColor(ctx, tone), "left", false, false)
+				barTone, ink := rescueChevronInk(ctx, tone, timelineGradientTextColor(ctx, tone))
+				barCell.Shape.Fill = barTone.fillJSON()
+				barCell.Shape.Text = timelineGanttText(dateLabel, dateSize, ink, "left", false, false)
 			}
 			if from > 0 {
 				if place == "before" {

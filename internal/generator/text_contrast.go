@@ -228,15 +228,19 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 	var swaps []ContrastSwap
 	slidePath := slidepath.Slide(slideIndex)
 
-	// Fix lstStyle inherited text colors
+	// Fix lstStyle inherited text colors, on the levels the shape's text uses.
 	if shape.TextBody.ListStyle != nil && shape.TextBody.ListStyle.Inner != "" {
 		start := len(swaps)
-		lstPt, lstBold := smallestTextPt(shape.TextBody.ListStyle.Inner)
-		shape.TextBody.ListStyle.Inner = fixSchemeColorsForContrast(
-			shape.TextBody.ListStyle.Inner, bgColor, bgHex, themeColors, &swaps,
-			shape.NonVisualProperties.ConnectionNonVisual.Name, "lstStyle", false,
-			contrastThresholdFor(lstPt, lstBold), override, authorBackground,
-		)
+		used := usedListLevels(shape)
+		fix := func(fragment string) string {
+			pt, bold := smallestTextPt(fragment)
+			return fixSchemeColorsForContrast(
+				fragment, bgColor, bgHex, themeColors, &swaps,
+				shape.NonVisualProperties.ConnectionNonVisual.Name, "lstStyle", false,
+				contrastThresholdFor(pt, bold), override, authorBackground,
+			)
+		}
+		shape.TextBody.ListStyle.Inner = rewriteUsedListLevels(shape.TextBody.ListStyle.Inner, used, fix)
 		annotateContrastSwaps(swaps[start:], slideIndex, slidePath, "lstStyle")
 	}
 
@@ -258,6 +262,89 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 		}
 	}
 	return swaps
+}
+
+// listLevelRegexp matches one <a:lvlNpPr> element of a list style, capturing
+// its 1-based level. Levels never nest, so a lazy match to the next closing
+// level tag is the element's own.
+var listLevelRegexp = regexp.MustCompile(`(?s)<a:lvl([1-9])pPr\b(?:[^>]*/>|[^>]*>.*?</a:lvl[1-9]pPr>)`)
+
+// usedListLevels reports which list-style levels (1-based, as in lvlNpPr) the
+// shape's text renders at. A level is used when a paragraph carrying visible
+// run text sits on it: <a:pPr lvl="N"/> selects lvl(N+1)pPr, and a paragraph
+// with no pPr or no lvl attribute is level 1.
+//
+// The contrast pass runs after the engine has written every placeholder's
+// text (prepareSlide populates, clears unmapped prompts, then enforces), so
+// the paragraphs seen here are the final ones: there is no later writer whose
+// level could be missed. A shape with no visible text never reaches this
+// function — enforceTextContrastInShape leaves it untouched.
+//
+// A template may declare colours on levels its text never reaches (a section
+// number's lvl2..lvl9). Rewriting those changed nothing a viewer sees but
+// recorded swaps the validate-time predictor, which models the text actually
+// placed, never announced (go-slide-creator-6s2w4).
+func usedListLevels(shape *shapeXML) map[int]bool {
+	used := make(map[int]bool)
+	if shape == nil || shape.TextBody == nil {
+		return used
+	}
+	for pi := range shape.TextBody.Paragraphs {
+		para := &shape.TextBody.Paragraphs[pi]
+		visible := false
+		for ri := range para.Runs {
+			if strings.TrimSpace(para.Runs[ri].Text) != "" {
+				visible = true
+				break
+			}
+		}
+		if !visible {
+			continue
+		}
+		level := 1
+		if para.Properties != nil && para.Properties.Level != nil {
+			level = *para.Properties.Level + 1
+		}
+		used[min(max(level, 1), 9)] = true
+	}
+	return used
+}
+
+// rewriteUsedListLevels applies fix to each used <a:lvlNpPr> element of a list
+// style, one level at a time so each is judged at its own text size, and
+// leaves the levels no paragraph uses byte for byte as the template wrote
+// them. Anything outside the level elements (a:defPPr, a:extLst) applies to
+// every level and is always passed to fix.
+func rewriteUsedListLevels(lstStyleInner string, used map[int]bool, fix func(string) string) string {
+	var out strings.Builder
+	last := 0
+	for _, loc := range listLevelRegexp.FindAllStringSubmatchIndex(lstStyleInner, -1) {
+		if between := lstStyleInner[last:loc[0]]; between != "" {
+			out.WriteString(fix(between))
+		}
+		element := lstStyleInner[loc[0]:loc[1]]
+		if level, err := strconv.Atoi(lstStyleInner[loc[2]:loc[3]]); err == nil && used[level] {
+			element = fix(element)
+		}
+		out.WriteString(element)
+		last = loc[1]
+	}
+	if rest := lstStyleInner[last:]; rest != "" {
+		out.WriteString(fix(rest))
+	}
+	return out.String()
+}
+
+// listStyleNamesColorOnUsedLevel reports whether a list style states a text
+// fill anywhere the contrast pass would look: on a used level or in the
+// fragments every level shares.
+func listStyleNamesColorOnUsedLevel(lstStyleInner string, used map[int]bool) bool {
+	named := false
+	rewriteUsedListLevels(lstStyleInner, used, func(fragment string) string {
+		named = named || strings.Contains(fragment, "<a:solidFill>")
+		return fragment
+	})
+	return named
 }
 
 // =============================================================================
