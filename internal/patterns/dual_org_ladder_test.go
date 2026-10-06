@@ -12,14 +12,31 @@ func TestDualOrgLadderDenseTitleWarning(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		values.Rows = append(values.Rows, DualOrgLadderRow{ANameField: "Alex Chen", ATitle: "Programme Lead", BNameField: "Bob Jones", BTitle: "Partner"})
 	}
+	lines := &DualOrgLadderOverrides{Style: "lines"}
 	values.Rows[2].ATitle = strings.Repeat("T", 63)
-	got := p.PostExpandWarnings(ExpandContext{}, values, nil)
+	got := p.PostExpandWarnings(ExpandContext{}, values, lines)
 	if len(got) != 1 || !strings.Contains(got[0], "rows[2].a_title") || !strings.Contains(got[0], "about 62") {
 		t.Fatalf("dense title warning: %v", got)
 	}
 	values.Rows[2].ATitle = strings.Repeat("T", 62)
-	if got := p.PostExpandWarnings(ExpandContext{}, values, nil); len(got) != 0 {
+	if got := p.PostExpandWarnings(ExpandContext{}, values, lines); len(got) != 0 {
 		t.Fatalf("measured four-row target should fit: %v", got)
+	}
+	// The default bands hold any one title at the schema maximum; only a
+	// long title beside a long name is over budget.
+	values.Rows[2].ATitle = strings.Repeat("T", dualOrgLadderTitleMaxChars)
+	if got := p.PostExpandWarnings(ExpandContext{}, values, nil); len(got) != 0 {
+		t.Fatalf("one long title fits the default bands: %v", got)
+	}
+	values.Rows[2].ANameField = strings.Repeat("N", 52)
+	values.Rows[2].ATitle = strings.Repeat("T", 61)
+	got = p.PostExpandWarnings(ExpandContext{}, values, nil)
+	if len(got) != 1 || !strings.Contains(got[0], "rows[2].a_title") || !strings.Contains(got[0], "about 60 title characters") {
+		t.Fatalf("long name and title warning: %v", got)
+	}
+	values.Rows[2].ATitle = strings.Repeat("T", 60)
+	if got := p.PostExpandWarnings(ExpandContext{}, values, nil); len(got) != 0 {
+		t.Fatalf("measured four-pair target should fit: %v", got)
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
 		t.Fatalf("nil values: %v", got)

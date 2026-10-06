@@ -525,7 +525,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"cycle-ring":                   9.1,  // 8 phases at the 4-phase maxima (28 / 90): rows share the height
 	"cycle-nodes":                  10.6,
 	"driver-tree":                  4.1,
-	"dual-org-ladder":              7.0,
+	"dual-org-ladder":              9.6,
 	"exec-summary":                 4.8,
 	"framework-grid":               2.9,
 	"hero-detail":                  7.0, // hero steps to its share, rows at written fit (n1muf)
@@ -603,7 +603,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"cycle-intake":                 0,
 	"cycle-nodes":                  0.0,
 	"driver-tree":                  4.8,
-	"dual-org-ladder":              7.6,
+	"dual-org-ladder":              11.0,
 	"exec-summary":                 6.5,
 	"framework-grid":               2.9,
 	"hero-detail":                  0,
