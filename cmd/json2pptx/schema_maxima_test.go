@@ -558,6 +558,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"pull-quote":          0.0,
 	"pyramid":             7.3,
 	"quote-cluster":       6.2,
+	"radial-hub":          10.1,
 	"risk-heatmap":        3.4, // twenty 40-character names in one cell of a 5 × 5 (go-slide-creator-ec74l)
 	"roadmap-phased":      6.0, // twelve one-period bars per workstream, lanes share the height (go-slide-creator-4a0sm)
 	"scqa-summary":        5.5, // content-weighted rows (k3eb3)
@@ -618,6 +619,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"pull-quote":                   0,
 	"pyramid":                      8.4,
 	"quote-cluster":                7.0,
+	"radial-hub":                   0,
 	"risk-heatmap":                 3.8,
 	"roadmap-phased":               6.0, // bars in lanes (go-slide-creator-4a0sm)
 	"scqa-summary":                 6.0,

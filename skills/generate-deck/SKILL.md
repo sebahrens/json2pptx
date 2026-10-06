@@ -71,10 +71,11 @@ degradation, required-layout coverage, handles, and revision rules.
 Use raw `PresentationInput` only for a feature the semantic schema cannot
 express, a targeted low-level repair, or an existing raw deck. Read
 [RAW_PATH.md](RAW_PATH.md) first; its preconditions are **not** universal
-DeckSpec requirements. The raw path is `recommend_visual` (when visual choice
-is unclear) → `list_patterns` / `show_pattern` → `expand_pattern` →
+DeckSpec requirements. The raw path is `recommend_visual` (visual choice
+unclear) → `list_patterns` / `show_pattern` → `expand_pattern` →
 `validate_input` → `generate_presentation` → render and inspect;
-`get_input_schema` has the raw fields. How patterns fit text, shrink, and
+`get_input_schema` has the raw fields. `radial-hub` (hub and spoke) is
+raw-path only. How patterns fit text and
 report `BODY_TOO_LONG` / `TEXT_EXCEEDS_SHAPE` is in [PATTERNS.md](PATTERNS.md);
 patterns spend at most one solid accent block, in `color_roles.primary_fill`.
 

@@ -370,6 +370,7 @@ var visualNameAliases = map[string][]string{
 	"named_pattern:journey-maturity-model": {"maturity model", "maturity ladder", "maturity curve"},
 	"named_pattern:value-chain":            {"value chain"},
 	"named_pattern:driver-tree":            {"driver tree", "value driver tree", "issue tree"},
+	"named_pattern:radial-hub":             {"hub and spoke", "hub-and-spoke", "radial hub", "stakeholder map", "ecosystem map"},
 	"named_pattern:scqa-summary":           {"scqa"},
 	"named_pattern:exec-summary":           {"executive summary", "exec summary"},
 	"named_pattern:before-after":           {"before after", "before and after"},

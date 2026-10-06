@@ -20,7 +20,7 @@ These pattern-rich decks are the best entry points for AI agents building new de
 | File | Description | Template |
 |------|-------------|----------|
 | `patterns-smoke.json` | Pattern library smoke test: one slide per pattern across a broad slice of the registry (KPI, canvas, matrix, timeline, card-grid, roadmap, heatmap, directory, bios, and more) | midnight-blue |
-| `<pattern-name>.json` | Many patterns also have a dedicated deck named after the pattern (e.g. `driver-tree.json`, `waterfall-bridge.json`, `team-bios.json`) | varies |
+| `<pattern-name>.json` | Many patterns also have a dedicated deck named after the pattern (e.g. `driver-tree.json`, `waterfall-bridge.json`, `team-bios.json`, `radial-hub.json`) | varies |
 
 ### Testing & QA decks
 

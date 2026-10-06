@@ -582,6 +582,11 @@ var openColumnPatterns = map[string]bool{
 	"timeline-horizontal": true,
 	"driver-tree":         true,
 	"image-text-split":    true,
+	// Open labels in content-sized rows beside the ring, each on the row of
+	// its satellite: the label row is the unit, as for a driver-tree
+	// annotation. A hub of bare labels is the ring and six short words and
+	// still reports.
+	"radial-hub": true,
 }
 
 // ruledColumnPatterns are the patterns that set open text columns beside an

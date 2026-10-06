@@ -140,6 +140,7 @@ var patternMotifs = map[string]patternMotif{
 	"pyramid":              {base: MotifDiagram},
 	"quote-cluster": {base: MotifOpenColumns,
 		overrideStyles: map[string]Motif{"bubble": MotifTiles, "tile": MotifTiles}},
+	"radial-hub":      {base: MotifDiagram},
 	"roadmap-phased":  {base: MotifTable},
 	"scqa-summary":    {base: MotifOpenList},
 	"stat-hero":       {base: MotifHeroNumber},
