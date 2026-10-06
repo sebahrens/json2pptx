@@ -301,13 +301,44 @@ func usedListLevels(shape *shapeXML) map[int]bool {
 		if !visible {
 			continue
 		}
-		level := 1
-		if para.Properties != nil && para.Properties.Level != nil {
-			level = *para.Properties.Level + 1
-		}
-		used[min(max(level, 1), 9)] = true
+		used[paragraphListLevel(para)] = true
 	}
 	return used
+}
+
+// paragraphListLevel returns the list-style level (1-based, as in lvlNpPr) a
+// paragraph renders at: <a:pPr lvl="N"/> selects lvl(N+1)pPr, and a paragraph
+// with no pPr or no lvl attribute is level 1.
+func paragraphListLevel(para *paragraphXML) int {
+	level := 1
+	if para != nil && para.Properties != nil && para.Properties.Level != nil {
+		level = *para.Properties.Level + 1
+	}
+	return min(max(level, 1), 9)
+}
+
+// ContentListLevels returns the list levels (0-based, as in a:pPr lvl) the
+// paragraphs of one content item are written at, in ascending order.
+// bulletBaseLevel is the level a top-level bullet takes
+// (types.PlaceholderInfo.BulletBaseLevel).
+//
+// It asks the population code itself, on an empty text body, so the
+// validate-time contrast preflight pairs exactly the levels generate goes on to
+// use (go-slide-creator-50xzk) instead of restating the nesting rules of every
+// content type. An item that carries no text answers nil.
+func ContentListLevels(item ContentItem, bulletBaseLevel int) []int {
+	shape := &shapeXML{}
+	if err := populateShapeText(shape, item, max(bulletBaseLevel, 0), ""); err != nil {
+		return nil
+	}
+	used := usedListLevels(shape)
+	levels := make([]int, 0, len(used))
+	for level := 1; level <= 9; level++ {
+		if used[level] {
+			levels = append(levels, level-1)
+		}
+	}
+	return levels
 }
 
 // rewriteUsedListLevels applies fix to each used <a:lvlNpPr> element of a list
@@ -548,6 +579,14 @@ func contrastThresholdFor(textPt float64, bold bool) float64 {
 	// One definition with the pattern ink fix (patterns.ApplyReadableInk):
 	// 3:1 only for >=18pt or >=14pt bold.
 	return patterns.TextContrastThreshold(textPt, bold)
+}
+
+// ContrastThreshold is the WCAG AA ratio the contrast passes hold text of the
+// given size and weight to; a size of zero means unknown and is read as body
+// text. The validate-time preflight uses it to tell which list levels would be
+// judged alike.
+func ContrastThreshold(textPt float64, bold bool) float64 {
+	return contrastThresholdFor(textPt, bold)
 }
 
 // smallestTextPt returns the smallest declared run size in a text-body fragment

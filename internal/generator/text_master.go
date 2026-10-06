@@ -5,70 +5,18 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
-	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
-// masterBodyStyleXML represents the bodyStyle element in a slide master's txStyles.
-type masterBodyStyleXML struct {
-	Lvl1pPr *masterLvlPPrXML `xml:"lvl1pPr"`
-	Lvl2pPr *masterLvlPPrXML `xml:"lvl2pPr"`
-	Lvl3pPr *masterLvlPPrXML `xml:"lvl3pPr"`
-	Lvl4pPr *masterLvlPPrXML `xml:"lvl4pPr"`
-	Lvl5pPr *masterLvlPPrXML `xml:"lvl5pPr"`
-	Lvl6pPr *masterLvlPPrXML `xml:"lvl6pPr"`
-	Lvl7pPr *masterLvlPPrXML `xml:"lvl7pPr"`
-	Lvl8pPr *masterLvlPPrXML `xml:"lvl8pPr"`
-	Lvl9pPr *masterLvlPPrXML `xml:"lvl9pPr"`
-}
-
-// masterLvlPPrXML represents a level paragraph property in the slide master.
-type masterLvlPPrXML struct {
-	Inner string `xml:",innerxml"` // Contains buNone, buChar, etc.
-}
-
-// masterTxStylesXML represents the txStyles element in a slide master.
-type masterTxStylesXML struct {
-	BodyStyle *masterBodyStyleXML `xml:"bodyStyle"`
-}
-
-// slideMasterForBulletsXML is a minimal parse of slide master to extract bullet info.
-type slideMasterForBulletsXML struct {
-	TxStyles *masterTxStylesXML `xml:"txStyles"`
-}
-
-// findFirstBulletLevelFromMaster parses a slide master and returns the first level
-// that has bullets enabled (doesn't have <a:buNone/>). Returns -1 if not found or on error.
+// findFirstBulletLevelFromMaster returns the first bodyStyle level of a slide
+// master that has bullets enabled (doesn't have <a:buNone/>), -1 if there is
+// none. The template analysis records the same level per placeholder
+// (PlaceholderInfo.BulletBaseLevel), so both read it through one function.
 func findFirstBulletLevelFromMaster(masterData []byte) int {
-	var master slideMasterForBulletsXML
-	if err := xml.Unmarshal(masterData, &master); err != nil {
-		return -1
-	}
-
-	if master.TxStyles == nil || master.TxStyles.BodyStyle == nil {
-		return -1
-	}
-
-	bs := master.TxStyles.BodyStyle
-	levels := []*masterLvlPPrXML{
-		bs.Lvl1pPr, bs.Lvl2pPr, bs.Lvl3pPr, bs.Lvl4pPr, bs.Lvl5pPr,
-		bs.Lvl6pPr, bs.Lvl7pPr, bs.Lvl8pPr, bs.Lvl9pPr,
-	}
-
-	for i, lvl := range levels {
-		if lvl == nil {
-			continue
-		}
-		// Check if this level has bullets disabled
-		if !strings.Contains(lvl.Inner, "buNone") {
-			return i
-		}
-	}
-
-	return -1
+	return template.FirstBulletLevel(masterData)
 }
 
 // findMasterPathForLayoutFromZip finds the slide master path for a given layout.

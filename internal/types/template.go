@@ -220,6 +220,30 @@ type ChromeRegion struct {
 	Height int64  `json:"h_emu"`
 }
 
+// PlaceholderLevelText is the text colour one list level of a placeholder
+// renders at, as the contrast passes resolve it: the colour the layout's own
+// lstStyle states for the level, else the colour the master's text style
+// gives it.
+type PlaceholderLevelText struct {
+	// Level is the a:pPr lvl value (0-based; lvl="1" selects lvl2pPr).
+	Level int
+	// Color is a scheme name (mapped through the layout's clrMapOvr) or a
+	// "#RRGGBB" literal.
+	Color     string
+	ColorMods BackgroundColorModifiers
+	// FontSize is the size the level declares where its colour is checked, in
+	// hundredths of a point; 0 when it declares none.
+	FontSize int
+	// Bold reports a level whose default run is bold.
+	Bold bool
+	// FromMaster reports a colour the layout's list style does not state for
+	// this level: the slide states none either, so the render-time inherited
+	// pass resolves it and replaces a failing one with a template text
+	// colour. A colour the layout does state is copied onto the slide and
+	// fixed by the lstStyle pass, which preserves its hue instead.
+	FromMaster bool
+}
+
 // PlaceholderInfo describes a placeholder within a layout.
 type PlaceholderInfo struct {
 	ID       string          // Placeholder ID
@@ -255,6 +279,22 @@ type PlaceholderInfo struct {
 	// a contrast_autofixed swap at generate time and silence at validate time
 	// (go-slide-creator-j4364).
 	InheritedFontColor string
+	// InheritedFontColorFromMaster is PlaceholderLevelText.FromMaster for the
+	// first level: InheritedFontColor is the master's, not the layout's.
+	InheritedFontColorFromMaster bool `json:"-"`
+
+	// LevelText is the text colour and size of the list levels BELOW the
+	// first (a:pPr lvl="1".."8"), for the levels where the layout or the
+	// master states a colour. FontColor / InheritedFontColor / FontSize above
+	// describe level 0 only, which is all the contrast preflight used to
+	// model: a low-contrast colour on a deeper level a nested bullet does use
+	// was swapped at generate time without a prediction
+	// (go-slide-creator-50xzk).
+	LevelText []PlaceholderLevelText `json:"-"`
+	// BulletBaseLevel is the a:pPr lvl a top-level bullet in this placeholder
+	// is written at: the first level of the master's bodyStyle that draws a
+	// bullet marker. An authored sub-bullet sits that many levels deeper.
+	BulletBaseLevel int `json:"-"`
 
 	// TextCaps and LineSpacingPct are the inherited text style that changes
 	// measured fit (resolved for title placeholders from the layout lstStyle →

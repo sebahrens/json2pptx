@@ -61,30 +61,116 @@ func TestTimelineGradientRescuesLinkNoThemeInkReadsOn(t *testing.T) {
 	}
 }
 
-// An ink that already reads keeps its link exactly as the gradient made it,
-// so templates the rescue is not for render as before.
-func TestRescueChevronInkLeavesReadableLinksAlone(t *testing.T) {
+// On a theme where an ink reads on every tone the chain is exactly the nominal
+// ramp, so templates the rescue is not for render the documented gradient.
+func TestTimelineGradientChainKeepsNominalRampWhereInkReads(t *testing.T) {
 	for themeName, colors := range iconColorThemes {
 		ctx := ExpandContext{Theme: types.ThemeInfo{Colors: colors}}
-		for i := range 7 {
-			tone := chevronGradientTone("accent1", i, 7)
-			ink := timelineGradientTextColor(ctx, tone)
-			gotTone, gotInk := rescueChevronInk(ctx, tone, ink)
-			if gotTone != tone || gotInk != ink {
-				t.Errorf("%s link %d: rescue changed a readable link: %+v/%s -> %+v/%s", themeName, i, tone, ink, gotTone, gotInk)
+		for n := 2; n <= 7; n++ {
+			for i, link := range timelineGradientChain(ctx, "accent1", n) {
+				tone := chevronGradientTone("accent1", i, n)
+				if !timelineGradientInkReads(ctx, tone) {
+					continue // a soft-darks theme in the table: covered below
+				}
+				if link.tone != tone || link.ink != timelineGradientTextColor(ctx, tone) {
+					t.Errorf("%s %d/%d: chain changed a readable link: %+v -> %+v/%s", themeName, i, n, tone, link.tone, link.ink)
+				}
 			}
 		}
 	}
-	// No theme to measure against: nothing is changed.
-	tone := chevronGradientTone("accent1", 3, 7)
-	if gotTone, gotInk := rescueChevronInk(ExpandContext{}, tone, "lt1"); gotTone != tone || gotInk != "lt1" {
-		t.Errorf("rescue without a theme changed the link: %+v/%s", gotTone, gotInk)
+	// No theme to measure against: the nominal ramp, light ink on the shaded
+	// half and dark ink on the tinted half.
+	for i, link := range timelineGradientChain(ExpandContext{}, "accent1", 7) {
+		wantInk := "lt1"
+		if i > 3 {
+			wantInk = "dk2"
+		}
+		if tone := chevronGradientTone("accent1", i, 7); link.tone != tone || link.ink != wantInk {
+			t.Errorf("no theme, link %d: got %+v/%s, want %+v/%s", i, link.tone, link.ink, tone, wantInk)
+		}
 	}
-	// A tinted link is a light surface: it is never shaded dark.
+}
+
+// The nominal ramp is the documented one: shade 70000 at the first stop, the
+// plain accent at the midpoint, tint 40000 at the last, and every link keeps
+// more of the accent (shaded half) or less of it (tinted half) than the one
+// before. The modifiers used to be interpolated toward zero at the midpoint,
+// which put the darkest link third and a near-white link fifth
+// (go-slide-creator-c22bn).
+func TestChevronGradientToneRampIsMonotonic(t *testing.T) {
+	want7 := []fillTone{
+		{Color: "accent1", Shade: 70000}, {Color: "accent1", Shade: 80000}, {Color: "accent1", Shade: 90000},
+		{Color: "accent1"},
+		{Color: "accent1", Tint: 80000}, {Color: "accent1", Tint: 60000}, {Color: "accent1", Tint: 40000},
+	}
+	for i, want := range want7 {
+		if got := chevronGradientTone("accent1", i, 7); got != want {
+			t.Errorf("link %d of 7: got %+v, want %+v", i, got, want)
+		}
+	}
+	if got := chevronGradientTone("accent1", 0, 1); got != (fillTone{Color: "accent1"}) {
+		t.Errorf("a single link is the plain accent, got %+v", got)
+	}
+	themes := map[string][]types.ThemeColor{"soft-darks": softDarkOrangeTheme()}
+	for name, colors := range iconColorThemes {
+		themes[name] = colors
+	}
+	for themeName, colors := range themes {
+		ctx := ExpandContext{Theme: types.ThemeInfo{Colors: colors}}
+		for _, accent := range []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6"} {
+			if _, ok := resolveThemeColor(ctx, accent); !ok {
+				continue
+			}
+			for n := 2; n <= 7; n++ {
+				nominal, chain := -1.0, -1.0
+				for i, link := range timelineGradientChain(ctx, accent, n) {
+					c, _ := effectiveFillColor(ctx, chevronGradientTone(accent, i, n))
+					if lum := c.Luminance(); lum < nominal {
+						t.Errorf("%s/%s nominal link %d of %d is darker than the link before it (%.4f < %.4f)", themeName, accent, i, n, lum, nominal)
+					} else {
+						nominal = lum
+					}
+					c, _ = effectiveFillColor(ctx, link.tone)
+					if lum := c.Luminance(); lum < chain {
+						t.Errorf("%s/%s chain link %d of %d is darker than the link before it (%.4f < %.4f): %+v", themeName, accent, i, n, lum, chain, link.tone)
+					} else {
+						chain = lum
+					}
+				}
+			}
+		}
+	}
+}
+
+// On soft darks the plain orange midpoint holds no ink: it is deepened until
+// lt1 reads and the links before it keep their proportion, so the dark half
+// is still a ramp. A mid-grey accent's first link falls between the inks one
+// step below a link dark ink reads on: it is lightened to it instead. Every
+// link's ink clears the body-text bar.
+func TestTimelineGradientChainLeavesNoLinkBetweenInks(t *testing.T) {
 	ctx := ExpandContext{Theme: types.ThemeInfo{Colors: softDarkOrangeTheme()}}
-	tint := fillTone{Color: "accent1", Tint: 5000}
-	if gotTone, _ := rescueChevronInk(ctx, tint, "dk2"); gotTone != tint {
-		t.Errorf("rescue shaded a tinted link: %+v", gotTone)
+	for _, accent := range []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6"} {
+		for n := 1; n <= 7; n++ {
+			for i, link := range timelineGradientChain(ctx, accent, n) {
+				fill, _ := effectiveFillColor(ctx, link.tone)
+				ink, _ := resolveThemeColor(ctx, link.ink)
+				if ratio := ink.ContrastWith(fill); ratio < timelineInkMinContrast {
+					t.Errorf("%s link %d of %d: %s on %+v is %.2f:1", accent, i, n, link.ink, link.tone, ratio)
+				}
+			}
+		}
+	}
+	chain := timelineGradientChain(ctx, "accent1", 7)
+	if chain[3].tone.Shade == 0 || chain[3].ink != "lt1" {
+		t.Errorf("plain orange midpoint was not deepened for lt1: %+v/%s", chain[3].tone, chain[3].ink)
+	}
+	for i := 1; i <= 3; i++ {
+		if chain[i-1].tone.Shade >= chain[i].tone.Shade {
+			t.Errorf("dark half is not a ramp: link %d shade %d, link %d shade %d", i-1, chain[i-1].tone.Shade, i, chain[i].tone.Shade)
+		}
+	}
+	if floor := int(shadeMinKeep * gradientFullKeep); chain[0].tone.Shade < floor {
+		t.Errorf("first link shaded to %d, below the %d floor", chain[0].tone.Shade, floor)
 	}
 }
 

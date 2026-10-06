@@ -303,6 +303,11 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 			info.InheritedFontColor = inheritedBodyColor(&shape, masterFonts, clrMapOvr)
 			info.InheritedFontColorMods = inheritedBodyColorMods(&shape, masterFonts)
 		}
+		info.InheritedFontColorFromMaster = info.InheritedFontColor != "" && layoutLevel1Color(&shape) == ""
+		info.LevelText = placeholderLevelText(&shape, ph.Type, masterFonts, clrMapOvr)
+		if masterFonts != nil {
+			info.BulletBaseLevel = masterFonts.FirstBulletLevel
+		}
 		if ph.Index == nil && (phType == types.PlaceholderBody || phType == types.PlaceholderContent) {
 			idxLess = append(idxLess, len(placeholders))
 		}
@@ -602,6 +607,28 @@ type textBodyXML struct {
 // Used for font extraction from placeholder lstStyle.
 type listStyleXML struct {
 	Lvl1pPr *levelParagraphPropsXML `xml:"lvl1pPr"`
+	Lvl2pPr *levelParagraphPropsXML `xml:"lvl2pPr"`
+	Lvl3pPr *levelParagraphPropsXML `xml:"lvl3pPr"`
+	Lvl4pPr *levelParagraphPropsXML `xml:"lvl4pPr"`
+	Lvl5pPr *levelParagraphPropsXML `xml:"lvl5pPr"`
+	Lvl6pPr *levelParagraphPropsXML `xml:"lvl6pPr"`
+	Lvl7pPr *levelParagraphPropsXML `xml:"lvl7pPr"`
+	Lvl8pPr *levelParagraphPropsXML `xml:"lvl8pPr"`
+	Lvl9pPr *levelParagraphPropsXML `xml:"lvl9pPr"`
+}
+
+// level returns the paragraph properties of a 0-based list level, nil when the
+// list style does not define it.
+func (l *listStyleXML) level(level int) *levelParagraphPropsXML {
+	if l == nil {
+		return nil
+	}
+	for i, props := range []*levelParagraphPropsXML{l.Lvl1pPr, l.Lvl2pPr, l.Lvl3pPr, l.Lvl4pPr, l.Lvl5pPr, l.Lvl6pPr, l.Lvl7pPr, l.Lvl8pPr, l.Lvl9pPr} {
+		if i == level {
+			return props
+		}
+	}
+	return nil
 }
 
 // levelParagraphPropsXML represents level paragraph properties with default run properties.
