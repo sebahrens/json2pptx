@@ -759,16 +759,14 @@ func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHo
 
 	n := len(*stops)
 
-	// Chevron row: homePlate shapes with gradient tint across the chain
+	// Chevron row: homePlate shapes on a gradient that runs from the darkest
+	// link at the first stop to the lightest at the last.
+	chain := timelineGradientChain(ctx, accent, n)
 	chevronCells := make([]*jsonschema.GridCellInput, n)
 	for i, stop := range *stops {
-		// Compute tint for gradient: first stop is darkest (shade), last is lightest (tint)
-		tone := chevronGradientTone(accent, i, n)
-
-		// Label (and optionally body) inside the chevron, in whichever text
-		// colour reads on this link's own tint — and on a link no theme ink
-		// reads on, lt1 on the link deepened until it does.
-		tone, ink := rescueChevronInk(ctx, tone, timelineGradientTextColor(ctx, tone))
+		// Label (and optionally body) inside the chevron, in the text colour
+		// measured to read on this link's own tone.
+		tone, ink := chain[i].tone, chain[i].ink
 		textContent := buildChevronTextContent(stop, labelSize, bodySize, ink)
 
 		shape := &jsonschema.ShapeSpecInput{
@@ -881,28 +879,44 @@ func timelineChevronRowFit(ctx ExpandContext, cells []*jsonschema.GridCellInput,
 	return fit
 }
 
-// chevronGradientTone produces the fill tone for one link of a gradient chain.
-// First item is darkest (shade 70000), last is lightest (tint 40000), middle
-// interpolates. It returns the tone rather than the JSON so the caller can ask
-// which text colour reads on it: the text used to be hardcoded lt1, which on
-// the lightest bar measured 1.5:1 (go-slide-creator-5qotm).
+// The gradient chain's endpoints, as OOXML thousandths of a percent. Both
+// a:shade and a:tint give the share of the colour KEPT (the rest is black or
+// white), so 100000 is the plain accent and a smaller value is a stronger
+// modifier.
+const (
+	// timelineGradientDarkKeep is the a:shade of the first (darkest) link.
+	timelineGradientDarkKeep = 70000
+	// timelineGradientLightKeep is the a:tint of the last (lightest) link.
+	timelineGradientLightKeep = 40000
+	// timelineGradientMinTint is the palest a link is lightened to when no
+	// theme ink reads on it: still a visible tint of the accent.
+	timelineGradientMinTint = 10000
+	// gradientFullKeep is the modifier value that leaves the colour as it is.
+	gradientFullKeep = 100000
+)
+
+// chevronGradientTone produces the nominal fill tone for one link of a
+// gradient chain: the first link is the darkest (shade 70000), the midpoint is
+// the plain accent and the last link is the lightest (tint 40000), with every
+// link between interpolated so the chain gets lighter at each step. The
+// modifiers used to be interpolated toward zero at the midpoint, which made
+// the third of seven links the darkest and the fifth nearly white
+// (go-slide-creator-c22bn). It returns the tone rather than the JSON so the
+// caller can ask which text colour reads on it: the text used to be hardcoded
+// lt1, which on the lightest bar measured 1.5:1 (go-slide-creator-5qotm).
 func chevronGradientTone(accent string, index, total int) fillTone {
 	tone := fillTone{Color: accent}
 	if total <= 1 {
 		return tone
 	}
-	// Interpolate from shade=70000 (dark) at index 0 to tint=40000 (light) at
-	// index n-1. Midpoint (ratio=0.5) is no modifier (plain accent).
 	ratio := float64(index) / float64(total-1)
 	switch {
 	case ratio < 0.5:
-		if shadeVal := int(70000 * (1.0 - 2.0*ratio)); shadeVal > 0 {
-			tone.Shade = shadeVal
-		}
+		span := float64(gradientFullKeep - timelineGradientDarkKeep)
+		tone.Shade = timelineGradientDarkKeep + int(math.Round(span*2*ratio))
 	case ratio > 0.5:
-		if tintVal := int(40000 * (2.0*ratio - 1.0)); tintVal > 0 {
-			tone.Tint = tintVal
-		}
+		span := float64(gradientFullKeep - timelineGradientLightKeep)
+		tone.Tint = gradientFullKeep - int(math.Round(span*(2*ratio-1)))
 	}
 	return tone
 }
@@ -924,22 +938,136 @@ func timelineGradientTextColor(ctx ExpandContext, tone fillTone) string {
 // gantt bar must clear: WCAG AA for normal text.
 const timelineInkMinContrast = svggen.WCAGAANormal
 
-// timelineGradientMinKeep is the deepest shade a rescued gradient link may
-// take: the gradient's own links already run to about shade 23000, so a link
-// deepened this far is still inside the chain's range. The general floor
-// (shadeMinKeep) would leave a mid-grey accent's links between two inks.
-const timelineGradientMinKeep = 0.2
+// timelineGradientLink is one link of a gradient chain: its fill and the text
+// colour measured to read on that fill.
+type timelineGradientLink struct {
+	tone fillTone
+	ink  string
+}
 
-// rescueChevronInk returns the fill and ink one gradient link is painted in.
-// The ink chosen for the link is kept whenever it clears
-// timelineInkMinContrast on the link's effective fill, so templates on which
-// an ink reads are untouched. When it does not — the plain-accent midpoint on
-// a template with soft darks, where lt1 and dk2 both miss 4.5:1 — the link is
-// deepened with the shadeForLightInk rescue and set in lt1
-// (go-slide-creator-pr5bx). Tinted links are light surfaces and are never
-// shaded.
-func rescueChevronInk(ctx ExpandContext, tone fillTone, ink string) (fillTone, string) {
-	return rescueFailingInk(ctx, tone, ink, timelineInkMinContrast, timelineGradientMinKeep)
+// timelineGradientChain returns the fill and ink of every link of a gradient
+// chain of n links, darkest first.
+//
+// On a theme where some ink reads on every tone (any theme with a black dk1)
+// the chain is exactly the nominal ramp of chevronGradientTone. On a theme
+// with soft darks there is a band of mid tones neither lt1 nor the dark inks
+// read on at body size — the plain accent of a mid-tone orange is in it
+// (go-slide-creator-pr5bx). A link that lands in the band is moved out of it,
+// and the rest of its half follows so the chain still gets lighter at every
+// step:
+//
+//   - a shaded or plain link is first lightened toward the next link, when a
+//     dark ink reads before it gets there; otherwise it is deepened until lt1
+//     reads (never below shadeMinKeep) and the links before it keep their
+//     proportion to it, so the dark half stays a ramp rather than a flat block;
+//   - a tinted link is lightened until a dark ink reads (never past
+//     timelineGradientMinTint) and the links after it keep their proportion.
+//
+// Without a theme nothing can be measured and the nominal ramp is returned.
+func timelineGradientChain(ctx ExpandContext, accent string, n int) []timelineGradientLink {
+	links := make([]timelineGradientLink, n)
+	for i := range links {
+		links[i].tone = chevronGradientTone(accent, i, n)
+	}
+
+	// Dark half, from the midpoint outwards (lightest link first).
+	scale, upper := 1.0, gradientFullKeep
+	for i := n - 1; i >= 0; i-- {
+		tone := links[i].tone
+		if tone.Tint > 0 {
+			continue
+		}
+		nominal := gradientFullKeep
+		if tone.Shade > 0 {
+			nominal = tone.Shade
+		}
+		keep := int(math.Round(float64(nominal) * scale))
+		keep = max(keep, int(shadeMinKeep*gradientFullKeep))
+		keep = min(keep, upper)
+		tone = gradientShaded(tone, keep)
+		if !timelineGradientInkReads(ctx, tone) {
+			if raised, ok := gradientRaisedToDarkInk(ctx, tone, keep, upper); ok {
+				tone = raised
+			} else if shaded, ok := shadeForLightInk(ctx, tone, timelineInkMinContrast); ok {
+				tone = shaded
+				if shaded.Shade > 0 {
+					scale = float64(shaded.Shade) / float64(nominal)
+				}
+			}
+		}
+		if tone.Shade > 0 {
+			upper = tone.Shade
+		}
+		links[i].tone = tone
+	}
+
+	// Light half, from the midpoint outwards (darkest tint first).
+	scale, upper = 1.0, gradientFullKeep
+	for i := range links {
+		tone := links[i].tone
+		if tone.Tint <= 0 {
+			continue
+		}
+		nominal := tone.Tint
+		tint := int(math.Round(float64(nominal) * scale))
+		tint = max(tint, timelineGradientMinTint)
+		tone.Tint = min(tint, upper)
+		if !timelineGradientInkReads(ctx, tone) {
+			for t := tone.Tint - shadeStep; t >= timelineGradientMinTint; t -= shadeStep {
+				cand := tone
+				cand.Tint = t
+				if timelineGradientInkReads(ctx, cand) {
+					tone = cand
+					scale = float64(t) / float64(nominal)
+					break
+				}
+			}
+		}
+		upper = tone.Tint
+		links[i].tone = tone
+	}
+
+	for i := range links {
+		links[i].ink = timelineGradientTextColor(ctx, links[i].tone)
+	}
+	return links
+}
+
+// gradientShaded returns tone with the given a:shade share kept; the full
+// share is the plain colour, written without a modifier.
+func gradientShaded(tone fillTone, keep int) fillTone {
+	tone.Shade = keep
+	if keep >= gradientFullKeep {
+		tone.Shade = 0
+	}
+	return tone
+}
+
+// gradientRaisedToDarkInk lightens a shaded link, in shadeStep steps and no
+// further than upper (the link after it), until a theme ink reads on it.
+func gradientRaisedToDarkInk(ctx ExpandContext, tone fillTone, keep, upper int) (fillTone, bool) {
+	for k := keep + shadeStep; k <= upper; k += shadeStep {
+		if cand := gradientShaded(tone, k); timelineGradientInkReads(ctx, cand) {
+			return cand, true
+		}
+	}
+	return fillTone{}, false
+}
+
+// timelineGradientInkReads reports whether the ink chosen for tone clears
+// timelineInkMinContrast on it. A tone that cannot be measured (no theme, an
+// unresolvable colour) is reported as reading: there is nothing to correct
+// it against.
+func timelineGradientInkReads(ctx ExpandContext, tone fillTone) bool {
+	fill, ok := effectiveFillColor(ctx, tone)
+	if !ok {
+		return true
+	}
+	ink, ok := resolveThemeColor(ctx, timelineGradientTextColor(ctx, tone))
+	if !ok {
+		return true
+	}
+	return ink.ContrastWith(fill) >= timelineInkMinContrast
 }
 
 // buildChevronTextContent creates text for inside a chevron shape (label +

@@ -219,15 +219,16 @@ func (th *timelineHorizontal) ganttLayout(ctx ExpandContext, stops []TimelineSto
 		lay.fixedPt = axisRowPt + timelineGanttRulePt
 	}
 
+	chain := timelineGradientChain(ctx, accent, n)
 	for i, stop := range stops {
 		labelCell := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     json.RawMessage(`"none"`),
 			Text:     timelineGanttText(stop.Label, labelSize, "", "right", true, false),
 		}}
-		// Tint gradient per row, and the text colour that reads on this row's
-		// own tint rather than a hardcoded lt1.
-		tone := chevronGradientTone(accent, i, n)
+		// Gradient per row (darkest at the first stop), and the text colour
+		// measured to read on this row's own tone.
+		tone, ink := chain[i].tone, chain[i].ink
 		dateLabel := timelineGanttDateLabel(stop)
 		cells := []*jsonschema.GridCellInput{labelCell}
 		var barCell *jsonschema.GridCellInput
@@ -269,8 +270,6 @@ func (th *timelineHorizontal) ganttLayout(ctx ExpandContext, stops []TimelineSto
 				place = "before"
 			}
 			if place == "inside" {
-				barTone, ink := rescueChevronInk(ctx, tone, timelineGradientTextColor(ctx, tone))
-				barCell.Shape.Fill = barTone.fillJSON()
 				barCell.Shape.Text = timelineGanttText(dateLabel, dateSize, ink, "left", false, false)
 			}
 			if from > 0 {
