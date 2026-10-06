@@ -5,6 +5,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // unknownKeyPaths returns the sorted paths checkInputUnknownKeys reports for a
@@ -211,6 +213,84 @@ func TestUnknownKeys_NestedContainers(t *testing.T) {
 			want: []string{"/slides/0/base/shape_grid/rows/0/cells/0/grid/rows/0/cells/0/composite/text/fil"},
 		},
 		{
+			name: "shape fill, line and text objects",
+			slide: gridWithCell(`{"shape":{"geometry":"rect",
+				"fill":{"color":"accent1","alpha":50,"lumMod":75000,"opacity":50},
+				"line":{"color":"dk1","width":1,"dash":"dot","weight":1},
+				"text":{"content":"x","size":14,"bold":true,"vertical_align":"t","inset_left":4,"sise":14,"valign":"t"}}}`),
+			want: []string{
+				cell + "/shape/fill/opacity",
+				cell + "/shape/line/weight",
+				cell + "/shape/text/sise",
+				cell + "/shape/text/valign",
+			},
+		},
+		{
+			name: "shape text paragraphs",
+			slide: gridWithCell(`{"shape":{"geometry":"rect","text":{"align":"l","paragraph":[],"paragraphs":[
+				{"content":"a","size":14,"bold":true,"space_after":6,"bullet":true,"suffix":" m","suffix_size":12},
+				{"content":"b","colour":"accent1","spacing_after":6}
+			]}}}`),
+			want: []string{
+				cell + "/shape/text/paragraph",
+				cell + "/shape/text/paragraphs/1/colour",
+				cell + "/shape/text/paragraphs/1/spacing_after",
+			},
+		},
+		{
+			name:  "string shorthands for fill, line and text report nothing",
+			slide: gridWithCell(`{"shape":{"geometry":"rect","fill":"accent1","line":"none","text":"plain"}}`),
+			want:  nil,
+		},
+		{
+			name: "fill, line and text objects in a layer, a composite and a nested grid",
+			slide: gridWithCell(`{"grid":{"rows":[{"cells":[
+				{"layers":[{"frame":{"x":0,"y":0,"w":1,"h":1},"shape":{"geometry":"ellipse","fill":{"color":"accent1","alfa":50}}}]},
+				{"composite":{"text":{"geometry":"rect","text":{"content":"42%","blod":true}},"sub_diagram":{"type":"line_chart","data":{}}}},
+				{"shape":{"geometry":"rect","line":{"color":"dk1","dashes":"dot"}}}
+			]}]}}`),
+			want: []string{
+				cell + "/grid/rows/0/cells/0/layers/0/shape/fill/alfa",
+				cell + "/grid/rows/0/cells/1/composite/text/text/blod",
+				cell + "/grid/rows/0/cells/2/shape/line/dashes",
+			},
+		},
+		{
+			name: "table cell conditional",
+			slide: `{"content":[{"placeholder_id":"body","type":"table","table_value":{"headers":["a","b"],"rows":[
+				["plain",{"content":"7","conditional":{"rule":"gt","threshold":5,"fill":"accent1","colour":"accent1"}}]
+			]}}],"shape_grid":{"rows":[{"cells":[{"table":{"headers":["a"],"rows":[
+				[{"content":"7","conditional":{"rule":"gt","threshold":5,"treshold":5}}]
+			]}}]}]}}`,
+			want: []string{
+				"/slides/0/content/0/table_value/rows/0/1/conditional/colour",
+				"/slides/0/shape_grid/rows/0/cells/0/table/rows/0/0/conditional/treshold",
+			},
+		},
+		{
+			name: "slide overlays",
+			slide: `{"overlays":[
+				{"kind":"arrow","color":"accent1","width":1.5,"dash":"dot","colour":"accent1",
+				 "from":{"x":10,"y":10,"z":1,"anchor_cell":{"row":0,"col":0,"at":"center","column":0}},
+				 "to":{"anchor_image":{"row":0,"col":0,"x":0.5,"y":0.5,"units":"px","unit":"px"},"anchor":{}}},
+				{"kind":"badge","text":"New","height":5,"from":{"x":1,"y":1},"link":{"url":"https://example.com","href":"x"},"label":"New"}
+			]}`,
+			want: []string{
+				"/slides/0/overlays/0/colour",
+				"/slides/0/overlays/0/from/anchor_cell/column",
+				"/slides/0/overlays/0/from/z",
+				"/slides/0/overlays/0/to/anchor",
+				"/slides/0/overlays/0/to/anchor_image/unit",
+				"/slides/0/overlays/1/label",
+				"/slides/0/overlays/1/link/href",
+			},
+		},
+		{
+			name:  "slide source_link",
+			slide: `{"source":"Annual report","source_link":{"url":"https://example.com","slide":2,"href":"https://example.com"}}`,
+			want:  []string{"/slides/0/source_link/href"},
+		},
+		{
 			name: "working nested containers report nothing",
 			slide: gridWithCell(`{"col_span":2,"grid":{"gap":4,"col_gap":2,"columns":[1,2],"vertical_align":"top","rows":[
 				{"flex":1,"rule":"below","cells":[
@@ -245,5 +325,46 @@ func TestUnknownKeys_NestedContainerFix(t *testing.T) {
 	fix := warnings[0].Fix
 	if fix == nil || fix.Kind != "rename_field" || fix.Params["from"] != "fil" || fix.Params["to"] != "fill" {
 		t.Errorf("fix = %+v, want rename_field fil -> fill", fix)
+	}
+}
+
+// expand_pattern output is fed straight back into generate, so every key a
+// pattern writes into a shape's fill, line or text object must be one the
+// writer decodes: an expanded grid reports no unknown key
+// (go-slide-creator-hi3qe).
+func TestUnknownKeys_ExpandedPatternGridsAreClean(t *testing.T) {
+	reg := patterns.Default()
+	n := 0
+	for _, p := range reg.List() {
+		ex, ok := p.(patterns.Exemplar)
+		if !ok {
+			continue
+		}
+		values, err := json.Marshal(ex.ExemplarValues())
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx := patterns.ExpandContext{
+			SlideWidth:   12192000,
+			SlideHeight:  6858000,
+			LayoutBounds: patterns.LayoutBounds{X: contentRect.X, Y: contentRect.Y, Width: contentRect.CX, Height: contentRect.CY},
+			Theme:        pStyleTheme(),
+		}
+		grid, _, err := expandPattern(&PatternInput{Name: p.Name(), Values: values}, ctx, reg)
+		if err != nil {
+			t.Errorf("%s: expand: %v", p.Name(), err)
+			continue
+		}
+		raw, err := json.Marshal(grid)
+		if err != nil {
+			t.Fatal(err)
+		}
+		n++
+		for _, w := range checkShapeGridUnknownKeys(raw, "/shape_grid") {
+			t.Errorf("%s: expanded grid has unknown key %s", p.Name(), w.Path)
+		}
+	}
+	if n == 0 {
+		t.Fatal("no pattern exemplar was expanded")
 	}
 }

@@ -36,6 +36,10 @@ type MasterFontStyles struct {
 	TitleStyle *FontStyle         // p:titleStyle
 	BodyStyle  map[int]*FontStyle // p:bodyStyle lvlNpPr (0-8)
 	OtherStyle map[int]*FontStyle // p:otherStyle lvlNpPr (0-8)
+	// FirstBulletLevel is the first bodyStyle level that draws a bullet
+	// marker (0-based): the a:pPr lvl the generator writes a top-level bullet
+	// at.
+	FirstBulletLevel int
 }
 
 // FontStyle represents resolved font properties.
@@ -44,6 +48,7 @@ type FontStyle struct {
 	FontSize   int                            // Font size in hundredths of a point (e.g., 1400 = 14pt)
 	FontColor  string                         // Font color as hex string (e.g., "#000000")
 	ColorMods  types.BackgroundColorModifiers // OOXML transforms on FontColor
+	Bold       bool                           // b="1" on the default run
 }
 
 // NewMasterFontResolver creates a resolver for font properties.
@@ -144,6 +149,9 @@ func (r *MasterFontResolver) parseMasterFontStyles(masterData []byte) *MasterFon
 		BodyStyle:      make(map[int]*FontStyle),
 		OtherStyle:     make(map[int]*FontStyle),
 	}
+	if level := FirstBulletLevel(masterData); level > 0 {
+		styles.FirstBulletLevel = level
+	}
 
 	// Parse title style (level 1 only)
 	if master.TxStyles.TitleStyle.Lvl1pPr.DefRPr != nil {
@@ -197,6 +205,7 @@ func (r *MasterFontResolver) parseDefaultRunProps(defRPr *defaultRunPropsXML) *F
 	// Extract font color
 	style.FontColor = r.extractColor(defRPr)
 	style.ColorMods = colorModifiersFromSolidFill(defRPr.SolidFill)
+	style.Bold = defRPr.Bold == "1"
 
 	return style
 }

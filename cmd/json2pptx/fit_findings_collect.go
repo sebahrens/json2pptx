@@ -2069,6 +2069,7 @@ func placeholderContrastPairs(input *PresentationInput, layouts []types.LayoutMe
 		}
 		contents := injectSectionNumber(slide.Content, layout, sectionNumbers[si])
 		imageFrames := authoredNativeImageFrames(slide, layout)
+		slideType := inferSlideType(*slide, layouts...)
 		for ci := range contents {
 			content := &contents[ci]
 			ph := findContrastPlaceholderByID(content.PlaceholderID, layout)
@@ -2077,21 +2078,6 @@ func placeholderContrastPairs(input *PresentationInput, layouts []types.LayoutMe
 			}
 			if generator.NativeImageOverlapsText(*ph, imageFrames) {
 				continue // Unknown image pixels are not the canvas behind them.
-			}
-			// A layout that leaves its placeholder colour to the master's
-			// txStyles states no FontColor, and the preflight used to skip it
-			// entirely — so generate swapped the colour and validate said
-			// nothing (go-slide-creator-j4364). InheritedFontColor is what the
-			// placeholder actually renders at, resolved through the layout's
-			// clrMapOvr the same way the render-time pass resolves it.
-			fg := ph.InheritedFontColor
-			mods := ph.InheritedFontColorMods
-			if fg == "" {
-				fg = ph.FontColor
-				mods = ph.FontColorMods
-			}
-			if fg == "" {
-				continue
 			}
 			if len(extractContentParagraphs(content)) == 0 {
 				continue
@@ -2104,23 +2090,88 @@ func placeholderContrastPairs(input *PresentationInput, layouts []types.LayoutMe
 			if ci >= len(slide.Content) {
 				path = slidepath.Content(si, ph.ID)
 			}
-			pairs = append(pairs, generator.ContrastPreflightPair{
-				Path:                 path,
-				Foreground:           fg,
-				ForegroundMods:       mods,
-				Background:           pairBackground,
-				Backgrounds:          gradient,
-				Gradient:             ph.FillGradient,
-				UnresolvedBackground: unresolved,
-				Source:               pairSource,
-				// Bold is unknown from placeholder metadata; false is the
-				// conservative reading, matching the unknown-size rule.
-				TextPt:           float64(ph.FontSize) / 100.0,
-				AuthorBackground: pairAuthorBackground,
-			})
+			// One pair per list level the content's paragraphs sit on, each at
+			// that level's own colour and size — the render-time passes check
+			// exactly those (go-slide-creator-50xzk). Levels that would be
+			// judged the same way are one prediction, not several.
+			emitted := map[string]bool{}
+			for _, text := range placeholderLevelTexts(ph, contentListLevels(content, si, slideType, ph.BulletBaseLevel)) {
+				textPt := float64(text.FontSize) / 100.0
+				key := fmt.Sprintf("%s|%+v|%g|%t", text.Color, text.ColorMods, generator.ContrastThreshold(textPt, text.Bold), text.FromMaster)
+				if emitted[key] {
+					continue
+				}
+				emitted[key] = true
+				pairs = append(pairs, generator.ContrastPreflightPair{
+					Path:                 path,
+					Foreground:           text.Color,
+					ForegroundMods:       text.ColorMods,
+					Background:           pairBackground,
+					Backgrounds:          gradient,
+					Gradient:             ph.FillGradient,
+					UnresolvedBackground: unresolved,
+					Source:               pairSource,
+					TextPt:               textPt,
+					Bold:                 text.Bold,
+					AuthorBackground:     pairAuthorBackground,
+					Inherited:            text.FromMaster,
+				})
+			}
 		}
 	}
 	return pairs
+}
+
+// contentListLevels returns the list levels (0-based a:pPr lvl) the paragraphs
+// of one content item are written at. It converts the item the way generation
+// does and asks the generator's own population code, so an indented sub-bullet,
+// or a bullet on a master whose first level carries no marker, is placed on the
+// level it will render at. Content that cannot be converted is read as plain
+// first-level text, which is what the preflight assumed before it knew levels.
+func contentListLevels(content *ContentInput, slideIndex int, slideType types.SlideType, bulletBaseLevel int) []int {
+	items, err := convertPresentationContent([]ContentInput{*content}, slideIndex+1, slideType)
+	if err != nil || len(items) != 1 {
+		return []int{0}
+	}
+	if levels := generator.ContentListLevels(items[0], bulletBaseLevel); len(levels) > 0 {
+		return levels
+	}
+	return []int{0}
+}
+
+// placeholderLevelTexts returns the text colour a placeholder renders at on
+// each of the given list levels, leaving out a level neither the layout nor
+// the master colours.
+//
+// Level 0 is the placeholder's own FontColor / InheritedFontColor. A layout
+// that leaves its placeholder colour to the master's txStyles states no
+// FontColor, and the preflight used to skip it entirely — so generate swapped
+// the colour and validate said nothing (go-slide-creator-j4364).
+// InheritedFontColor is what the placeholder actually renders at, resolved
+// through the layout's clrMapOvr the same way the render-time pass resolves
+// it. Bold is unknown from placeholder metadata at that level; false is the
+// conservative reading, matching the unknown-size rule.
+func placeholderLevelTexts(ph *types.PlaceholderInfo, levels []int) []types.PlaceholderLevelText {
+	out := make([]types.PlaceholderLevelText, 0, len(levels))
+	for _, level := range levels {
+		if level == 0 {
+			text := types.PlaceholderLevelText{Color: ph.InheritedFontColor, ColorMods: ph.InheritedFontColorMods, FontSize: ph.FontSize,
+				FromMaster: ph.InheritedFontColorFromMaster}
+			if text.Color == "" {
+				text.Color, text.ColorMods = ph.FontColor, ph.FontColorMods
+			}
+			if text.Color != "" {
+				out = append(out, text)
+			}
+			continue
+		}
+		for _, text := range ph.LevelText {
+			if text.Level == level {
+				out = append(out, text)
+			}
+		}
+	}
+	return out
 }
 
 func placeholderPairBackground(ph *types.PlaceholderInfo, canvas, source string, authorBackground bool, themeColors []types.ThemeColor) (string, []string, string, bool, bool) {
