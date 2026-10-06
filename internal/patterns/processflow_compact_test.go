@@ -29,7 +29,7 @@ func TestProcessFlowCompactPointedStepsKeepReadableTextWidth(t *testing.T) {
 			if grid.Bounds != nil || grid.Rows[0].MaxHeight <= 0 {
 				t.Fatalf("compact band must be a content-sized row with no bounds box: bounds %+v, max_height %v", grid.Bounds, grid.Rows[0].MaxHeight)
 			}
-			width, bandCap := processFlowCompactCellSize(ctx, len(tc.steps), processFlowStepGapPt(ctx, tc.steps), true)
+			width, bandCap := processFlowCompactCellSize(ctx, len(tc.steps), processFlowStepGapPt(ctx, tc.steps, nil), true)
 			_, contentHeight := contentAreaPt(ctx)
 			// Content-sized at or below the pointed cap (go-slide-creator-xb06p).
 			height := grid.Rows[0].MaxHeight
@@ -143,8 +143,22 @@ func TestProcessFlowCompact_ExpandBasic(t *testing.T) {
 	if len(grid.Rows[0].Cells) != 3 {
 		t.Errorf("expected 3 cells, got %d", len(grid.Rows[0].Cells))
 	}
-	if grid.Rows[0].Connector == nil {
-		t.Error("expected connector on the row")
+	// The default look interlocks bare labels; the flowchart look keeps the
+	// connector.
+	if grid.Rows[0].Connector != nil {
+		t.Errorf("the chevron look carries a connector: %+v", grid.Rows[0].Connector)
+	}
+	for i, cell := range grid.Rows[0].Cells {
+		if n := len(cellText(t, cell.Shape.Text).Paragraphs); n != 1 {
+			t.Errorf("compact cell %d has %d paragraphs, want the bare label (no numeral)", i, n)
+		}
+	}
+	flowchart, err := p.Expand(ExpandContext{}, vals, &ProcessFlowOverrides{Style: processFlowStyleTinted}, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if flowchart.Rows[0].Connector == nil {
+		t.Error("expected connector on the flowchart row")
 	}
 }
 

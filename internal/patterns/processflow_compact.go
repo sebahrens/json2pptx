@@ -24,7 +24,7 @@ func (p *processFlowCompact) Description() string {
 	return "Compact left-to-right process flow: one content-sized band for short labels, for a compose segment or cell"
 }
 func (p *processFlowCompact) UseWhen() string {
-	return "3-8 short-label steps where the process is supporting context (not the hero content); prefer full process-flow when steps have long labels or fill the slide"
+	return "3-8 short-label steps as one shallow band of interlocking arrows where the process is supporting context (not the hero content); prefer full process-flow when steps have long labels or fill the slide"
 }
 func (p *processFlowCompact) NotWhen() string {
 	return "Steps have long labels needing vertical space (use process-flow), or steps belong to different actors (use swimlane)"
@@ -237,7 +237,12 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		}
 	}
 
-	cells := buildProcessFlowCells(ctx, vals.Steps, ovr, cellOverrides, bodySize)
+	gap := processFlowStepGapPt(ctx, vals.Steps, ovr)
+	cellW, bandCap := processFlowCompactCellSize(ctx, len(vals.Steps), gap, pointedRow)
+	colsJSON, widths := processFlowColumns(ctx, vals.Steps, bodySize, cellW)
+	// The band's labels are bare: a numeral over each would double its height.
+	look := processFlowLookFor(vals.Steps, ovr, processFlowLayout{rows: 1, perRow: len(vals.Steps)}, cellW, false)
+	cells := buildProcessFlowCells(ctx, vals.Steps, ovr, cellOverrides, bodySize, look)
 
 	row := jsonschema.GridRowInput{
 		Cells:     cells,
@@ -247,18 +252,16 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		row.Connector = nil
 	}
 
-	gap := processFlowStepGapPt(ctx, vals.Steps)
-	cellW, bandCap := processFlowCompactCellSize(ctx, len(vals.Steps), gap, pointedRow)
-	colsJSON, widths := processFlowColumns(ctx, vals.Steps, bodySize, cellW)
 	_, contentHeight := contentAreaPt(ctx)
 	// The band is content-sized below its cap, shallower than process-flow's
 	// steps (go-slide-creator-xb06p). The cap gives way to the written fit of
 	// the tallest label (never past the content area) before the writer would
 	// shrink it below the readable floor (go-slide-creator-n1muf).
-	bandHeight := processFlowSettleRowPt(ctx.themeFonts(), cells, widths, func(need float64) float64 {
+	bandHeight := processFlowSettleRowPt(ctx.themeFonts(), cells, widths, look, func(need float64) float64 {
 		h := processFlowContentHeight(need, cellW, processFlowCompactBoxAspect, bandCap)
 		return math.Max(h, math.Min(need, contentHeight))
 	})
+	look.applyAdjustments(cells, widths, bandHeight)
 	// The band is one content-sized row with no bounds box of its own, so on
 	// a slide of its own it is placed like every other sparse block
 	// (go-slide-creator-yhzxt) instead of hanging a shallow strip under the

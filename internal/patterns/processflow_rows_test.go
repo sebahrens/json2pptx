@@ -26,8 +26,10 @@ func TestProcessFlowTwoRows(t *testing.T) {
 					cells = append(cells, "")
 					continue
 				}
+				// The label is the last paragraph: a numbered step sets its
+				// numeral above it.
 				text := cellText(t, c.Shape.Text)
-				cells = append(cells, text.Paragraphs[0].Content)
+				cells = append(cells, text.Paragraphs[len(text.Paragraphs)-1].Content)
 			}
 			rows = append(rows, strings.Join(cells, "|"))
 		}
@@ -41,8 +43,47 @@ func TestProcessFlowTwoRows(t *testing.T) {
 		return rows, links
 	}
 
-	t.Run("eight steps bend back under the first four", func(t *testing.T) {
+	// The flowchart look joins its boxes with connectors and draws the turn.
+	flowchart := func(rows int) *ProcessFlowOverrides {
+		return &ProcessFlowOverrides{Style: processFlowStyleTinted, Rows: rows}
+	}
+
+	// go-slide-creator-cuq95: the default look bends the same way, and its
+	// shapes say so: no links, the returning row's arrows mirrored and
+	// interlocking, the numerals running on.
+	t.Run("the chevron look bends without connectors", func(t *testing.T) {
 		rows, links := rowLabels(t, pfSteps(8), nil)
+		want := []string{"Request|Review|Approve|Build", "Close|Monitor|Deploy|Test"}
+		if strings.Join(rows, " / ") != strings.Join(want, " / ") || len(links) != 0 {
+			t.Errorf("rows = %q links = %v, want %q and no links", rows, links, want)
+		}
+		grid, err := p.Expand(processFlowChevronCtx(), &ProcessFlowValues{Steps: pfSteps(8)}, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if grid.Rows[0].Cells[0].Shape.Geometry != "homePlate" {
+			t.Errorf("the flow opens with %q, want a pentagon", grid.Rows[0].Cells[0].Shape.Geometry)
+		}
+		for r, row := range grid.Rows {
+			for c, cell := range row.Cells {
+				if r+c > 0 && cell.Shape.Geometry != "chevron" {
+					t.Errorf("row %d col %d is a %q, want a chevron", r, c, cell.Shape.Geometry)
+				}
+				if cell.Shape.FlipH != (r == 1) {
+					t.Errorf("row %d col %d flip_h = %v, want the returning row mirrored only", r, c, cell.Shape.FlipH)
+				}
+				if (cell.BleedLeft > 0) != (c > 0) {
+					t.Errorf("row %d col %d bleeds %.0fpt, want every step after a row's first tucked into its neighbour", r, c, cell.BleedLeft)
+				}
+			}
+		}
+		if got := cellText(t, grid.Rows[1].Cells[0].Shape.Text).Paragraphs[0].Content; got != "08" {
+			t.Errorf("the last step's numeral = %q, want 08 at the left end of the returning row", got)
+		}
+	})
+
+	t.Run("eight steps bend back under the first four", func(t *testing.T) {
+		rows, links := rowLabels(t, pfSteps(8), flowchart(0))
 		want := []string{"Request|Review|Approve|Build", "Close|Monitor|Deploy|Test"}
 		if strings.Join(rows, " / ") != strings.Join(want, " / ") {
 			t.Errorf("rows = %q, want %q", rows, want)
@@ -60,7 +101,7 @@ func TestProcessFlowTwoRows(t *testing.T) {
 	})
 
 	t.Run("seven steps leave the last column of the second row empty", func(t *testing.T) {
-		rows, links := rowLabels(t, pfSteps(7), nil)
+		rows, links := rowLabels(t, pfSteps(7), flowchart(0))
 		if len(rows) != 2 || rows[1] != "|Monitor|Deploy|Test" {
 			t.Errorf("rows = %q, want the second row right-aligned under the first", rows)
 		}
@@ -93,7 +134,7 @@ func TestProcessFlowTwoRows(t *testing.T) {
 		// A mixed flow bends like a plain one (go-slide-creator-yniru).
 		mixed := pfSteps(8)
 		mixed[0].Type = "chevron"
-		if rows, links := rowLabels(t, mixed, nil); len(rows) != 2 || len(links) != 4 {
+		if rows, links := rowLabels(t, mixed, flowchart(0)); len(rows) != 2 || len(links) != 4 {
 			t.Errorf("mixed flow: rows = %q links = %v, want two rows joined by four links", rows, links)
 		}
 	})
@@ -103,7 +144,7 @@ func TestProcessFlowTwoRows(t *testing.T) {
 	t.Run("a mixed flow on rows 2 bends and draws the turn", func(t *testing.T) {
 		mixed := pfSteps(6)
 		mixed[0].Type, mixed[1].Type = "chevron", "arrow"
-		rows, links := rowLabels(t, mixed, &ProcessFlowOverrides{Rows: 2})
+		rows, links := rowLabels(t, mixed, flowchart(2))
 		if len(rows) != 2 || rows[1] != "Deploy|Test|Build" {
 			t.Errorf("rows = %q, want the second row running back under the first", rows)
 		}

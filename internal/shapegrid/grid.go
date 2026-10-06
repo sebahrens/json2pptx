@@ -275,10 +275,6 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 			}
 
 			shapeRect := ApplyFitMode(fitMode, cellRect)
-			if bleed := PtToEMU(cell.BleedLeft); bleed > 0 {
-				shapeRect.X -= bleed
-				shapeRect.CX += bleed
-			}
 			if bleed := PtToEMU(cell.BleedTop); bleed > 0 {
 				shapeRect.Y -= bleed
 				shapeRect.CY += bleed
@@ -286,6 +282,10 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 			if top, bottom := PtToEMU(cell.InsetTop), PtToEMU(cell.InsetBottom); (top > 0 || bottom > 0) && top >= 0 && bottom >= 0 && top+bottom < shapeRect.CY {
 				shapeRect.Y += top
 				shapeRect.CY -= top + bottom
+			}
+			if bleed := chevronBleedEMU(cell.Shape, PtToEMU(cell.BleedLeft), shapeRect.CX, shapeRect.CY); bleed > 0 {
+				shapeRect.X -= bleed
+				shapeRect.CX += bleed
 			}
 			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil && !cell.Placeholder {
 				// A cell of layers only: a transparent canvas, and so not a

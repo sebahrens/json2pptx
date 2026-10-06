@@ -19,7 +19,8 @@ func firstParagraphSize(t *testing.T, raw json.RawMessage) float64 {
 	if len(obj.Paragraphs) == 0 {
 		t.Fatal("no paragraphs in cell text")
 	}
-	return obj.Paragraphs[0].Size
+	// The label is the last paragraph: a numbered step sets its numeral above.
+	return obj.Paragraphs[len(obj.Paragraphs)-1].Size
 }
 
 func processFlowStepFont(t *testing.T, n int, ovr any) float64 {
@@ -102,9 +103,27 @@ func TestProcessFlow_ExpandBasic(t *testing.T) {
 	if len(grid.Rows[0].Cells) != 3 {
 		t.Errorf("expected 3 cells, got %d", len(grid.Rows[0].Cells))
 	}
-	// Check connector
-	if grid.Rows[0].Connector == nil {
-		t.Error("expected connector on the row")
+	// The default look interlocks its steps and draws no connector; the
+	// flowchart look joins its boxes with one.
+	if grid.Rows[0].Connector != nil {
+		t.Errorf("the chevron look carries a connector: %+v", grid.Rows[0].Connector)
+	}
+	for i, want := range []string{"homePlate", "diamond", "chevron"} {
+		if got := grid.Rows[0].Cells[i].Shape.Geometry; got != want {
+			t.Errorf("cell %d geometry = %q, want %q", i, got, want)
+		}
+	}
+	flowchart, err := p.Expand(ExpandContext{}, vals, &ProcessFlowOverrides{Style: processFlowStyleTinted}, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if flowchart.Rows[0].Connector == nil {
+		t.Error("expected connector on the flowchart row")
+	}
+	for i, want := range []string{"roundRect", "diamond", "roundRect"} {
+		if got := flowchart.Rows[0].Cells[i].Shape.Geometry; got != want {
+			t.Errorf("flowchart cell %d geometry = %q, want %q", i, got, want)
+		}
 	}
 }
 

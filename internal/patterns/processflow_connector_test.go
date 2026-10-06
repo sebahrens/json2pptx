@@ -23,11 +23,22 @@ func pfSteps(n int) []ProcessFlowStep {
 func TestProcessFlowConnectorHasItsOwnLength(t *testing.T) {
 	wide := ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000,
 		Metadata: &types.TemplateMetadata{Grid: &types.TemplateGrid{GutterPt: 16}}}
+	// The flowchart look draws connectors; the default chevron look has none.
+	flowchart := &ProcessFlowOverrides{Style: processFlowStyleTinted}
 	for _, name := range []string{"process-flow", "process-flow-compact"} {
 		p, _ := Default().Get(name)
 		for n := 3; n <= 8; n++ {
 			vals := &ProcessFlowValues{Steps: pfSteps(n)}
-			grid, err := p.Expand(testThemeCtx(), vals, nil, nil)
+			for _, c := range []ExpandContext{testThemeCtx(), wide} {
+				chevrons, err := p.Expand(c, vals, nil, nil)
+				if err != nil {
+					t.Fatalf("%s n=%d: %v", name, n, err)
+				}
+				if chevrons.Gap != processFlowChevronGapPt || chevrons.Rows[0].Connector != nil || len(chevrons.Links) != 0 {
+					t.Errorf("%s n=%d: the chevron look has gap %.0fpt, connector %+v and %d links; want the %.0fpt hairline and no connectors", name, n, chevrons.Gap, chevrons.Rows[0].Connector, len(chevrons.Links), processFlowChevronGapPt)
+				}
+			}
+			grid, err := p.Expand(testThemeCtx(), vals, flowchart, nil)
 			if err != nil {
 				t.Fatalf("%s n=%d: %v", name, n, err)
 			}
@@ -48,7 +59,7 @@ func TestProcessFlowConnectorHasItsOwnLength(t *testing.T) {
 				t.Errorf("%s n=%d: connector = %+v, want a %.0fpt arrow with the large head", name, n, conn, processFlowConnectorLinePt)
 			}
 			// The length does not follow the template gutter.
-			scaled, err := p.Expand(wide, vals, nil, nil)
+			scaled, err := p.Expand(wide, vals, flowchart, nil)
 			if err != nil {
 				t.Fatalf("%s n=%d: %v", name, n, err)
 			}
@@ -81,9 +92,10 @@ func TestProcessFlowDecisionKeepsItsWordWhole(t *testing.T) {
 		p, _ := Default().Get(name)
 		// One row of eight: process-flow bends eight steps onto two rows unless
 		// told otherwise (TestProcessFlowTwoRows covers the bent layout).
-		var ovr any
+		// The flowchart look: its connectors leave the steps the least width.
+		ovr := &ProcessFlowOverrides{Style: processFlowStyleTinted}
 		if name == "process-flow" {
-			ovr = &ProcessFlowOverrides{Rows: 1}
+			ovr.Rows = 1
 		}
 		steps := pfSteps(8)
 		steps[3] = ProcessFlowStep{Label: "Approved?", Type: "decision"}

@@ -53,7 +53,7 @@ func TestProcessFlowChevronKeepsItsLabelOutOfTheNotch(t *testing.T) {
 		t.Errorf("a row of chevrons still carries a connector: %+v", grid.Rows[0].Connector)
 	}
 
-	width, height := processFlowCellSize(ctx, len(vals.Steps), processFlowStepGapPt(ctx, vals.Steps), true)
+	width, height := processFlowCellSize(ctx, len(vals.Steps), processFlowStepGapPt(ctx, vals.Steps, nil), true)
 	notch := float64(chevronAdj) / 100000 * math.Min(width, height)
 	if notch <= 0 {
 		t.Fatal("notch depth computed as zero")
@@ -98,16 +98,18 @@ func TestProcessFlowChevronKeepsItsLabelOutOfTheNotch(t *testing.T) {
 	}
 }
 
-// A flow of plain steps is untouched: rectangles need no notch inset, and the
-// arrows between them are the only thing saying which way it runs.
+// A flowchart of plain steps (overrides.style "tinted") is untouched:
+// rectangles need no notch inset, and the arrows between them are the only
+// thing saying which way it runs.
 func TestProcessFlowPlainStepsKeepTheirConnectors(t *testing.T) {
 	pat, _ := Default().Get("process-flow")
 	ctx := processFlowChevronCtx()
 	vals := &ProcessFlowValues{Steps: []ProcessFlowStep{
 		{Label: "Draft"}, {Label: "Approved?", Type: "decision"}, {Label: "Rehearse"},
 	}}
+	flowchart := &ProcessFlowOverrides{Style: processFlowStyleTinted}
 
-	grid, err := pat.Expand(ctx, vals, nil, nil)
+	grid, err := pat.Expand(ctx, vals, flowchart, nil)
 	if err != nil {
 		t.Fatalf("expand: %v", err)
 	}
@@ -137,7 +139,7 @@ func TestProcessFlowPlainStepsKeepTheirConnectors(t *testing.T) {
 	// A row that is not all-pointed is content-sized: at least the box
 	// proportion of its step width, at most the plain cap
 	// (go-slide-creator-xb06p).
-	plainWidth, plainHeight := processFlowCellSize(ctx, len(vals.Steps), processFlowStepGapPt(ctx, vals.Steps), false)
+	plainWidth, plainHeight := processFlowCellSize(ctx, len(vals.Steps), processFlowStepGapPt(ctx, vals.Steps, flowchart), false)
 	if got := grid.Rows[0].MaxHeight; got > plainHeight || got < math.Round(plainWidth*processFlowBoxAspect)-1 && got < plainHeight {
 		t.Errorf("row max_height = %.0f, want between the %.0f box floor and the %.0f cap", got, plainWidth*processFlowBoxAspect, plainHeight)
 	}

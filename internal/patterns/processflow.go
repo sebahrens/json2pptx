@@ -14,7 +14,9 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// process-flow pattern — left-to-right rectangles and diamonds with arrows
+// process-flow pattern — left-to-right interlocking arrows and diamonds
+// (processflow_chevrons.go); rectangles joined by connector arrows in the
+// "tinted" / "solid" flowchart styles
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -28,10 +30,10 @@ func (p *processFlow) Description() string {
 	return "Left-to-right process flow with steps and decision points"
 }
 func (p *processFlow) UseWhen() string {
-	return "Sequential steps in a single-lane workflow (3-8 steps); prefer swimlane when multiple actors own different steps, timeline-horizontal when stops are date-based"
+	return "Sequential action steps in a single-lane workflow (3-8 steps), each one statement inside its own interlocking arrow, with decision diamonds where the flow has a gate; prefer numbered-step-strip when a step is a short label plus a detail line, value-chain for stage names with descriptions, swimlane when multiple actors own different steps, timeline-horizontal when stops are date-based"
 }
 func (p *processFlow) NotWhen() string {
-	return "Steps belong to different actors/roles (use swimlane), stops are calendar-based milestones (use timeline-horizontal), or items are unordered (use icon-row or card-grid)"
+	return "Steps need a short label with a description under it (use numbered-step-strip or value-chain), steps belong to different actors/roles (use swimlane), stops are calendar-based milestones (use timeline-horizontal), or items are unordered (use icon-row or card-grid)"
 }
 func (p *processFlow) Version() int      { return 1 }
 func (p *processFlow) CellsHint() string { return "3-8" }
@@ -110,9 +112,11 @@ type ProcessFlowValues struct {
 // by Validate.
 type ProcessFlowOverrides struct {
 	TextOverrides
-	// Style is "tinted" (default: neutral steps with dark text; the accent
-	// fills only a highlighted step or a lone decision, and draws the
-	// connectors) or "solid" (every step filled with the accent; legacy).
+	// Style is "chevrons" (default: interlocking arrows in a light accent
+	// tint, no connectors; the solid accent fills only a highlighted step or
+	// a lone decision), "tinted" (the flowchart look: neutral boxes joined by
+	// accent connector arrows) or "solid" (boxes all filled with the accent;
+	// legacy).
 	Style string `json:"style,omitempty"`
 	// Rows is 1 or 2 (process-flow only). Unset, a flow of
 	// processFlowTwoRowMinSteps or more steps bends onto two rows and a
@@ -120,8 +124,14 @@ type ProcessFlowOverrides struct {
 	Rows int `json:"rows,omitempty"`
 }
 
-// processFlowStyles are the accepted overrides.style values.
-var processFlowStyles = []string{"tinted", "solid"}
+// The accepted overrides.style values.
+const (
+	processFlowStyleChevrons = "chevrons"
+	processFlowStyleTinted   = "tinted"
+	processFlowStyleSolid    = "solid"
+)
+
+var processFlowStyles = []string{processFlowStyleChevrons, processFlowStyleTinted, processFlowStyleSolid}
 
 // ProcessFlowCellOverride is the shared per-cell override.
 type ProcessFlowCellOverride = CellOverride
@@ -299,15 +309,17 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// size below is that of one row's boxes.
 	lay := processFlowLayoutFor(vals.Steps, ovr)
 	bodySize := ResolveSize(ovr.BodySize, processFlowFullFontPtFor(vals.Steps, lay.perRow))
-	cells := buildProcessFlowCells(ctx, vals.Steps, ovr, cellOverrides, bodySize)
 
 	// Steps are capped at processFlowMaxHeightFrac of the content height
 	// (go-slide-creator-7km8) instead of stretching into full-height pillars
 	// with needle-thin diamonds; the grid centres the row vertically.
 	pointedRow := allStepsPointed(vals.Steps)
-	gap := processFlowGapForPt(ctx, vals.Steps, lay.perRow)
+	gap := processFlowGapForPt(ctx, vals.Steps, lay.perRow, ovr)
+	rowGap := processFlowRowGapPt(ctx, gap, ovr)
 	cellW, rowCap := processFlowCellSize(ctx, lay.perRow, gap, pointedRow)
 	colsJSON, widths := processFlowGridColumns(ctx, vals.Steps, lay, bodySize, cellW)
+	look := processFlowLookFor(vals.Steps, ovr, lay, cellW, true)
+	cells := buildProcessFlowCells(ctx, vals.Steps, ovr, cellOverrides, bodySize, look)
 	// Steps are content-sized: the written fit of the tallest label, floored
 	// at a box proportion so a one-word step still reads as a box, and capped
 	// at processFlowMaxHeightFrac (go-slide-creator-xb06p). The cap gives way
@@ -327,8 +339,8 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		// An arrow's shaft takes only its share of the height the row gains.
 		spare = spare * 100000 / processFlowArrowShaftAdj
 	}
-	room := processFlowRowRoomPt(ctx, lay, gap)
-	rowHeight := processFlowSettleRowPt(ctx.themeFonts(), cells, widths, func(need float64) float64 {
+	room := processFlowRowRoomPt(ctx, lay, rowGap)
+	rowHeight := processFlowSettleRowPt(ctx.themeFonts(), cells, widths, look, func(need float64) float64 {
 		h := processFlowContentHeight(need, cellW, processFlowBoxAspect, rowCap)
 		h = math.Max(h, math.Min(need, room))
 		if need+spare <= room {
@@ -343,6 +355,7 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	if pointedRow {
 		connector = nil
 	}
+	look.applyAdjustments(cells, widths, rowHeight)
 	rows, links := processFlowGridRows(cells, lay, connector, rowHeight)
 
 	grid := &jsonschema.ShapeGridInput{
@@ -351,6 +364,9 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		Rows:          rows,
 		Links:         links,
 		VerticalAlign: GridVerticalAlignDefault,
+	}
+	if look.chevrons {
+		grid.RowGap = rowGap
 	}
 
 	return grid, nil
@@ -376,13 +392,21 @@ func processFlowRowRoomPt(ctx ExpandContext, lay processFlowLayout, gapPt float6
 // processFlowArrowShaftAdj of the step height, and as long as the step is wide
 // less the head, whose length follows the step height. rowPt is the height the
 // arrows are measured at (go-slide-creator-fx48s); see processFlowSettleRowPt.
-func processFlowWrittenNeedPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput, widths []float64, rowPt float64) float64 {
+//
+// A plain step of the chevron look is measured in its preset's text
+// rectangle, which stops short of the point and the notch
+// (processFlowLook.textRectPt).
+func processFlowWrittenNeedPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput, widths []float64, look processFlowLook, rowPt float64) float64 {
 	need := 0.0
 	for i, c := range cells {
 		if c == nil || c.Shape == nil || i >= len(widths) {
 			continue
 		}
 		cellW := widths[i]
+		if look.interlocks(i) {
+			need = math.Max(need, writtenFitHeightPt(fonts, c.Shape.Text, look.textRectPt(i, cellW), 0))
+			continue
+		}
 		switch c.Shape.Geometry {
 		case "diamond":
 			need = math.Max(need, 2*writtenFitHeightPt(fonts, c.Shape.Text, cellW/2, 0))
@@ -404,10 +428,10 @@ func processFlowWrittenNeedPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCel
 // step height, so a taller row leaves its shaft less width and its label may
 // need a further line; the row is re-measured at the height it comes to until
 // the two agree. A row without arrows settles at once.
-func processFlowSettleRowPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput, widths []float64, size func(need float64) float64) float64 {
+func processFlowSettleRowPt(fonts pptx.ThemeFonts, cells []*jsonschema.GridCellInput, widths []float64, look processFlowLook, size func(need float64) float64) float64 {
 	h := 0.0
 	for range 6 {
-		next := size(processFlowWrittenNeedPt(fonts, cells, widths, h))
+		next := size(processFlowWrittenNeedPt(fonts, cells, widths, look, h))
 		if next <= h {
 			break
 		}
@@ -434,7 +458,7 @@ func processFlowAreaWarning(ctx ExpandContext, name string, steps []ProcessFlowS
 		size = processFlowFullFontPtFor(steps, lay.perRow)
 	}
 	bodySize := ResolveSize(ovr.BodySize, size)
-	gap := processFlowGapForPt(ctx, steps, lay.perRow)
+	gap := processFlowGapForPt(ctx, steps, lay.perRow, ovr)
 	var equalW float64
 	if compact {
 		equalW, _ = processFlowCompactCellSize(ctx, lay.perRow, gap, false)
@@ -450,10 +474,11 @@ func processFlowAreaWarning(ctx ExpandContext, name string, steps []ProcessFlowS
 		return nil
 	}
 	// Each step's label cell as Expand writes it.
-	cells := buildProcessFlowCells(ctx, steps, &ProcessFlowOverrides{}, nil, bodySize)
+	look := processFlowLookFor(steps, ovr, lay, equalW, !compact)
+	cells := buildProcessFlowCells(ctx, steps, &ProcessFlowOverrides{Style: ovr.Style}, nil, bodySize, look)
 	rows := float64(lay.rows)
-	rowNeed := processFlowSettleRowPt(ctx.themeFonts(), cells, widths, func(need float64) float64 { return need })
-	need := rows*rowNeed + (rows-1)*gap
+	rowNeed := processFlowSettleRowPt(ctx.themeFonts(), cells, widths, look, func(need float64) float64 { return need })
+	need := rows*rowNeed + (rows-1)*processFlowRowGapPt(ctx, gap, ovr)
 	_, areaH := contentAreaPt(ctx)
 	if need <= areaH+1 {
 		return nil
@@ -657,17 +682,31 @@ func processFlowConnectorLenPt(n int) float64 {
 
 // processFlowStepGapPt is the gap between steps: the connector length when
 // connectors are drawn, the plain grid gap for a row of pointed steps.
-func processFlowStepGapPt(ctx ExpandContext, steps []ProcessFlowStep) float64 {
-	return processFlowGapForPt(ctx, steps, len(steps))
+func processFlowStepGapPt(ctx ExpandContext, steps []ProcessFlowStep, ovr *ProcessFlowOverrides) float64 {
+	return processFlowGapForPt(ctx, steps, len(steps), ovr)
 }
 
 // processFlowGapForPt is processFlowStepGapPt for steps laid out perRow to a
-// row; on two rows it is also the gap the dropping connector crosses.
-func processFlowGapForPt(ctx ExpandContext, steps []ProcessFlowStep, perRow int) float64 {
+// row. The chevron look draws no connector: its steps interlock across the
+// processFlowChevronGapPt hairline.
+func processFlowGapForPt(ctx ExpandContext, steps []ProcessFlowStep, perRow int, ovr *ProcessFlowOverrides) float64 {
 	if allStepsPointed(steps) {
 		return ctx.Gap(processFlowGapPt)
 	}
+	if processFlowChevronStyle(ovr) {
+		return processFlowChevronGapPt
+	}
 	return processFlowConnectorLenPt(perRow)
+}
+
+// processFlowRowGapPt is the gap between the two rows of a bent flow: the
+// step gap, which the dropping connector crosses, or the chevron look's own
+// row gap, since its step gap is a hairline.
+func processFlowRowGapPt(ctx ExpandContext, stepGapPt float64, ovr *ProcessFlowOverrides) float64 {
+	if processFlowChevronStyle(ovr) {
+		return ctx.Gap(processFlowChevronRowGapPt)
+	}
+	return stepGapPt
 }
 
 // processFlowCellSize is one step's width and the row's height in points.

@@ -339,6 +339,11 @@ func scaledGrid(grid *Grid, k float64) *Grid {
 			if c.MaxHeight >= composeHairlinePt {
 				c.MaxHeight *= k
 			}
+			if c.Shape != nil && c.Shape.Geometry == "chevron" {
+				// An interlocking chevron's bleed is its notch, which grows
+				// with the row (chevronBleedEMU holds it to the notch drawn).
+				c.BleedLeft *= k
+			}
 			c.BleedTop *= k
 			c.InsetTop *= k
 			c.InsetBottom *= k
