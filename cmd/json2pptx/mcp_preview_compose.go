@@ -12,47 +12,22 @@ import (
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
-// buildExpandedCompose re-runs per-segment expansion to collect the
-// per-segment metadata exposed in resolvedSlide.ExpandedCompose. It mirrors
-// the size/merge logic in expandCompose so that the bounds_pct, row_range,
-// and col_range reflect what mergeVertical / mergeHorizontal actually
-// produced. Returns nil when the compose envelope is malformed in a way that
-// would already have surfaced as an error to the caller.
+// buildExpandedCompose collects the per-segment metadata exposed in
+// resolvedSlide.ExpandedCompose from the segment grids expandCompose merges
+// (composeSegmentGrids): each segment expanded in the rectangle it is drawn
+// in, so the bounds_pct, row_range, col_range and cells_after_expansion are
+// those of the rendered grid. An expansion at the envelope's full width
+// reported the outside-label lattice of a ring that a 50% segment draws with
+// a legend (go-slide-creator-eyqvl). Returns nil when the compose envelope is
+// malformed in a way that would already have surfaced as an error to the
+// caller.
 func buildExpandedCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Registry, merged *jsonschema.ShapeGridInput) *resolvedCompose {
 	if c == nil || merged == nil {
 		return nil
 	}
-
-	expandedGrids := make([]*jsonschema.ShapeGridInput, len(c.Segments))
-	for i, seg := range c.Segments {
-		switch {
-		case seg.Compose != nil:
-			// Inner-envelope metadata is summarized through the outer
-			// segment's row/col range; we recurse to produce its merged
-			// grid so the parent merge sees the correct row count.
-			inner, _, err := expandCompose(seg.Compose, ctx, reg)
-			if err != nil {
-				return nil
-			}
-			expandedGrids[i] = inner
-		case seg.HasDiagram():
-			expandedGrids[i] = diagramSegmentGrid(seg.Diagram)
-		default:
-			grid, _, err := expandPattern(&seg.Pattern, ctx, reg)
-			if err != nil {
-				return nil
-			}
-			expandedGrids[i] = grid
-		}
-	}
-
-	// Mirror expandCompose's smart-vs-explicit size resolution so bounds_pct
-	// matches the merged grid that the caller actually got back.
-	var sizes []float64
-	if c.SmartCompose && allSizesImplicit(c.Segments) {
-		sizes = computeDensitySizes(expandedGrids)
-	} else {
-		sizes = resolveSegmentSizes(c.Segments)
+	expandedGrids, sizes, _, err := composeSegmentGrids(c, ctx, reg)
+	if err != nil {
+		return nil
 	}
 
 	var segments []resolvedComposeSegment

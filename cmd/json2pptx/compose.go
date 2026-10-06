@@ -99,25 +99,7 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 		return nil, nil, err
 	}
 
-	// Probe each segment once to learn its row/column structure. Smart compose
-	// also derives its density shares from this content-only probe. Then expand
-	// with the segment's allocated rectangle so content-sized decisions use the
-	// frame the merged grid will render into (go-slide-creator-burq4).
-	probeGrids, _, err := expandComposeSegments(c, ctx, nil, reg)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Resolve size percentages — smart compose uses content density when
-	// segments have no explicit SizePct.
-	var sizes []float64
-	if c.SmartCompose && allSizesImplicit(c.Segments) {
-		sizes = computeDensitySizes(probeGrids)
-	} else {
-		sizes = resolveSegmentSizes(c.Segments)
-	}
-	segmentBounds := composeSegmentBounds(c, ctx, probeGrids, sizes)
-	expandedGrids, warnings, err := expandComposeSegments(c, ctx, segmentBounds, reg)
+	expandedGrids, sizes, warnings, err := composeSegmentGrids(c, ctx, reg)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -156,6 +138,36 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 	}
 
 	return merged, warnings, nil
+}
+
+// composeSegmentGrids expands the envelope's segments the way the merged grid
+// draws them, and returns each segment's share of the envelope (percent). The
+// preview metadata reads the same grids (buildExpandedCompose), so a pattern
+// whose lattice follows its width reports the lattice that is rendered
+// (go-slide-creator-eyqvl).
+func composeSegmentGrids(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Registry) ([]*jsonschema.ShapeGridInput, []float64, []string, error) {
+	// Probe each segment once to learn its row/column structure. Smart compose
+	// also derives its density shares from this content-only probe. Then expand
+	// with the segment's allocated rectangle so content-sized decisions use the
+	// frame the merged grid will render into (go-slide-creator-burq4).
+	probeGrids, _, err := expandComposeSegments(c, ctx, nil, reg)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Resolve size percentages — smart compose uses content density when
+	// segments have no explicit SizePct.
+	var sizes []float64
+	if c.SmartCompose && allSizesImplicit(c.Segments) {
+		sizes = computeDensitySizes(probeGrids)
+	} else {
+		sizes = resolveSegmentSizes(c.Segments)
+	}
+	grids, warnings, err := expandComposeSegments(c, ctx, composeSegmentBounds(c, ctx, probeGrids, sizes), reg)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return grids, sizes, warnings, nil
 }
 
 // expandComposeSegments runs the leaf expansion with optional per-segment
