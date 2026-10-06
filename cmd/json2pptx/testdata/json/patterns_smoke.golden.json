@@ -425,6 +425,21 @@
     ]
   },
   {
+    "pattern_name": "cycle-figure-eight",
+    "row_count": 9,
+    "cell_counts": [
+      1,
+      6,
+      2,
+      1,
+      4,
+      1,
+      4,
+      1,
+      1
+    ]
+  },
+  {
     "pattern_name": "next-steps",
     "row_count": 9,
     "cell_counts": [

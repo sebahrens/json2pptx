@@ -2278,3 +2278,24 @@ func TestCycleRingBudgetProbe(t *testing.T) {
 		t.Logf("phases=%d description budget=%d (label %d) label-only budget=%d", phases, desc, labelLen, label)
 	}
 }
+
+// Run with JSON2PPTX_CYCLE_FIGURE_EIGHT_BUDGET_PROBE=1 to measure the
+// readable description budget per phase count and split (labels at the
+// schema maximum) on every shipped template.
+func TestCycleFigureEightBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_CYCLE_FIGURE_EIGHT_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_CYCLE_FIGURE_EIGHT_BUDGET_PROBE=1")
+	}
+	for phases := 4; phases <= 8; phases++ {
+		for _, left := range cycleFigureEightSplits[phases] {
+			desc := probeReadableBudget(t, "cycle-figure-eight", 60, func(length int) any {
+				v := &patterns.CycleFigureEightValues{LeftCount: left}
+				for i := 0; i < phases; i++ {
+					v.Phases = append(v.Phases, patterns.CycleRingPhase{Label: budgetProbeCopy(cycleFigureEightLabelBudget), Description: budgetProbeCopy(length)})
+				}
+				return v
+			})
+			t.Logf("phases=%d left_count=%d description budget=%d (label %d; documented %d)", phases, left, desc, cycleFigureEightLabelBudget, cycleFigureEightDescBudget(phases, left))
+		}
+	}
+}
