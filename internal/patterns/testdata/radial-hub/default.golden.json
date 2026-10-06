@@ -3,9 +3,11 @@
   "row_gap": 0.01,
   "columns": [
     28.402,
-    1.454,
-    40.288,
-    1.454,
+    8.158,
+    13.198,
+    0.485,
+    13.198,
+    8.158,
     28.402
   ],
   "rows": [
@@ -15,9 +17,10 @@
       "cells": [
         {},
         {},
+        {},
         {
           "row_span": 7,
-          "fit": "contain",
+          "fit": "fit-height",
           "layers": [
             {
               "frame": {
@@ -298,6 +301,7 @@
       "max_height": 39,
       "cells": [
         {
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -331,6 +335,7 @@
         {},
         {},
         {
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -407,6 +412,8 @@
         },
         {},
         {},
+        {},
+        {},
         {
           "shape": {
             "geometry": "rect",
@@ -452,6 +459,7 @@
       "max_height": 39,
       "cells": [
         {
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -485,6 +493,7 @@
         {},
         {},
         {
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",

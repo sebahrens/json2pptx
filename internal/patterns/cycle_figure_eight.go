@@ -642,8 +642,9 @@ func (p *cycleFigureEight) Expand(ctx ExpandContext, values, overrides any, _ ma
 		if centre, ok := ringCentreLayer(lobe.spec, lobe.label, "", lobe.labelPt, lobe.prefix); ok {
 			layers = append(layers, []jsonschema.LayerInput{centre})
 		}
-		x0 := lay.x0 + float64(li)*lay.side
-		places = append(places, ringPlacement{X0: x0, X1: x0 + lay.side, Y0: lay.y0, Y1: lay.y0 + lay.side, Cell: ringCell(layers...)})
+		// The labels follow the lobes into their bounding squares, so each
+		// lobe's cell is the spine column through its centre.
+		places = append(places, ringSpinePlacement(lay.x0+(float64(li)+0.5)*lay.side, lay.y0, lay.side, ringCell(layers...)))
 	}
 	places = append(places, lay.labelPlaces(ctx, v.Phases, accents)...)
 

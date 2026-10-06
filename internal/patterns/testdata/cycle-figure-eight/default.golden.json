@@ -2,12 +2,19 @@
   "col_gap": 0.01,
   "row_gap": 0.01,
   "columns": [
-    19.576,
-    2.424,
-    28,
-    28,
-    2.424,
-    19.576
+    18.458,
+    2.265,
+    0.159,
+    2.265,
+    12.611,
+    0.485,
+    27.515,
+    0.485,
+    12.611,
+    2.265,
+    0.159,
+    2.265,
+    18.458
   ],
   "rows": [
     {
@@ -22,6 +29,7 @@
       "max_height": 1.645,
       "cells": [
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
@@ -55,6 +63,7 @@
           }
         },
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
@@ -81,7 +90,11 @@
         },
         {},
         {},
+        {},
+        {},
+        {},
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
@@ -107,6 +120,7 @@
           }
         },
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
@@ -145,9 +159,10 @@
       "min_height": 53.355,
       "max_height": 53.355,
       "cells": [
+        {},
         {
           "row_span": 5,
-          "fit": "contain",
+          "fit": "fit-height",
           "layers": [
             {
               "frame": {
@@ -389,9 +404,10 @@
             }
           ]
         },
+        {},
         {
           "row_span": 5,
-          "fit": "contain",
+          "fit": "fit-height",
           "layers": [
             {
               "frame": {
@@ -679,6 +695,7 @@
           }
         },
         {
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -702,7 +719,13 @@
             }
           }
         },
+        {},
+        {},
+        {},
+        {},
+        {},
         {
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -772,6 +795,7 @@
       "max_height": 53.355,
       "cells": [
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
@@ -805,6 +829,7 @@
           }
         },
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
@@ -829,7 +854,11 @@
             }
           }
         },
+        {},
+        {},
+        {},
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
@@ -855,6 +884,7 @@
           }
         },
         {
+          "col_span": 2,
           "row_span": 2,
           "shape": {
             "geometry": "rect",
