@@ -53,6 +53,7 @@ var patternReach = map[string]SlideKind{
 	"before-after":                 "",
 	"before-after-compact":         "",
 	"capability-heatmap":           "",
+	"concentric-rings":             "",
 	"contact-directory":            "",
 	"driver-tree":                  "",
 	"dual-org-ladder":              "",

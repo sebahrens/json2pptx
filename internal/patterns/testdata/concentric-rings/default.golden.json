@@ -1,0 +1,276 @@
+{
+  "col_gap": 0.01,
+  "row_gap": 0.01,
+  "columns": [
+    5.92,
+    40.288,
+    0.727,
+    47.145,
+    5.92
+  ],
+  "rows": [
+    {
+      "min_height": 94.978,
+      "max_height": 94.978,
+      "cells": [
+        {},
+        {
+          "row_span": 4,
+          "fit": "contain",
+          "layers": [
+            {
+              "frame": {
+                "x": 0,
+                "y": 0,
+                "w": 1,
+                "h": 1
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 6000,
+                  "lumOff": 94000
+                },
+                "line": "none"
+              },
+              "name": "ring-3"
+            },
+            {
+              "frame": {
+                "x": 0.17857,
+                "y": 0.28571,
+                "w": 0.64286,
+                "h": 0.64286
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 11000,
+                  "lumOff": 89000
+                },
+                "line": "none"
+              },
+              "name": "ring-2"
+            },
+            {
+              "frame": {
+                "x": 0.35714,
+                "y": 0.57143,
+                "w": 0.28571,
+                "h": 0.28571
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "accent1",
+                "line": "none"
+              },
+              "name": "ring-1"
+            },
+            {
+              "frame": {
+                "x": 0.81985,
+                "y": 0.14173,
+                "w": 0.18015,
+                "h": 0.00226
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "dk1",
+                "line": "none"
+              },
+              "name": "leader-3-1"
+            },
+            {
+              "frame": {
+                "x": 0.81232,
+                "y": 0.13534,
+                "w": 0.01504,
+                "h": 0.01504
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "dk1",
+                "line": "none"
+              },
+              "name": "dot-3"
+            },
+            {
+              "frame": {
+                "x": 0.73718,
+                "y": 0.42744,
+                "w": 0.26282,
+                "h": 0.00226
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "dk1",
+                "line": "none"
+              },
+              "name": "leader-2-1"
+            },
+            {
+              "frame": {
+                "x": 0.72966,
+                "y": 0.42105,
+                "w": 0.01504,
+                "h": 0.01504
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "dk1",
+                "line": "none"
+              },
+              "name": "dot-2"
+            },
+            {
+              "frame": {
+                "x": 0.61278,
+                "y": 0.71316,
+                "w": 0.03008,
+                "h": 0.00226
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "lt1",
+                "line": "none"
+              },
+              "name": "leader-1-1"
+            },
+            {
+              "frame": {
+                "x": 0.64286,
+                "y": 0.71316,
+                "w": 0.35714,
+                "h": 0.00226
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "dk1",
+                "line": "none"
+              },
+              "name": "leader-1-2"
+            },
+            {
+              "frame": {
+                "x": 0.60525,
+                "y": 0.70677,
+                "w": 0.01504,
+                "h": 0.01504
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "lt1",
+                "line": "none"
+              },
+              "name": "dot-1"
+            }
+          ]
+        },
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Partner ecosystem",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "Fintech and insurer alliances that extend reach",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 94.978,
+      "max_height": 94.978,
+      "cells": [
+        {},
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Adjacent markets",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "Wealth and SME lending, built on the core",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 94.978,
+      "max_height": 94.978,
+      "cells": [
+        {},
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Core business",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                },
+                {
+                  "content": "Retail banking, where we hold the right to win",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 47.489,
+      "max_height": 47.489,
+      "cells": [
+        {}
+      ]
+    }
+  ]
+}

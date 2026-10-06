@@ -66,6 +66,16 @@
     ]
   },
   {
+    "pattern_name": "concentric-rings",
+    "row_count": 4,
+    "cell_counts": [
+      4,
+      3,
+      3,
+      1
+    ]
+  },
+  {
     "pattern_name": "comparison-2col",
     "row_count": 9,
     "cell_counts": [

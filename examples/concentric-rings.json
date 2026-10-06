@@ -1,0 +1,109 @@
+{
+  "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
+  "output_filename": "concentric-rings.pptx",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Where We Play: Core, Adjacent, Ecosystem"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Concentric-rings pattern examples"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Growth starts from the core and moves outward"}
+      ],
+      "pattern": {
+        "name": "concentric-rings",
+        "values": {
+          "layers": [
+            {"label": "Core business", "description": "Retail banking, where we hold the right to win"},
+            {"label": "Adjacent markets", "description": "Wealth and SME lending, built on the core"},
+            {"label": "Partner ecosystem", "description": "Fintech and insurer alliances that extend reach"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Five circles of influence shape the decision"}
+      ],
+      "pattern": {
+        "name": "concentric-rings",
+        "values": {
+          "layers": [
+            {"label": "Sponsor", "description": "Owns the budget and the outcome"},
+            {"label": "Leadership team", "description": "Sets priorities across the functions"},
+            {"label": "Function heads", "description": "Commit people and change the process"},
+            {"label": "Front-line teams", "description": "Adopt the new ways of working"},
+            {"label": "Customers and partners", "description": "Feel the change and judge it"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "The release is scoped by what users must have"}
+      ],
+      "pattern": {
+        "name": "concentric-rings",
+        "values": {
+          "layers": [
+            {"label": "Must have", "description": "Payments, onboarding and account view"},
+            {"label": "Should have", "description": "Budgeting tools and spending alerts"},
+            {"label": "Could have", "description": "Rewards, referrals and themes"},
+            {"label": "Later", "description": "Open-banking marketplace"}
+          ],
+          "highlight": 2
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Change spreads outward from the pilot team"}
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "segments": [
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "concentric-rings",
+              "values": {
+                "layers": [
+                  {"label": "Pilot team"},
+                  {"label": "Function"},
+                  {"label": "Enterprise"}
+                ]
+              }
+            }
+          },
+          {
+            "size_pct": 50,
+            "pattern": {
+              "name": "labeled-rows",
+              "values": {
+                "rows": [
+                  {"label": "NOW", "body": "Prove the model with one team in one quarter"},
+                  {"label": "NEXT", "body": "Roll out across the function with trained leads"},
+                  {"label": "THEN", "body": "Make it the standard way of working"}
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

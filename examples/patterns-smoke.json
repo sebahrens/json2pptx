@@ -156,6 +156,22 @@
     {
       "layout_id": "content",
       "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Growth starts from the core and moves outward"}
+      ],
+      "pattern": {
+        "name": "concentric-rings",
+        "values": {
+          "layers": [
+            {"label": "Core business", "description": "Retail banking, where we hold the right to win"},
+            {"label": "Adjacent markets", "description": "Wealth and SME lending, built on the core"},
+            {"label": "Partner ecosystem", "description": "Fintech and insurer alliances that extend reach"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Automated CI/CD cut release cycles from 4 hours to 15 minutes"}
       ],
       "pattern": {

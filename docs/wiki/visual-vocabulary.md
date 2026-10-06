@@ -27,6 +27,7 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | "Look at this" | `image_case` (picture + body + `callouts`) | For a comparable, a screenshot, a site. |
 | "The numbers in full" | `table` (≤ 6 columns, ≤ 9 data rows) | Right-align numbers; `totals_row: true`; backup detail to an appendix. |
 | "The walk from A to B" | `bridge` (3–10 columns) or a waterfall `chart` region beside text | Totals must sum (0.5% tolerance). |
+| "These layers contain one another" (core → adjacent → ecosystem) | raw `concentric-rings` (3–5 layers, inner → outer) | An onion with a side ladder of labels; one solid ring (`highlight`). Not for a ranked hierarchy (raw `pyramid`), a centre with satellites (`radial-hub`) or a loop (`cycle-ring`). Raw path: carry it as a `raw_json2pptx` slide. |
 | "Where things sit on two axes" | `matrix_2x2` | Four named quadrants; both axes labelled. |
 | "The deck's chapters" | `structure.sections` + `auto_agenda` (12+ slides) | Never hand-number dividers. |
 

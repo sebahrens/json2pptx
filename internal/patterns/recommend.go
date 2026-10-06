@@ -291,6 +291,24 @@ var rules = []rule{
 		rationale: "Pyramid hierarchy; specify item_count for better ranking",
 	},
 
+	// Concentric rings — the onion / layers-of-influence model
+	{
+		pattern:   "concentric-rings",
+		keywords:  []string{"onion model", "onion diagram", "onion", "concentric", "nested layers", "nested circles", "nested rings", "layers of influence", "circles of influence", "spheres of influence", "core adjacent ecosystem", "core to ecosystem", "stacked venn"},
+		baseScore: 0.93,
+		rationale: "3-5 nested rings with the core innermost and every layer labelled on a side ladder",
+		itemMin:   3,
+		itemMax:   5,
+	},
+	{
+		pattern:   "concentric-rings",
+		keywords:  []string{"core and adjacent", "adjacent", "ecosystem", "inner circle", "outer ring", "must-have should-have could-have", "moscow"},
+		baseScore: 0.72,
+		rationale: "Concentric rings when the levels contain one another (core, adjacent, ecosystem)",
+		itemMin:   3,
+		itemMax:   5,
+	},
+
 	// Before/After
 	{
 		pattern:   "before-after",
