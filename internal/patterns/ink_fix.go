@@ -35,6 +35,12 @@ func ApplyReadableInk(ctx ExpandContext, grid *jsonschema.ShapeGridInput) {
 			if cell.Shape != nil {
 				fixShapeInk(ctx, cell.Shape)
 			}
+			// A layer's text is set on the layer's own fill.
+			for _, layer := range cell.Layers {
+				if layer.Shape != nil {
+					fixShapeInk(ctx, layer.Shape)
+				}
+			}
 		}
 	}
 }

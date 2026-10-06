@@ -720,6 +720,10 @@ func collectResolvedGridCells(grid *ShapeGridInput, geom GridGeometry, slideWidt
 func appendResolvedGridCells(cells []resolvedShapeGridCell, grid *ShapeGridInput, result *shapegrid.ResolveResult, slideWidth, slideHeight int64, depth int) []resolvedShapeGridCell {
 	for i := range result.Cells {
 		rc := &result.Cells[i]
+		// A cell's layers share its rectangle: the cell is listed once.
+		if rc.Layer && i > 0 && result.Cells[i-1].RowIdx == rc.RowIdx && result.Cells[i-1].ColIdx == rc.ColIdx {
+			continue
+		}
 		cells = append(cells, resolvedShapeGridCell{
 			Row:  rc.RowIdx,
 			Col:  rc.ColIdx,

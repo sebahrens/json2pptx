@@ -184,6 +184,20 @@ func checkNativeImageFitEnums(contents []ContentInput, prefix string) []*pattern
 	return errs
 }
 
+// checkLayerTypeScaleEnums checks the type_scale of each layer shape of a cell.
+func checkLayerTypeScaleEnums(layers []jsonschema.LayerInput, cellPath string) []*patterns.ValidationError {
+	var out []*patterns.ValidationError
+	for li, layer := range layers {
+		if layer.Shape == nil || layer.Shape.TypeScale == "" {
+			continue
+		}
+		if err := checkEnum(fmt.Sprintf("%s/layers/%d/shape/type_scale", cellPath, li), layer.Shape.TypeScale, canonicalTypeScales, nil); err != nil {
+			out = append(out, err)
+		}
+	}
+	return out
+}
+
 func checkGridTypeScaleEnums(grid *jsonschema.ShapeGridInput, path string) []*patterns.ValidationError {
 	if grid == nil {
 		return nil
@@ -205,6 +219,7 @@ func checkGridTypeScaleEnums(grid *jsonschema.ShapeGridInput, path string) []*pa
 					out = append(out, err)
 				}
 			}
+			out = append(out, checkLayerTypeScaleEnums(cell.Layers, cellPath)...)
 			if cell.Composite != nil && cell.Composite.Text != nil && cell.Composite.Text.TypeScale != "" {
 				if err := checkEnum(cellPath+"/composite/text/type_scale", cell.Composite.Text.TypeScale, canonicalTypeScales, nil); err != nil {
 					out = append(out, err)

@@ -680,7 +680,7 @@ func computeDensityDistribution(slides []Slide) (DensityDistribution, map[int]in
 			// (zero text), and counting it here told a deck whose only grid
 			// was a chart beside a table that "100% of cells (2/2) are
 			// underfilled" (go-slide-creator-th6o9).
-			if cell := result.Cells[c]; cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil {
+			if cell := result.Cells[c]; cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil || cell.Layer && len(cell.ShapeSpec.Text) == 0 {
 				continue
 			}
 			switch d.Status {

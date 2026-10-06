@@ -9,6 +9,8 @@ Deck-level defaults let you set table styling and shape grid cell styling once a
 | `table_style` | `defaults.table_style` | Every `type:"table"` content block and every table embedded in a `shape_grid` cell |
 | `cell_style` | `defaults.cell_style` | Every `shape` in a `shape_grid` cell |
 
+`cell_style` (and a cell's `named_style`) reach the cell's own `shape` only. Shapes stacked in a cell's `layers` are drawing parts (ring segments, badges) and keep exactly the fill, line and text they are written with.
+
 ## Syntax
 
 Add a top-level `"defaults"` object alongside `"slides"`:

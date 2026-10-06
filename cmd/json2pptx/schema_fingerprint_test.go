@@ -130,8 +130,11 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// the hash is unchanged.
 	// 4.165.0 corrects DeckSpec field types and missing-image readiness;
 	// neither changes the hashed set.
+	// 4.170.0 adds shape_grid cell `layers` (LayerInput / LayerFrameInput,
+	// go-slide-creator-x1fjb): GridCellInput gains a field and the two layer
+	// structs join the hashed set, so the hash advances.
 	// If this fails, see file header comment.
-	const wantFingerprint = "a0e913951243f827"
+	const wantFingerprint = "3cafae1e65102baa"
 
 	got := schemaFingerprint()
 

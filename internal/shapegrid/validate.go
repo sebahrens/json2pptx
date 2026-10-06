@@ -108,6 +108,8 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 				}
 			}
 
+			errs = append(errs, validateLayers(cell, r, ci)...)
+
 			if cell.Fit != "" && cell.Fit != FitContain && cell.Fit != FitWidth && cell.Fit != FitHeight {
 				errs = append(errs, fmt.Errorf("row %d col %d: invalid fit mode %q; valid values are \"contain\", \"fit-width\", or \"fit-height\" (omit for default stretch behavior)", r, ci, cell.Fit))
 			}
@@ -126,7 +128,7 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 			// free column (patterns emit nil cells for positions covered by an
 			// earlier row_span) render nothing and are ignored, as Resolve
 			// stops at the grid edge.
-			isEmpty := cell.Shape == nil && cell.TableSpec == nil && cell.DiagramSpec == nil && cell.Icon == nil && cell.Image == nil && cell.Composite == nil && !cell.Placeholder
+			isEmpty := !cell.hasContent()
 			if isEmpty && col >= numCols {
 				continue
 			}
@@ -165,6 +167,49 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 	}
 
 	return errors.Join(errs...)
+}
+
+// validateLayers checks a cell's layers: each needs a shape and a frame that
+// stays inside the cell, and layers stack only on a shape, icon or image cell
+// or on an otherwise empty one.
+func validateLayers(cell Cell, r, ci int) []error {
+	if len(cell.Layers) == 0 {
+		return nil
+	}
+	var errs []error
+	for _, host := range []struct {
+		set  bool
+		name string
+	}{{cell.TableSpec != nil, "table"}, {cell.DiagramSpec != nil, "diagram"}, {cell.Composite != nil, "composite"}, {cell.Placeholder, "grid / pattern"}} {
+		if host.set {
+			errs = append(errs, fmt.Errorf("row %d col %d: cell has \"layers\" alongside \"%s\"; layers stack on a \"shape\", \"icon\" or \"image\" cell, or on a cell with no other content — move the %s to its own cell", r, ci, host.name, host.name))
+		}
+	}
+	for i, layer := range cell.Layers {
+		label := fmt.Sprintf("row %d col %d: layers[%d]", r, ci, i)
+		if layer.Name != "" {
+			label += fmt.Sprintf(" (%q)", layer.Name)
+		}
+		if layer.Shape == nil {
+			errs = append(errs, fmt.Errorf("%s: missing \"shape\"; a layer is a shape in a frame, e.g. {\"frame\": {\"x\": 0, \"y\": 0, \"w\": 1, \"h\": 1}, \"shape\": {\"geometry\": \"ellipse\"}}", label))
+		}
+		f := layer.Frame
+		finite := true
+		for _, v := range []float64{f.X, f.Y, f.W, f.H} {
+			if math.IsNaN(v) || math.IsInf(v, 0) {
+				finite = false
+			}
+		}
+		switch {
+		case !finite:
+			errs = append(errs, fmt.Errorf("%s: %s: frame {x: %g, y: %g, w: %g, h: %g} is not a finite rectangle; give x, y, w and h as fractions (0..1) of the cell", label, LayerFrameOutOfCell, f.X, f.Y, f.W, f.H))
+		case f.W <= 0 || f.H <= 0:
+			errs = append(errs, fmt.Errorf("%s: %s: frame {x: %g, y: %g, w: %g, h: %g} has no area; w and h are fractions of the cell and must be greater than 0 (at most 1)", label, LayerFrameOutOfCell, f.X, f.Y, f.W, f.H))
+		case f.X < -layerFrameSlack || f.Y < -layerFrameSlack || f.X+f.W > 1+layerFrameSlack || f.Y+f.H > 1+layerFrameSlack:
+			errs = append(errs, fmt.Errorf("%s: %s: frame {x: %g, y: %g, w: %g, h: %g} leaves the cell; x, y, w and h are fractions (0..1) of the cell's fitted bounds with x+w <= 1 and y+h <= 1", label, LayerFrameOutOfCell, f.X, f.Y, f.W, f.H))
+		}
+	}
+	return errs
 }
 
 // ValidateTrackWeights rejects column widths and row height/flex weights

@@ -121,6 +121,9 @@ type ConnectorSpecInput struct {
 // pattern is expanded to a sub-grid that renders within the cell rectangle.
 // Grid hosts a raw sub-grid (recursive ShapeGridInput) rendered within the cell.
 // Pattern and Grid are mutually exclusive; setting both is a validation error.
+//
+// Layers stacks further native shapes inside the cell (see LayerInput). They
+// combine with shape, icon or image, or stand alone in an otherwise empty cell.
 type GridCellInput struct {
 	ColSpan     int                `json:"col_span,omitempty"`
 	RowSpan     int                `json:"row_span,omitempty"`
@@ -141,6 +144,29 @@ type GridCellInput struct {
 	Grid        *ShapeGridInput    `json:"grid,omitempty"`        // Recursive sub-grid rendered within the cell rectangle
 	AccentBar   *AccentBarInput    `json:"accent_bar,omitempty"`  // Optional decorative accent bar
 	NamedStyle  string             `json:"named_style,omitempty"` // Named cell style reference resolved from template settings
+	Layers      []LayerInput       `json:"layers,omitempty"`      // Native shapes stacked inside the cell, drawn after its own content in order (later on top)
+}
+
+// LayerInput is one native shape stacked inside a grid cell. Its frame is given
+// as fractions of the cell's fitted bounds: the rectangle the cell's own shape
+// gets, so with fit "contain" the centred square, not the whole cell. Layers
+// draw after the cell's own content, in order, so a later layer sits on top; a
+// cell may hold only layers. A layer's shape is written, measured and checked
+// exactly like a cell's shape; findings name it <cell path>/layers/<index>.
+type LayerInput struct {
+	Frame LayerFrameInput `json:"frame"`           // Position and size as fractions (0..1) of the cell's fitted bounds
+	Shape *ShapeSpecInput `json:"shape,omitempty"` // The shape: geometry, fill, line, text, rotation, flip_h, adjustments (required; "icon" is not supported on a layer)
+	Name  string          `json:"name,omitempty"`  // Optional stable id quoted in validation errors (e.g. "segment-3")
+}
+
+// LayerFrameInput places a layer inside its cell: x and y are the top-left
+// corner and w and h the size, each a fraction (0..1) of the cell's fitted
+// bounds, with w, h > 0, x+w <= 1 and y+h <= 1.
+type LayerFrameInput struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+	W float64 `json:"w"`
+	H float64 `json:"h"`
 }
 
 // CompositeInput defines a composite cell that stacks a native text shape and

@@ -430,8 +430,8 @@ func (a *gridFitAccum) walk(grid *ShapeGridInput, result *shapegrid.ResolveResul
 			continue
 		}
 		cell := gridCellAtResolved(grid, rc.RowIdx, rc.ColIdx)
-		pathPrefix := fmt.Sprintf("%s/rows/%d/cells/%d", base, rc.RowIdx, rc.ColIdx)
-		if cell != nil && cell.Table != nil {
+		pathPrefix := resolvedCellPath(base, rc)
+		if cell != nil && cell.Table != nil && !rc.Layer {
 			a.findings = append(a.findings, measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), slidepath.Join(pathPrefix, "table"), a.slideIdx, types.BoundingBox{
 				X: rc.CellBounds.X, Y: rc.CellBounds.Y, Width: rc.CellBounds.CX, Height: rc.CellBounds.CY,
 			})...)

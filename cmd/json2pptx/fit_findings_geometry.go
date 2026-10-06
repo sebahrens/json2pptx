@@ -339,7 +339,7 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 	}
 	ruled := input != nil && ruledColumnPatterns[strings.TrimPrefix(input.Source, patternSourcePrefix)]
 	for _, cell := range result.Cells {
-		cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", basePath, cell.RowIdx, cell.ColIdx)
+		cellPath := resolvedCellPath(basePath, cell)
 		switch cell.Kind {
 		case shapegrid.CellKindShape:
 			a.ruledCell = false

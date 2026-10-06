@@ -380,7 +380,7 @@ type readabilityGridCell struct {
 func readabilityGridCells(grid *ShapeGridInput, result *shapegrid.ResolveResult, base string, slideWidth, slideHeight int64, depth int) []readabilityGridCell {
 	var out []readabilityGridCell
 	for _, rc := range result.Cells {
-		path := fmt.Sprintf("%s/rows/%d/cells/%d", base, rc.RowIdx, rc.ColIdx)
+		path := resolvedCellPath(base, rc)
 		if rc.Kind != shapegrid.CellKindSubGrid {
 			out = append(out, readabilityGridCell{cell: rc, path: path})
 			continue

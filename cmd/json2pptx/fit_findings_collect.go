@@ -777,7 +777,14 @@ func checkGridCellsStructural(grid *ShapeGridInput, result *shapegrid.ResolveRes
 			continue
 		}
 		path := fmt.Sprintf("%s/rows/%d/cells/%d", base, rc.RowIdx, rc.ColIdx)
-		if cell.Shape != nil || cell.Table != nil || cell.Icon != nil || cell.Image != nil || cell.Diagram != nil {
+		// The structural checks are about the cell's rectangle: a cell's
+		// layers share it, so the cell is checked once — by its own entry,
+		// or by its first layer when it holds only layers.
+		ownEntry := cell.Shape != nil || cell.Table != nil || cell.Icon != nil || cell.Image != nil || cell.Diagram != nil
+		if rc.Layer && (ownEntry || rc.LayerIdx != firstShapedLayer(cell)) {
+			continue
+		}
+		if ownEntry || rc.Layer {
 			findings = append(findings, checkCellStructural(path, slideIdx, rc.CellBounds.X, rc.CellBounds.Y, rc.CellBounds.CX, rc.CellBounds.CY, ctx)...)
 		}
 		if cell.Diagram != nil {
@@ -794,6 +801,17 @@ func checkGridCellsStructural(grid *ShapeGridInput, result *shapegrid.ResolveRes
 		}
 	}
 	return findings
+}
+
+// firstShapedLayer is the index of the first layer of cell that resolves to a
+// shape, or -1.
+func firstShapedLayer(cell *GridCellInput) int {
+	for i := range cell.Layers {
+		if cell.Layers[i].Shape != nil {
+			return i
+		}
+	}
+	return -1
 }
 
 // checkGridDiagramPreflightPath runs the diagram preflight detectors (narrow cell
@@ -1506,6 +1524,11 @@ func textGridCells(grid *ShapeGridInput) int {
 			}
 			if cell.Composite != nil || cell.Shape != nil && len(cell.Shape.Text) > 0 {
 				n++
+			}
+			for _, layer := range cell.Layers {
+				if layer.Shape != nil && len(layer.Shape.Text) > 0 {
+					n++
+				}
 			}
 		}
 	}

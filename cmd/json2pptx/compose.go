@@ -805,7 +805,7 @@ func contentWeight(g *jsonschema.ShapeGridInput) float64 {
 	for _, row := range g.Rows {
 		for _, cell := range row.Cells {
 			if cell != nil && (cell.Shape != nil || cell.Table != nil ||
-				cell.Icon != nil || cell.Image != nil || cell.Diagram != nil) {
+				cell.Icon != nil || cell.Image != nil || cell.Diagram != nil || len(cell.Layers) > 0) {
 				w++
 			}
 		}

@@ -178,7 +178,7 @@ func cellSpans(c *GridCellInput) (colSpan, rowSpan int) {
 }
 
 func isEmptyGridCell(c *GridCellInput) bool {
-	return c == nil || (c.Shape == nil && c.Table == nil && c.Icon == nil && c.Image == nil && c.Diagram == nil && c.Composite == nil && c.Grid == nil)
+	return c == nil || (c.Shape == nil && c.Table == nil && c.Icon == nil && c.Image == nil && c.Diagram == nil && c.Composite == nil && c.Grid == nil && len(c.Layers) == 0)
 }
 
 func markOccupied(occupied [][]bool, r, col, rowSpan, colSpan int) {

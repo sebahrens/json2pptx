@@ -153,6 +153,11 @@ func computeConfigBudget(
 		if cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil {
 			continue
 		}
+		// A layer that carries no text is drawing (a ring segment), not a
+		// text box whose size bounds the grid's copy.
+		if cell.Layer && len(cell.ShapeSpec.Text) == 0 {
+			continue
+		}
 		paras, body := extractCellParagraphs(cell)
 		w, h := effectiveTextRect(cell.Bounds, cell.TextInsets, body)
 		bodyPt := max(defaultBodyFontPt, dominantFontPt(paras))
@@ -214,7 +219,7 @@ func convertRows(inputRows []jsonschema.GridRowInput) []shapegrid.Row {
 	for i, r := range inputRows {
 		cells := make([]shapegrid.Cell, len(r.Cells))
 		for j, c := range r.Cells {
-			if c == nil || c.Shape == nil {
+			if c == nil || c.Shape == nil && len(c.Layers) == 0 {
 				continue // zero Cell = empty
 			}
 			cells[j] = shapegrid.Cell{
@@ -222,16 +227,14 @@ func convertRows(inputRows []jsonschema.GridRowInput) []shapegrid.Row {
 				RowSpan:   c.RowSpan,
 				MaxHeight: c.MaxHeight,
 				Fit:       shapegrid.FitMode(c.Fit),
-				Shape: &shapegrid.ShapeSpec{
-					Geometry:    c.Shape.Geometry,
-					TypeScale:   c.Shape.TypeScale,
-					Fill:        c.Shape.Fill,
-					Line:        c.Shape.Line,
-					Text:        c.Shape.Text,
-					Rotation:    c.Shape.Rotation,
-					Adjustments: c.Shape.Adjustments,
-					FlipH:       c.Shape.FlipH,
-				},
+				Shape:     convertShape(c.Shape),
+			}
+			for _, l := range c.Layers {
+				cells[j].Layers = append(cells[j].Layers, shapegrid.Layer{
+					Frame: shapegrid.LayerFrame{X: l.Frame.X, Y: l.Frame.Y, W: l.Frame.W, H: l.Frame.H},
+					Shape: convertShape(l.Shape),
+					Name:  l.Name,
+				})
 			}
 		}
 		rows[i] = shapegrid.Row{
@@ -244,6 +247,23 @@ func convertRows(inputRows []jsonschema.GridRowInput) []shapegrid.Row {
 		}
 	}
 	return rows
+}
+
+// convertShape converts a shape DTO for capacity measurement; nil stays nil.
+func convertShape(s *jsonschema.ShapeSpecInput) *shapegrid.ShapeSpec {
+	if s == nil {
+		return nil
+	}
+	return &shapegrid.ShapeSpec{
+		Geometry:    s.Geometry,
+		TypeScale:   s.TypeScale,
+		Fill:        s.Fill,
+		Line:        s.Line,
+		Text:        s.Text,
+		Rotation:    s.Rotation,
+		Adjustments: s.Adjustments,
+		FlipH:       s.FlipH,
+	}
 }
 
 func minInts(vals []int) int {

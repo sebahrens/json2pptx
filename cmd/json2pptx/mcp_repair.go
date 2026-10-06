@@ -756,7 +756,26 @@ func gridCellPath(path string) string {
 	if !ok {
 		return ""
 	}
+	if layer, ok := slidepath.GridCellLayer(path); ok {
+		return fmt.Sprintf("%s/layers/%d", slidepath.GridCell(slideIdx, rowIdx, cellIdx), layer)
+	}
 	return slidepath.GridCell(slideIdx, rowIdx, cellIdx)
+}
+
+// gridCellTextShape is the shape whose text a cell path addresses: the layer's
+// when the path runs through ".../layers/<i>", else the cell's own. nil when
+// the path names nothing that holds text.
+func gridCellTextShape(cell *GridCellInput, cellPath string) *ShapeSpecInput {
+	if cell == nil {
+		return nil
+	}
+	if i, ok := slidepath.GridCellLayer(cellPath); ok {
+		if i >= len(cell.Layers) {
+			return nil
+		}
+		return cell.Layers[i].Shape
+	}
+	return cell.Shape
 }
 
 // fullestGridCellPath returns the path of the grid cell carrying the most text,
@@ -1890,13 +1909,13 @@ func reduceCellTextOnPattern(input *PresentationInput, slideIdx int, cellPath st
 	if cellIdx < 0 || cellIdx >= len(row.Cells) {
 		return appliedFix{Kind: kind, Applied: false, Message: fmt.Sprintf("cell index %d out of range in pattern %q", cellIdx, slide.Pattern.Name)}
 	}
-	cell := row.Cells[cellIdx]
-	if cell == nil || cell.Shape == nil || len(cell.Shape.Text) == 0 {
+	shape := gridCellTextShape(row.Cells[cellIdx], cellPath)
+	if shape == nil || len(shape.Text) == 0 {
 		return appliedFix{Kind: kind, Applied: false, Message: "cell has no text content"}
 	}
 	// A cell is usually composed of several paragraphs ("$21M" over "Revenue"),
 	// so match each paragraph against the values rather than the joined text.
-	texts := cellTextParts(cell.Shape.Text)
+	texts := cellTextParts(shape.Text)
 	if len(texts) == 0 {
 		return appliedFix{Kind: kind, Applied: false, Message: "cell has no text content"}
 	}
@@ -2490,8 +2509,9 @@ func applyReduceCellText(input *PresentationInput, slideIdx int, params map[stri
 	if cellIdx < 0 || cellIdx >= len(row.Cells) {
 		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: fmt.Sprintf("cell index %d out of range", cellIdx)}
 	}
-	cell := row.Cells[cellIdx]
-	if cell == nil || cell.Shape == nil || len(cell.Shape.Text) == 0 {
+	// cell stands for the shape the path names: the cell's own, or a layer's.
+	cell := &struct{ Shape *ShapeSpecInput }{gridCellTextShape(row.Cells[cellIdx], cellPath)}
+	if cell.Shape == nil || len(cell.Shape.Text) == 0 {
 		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "cell has no text content"}
 	}
 

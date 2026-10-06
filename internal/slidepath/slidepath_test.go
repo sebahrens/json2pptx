@@ -82,6 +82,33 @@ func TestParseGridCell(t *testing.T) {
 	}
 }
 
+func TestGridCellLayer(t *testing.T) {
+	for _, tc := range []struct {
+		path string
+		want int
+		ok   bool
+	}{
+		{"/slides/0/shape_grid/rows/1/cells/2/layers/3", 3, true},
+		{"/slides/0/shape_grid/rows/1/cells/2/layers/0/shape/text", 0, true},
+		{"/slides/4/pattern/rows/0/cells/0/layers/12", 12, true},
+		{"/slides/0/shape_grid/rows/1/cells/2", 0, false},
+		{"/slides/0/shape_grid/rows/1/cells/2/shape/text", 0, false},
+		{"/slides/0/shape_grid/rows/1/cells/2/layers", 0, false},
+		{"/slides/0/shape_grid/rows/1/cells/2/layers/x", 0, false},
+		{"/slides/0/shape_grid/rows/1/cells/2/layers/-1", 0, false},
+		{"/slides/0/content/0", 0, false},
+	} {
+		got, ok := GridCellLayer(tc.path)
+		if ok != tc.ok || (ok && got != tc.want) {
+			t.Errorf("GridCellLayer(%q) = (%d, %v), want (%d, %v)", tc.path, got, ok, tc.want, tc.ok)
+		}
+		// A layer path still names its cell.
+		if _, _, _, cellOK := ParseGridCell(tc.path); tc.ok && !cellOK {
+			t.Errorf("ParseGridCell(%q) does not resolve the layer's cell", tc.path)
+		}
+	}
+}
+
 func TestField(t *testing.T) {
 	base := "/slides/0/content/1/diagram_value"
 	for _, tc := range []struct{ field, want string }{

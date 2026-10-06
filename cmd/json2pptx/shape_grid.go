@@ -7,6 +7,7 @@ import (
 	"html"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -114,19 +115,7 @@ func authoredShapeSources(input *ShapeGridInput, rows []shapegrid.Row, links []s
 		case o.accentBar != nil:
 			out[i].Path = bars[o.accentBar]
 		case o.field != "":
-			cell := gridCellAtResolved(input, o.row, o.col)
-			field := o.field
-			var text json.RawMessage
-			if field == "shape/text" && cell != nil {
-				authored := cell.Shape
-				// A composite's text half resolves to a shape cell too.
-				if cell.Composite != nil && cell.Composite.Text != nil {
-					authored, field = cell.Composite.Text, "composite/text/text"
-				}
-				if authored != nil {
-					text = authored.Text
-				}
-			}
+			field, text := authoredShapeText(gridCellAtResolved(input, o.row, o.col), o.field)
 			out[i] = gridShapeSource{Path: slidepath.Join(authoredGridCellPath(base, input, o.row, o.col), field), Text: text}
 		}
 		if out[i].Path == "" {
@@ -134,6 +123,52 @@ func authoredShapeSources(input *ShapeGridInput, rows []shapegrid.Row, links []s
 		}
 	}
 	return out
+}
+
+// authoredShapeText returns the authored text behind a written shape of cell
+// and the field that holds it: the cell's own shape, its composite's text
+// half, or one of its layers ("layers/<i>/shape/text").
+func authoredShapeText(cell *GridCellInput, field string) (string, json.RawMessage) {
+	if cell == nil {
+		return field, nil
+	}
+	if i, ok := layerFieldIndex(field); ok {
+		if i < len(cell.Layers) && cell.Layers[i].Shape != nil {
+			return field, cell.Layers[i].Shape.Text
+		}
+		return field, nil
+	}
+	if field != "shape/text" {
+		return field, nil
+	}
+	authored := cell.Shape
+	// A composite's text half resolves to a shape cell too.
+	if cell.Composite != nil && cell.Composite.Text != nil {
+		authored, field = cell.Composite.Text, "composite/text/text"
+	}
+	if authored == nil {
+		return field, nil
+	}
+	return field, authored.Text
+}
+
+// layerFieldIndex reads the layer index out of a shape origin's field
+// ("layers/<i>/shape/text").
+func layerFieldIndex(field string) (int, bool) {
+	rest, ok := strings.CutPrefix(field, "layers/")
+	if !ok {
+		return 0, false
+	}
+	idx, _, _ := strings.Cut(rest, "/")
+	i, err := strconv.Atoi(idx)
+	return i, err == nil && i >= 0
+}
+
+// resolvedCellPath is the JSON pointer of a resolved cell under base (a grid's
+// path), by its resolved row and column: the cell itself, or the layer of it
+// the entry stands for (".../cells/<c>/layers/<i>").
+func resolvedCellPath(base string, rc shapegrid.ResolvedCell) string {
+	return fmt.Sprintf("%s/rows/%d/cells/%d%s", base, rc.RowIdx, rc.ColIdx, rc.PathSuffix())
 }
 
 // virtualLayoutResult holds the result of virtual layout resolution.
@@ -1235,7 +1270,7 @@ func gridRowCellColumns(grid *ShapeGridInput, rowIdx int) []int {
 }
 
 func gridCellHasContent(cell *GridCellInput) bool {
-	return cell != nil && (cell.Grid != nil || cell.Shape != nil || cell.Table != nil || cell.Icon != nil || cell.Image != nil || cell.Diagram != nil || cell.Composite != nil)
+	return cell != nil && (cell.Grid != nil || cell.Shape != nil || cell.Table != nil || cell.Icon != nil || cell.Image != nil || cell.Diagram != nil || cell.Composite != nil || len(cell.Layers) > 0)
 }
 
 // convertGridRows converts DTO GridRowInput slices into shapegrid.Row domain objects.
@@ -1273,10 +1308,12 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 					MaxHeight:   c.MaxHeight,
 					Group:       c.Group,
 					Placeholder: true,
+					// Carried so validation rejects layers on a sub-grid cell.
+					Layers: convertGridLayers(c.Layers),
 				}
 				continue
 			}
-			if c.Shape == nil && c.Table == nil && c.Icon == nil && c.Image == nil && c.Diagram == nil && c.Composite == nil {
+			if c.Shape == nil && c.Table == nil && c.Icon == nil && c.Image == nil && c.Diagram == nil && c.Composite == nil && len(c.Layers) == 0 {
 				// An empty spacer keeps its footprint, so the cells after it
 				// land where they were placed (the gantt track relies on it).
 				cells[j] = shapegrid.Cell{ColSpan: c.ColSpan, RowSpan: c.RowSpan}
@@ -1308,6 +1345,46 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 	return rows
 }
 
+// convertShapeSpec converts a shape DTO (a cell's own shape or a layer's) into
+// the shape the resolver and the writer work on; nil stays nil.
+func convertShapeSpec(s *ShapeSpecInput) *shapegrid.ShapeSpec {
+	if s == nil {
+		return nil
+	}
+	spec := &shapegrid.ShapeSpec{
+		Geometry:    s.Geometry,
+		TypeScale:   s.TypeScale,
+		Fill:        s.Fill,
+		Line:        s.Line,
+		Text:        s.Text,
+		Rotation:    s.Rotation,
+		Adjustments: s.Adjustments,
+		FlipH:       s.FlipH,
+		ThemeFonts:  pptx.ThemeFonts{Major: s.MeasureFonts.Major, Minor: s.MeasureFonts.Minor},
+	}
+	if s.Link != nil {
+		spec.Link = &shapegrid.LinkSpec{URL: s.Link.URL, Slide: s.Link.Slide}
+	}
+	return spec
+}
+
+// convertGridLayers converts a cell's layers; a layer's shape goes through
+// convertShapeSpec, so it parses exactly as a cell shape does.
+func convertGridLayers(in []jsonschema.LayerInput) []shapegrid.Layer {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]shapegrid.Layer, len(in))
+	for i, l := range in {
+		out[i] = shapegrid.Layer{
+			Frame: shapegrid.LayerFrame{X: l.Frame.X, Y: l.Frame.Y, W: l.Frame.W, H: l.Frame.H},
+			Shape: convertShapeSpec(l.Shape),
+			Name:  l.Name,
+		}
+	}
+	return out
+}
+
 // convertGridCell converts a single GridCellInput DTO into a shapegrid.Cell.
 func convertGridCell(c *GridCellInput) shapegrid.Cell {
 	cell := shapegrid.Cell{
@@ -1321,22 +1398,8 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 		Fit:         shapegrid.FitMode(c.Fit),
 		Group:       c.Group,
 	}
-	if c.Shape != nil {
-		cell.Shape = &shapegrid.ShapeSpec{
-			Geometry:    c.Shape.Geometry,
-			TypeScale:   c.Shape.TypeScale,
-			Fill:        c.Shape.Fill,
-			Line:        c.Shape.Line,
-			Text:        c.Shape.Text,
-			Rotation:    c.Shape.Rotation,
-			Adjustments: c.Shape.Adjustments,
-			FlipH:       c.Shape.FlipH,
-			ThemeFonts:  pptx.ThemeFonts{Major: c.Shape.MeasureFonts.Major, Minor: c.Shape.MeasureFonts.Minor},
-		}
-		if c.Shape.Link != nil {
-			cell.Shape.Link = &shapegrid.LinkSpec{URL: c.Shape.Link.URL, Slide: c.Shape.Link.Slide}
-		}
-	}
+	cell.Shape = convertShapeSpec(c.Shape)
+	cell.Layers = convertGridLayers(c.Layers)
 	if c.Table != nil {
 		cell.TableSpec = c.Table.ToTableSpec()
 	}
@@ -1519,7 +1582,8 @@ func generateGridCell(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocator,
 		if err != nil {
 			return out, err
 		}
-		out.shapes, out.fields, out.icons = s, []string{"shape/text"}, icons
+		// A layer's shape is addressed under its cell: layers/<i>/shape/text.
+		out.shapes, out.fields, out.icons = s, []string{strings.TrimPrefix(cell.PathSuffix()+"/shape/text", "/")}, icons
 	case shapegrid.CellKindTable:
 		xml, findings, err := generateTableCell(cell, slideIdx, overlayThemeColors(diagCtx))
 		if err != nil {
@@ -1600,10 +1664,26 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 		origins = append(origins, gridShapeOrigin{connector: conn.Spec})
 	}
 
-	for _, cell := range result.Cells {
+	for i := 0; i < len(result.Cells); i++ {
+		cell := result.Cells[i]
 		c, err := generateGridCell(cell, alloc, diagCtx, slideIdx)
 		if err != nil {
 			return nil, err
+		}
+
+		// A grouped cell's layers belong to its group: they are written into
+		// it after the cell's own shape, in order.
+		groupBounds := cell.Bounds
+		for cell.Group && i+1 < len(result.Cells) && isLayerOf(result.Cells[i+1], cell) {
+			i++
+			layer, err := generateGridCell(result.Cells[i], alloc, diagCtx, slideIdx)
+			if err != nil {
+				return nil, err
+			}
+			c.shapes = append(c.shapes, layer.shapes...)
+			c.fields = append(c.fields, layer.fields...)
+			c.icons = append(c.icons, layer.icons...)
+			groupBounds = unionRectEMU(groupBounds, result.Cells[i].Bounds)
 		}
 
 		// Wrap in p:grpSp if group flag is set and there are XML fragments to wrap
@@ -1611,7 +1691,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			groupID := alloc.Alloc()
 			grpXML, err := pptx.GenerateGroup(pptx.GroupOptions{
 				ID:       groupID,
-				Bounds:   cell.Bounds,
+				Bounds:   groupBounds,
 				Children: c.shapes,
 			})
 			if err != nil {
@@ -1652,6 +1732,19 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 		Warnings:     warnings,
 		FitFindings:  fitFindings,
 	}, nil
+}
+
+// isLayerOf reports whether c is a layer stacked in the cell host resolved
+// from (host is the cell's own entry, or its first layer when it has none).
+func isLayerOf(c, host shapegrid.ResolvedCell) bool {
+	return c.Layer && c.RowIdx == host.RowIdx && c.ColIdx == host.ColIdx
+}
+
+// unionRectEMU is the smallest rectangle that holds a and b.
+func unionRectEMU(a, b pptx.RectEmu) pptx.RectEmu {
+	x0, y0 := min64(a.X, b.X), min64(a.Y, b.Y)
+	x1, y1 := max(a.X+a.CX, b.X+b.CX), max(a.Y+a.CY, b.Y+b.CY)
+	return pptx.RectEmu{X: x0, Y: y0, CX: x1 - x0, CY: y1 - y0}
 }
 
 // generateShapeCellXML produces XML and icon inserts for a shape cell.

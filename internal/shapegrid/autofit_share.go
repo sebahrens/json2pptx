@@ -31,7 +31,8 @@ func shareRowAutofitScale(cells []ResolvedCell) {
 	groups := map[key][]member{}
 	for i := range cells {
 		c := &cells[i]
-		if c.Kind != CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 {
+		// A layer is not a row sibling: it shares its cell, not a row slot.
+		if c.Layer || c.Kind != CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 {
 			continue
 		}
 		tb, err := ResolveTextInput(c.ShapeSpec.Text)

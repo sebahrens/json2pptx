@@ -74,6 +74,7 @@ before PowerPoint autofit shrinks text to an unreadable size.
 The native table renderer reports this finding when authored rows would be absent
 from the generated deck. Its action is `refuse`, with error severity and the
 authored content item's JSON Pointer (for example, `/slides/0/content/0`).
+A finding about a shape stacked in a cell's `layers` is reported at `/slides/N/shape_grid/rows/R/cells/C/layers/I` (its text at `…/layers/I/shape/text`), and `reduce_cell_text` takes that path as `cell_path`.
 A `shape_grid` table cell reports it at `/slides/N/shape_grid/rows/R/cells/C/table`;
 validate predicts it in the cell generation lays out (the content zone below the
 title, not the default slide bounds), and generation refuses the slide instead of
