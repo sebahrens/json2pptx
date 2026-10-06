@@ -21,6 +21,7 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | "Today vs target" | `comparison` (2 aligned columns) | Rows correspond; keep it to ~6. |
 | "This is the sequence" | `process` (3–6 steps with descriptions → numbered rows; 7–8 or bare labels → flow boxes) | A straight sequence, not a branching flowchart. |
 | "It repeats: the last phase leads back to the first" | raw `cycle-ring` (4–8 phases) | A lifecycle, PDCA, an operating rhythm, a flywheel. One `highlight` phase at most; `style: arrows` for chasing arrows. Not for a sequence that runs once (use `process`); 3 phases or stations joined by arrows are `cycle-nodes`. |
+| "Two loops feed each other" (build ↔ run, plan ↔ deliver) | raw `cycle-figure-eight` (4–8 phases, 2–4 per lobe) | One path round both lobes, numbered along the way; `left_label` / `right_label` name the loops. Needs the slide's width: in a half-width segment it is refused — use `cycle-ring` there, and for one loop. |
 | "When things happen" | `timeline` (3–7 dated stops) · `roadmap` (3–6 phases, 0–4 `parallel_tracks`) | An `end_date` turns a timeline into bars. |
 | "Who does what by when" | `next_steps` | 2–6 actions `{action, owner, date}`, 0–3 `decisions`. Always the closer. |
 | "Who we are" | `team` (1–8, `photo` or initials `photo_label`) | Role on every card. |
@@ -103,7 +104,7 @@ heading, source on the slide, no legend when one series is labelled.
 
 `labeled-rows`, `capability-heatmap`, `roadmap-phased` (dated bars per
 workstream), `swimlane`, `value-chain`, `scqa-summary`,
-`driver-tree`, `journey-maturity-model`, `cycle-ring`, `exec-summary` variants, and the
+`driver-tree`, `journey-maturity-model`, `cycle-ring`, `cycle-figure-eight`, `exec-summary` variants, and the
 svggen diagrams (gantt, venn, org chart). Carry them as a `raw_json2pptx`
 slide inside the DeckSpec — the whole pattern block verbatim from
 `show_pattern` — not as a lowered raw deck; `recommend_visual` returns such a
