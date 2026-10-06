@@ -6,18 +6,23 @@ import (
 )
 
 // go-slide-creator-j8t7o: every stage was the same box at the same height, so
-// the direction of maturity was only readable from the text. The default is a
-// staircase; the tests that pin the old look ask for overrides.style "flat".
+// the direction of maturity was only readable from the text. That staircase of
+// header and description boxes is overrides.style "columns" since
+// go-slide-creator-an4ao made solid steps the default (journeymaturity_steps_test.go);
+// the tests that pin the first look ask for overrides.style "flat".
 
-var journeyFlat = &JourneyMaturityOverrides{Style: "flat"}
+var (
+	journeyFlat    = &JourneyMaturityOverrides{Style: "flat"}
+	journeyColumns = &JourneyMaturityOverrides{Style: "columns"}
+)
 
-func TestJourneyMaturityStaircaseAscends(t *testing.T) {
+func TestJourneyMaturityColumnsAscend(t *testing.T) {
 	p, _ := Default().Get("journey-maturity-model")
 	ctx := testThemeCtx()
 	for n := 3; n <= 6; n++ {
 		vals := validJourneyMaturityValues(n)
 		vals.Stages[n/2].Current = true
-		grid, err := p.Expand(ctx, vals, nil, nil)
+		grid, err := p.Expand(ctx, vals, journeyColumns, nil)
 		if err != nil {
 			t.Fatalf("n=%d: Expand: %v", n, err)
 		}
@@ -79,9 +84,9 @@ func TestJourneyMaturityStaircaseAscends(t *testing.T) {
 }
 
 // Without a current stage there is no marker row.
-func TestJourneyMaturityStaircaseWithoutMarker(t *testing.T) {
+func TestJourneyMaturityColumnsWithoutMarker(t *testing.T) {
 	p, _ := Default().Get("journey-maturity-model")
-	grid, err := p.Expand(testThemeCtx(), validJourneyMaturityValues(4), nil, nil)
+	grid, err := p.Expand(testThemeCtx(), validJourneyMaturityValues(4), journeyColumns, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +123,7 @@ func TestJourneyMaturityRiseYieldsToDescriptions(t *testing.T) {
 func TestJourneyMaturityStyleValidation(t *testing.T) {
 	p, _ := Default().Get("journey-maturity-model")
 	vals := validJourneyMaturityValues(4)
-	for _, style := range []string{"", "staircase", "flat"} {
+	for _, style := range []string{"", "staircase", "columns", "flat"} {
 		if err := p.Validate(vals, &JourneyMaturityOverrides{Style: style}, nil); err != nil {
 			t.Errorf("style %q rejected: %v", style, err)
 		}

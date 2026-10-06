@@ -610,7 +610,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"horizontal-bar-with-callouts": 3.8,
 	"icon-row":                     0,
 	"image-text-split":             7.9, // real bullets (zieyk)
-	"journey-maturity-model":       9.8,
+	"journey-maturity-model":       11.0,
 	"kpi-2up":                      0,
 	"kpi-3up":                      0,
 	"kpi-4up":                      0,
