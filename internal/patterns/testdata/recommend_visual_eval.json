@@ -66,6 +66,12 @@
     {"intent": "the PDCA loop the plants run every quarter", "expect": ["cycle-ring"]},
     {"intent": "the customer lifecycle in six phases", "hints": {"item_count": 6}, "expect": ["cycle-ring"]},
     {"intent": "our monthly operating rhythm", "hints": {"item_count": 5}, "expect": ["cycle-ring"]},
-    {"intent": "the marketplace flywheel", "expect": ["cycle-ring"]}
+    {"intent": "the marketplace flywheel", "expect": ["cycle-ring"]},
+    {"intent": "the devops loop from plan to monitor", "hints": {"item_count": 6}, "expect": ["cycle-figure-eight"]},
+    {"intent": "an infinity loop of build and run phases", "expect": ["cycle-figure-eight"]},
+    {"intent": "a figure eight linking planning and delivery", "hints": {"item_count": 4}, "expect": ["cycle-figure-eight"]},
+    {"intent": "the build and run loop of the platform team", "hints": {"item_count": 8}, "expect": ["cycle-figure-eight"]},
+    {"intent": "two coupled cycles for demand and supply", "expect": ["cycle-figure-eight"]},
+    {"intent": "a cycle in a half-width panel", "hints": {"item_count": 5}, "expect": ["cycle-ring"]}
   ]
 }

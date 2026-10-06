@@ -229,7 +229,7 @@ func crTexts(n int, descriptions bool) []string {
 
 // 3-5 layers × every template: no refusal, no shrink, every label and
 // description at 12pt or more, round nested rings with one solid accent.
-func TestConcentricRingsMatrix(t *testing.T) {
+func TestConcentricRingsMatrixAcrossTemplates(t *testing.T) {
 	t.Parallel()
 	for _, tpl := range crMatrixTemplates() {
 		for n := 3; n <= 5; n++ {
@@ -286,7 +286,7 @@ func TestConcentricRingsBudgetProbe(t *testing.T) {
 // A horizontal 50% compose segment and a nested shape-grid cell: the rings
 // stay round and nested, the square gives width to the ladder, and labels
 // are written at 12pt or more without shrink.
-func TestConcentricRingsSplitLayouts(t *testing.T) {
+func TestConcentricRingsSplitLayoutsAcrossTemplates(t *testing.T) {
 	t.Parallel()
 	bullets := json.RawMessage(`{"rows": [
 		{"label": "NOW", "body": "Prove the model with one team"},

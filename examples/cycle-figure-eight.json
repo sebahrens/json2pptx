@@ -1,0 +1,124 @@
+{
+  "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
+  "output_filename": "cycle-figure-eight.pptx",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "One Team Builds It and Runs It"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Figure-eight loop pattern examples"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Planning and delivery feed each other every quarter"}
+      ],
+      "pattern": {
+        "name": "cycle-figure-eight",
+        "values": {
+          "left_label": "Plan",
+          "right_label": "Deliver",
+          "phases": [
+            {"label": "Set priorities", "description": "Rank the portfolio by customer value"},
+            {"label": "Fund the bets", "description": "Release budget one quarter at a time"},
+            {"label": "Ship increments", "description": "Every team demos working product"},
+            {"label": "Measure outcomes", "description": "Results reset next quarter's ranking"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Release is where the build loop hands over to the run loop"}
+      ],
+      "pattern": {
+        "name": "cycle-figure-eight",
+        "values": {
+          "left_label": "Build",
+          "right_label": "Run",
+          "phases": [
+            {"label": "Plan", "description": "Rank the backlog by customer value"},
+            {"label": "Code", "description": "Small changes, reviewed in a day"},
+            {"label": "Test", "description": "Automated checks gate every merge"},
+            {"label": "Release", "description": "Ship behind a feature flag", "highlight": true},
+            {"label": "Operate", "description": "On-call owns the service level"},
+            {"label": "Monitor", "description": "Usage and incidents feed the plan"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Demand signals reach the plant floor inside one weekly cycle"}
+      ],
+      "pattern": {
+        "name": "cycle-figure-eight",
+        "values": {
+          "left_label": "Demand",
+          "right_label": "Supply",
+          "phases": [
+            {"label": "Sense demand", "description": "Daily point-of-sale feeds"},
+            {"label": "Forecast", "description": "Weekly consensus by region"},
+            {"label": "Shape demand", "description": "Promotions steer the mix"},
+            {"label": "Commit volumes", "description": "Orders frozen on Thursday"},
+            {"label": "Plan supply", "description": "Capacity matched by line"},
+            {"label": "Source", "description": "Call-offs to 40 suppliers"},
+            {"label": "Make", "description": "Schedules fixed for five days"},
+            {"label": "Deliver", "description": "Service level fed back"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Five phases cut the lead time from idea to learning to 11 days"}
+      ],
+      "compose": {
+        "direction": "vertical",
+        "segments": [
+          {
+            "size_pct": 72,
+            "pattern": {
+              "name": "cycle-figure-eight",
+              "values": {
+                "left_count": 2,
+                "left_label": "Learn",
+                "right_label": "Scale",
+                "phases": [
+                  {"label": "Interview users"},
+                  {"label": "Prototype"},
+                  {"label": "Launch to a cohort"},
+                  {"label": "Measure retention"},
+                  {"label": "Roll out"}
+                ]
+              },
+              "overrides": {"thickness": "thin"}
+            }
+          },
+          {
+            "size_pct": 28,
+            "pattern": {
+              "name": "kpi-inline",
+              "values": [
+                {"big": "11d", "small": "Idea to learning"},
+                {"big": "38", "small": "Experiments a quarter"},
+                {"big": "1 in 4", "small": "Scaled to all users"}
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

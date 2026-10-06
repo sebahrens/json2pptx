@@ -357,6 +357,24 @@ var rules = []rule{
 		itemMax:   6,
 	},
 
+	// Cycle figure eight — two coupled loops on one path of 4-8 phases
+	{
+		pattern:   "cycle-figure-eight",
+		keywords:  []string{"figure eight", "figure-eight", "figure of eight", "infinity loop", "infinity symbol", "devops loop", "devops", "build and run", "build-run", "two coupled", "coupled loops", "coupled cycles", "double loop", "two loops", "dual loop"},
+		baseScore: 0.95,
+		rationale: "Figure-eight loop: two coupled lobes on one continuous path of 4-8 numbered phases, labels in a column either side; needs the slide's width",
+		itemMin:   4,
+		itemMax:   8,
+	},
+	{
+		pattern:   "cycle-figure-eight",
+		keywords:  []string{"two cycles", "interlocking loops", "interlocking cycles", "linked loops", "linked cycles", "loops feed each other", "plan and deliver loop", "learn and scale loop"},
+		baseScore: 0.86,
+		rationale: "Figure-eight loop when two cycles hand over to each other at one crossing",
+		itemMin:   4,
+		itemMax:   8,
+	},
+
 	// Cycle ring — a closed ring of 4-8 phases
 	{
 		pattern:   "cycle-ring",

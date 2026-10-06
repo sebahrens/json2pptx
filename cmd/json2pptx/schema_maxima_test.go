@@ -519,9 +519,10 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"chart-insights-split":         2.4, // nested stacked-column cells measured (bzh34)
 	"comparison-2col":              4.5, // rows floored at written fit (n1muf)
 	"concentric-rings":             10.6,
-	"contact-directory":            3.8, // Still refused by the generated-font floor; not a readable schema budget.
-	"cycle-ring":                   9.4, // 8 phases at the 4-phase maxima (28 / 90): rows share the height
-	"cycle-intake":                 0,
+	"contact-directory":            3.8,  // Still refused by the generated-font floor; not a readable schema budget.
+	"cycle-figure-eight":           10.3, // 8 phases at the 3-per-lobe maxima (26 / 60) in W: four rows a side share the height
+	"cycle-intake":                 0,    // 3 intake + 8 phases at the maxima: the list leaves the descriptions off and every row holds 12pt
+	"cycle-ring":                   9.4,  // 8 phases at the 4-phase maxima (28 / 90): rows share the height
 	"cycle-nodes":                  10.6,
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
@@ -597,6 +598,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"contact-directory":            4.3,
 	"comparison-2col":              4.5,
 	"concentric-rings":             0,
+	"cycle-figure-eight":           0.0,
 	"cycle-ring":                   11.3,
 	"cycle-intake":                 0,
 	"cycle-nodes":                  11.5,
@@ -761,6 +763,11 @@ func coherentMaximum(pattern string, v any) any {
 					delete(m, "end_date")
 				}
 			}
+		}
+	case "cycle-figure-eight":
+		// Each lobe holds at most four phases: eight phases split four and four.
+		if m, ok := v.(map[string]any); ok {
+			m["left_count"] = 4
 		}
 	case "chart-insights-split":
 		// The chart needs data the schema types only as an object.
