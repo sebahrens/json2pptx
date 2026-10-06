@@ -197,6 +197,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Porter / supply value chain | `value-chain` | 4–10 step columns: a row of interlocking arrows (a pentagon, then chevrons whose tails tuck under the point before them via the cell's `bleed_left`) over a 1–3 line description per step. Arrows are a neutral tint and the one `highlight` step takes the accent. Labels wrap at spaces inside the arrow's own text rectangle; the point gets blunter (down to 6pt) before a label shrinks, a label never goes below 12pt, and a word no arrow can hold is reported as `TEXT_EXCEEDS_SHAPE`. `overrides.style: "boxes"` restores rectangular labels joined by small connector arrows |
 | Maturity ladder / current-state journey | `journey-maturity-model` | 3–6 stage columns as an ascending staircase: each stage's numbered header starts one rise above the previous stage's, its description hangs directly beneath it, and every column ends on one baseline (the grid keeps its header / description / marker rows; the steps are cell `inset_top` / `inset_bottom` / `bleed_top` offsets), with the optional 'where we are' marker under the current stage (the current header is the one solid accent; the marker is an accent-outlined callout). The rise is up to 44pt per stage (the whole staircase at most 42% of the content height) and shrinks, to a 10pt minimum, when an early stage's description needs the height. `overrides.style: "flat"` restores equal boxes in one row joined by small arrows |
 | P&L walk / cost-driver bridge | `waterfall-bridge` | 3–10 columns of total + delta + subtotal bars; floating deltas with auto-computed subtotals, grey bridge lines between bar levels; `unit` currency symbols render as a prefix (`"$m"` → `$210m`), value labels sit just outside each bar (above rises, below falls), headroom kept under the title; optional `caption` states the scale once, since a bridge draws no value axis; decreases take the accent (accent1), increases dk1 at 35%, totals / subtotals dk1 at 60%, and only the accent labels are bold |
+| Recurring cycle / closed loop of phases | `cycle-ring` | 4–8 `phases` (`label` ≤ 28, optional `description` ≤ 90) as equal segments of one ring, phase 1 starting at 12 o'clock and running clockwise (`overrides.direction: "counter_clockwise"` turns it). The ring is one fit-`contain` lattice cell of [co-located layers](#co-located-layers-when-the-lattice-is-not-enough): `blockArc` segments in the dk1 16% neutral, a numbered accent badge on each segment's centreline, and an optional unfilled `center` label (≤ 24, plus `sublabel` ≤ 32) sized from 18pt down to 12pt so no word breaks. Labels are their own lattice cells **outside** the ring, one column either side: the numeral in accent ink (the cue that ties a label to its badge), the bold label (14pt, stepping to 12pt when the rows need it) and the muted description, each row as near its badge's height as its neighbours allow. At most one `phases[].highlight` takes the solid accent (its badge flips to the page colour); `cell_accent_mode` `alternate` / `progressive` tints each segment with its own accent. `overrides.style: "arrows"` draws `circularArrow` layers chasing each other; `thickness` `thin` / `regular` / `thick` is 14% / 20% / 28% of the diameter. Budgets (label / description): 4 phases 28 / 90, 5–6 phases 28 / 70, 7–8 phases 24 / 50 — `BODY_TOO_LONG` past them. A content area under about 450pt wide (a 50% compose segment, a nested cell) takes `overrides.labels: "legend"` by itself: the ring on the left, one numbered list beside it, descriptions left off (with `BODY_TOO_LONG`) when the list cannot hold them. Use `cycle-nodes` for 3 phases or discrete stations, `cycle-intake` when linear steps feed the loop, `cycle-figure-eight` for two coupled loops, `radial-hub` for unordered items round a centre, `process-flow` when nothing loops back |
 | Value / cost driver tree | `driver-tree` | Root metric → 2–4 branches → 1–4 leaves each, drawn as label-sized nodes: a parent is centred on its children and joined to them by elbow connectors, the root is the only solid accent node, and whitespace separates the levels; a branch's optional annotation sits beside its leaves behind a thin rule. `overrides.style: "slabs"` restores root and branch boxes as tall as the rows they decompose into (for **people/role** hierarchies use svggen `org_chart` instead) |
 | Temporal sequence | `timeline-horizontal` | Date-labeled stops |
 | Layer/stack diagram | `arch-stack` | Vertical tier ordering. A tier that lists `components` (1–12, each ≤40 characters) is a band with its name on the left and one block per component beside it (7–12 wrap to two rows of blocks); once any tier has components the whole stack takes that band layout, a `description`-only tier shows its text where the blocks would be, and the side rails take a tint of the accent. A tier sets `components` or `description`, not both. A stack with no components is drawn as before: tiers are content-sized (the tallest tier's written fit + 8pt, capped at 20% of the content height unless the text needs more) and the stack is centred |
@@ -291,7 +292,7 @@ Declare the motif in the `patternMotifs` table in `internal/patterns/motif.go` �
 | `open-list` | a stack of rows separated by rules or whitespace | `agenda`, `agenda-with-images`, `exec-summary`, `scqa-summary`, `labeled-rows`, `metric-list`, `next-steps`, `numbered-step-strip`, `framework-grid` |
 | `table` | a grid read by row and column headers | `table-highlight`, `roadmap-phased` |
 | `chart` | a data chart | `chart-insights-split`, `horizontal-bar-with-callouts`, `waterfall-bridge` |
-| `diagram` | a drawing whose shape carries the meaning | `pyramid`, `strategy-house`, `state-shift-hub`, `driver-tree`, `matrix-2x2`, `risk-heatmap`, `arch-stack`, `journey-maturity-model`, `concentric-rings` |
+| `diagram` | a drawing whose shape carries the meaning | `pyramid`, `strategy-house`, `state-shift-hub`, `driver-tree`, `matrix-2x2`, `risk-heatmap`, `arch-stack`, `journey-maturity-model`, `concentric-rings`, `cycle-ring` |
 | `flow` | steps or stops along one line | `process-flow`, `process-flow-compact`, `value-chain`, `timeline-horizontal`, `phase-roadmap`, `swimlane` |
 | `hero-number` | one dominant number | `stat-hero`, `hero-detail` |
 | `quote` | one dominant quotation | `pull-quote` |
@@ -405,7 +406,7 @@ Rules a new picture-taking pattern must follow:
   column cannot hold.
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
-- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split, capability-heatmap, state-shift-hub, contact-directory, text-sidebar): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column, rating tier, today-vs-future nodes around a hub, contact groups, the one key-message panel) rather than peer ordering.
+- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split, capability-heatmap, state-shift-hub, contact-directory, text-sidebar, cycle-ring): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column, rating tier, today-vs-future nodes around a hub, contact groups, the one key-message panel, ring segments in phase order) rather than peer ordering.
 
 ### Free-positioned shapes: the lattice technique
 
@@ -506,6 +507,20 @@ of a degree, 0° at 3 o'clock, increasing **clockwise** (90° = 6 o'clock,
   at or under `adj5` and `adj5` at or under `12500`: at `adj1 = 2 × adj5` the
   head disappears into the shaft, and at `adj5 = 25000` LibreOffice draws a
   broken outline. `FlipH` makes it run anticlockwise.
+
+**Drawing a ring.** `internal/patterns/ring_common.go` is the geometry (a
+`ringSpec`, its items, frames, adjust values, label rows, the lattice) and
+`internal/patterns/ring_draw.go` turns it into shape-grid pieces; `cycle-ring`
+is the reference user. A circular pattern builds its `ringSpec` (a full ring,
+or an open arc for one lobe), fills a `ringPaint` (per-item accents, the one
+highlight, badge size, first badge number, a layer-name prefix) and calls
+`ringSegmentLayers` (blockArc, or `circularArrow` with `Arrows`),
+`ringBadgeLayers` and `ringCentreLayer`, joins them with `ringCell` and places
+that cell with `ringLattice`. Labels beside the ring are `ringNumberCell` +
+`ringLabelTextCell(ringLabelText(…))`, each row as tall as `ringLabelNeedPt`
+says. Segments are the dk1 16% neutral (or the item's own tint), the
+highlight is the only solid accent, and every ink is measured against its
+fill.
 
 ### Test guidance
 

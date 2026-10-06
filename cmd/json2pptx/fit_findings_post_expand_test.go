@@ -589,3 +589,12 @@ func TestTextSidebarOverflowReachesFitReportAcrossTemplates(t *testing.T) {
 	}
 	assertBudgetFindingAcrossTemplates(t, "text-sidebar", values, "text-sidebar paragraphs and bullets", "the main column holds about")
 }
+
+func TestCycleRingDenseDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.CycleRingValues{}
+	for i := 0; i < 8; i++ {
+		values.Phases = append(values.Phases, patterns.CycleRingPhase{Label: "Phase name", Description: "One short line"})
+	}
+	values.Phases[5].Description = budgetProbeCopy(51) // one over the 7-8 phase budget
+	assertBudgetFindingAcrossTemplates(t, "cycle-ring", values, "phases[5].description is 51 characters", "with 8 phases use about 50")
+}

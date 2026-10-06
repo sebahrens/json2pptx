@@ -1,0 +1,525 @@
+{
+  "col_gap": 0.01,
+  "row_gap": 0.01,
+  "columns": [
+    27.432,
+    2.424,
+    40.288,
+    2.424,
+    27.432
+  ],
+  "rows": [
+    {
+      "min_height": 44.688,
+      "max_height": 44.688,
+      "cells": [
+        {},
+        {},
+        {
+          "row_span": 7,
+          "fit": "contain",
+          "layers": [
+            {
+              "frame": {
+                "x": 0,
+                "y": 0,
+                "w": 1,
+                "h": 1
+              },
+              "shape": {
+                "geometry": "blockArc",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 16380000,
+                  "adj2": 21420000,
+                  "adj3": 20000
+                }
+              },
+              "name": "segment-1"
+            },
+            {
+              "frame": {
+                "x": 0,
+                "y": 0,
+                "w": 1,
+                "h": 1
+              },
+              "shape": {
+                "geometry": "blockArc",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 180000,
+                  "adj2": 5220000,
+                  "adj3": 20000
+                }
+              },
+              "name": "segment-2"
+            },
+            {
+              "frame": {
+                "x": 0,
+                "y": 0,
+                "w": 1,
+                "h": 1
+              },
+              "shape": {
+                "geometry": "blockArc",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 5580000,
+                  "adj2": 10620000,
+                  "adj3": 20000
+                }
+              },
+              "name": "segment-3"
+            },
+            {
+              "frame": {
+                "x": 0,
+                "y": 0,
+                "w": 1,
+                "h": 1
+              },
+              "shape": {
+                "geometry": "blockArc",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 10980000,
+                  "adj2": 16020000,
+                  "adj3": 20000
+                }
+              },
+              "name": "segment-4"
+            },
+            {
+              "frame": {
+                "x": 0.73772,
+                "y": 0.172034,
+                "w": 0.090246,
+                "h": 0.090246
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "accent1",
+                "line": "none",
+                "text": {
+                  "paragraphs": [
+                    {
+                      "content": "1",
+                      "size": 12,
+                      "bold": true,
+                      "color": "lt1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "align": "ctr",
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "badge-1"
+            },
+            {
+              "frame": {
+                "x": 0.73772,
+                "y": 0.73772,
+                "w": 0.090246,
+                "h": 0.090246
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "accent1",
+                "line": "none",
+                "text": {
+                  "paragraphs": [
+                    {
+                      "content": "2",
+                      "size": 12,
+                      "bold": true,
+                      "color": "lt1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "align": "ctr",
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "badge-2"
+            },
+            {
+              "frame": {
+                "x": 0.172034,
+                "y": 0.73772,
+                "w": 0.090246,
+                "h": 0.090246
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "accent1",
+                "line": "none",
+                "text": {
+                  "paragraphs": [
+                    {
+                      "content": "3",
+                      "size": 12,
+                      "bold": true,
+                      "color": "lt1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "align": "ctr",
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "badge-3"
+            },
+            {
+              "frame": {
+                "x": 0.172034,
+                "y": 0.172034,
+                "w": 0.090246,
+                "h": 0.090246
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "accent1",
+                "line": "none",
+                "text": {
+                  "paragraphs": [
+                    {
+                      "content": "4",
+                      "size": 12,
+                      "bold": true,
+                      "color": "lt1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "align": "ctr",
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "badge-4"
+            },
+            {
+              "frame": {
+                "x": 0.284,
+                "y": 0.284,
+                "w": 0.432,
+                "h": 0.432
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "none",
+                "line": "none",
+                "text": {
+                  "paragraphs": [
+                    {
+                      "content": "Continuous improvement",
+                      "size": 18,
+                      "bold": true,
+                      "color": "dk1",
+                      "align": "ctr",
+                      "space_after": 2
+                    }
+                  ],
+                  "align": "ctr",
+                  "vertical_align": "ctr",
+                  "inset_left": 2,
+                  "inset_top": 2,
+                  "inset_right": 2,
+                  "inset_bottom": 2
+                }
+              },
+              "name": "centre"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "min_height": 55,
+      "max_height": 55,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Act",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "r",
+                  "space_after": 1
+                },
+                {
+                  "content": "Standardise what worked and scale it",
+                  "size": 12,
+                  "color": "dk1",
+                  "alpha": 70,
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "t",
+              "inset_left": 2,
+              "inset_top": 3,
+              "inset_right": 6,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "4",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_left": 0,
+              "inset_top": 3,
+              "inset_right": 0,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "1",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "t",
+              "inset_left": 0,
+              "inset_top": 3,
+              "inset_right": 0,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Plan",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Set the target and the hypothesis to test",
+                  "size": 12,
+                  "color": "dk1",
+                  "alpha": 70,
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_left": 6,
+              "inset_top": 3,
+              "inset_right": 2,
+              "inset_bottom": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 133.047,
+      "max_height": 133.047,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 7,
+      "max_height": 7,
+      "cells": [
+        {
+          "row_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Check",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "r",
+                  "space_after": 1
+                },
+                {
+                  "content": "Compare results against the baseline",
+                  "size": 12,
+                  "color": "dk1",
+                  "alpha": 70,
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "t",
+              "inset_left": 2,
+              "inset_top": 3,
+              "inset_right": 6,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {
+          "row_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "3",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_left": 0,
+              "inset_top": 3,
+              "inset_right": 0,
+              "inset_bottom": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 41,
+      "max_height": 41,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "2",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "t",
+              "inset_left": 0,
+              "inset_top": 3,
+              "inset_right": 0,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Do",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Run the change in one pilot plant",
+                  "size": 12,
+                  "color": "dk1",
+                  "alpha": 70,
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_left": 6,
+              "inset_top": 3,
+              "inset_right": 2,
+              "inset_bottom": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 7,
+      "max_height": 7,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 44.688,
+      "max_height": 44.688,
+      "cells": [
+        {}
+      ]
+    }
+  ],
+  "vertical_align": "middle"
+}

@@ -40,7 +40,7 @@ Do NOT hand-roll shape grids when a named pattern exists.
 team bios, KPI captions,
 …) live in each field's `show_pattern` description, measured at default sizes
 for every supported count. Limits: `state-shift-hub` takes 3–4 pairs,
-`dual-org-ladder` at most 4 rows, `concentric-rings` 3–5 layers.
+`dual-org-ladder` at most 4 rows, `concentric-rings` 3–5 layers, `cycle-ring` 4–8 phases.
 
 Budgets assume the template's full content area. On a short or narrow
 template, or under a `takeaway`, content-sized patterns (`exec-summary`,

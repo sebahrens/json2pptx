@@ -53,6 +53,11 @@
     {"intent": "a line chart of weekly active users", "expect": ["line"]},
     {"intent": "four strategic pillars", "hints": {"item_count": 4}, "expect": ["stylish-panels", "strategy-house"]},
     {"intent": "a screenshot with callouts pointing at parts of it", "expect": ["image-text-split"], "must": true},
-    {"intent": "an annotated screenshot of the admin dashboard", "expect": ["image-text-split"]}
+    {"intent": "an annotated screenshot of the admin dashboard", "expect": ["image-text-split"]},
+    {"intent": "a continuous improvement cycle with four phases", "hints": {"item_count": 4}, "expect": ["cycle-ring"]},
+    {"intent": "the PDCA loop the plants run every quarter", "expect": ["cycle-ring"]},
+    {"intent": "the customer lifecycle in six phases", "hints": {"item_count": 6}, "expect": ["cycle-ring"]},
+    {"intent": "our monthly operating rhythm", "hints": {"item_count": 5}, "expect": ["cycle-ring"]},
+    {"intent": "the marketplace flywheel", "expect": ["cycle-ring"]}
   ]
 }

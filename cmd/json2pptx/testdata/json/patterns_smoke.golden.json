@@ -384,6 +384,19 @@
     ]
   },
   {
+    "pattern_name": "cycle-ring",
+    "row_count": 7,
+    "cell_counts": [
+      3,
+      4,
+      1,
+      2,
+      2,
+      1,
+      1
+    ]
+  },
+  {
     "pattern_name": "next-steps",
     "row_count": 9,
     "cell_counts": [
