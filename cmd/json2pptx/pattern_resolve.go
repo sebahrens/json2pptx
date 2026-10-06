@@ -430,7 +430,7 @@ func nestedPatternCellBounds(grid *jsonschema.ShapeGridInput, ctx patterns.Expan
 	}
 	resolved, err := shapegrid.Resolve(&shapegrid.Grid{
 		Bounds: bounds, TypeScale: grid.TypeScale, Columns: cols, Rows: rows, ColGap: colGap, RowGap: rowGap, VAlign: align,
-		Compose: slideBlock && composesSlideBlock(grid), ComposeGrow: slideBlock && growsLoneRow(grid), ComposeBand: slideBlock && scalesToBand(grid), ComposeBandSquare: slideBlock && scalesToBand(grid) && bandScalesToSquare(grid), KeepTextSizes: grid.KeepTextSizes,
+		Compose: slideBlock && composesSlideBlock(grid), ComposeGrow: slideBlock && growsLoneRow(grid), ComposeBand: slideBlock && scalesToBand(grid), ComposeBandSquare: slideBlock && scalesToBand(grid) && bandScalesToSquare(grid), ComposeZoom: slideBlock && zoomsSlideBlock(grid), KeepTextSizes: grid.KeepTextSizes,
 		CanvasScale: gridCanvasScale(grid, ctx.SlideWidth, ctx.SlideHeight),
 	}, pptx.NewShapeIDAllocator(nil))
 	if err != nil {

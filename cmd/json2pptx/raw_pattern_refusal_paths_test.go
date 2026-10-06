@@ -179,7 +179,10 @@ func TestRawPatternReadabilityReportsEveryHitAtOnce(t *testing.T) {
 			texts[s] = true
 		}
 	}
-	for _, want := range []string{"Data and reporting platform", "Platform build and integrated report", "Training 1,200 control owners", "Training waves"} {
+	// The two workstream names are unreadable; their bar labels were too
+	// until the sparse block's rows were grown on a slide of its own
+	// (shapegrid ComposeZoom, go-slide-creator-cyyiy).
+	for _, want := range []string{"Data and reporting platform", "Training 1,200 control owners"} {
 		if !texts[want] {
 			t.Errorf("no finding quotes %q; got %v", want, texts)
 		}

@@ -369,7 +369,7 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 				mode = grid.TypeScale
 			}
 			if plan != nil && len(plan.sizes) > 0 && mode != "compact" {
-				stepped := stepShapeText(cell.ShapeSpec, plan.sizes, grid.KeepTextSizes)
+				stepped := stepShapeText(cell.ShapeSpec, plan.sizes, grid.KeepTextSizes, plan.figureGrowth())
 				stepFit(plan, cell.ShapeSpec, stepped, cell.Bounds, cell.TextInsets)
 				cell.ShapeSpec = stepped
 			}
@@ -377,7 +377,7 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 				cell.ShapeSpec = growShapeText(cell.ShapeSpec, cell.Bounds, cell.TextInsets, mode)
 			}
 			if !grid.KeepTextSizes {
-				cell.ShapeSpec = snapShapeTextToScale(cell.ShapeSpec)
+				cell.ShapeSpec = snapShapeTextToScale(cell.ShapeSpec, plan.zoomHeadingPt())
 			}
 			if grid.canvasText > 1 {
 				cell.ShapeSpec = canvasShapeText(cell.ShapeSpec, grid.canvasText, grid.canvasKeep)

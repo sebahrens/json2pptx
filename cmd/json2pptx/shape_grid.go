@@ -942,6 +942,23 @@ func scalesToBand(input *ShapeGridInput) bool {
 	return cells > 0 && float64(chars)/float64(cells) >= sparseFlowMaxAvgChars
 }
 
+// zoomsSlideBlock reports whether a slide's own grid is a full-slide pattern
+// exhibit the composition policy scales as a whole when its content is
+// sparse (shapegrid.Grid.ComposeZoom, go-slide-creator-cyyiy): rows up to
+// 1.6x as tall and type up to two steps larger while it fits, towards 70% of
+// the content area. Every pattern is one except those with a growth rule of
+// their own — the kpi-Nup rows (growsLoneRow) and the single-band flows
+// (bandScaledPatterns) — the supporting bands, which stay a band and report
+// (supportingBandPatterns), and the hero statements, whose white space is
+// the composition (heroStatementPatterns).
+func zoomsSlideBlock(input *ShapeGridInput) bool {
+	if !composesSlideBlock(input) || !strings.HasPrefix(input.Source, patternSourcePrefix) {
+		return false
+	}
+	name := strings.TrimPrefix(input.Source, patternSourcePrefix)
+	return !isKPINupPattern(name) && !bandScaledPatterns[name] && supportingBandPatterns[name] == "" && !heroStatementPatterns[name]
+}
+
 // bandScalesToSquare reports whether the band-scaled grid's step boxes may
 // grow into cards (at most 4:5 portrait): a process-flow, whose steps are
 // boxes holding a sentence.
@@ -1071,6 +1088,7 @@ func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, ove
 	grid.ComposeGrow = grid.Compose && growsLoneRow(input)
 	grid.ComposeBand = grid.Compose && scalesToBand(input)
 	grid.ComposeBandSquare = grid.ComposeBand && bandScalesToSquare(input)
+	grid.ComposeZoom = grid.Compose && zoomsSlideBlock(input)
 	grid.KeepTextSizes = input.KeepTextSizes
 	grid.CanvasScale = gridCanvasScale(input, slideWidth, slideHeight)
 	grid.Links = convertGridLinks(input.Links)
