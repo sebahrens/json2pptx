@@ -132,6 +132,72 @@ func TestBuildExpandedCompose_Horizontal(t *testing.T) {
 	}
 }
 
+// The preview metadata of a segment describes the grid that is drawn. A
+// cycle-ring sets its labels in columns outside the ring when it has the
+// width and in a legend beside it when it has not, so its lattice at half the
+// envelope is not the one at the full width: col_range and
+// cells_after_expansion are read from the segment grid the merge used, not
+// from an expansion at the envelope's width (go-slide-creator-eyqvl).
+func TestBuildExpandedCompose_SegmentMetadataMatchesRenderedGrid(t *testing.T) {
+	a := loadTemplateAnalysis(t, "midnight-blue")
+	ring := PatternInput{Name: "cycle-ring", Values: json.RawMessage(`{"phases":[{"label":"Forecast"},{"label":"Review results"},{"label":"Decide"},{"label":"Commit funding"},{"label":"Execute"},{"label":"Track benefits"}]}`)}
+	side := PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"14 of 16","label":"Actions closed on time"}`)}
+	title := "The monthly rhythm closed 14 of 16 actions on time"
+	lattice := map[string][2]int{}
+	for _, tc := range []struct {
+		name, direction string
+		ringPct         float64
+	}{
+		{"half width", "horizontal", 50},
+		{"full width", "vertical", 75},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			slide := SlideInput{
+				SlideType: "content", LayoutID: "blank-title",
+				Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &title}},
+				Compose: &ComposeInput{Direction: tc.direction, Segments: []SegmentInput{
+					{SizePct: tc.ringPct, Pattern: ring},
+					{SizePct: 100 - tc.ringPct, Pattern: side},
+				}},
+			}
+			geom, b := patternExpansionGeometry(slide, a.Layouts, a.SlideWidth, a.SlideHeight, nil)
+			ctx := slideExpandContext(&a.Theme, nil, geom.Zone, patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY},
+				a.SlideWidth, a.SlideHeight, "", 0, 0)
+			merged, _, err := expandCompose(slide.Compose, ctx, patterns.Default())
+			if err != nil {
+				t.Fatal(err)
+			}
+			ec := buildExpandedCompose(slide.Compose, ctx, patterns.Default(), merged)
+			if ec == nil || len(ec.Segments) != 2 {
+				t.Fatalf("expanded compose = %+v, want two segments", ec)
+			}
+			// The ring is the first segment: the sub-grid in the merged grid's
+			// first cell.
+			drawn := merged.Rows[0].Cells[0].Grid
+			if drawn == nil {
+				t.Fatal("the ring segment is not a sub-grid of the merged grid")
+			}
+			seg := ec.Segments[0]
+			if got, want := seg.CellsAfterExpansion, countContentCells(drawn); got != want {
+				t.Errorf("cells_after_expansion = %d, the rendered segment has %d", got, want)
+			}
+			cols := inferColumnCount(drawn)
+			if tc.direction == "horizontal" {
+				if got := seg.ColRange[1] - seg.ColRange[0]; got != cols {
+					t.Errorf("col_range %v spans %d columns, the rendered segment has %d", seg.ColRange, got, cols)
+				}
+				if last := ec.Segments[1].ColRange[1]; last != inferColumnCount(merged) {
+					t.Errorf("the segments' col_ranges end at %d, the merged grid has %d columns", last, inferColumnCount(merged))
+				}
+			}
+			lattice[tc.name] = [2]int{cols, seg.CellsAfterExpansion}
+		})
+	}
+	if lattice["half width"] == lattice["full width"] {
+		t.Errorf("the ring drew the same lattice %v at half and at full width: this test no longer tells a sized expansion from an unsized one", lattice["half width"])
+	}
+}
+
 // TestComposeWarningAsFinding verifies the structured fit-finding conversion
 // from the two known compose warning shapes: COMPOSE_HORIZONTAL_TRUNCATION
 // and COMPOSE_SEGMENT_BOUNDS_IGNORED. Both must carry SegmentIndex so agents

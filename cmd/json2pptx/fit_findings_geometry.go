@@ -158,23 +158,31 @@ func collectGeometry(input *PresentationInput, layouts []types.LayoutMetadata, s
 		}
 		safe := contentRelativeBoundsBase(geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 		findings = append(findings, siblingSizeFindings(m, grid, result, basePath, patternName, slideWidth, slideHeight)...)
+		// A pattern nested in a cell has no shapes until generation expands
+		// it, so its cell reads as empty: coverage and balance are measured
+		// on the expanded cells, and not at all when they cannot be expanded
+		// (go-slide-creator-2ym44).
+		ctx := balanceContext{input: input, layouts: layouts, slideWidth: slideWidth, slideHeight: slideHeight, theme: theme, rhythmGrid: rhythmGrid, sectionIndices: sectionIndices}
+		measured := ctx.expandedAccumulator(acc, slide, si, grid, geom, basePath, patternName)
+		if measured == nil {
+			continue
+		}
 		// Sparse overall (SLIDE_UNDERUSED, an airiness advisory) and lopsided
 		// are different facts: a centred hero number is sparse and balanced,
 		// a row of cards over an empty bottom half is lopsided whether or not
 		// it is sparse. One imbalance finding per slide: top-to-bottom, else
 		// left-to-right.
-		underused := checkSlideUnderused(acc.ink, safe, &slide, si, patternName, acc.heightSensitiveOverflow())
+		underused := checkSlideUnderused(measured.ink, safe, &slide, si, patternName, acc.heightSensitiveOverflow())
 		if underused != nil {
 			findings = append(findings, *underused)
 		}
 		if usage != nil {
-			if u, ok := measureSlideUsage(acc.ink, safe, &slide, patternName); ok {
+			if u, ok := measureSlideUsage(measured.ink, safe, &slide, patternName); ok {
 				u.slide = si
 				usage(u)
 			}
 		}
-		ctx := balanceContext{input: input, layouts: layouts, slideWidth: slideWidth, slideHeight: slideHeight, theme: theme, rhythmGrid: rhythmGrid, sectionIndices: sectionIndices}
-		imbalance := ctx.imbalanceFinding(acc, slide, si, grid, geom, basePath, patternName, safe)
+		imbalance := ctx.imbalanceFinding(measured, slide, si, geom, patternName, safe)
 		if imbalance != nil {
 			findings = append(findings, *imbalance)
 		}
@@ -185,7 +193,7 @@ func collectGeometry(input *PresentationInput, layouts []types.LayoutMetadata, s
 		// flow SPARSE_SINGLE_ROW_FLOW already names is not reported twice.
 		if geom.Zone != nil && underused == nil && (imbalance == nil || imbalance.Code != patterns.ErrCodeVerticalImbalance) &&
 			detectSparseSingleRowFlow(input.Slides[si].Pattern, si) == nil {
-			if f := lowerBandFinding(acc.ink, safe, &slide, si, patternName); f != nil {
+			if f := lowerBandFinding(measured.ink, safe, &slide, si, patternName); f != nil {
 				findings = append(findings, *f)
 			}
 		}
@@ -203,36 +211,59 @@ type balanceContext struct {
 	sectionIndices          []int
 }
 
-// imbalanceFinding returns the slide's one imbalance finding: top-to-bottom,
-// else left-to-right.
-//
-// A pattern nested in a cell (a DeckSpec regions slide's kpis or timeline) has
-// no shapes until generation expands it, so its cell reads as empty. The
-// balance is measured on the expanded cells, and not at all when they cannot
-// be expanded: an empty band that is really a KPI row is not a finding.
-func (c balanceContext) imbalanceFinding(acc *geomAccumulator, slide SlideInput, si int, grid *ShapeGridInput, geom GridGeometry, basePath, patternName string, safe pptx.RectEmu) *patterns.FitFinding {
-	balance := acc
-	if hasNestedCellPattern(grid) {
-		balance = nil
-		g, contentBounds := patternExpansionGeometry(slide, c.layouts, c.slideWidth, c.slideHeight, c.rhythmGrid)
-		sectionIdx := 0
-		if si < len(c.sectionIndices) {
-			sectionIdx = c.sectionIndices[si]
-		}
-		expanded, _, err := expandNestedPatternsForReadability(grid, basePath, nestedExpansionGeometry{
-			geom: g, contentBounds: contentBounds, slideWidth: c.slideWidth, slideHeight: c.slideHeight,
-			theme: c.theme, strategy: patterns.AccentStrategy(c.input.AccentStrategy), slideIdx: si, sectionIdx: sectionIdx,
-		})
-		if err == nil && expanded != nil && !hasNestedCellPattern(expanded) {
-			if res := resolveGridForStructural(expanded, geom.OverrideBounds, geom.Zone, c.slideWidth, c.slideHeight); res != nil {
-				balance = &geomAccumulator{m: acc.m, slideArea: c.slideWidth * c.slideHeight, slideWidth: c.slideWidth, slideHeight: c.slideHeight, slotInk: openColumnPatterns[patternName]}
-				balance.walk(expanded, res, basePath, 0)
-			}
-		}
+// expandedAccumulator is the accumulator the slide-level measures read
+// (SLIDE_UNDERUSED, the imbalance checks, the lower-third rule): acc itself,
+// or, for a grid with a pattern nested in a cell (a DeckSpec regions slide's
+// kpis or timeline, a ring beside a text cell), a walk of the grid with those
+// patterns expanded as generation expands them. An unexpanded pattern cell
+// has no shapes and reads as empty: a slide half filled by a card-grid
+// reported 5% coverage. nil when a nested pattern cannot be expanded: an
+// empty band that is really a KPI row is not a finding.
+func (c balanceContext) expandedAccumulator(acc *geomAccumulator, slide SlideInput, si int, grid *ShapeGridInput, geom GridGeometry, basePath, patternName string) *geomAccumulator {
+	if !hasNestedCellPattern(grid) {
+		return acc
 	}
-	if balance == nil {
+	sectionIdx := 0
+	if si < len(c.sectionIndices) {
+		sectionIdx = c.sectionIndices[si]
+	}
+	expanded := gridWithNestedPatternsExpanded(slide, si, basePath, c.layouts, c.slideWidth, c.slideHeight, c.theme, c.rhythmGrid, patterns.AccentStrategy(c.input.AccentStrategy), sectionIdx)
+	if expanded == nil {
 		return nil
 	}
+	res := resolveGridForStructural(expanded, geom.OverrideBounds, geom.Zone, c.slideWidth, c.slideHeight)
+	if res == nil {
+		return nil
+	}
+	measured := &geomAccumulator{m: acc.m, slideArea: c.slideWidth * c.slideHeight, slideWidth: c.slideWidth, slideHeight: c.slideHeight, slotInk: openColumnPatterns[patternName]}
+	measured.walk(expanded, res, basePath, 0)
+	return measured
+}
+
+// gridWithNestedPatternsExpanded returns the slide's grid with the patterns
+// nested in its cells expanded in the cells generation gives them
+// (expandNestedPatternsForReadability): the grid itself when nothing is
+// nested, nil when a nested pattern cannot be expanded. The slide's grid is
+// never mutated.
+func gridWithNestedPatternsExpanded(slide SlideInput, si int, basePath string, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo, rhythmGrid *resolvedGrid, strategy patterns.AccentStrategy, sectionIdx int) *ShapeGridInput {
+	grid := slide.ShapeGrid
+	if !hasNestedCellPattern(grid) {
+		return grid
+	}
+	g, contentBounds := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythmGrid)
+	expanded, _, err := expandNestedPatternsForReadability(grid, basePath, nestedExpansionGeometry{
+		geom: g, contentBounds: contentBounds, slideWidth: slideWidth, slideHeight: slideHeight,
+		theme: theme, strategy: strategy, slideIdx: si, sectionIdx: sectionIdx,
+	})
+	if err != nil || expanded == nil || hasNestedCellPattern(expanded) {
+		return nil
+	}
+	return expanded
+}
+
+// imbalanceFinding returns the slide's one imbalance finding: top-to-bottom,
+// else left-to-right, measured on balance (expandedAccumulator).
+func (c balanceContext) imbalanceFinding(balance *geomAccumulator, slide SlideInput, si int, geom GridGeometry, patternName string, safe pptx.RectEmu) *patterns.FitFinding {
 	if f := checkVerticalImbalance(balance.ink, safe, &slide, si, patternName, zoneBodyTop(geom.Zone), true); f != nil {
 		if balance.tables > 0 && f.Fix != nil {
 			// A table is written at its row heights: vertical_align does not
@@ -338,6 +369,11 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 		defer func() { a.slotInk = outer }()
 	}
 	ruled := input != nil && ruledColumnPatterns[strings.TrimPrefix(input.Source, patternSourcePrefix)]
+	if input != nil && figureCellPatterns[strings.TrimPrefix(input.Source, patternSourcePrefix)] {
+		for _, r := range figureCellBounds(result.Cells) {
+			a.addInk(r)
+		}
+	}
 	for _, cell := range result.Cells {
 		cellPath := resolvedCellPath(basePath, cell)
 		switch cell.Kind {
@@ -587,6 +623,66 @@ var openColumnPatterns = map[string]bool{
 	// annotation. A hub of bare labels is the ring and six short words and
 	// still reports.
 	"radial-hub": true,
+	// The same for the rest of the circular family: a phase, node or layer
+	// label stands in a content-sized row beside the figure (outside columns,
+	// a keyed legend, the ladder of a nest of rings), on the row of the
+	// segment it names. With the labels at their glyphs a ring at half the
+	// slide beside three labelled rows covered 28–29% of business-template's
+	// larger content area and reported its own showcase slide
+	// (go-slide-creator-2ym44). The figure itself counts as figureCellPatterns
+	// says.
+	"cycle-ring":         true,
+	"cycle-nodes":        true,
+	"cycle-intake":       true,
+	"cycle-figure-eight": true,
+	"concentric-rings":   true,
+}
+
+// figureCellPatterns are the patterns that draw one figure out of the layers
+// of a cell: the circular family, whose ring, hub, loop or nest of circles is
+// a round drawing in a square frame. The figure is the unit — the eye reads a
+// ring of six nodes as one shape the size of its circle, not as six discs —
+// so the cell counts as the bounding rectangle of its layers
+// (figureCellBounds), the way a pyramid counts as its tiers and a
+// state-shift-hub as the frames of its arcs. Counted disc by disc, a hub of
+// six satellites beside its labels covered 24–28% of a content area it
+// visibly fills and reported as underused, and 27% of a compose envelope it
+// shared with a text column (go-slide-creator-2ym44). The rectangle is as
+// large as the figure is drawn: a small ring alone in a wide content area is
+// still a small block and still reports
+// (TestSmallRingAloneStillReportsUnderused).
+var figureCellPatterns = map[string]bool{
+	"cycle-ring":         true,
+	"cycle-nodes":        true,
+	"cycle-intake":       true,
+	"cycle-figure-eight": true,
+	"radial-hub":         true,
+	"concentric-rings":   true,
+}
+
+// figureCellBounds returns, for every cell of a resolved grid that holds
+// layers, the bounding rectangle of those layers, in cell order.
+func figureCellBounds(cells []shapegrid.ResolvedCell) []pptx.RectEmu {
+	var out []pptx.RectEmu
+	at := map[[2]int]int{}
+	for _, cell := range cells {
+		if !cell.Layer || cell.Bounds.CX <= 0 || cell.Bounds.CY <= 0 {
+			continue
+		}
+		key := [2]int{cell.RowIdx, cell.ColIdx}
+		i, seen := at[key]
+		if !seen {
+			at[key] = len(out)
+			out = append(out, cell.Bounds)
+			continue
+		}
+		r := out[i]
+		x2, y2 := maxI64(r.X+r.CX, cell.Bounds.X+cell.Bounds.CX), maxI64(r.Y+r.CY, cell.Bounds.Y+cell.Bounds.CY)
+		r.X, r.Y = minI64(r.X, cell.Bounds.X), minI64(r.Y, cell.Bounds.Y)
+		r.CX, r.CY = x2-r.X, y2-r.Y
+		out[i] = r
+	}
+	return out
 }
 
 // ruledColumnPatterns are the patterns that set open text columns beside an

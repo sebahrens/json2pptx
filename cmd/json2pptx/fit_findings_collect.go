@@ -114,7 +114,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 
 	// 2. Structural findings using template layout data.
 	findings = append(findings,
-		collectStructuralFindings(input, layouts, slideWidth, slideHeight)...)
+		collectStructuralFindingsWithTheme(input, layouts, slideWidth, slideHeight, theme)...)
 	findings = append(findings, collectChromeCollisionFindings(input, layouts, slideWidth)...)
 	// The left footer line against its slot (CHROME_TRUNCATED).
 	findings = append(findings, collectChromeLineFindings(input, layouts, slideWidth, slideHeight, theme)...)
@@ -495,8 +495,16 @@ func convertTextFitFinding(tf fitFinding) patterns.FitFinding {
 // collectStructuralFindings runs placeholder overflow, title wraps, footer
 // collision, and bounds overflow detectors using template layout data.
 func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []patterns.FitFinding {
+	return collectStructuralFindingsWithTheme(input, layouts, slideWidth, slideHeight, nil)
+}
+
+// collectStructuralFindingsWithTheme is collectStructuralFindings with the
+// theme the patterns nested in grid cells are expanded with for the
+// sparse-layout measure; nil measures them in the fallback font.
+func collectStructuralFindingsWithTheme(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 	rhythm := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
+	sectionIndices := slideSectionIndices(input.Slides, layouts)
 
 	footerEnabled := footerConfigForInput(input, len(input.Slides)) != nil
 	var skipFooterByLayout map[string]bool
@@ -545,11 +553,43 @@ func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutM
 			}
 			findings = append(findings,
 				checkShapeGridStructural(slide.ShapeGrid, si, slideWidth, slideHeight, footerLayout, geom,
-					footerEnabled && (footerLayout == nil || !skipFooterByLayout[footerLayout.ID]), patternName)...)
+					footerEnabled && (footerLayout == nil || !skipFooterByLayout[footerLayout.ID]))...)
+			if patternName == "" {
+				if f := rawGridSparseFinding(input, slide, si, layouts, slideWidth, slideHeight, theme, rhythm, sectionIndices, geom); f != nil {
+					findings = append(findings, *f)
+				}
+			}
 		}
 	}
 
 	return findings
+}
+
+// rawGridSparseFinding is the sparse_layout finding of a slide's grid, for the
+// slides it judges. Sparse layout is the estimate for an author-sized raw
+// grid. A named pattern sizes its own cells, and so does every segment of a
+// compose envelope and a grid whose cells hold nothing but nested patterns (a
+// compose written as a grid): a ring at 60% beside three labelled rows read
+// as "27% filled" on a slide that is visibly full. Those slides are measured
+// by SLIDE_UNDERUSED and SPARSE_FILL, on resolved ink (go-slide-creator-q7ar,
+// -2ym44).
+//
+// A pattern nested in a cell beside authored cells is measured as generation
+// draws it; unexpanded, its cell read as empty. A grid whose nested pattern
+// cannot be expanded is not measured.
+func rawGridSparseFinding(input *PresentationInput, slide SlideInput, si int, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo, rhythm *resolvedGrid, sectionIndices []int, geom GridGeometry) *patterns.FitFinding {
+	if slide.Compose != nil || hasNestedCellPattern(slide.ShapeGrid) && !hasAuthorSizedCell(slide.ShapeGrid, 0) {
+		return nil
+	}
+	sectionIdx := 0
+	if si < len(sectionIndices) {
+		sectionIdx = sectionIndices[si]
+	}
+	measured := gridWithNestedPatternsExpanded(slide, si, slidepath.ShapeGrid(si), layouts, slideWidth, slideHeight, theme, rhythm, patterns.AccentStrategy(input.AccentStrategy), sectionIdx)
+	if measured == nil {
+		return nil
+	}
+	return detectSparseLayoutForGrid(measured, geom, si, slideWidth, slideHeight)
 }
 
 // checkChromeBandFit emits chrome_band_no_fit when a slide's takeaway/source
@@ -731,7 +771,7 @@ func resolveGridContext(grid *ShapeGridInput, layout *types.LayoutMetadata, slid
 //   - diagram_render_failed: only knowable when rendering is attempted
 //   - image file/dimension issues: require filesystem access and image decoding
 //   - icon resolution failures: require loading SVG icons from the registry
-func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, layout *types.LayoutMetadata, geom GridGeometry, footerEnabled bool, patternName string) []patterns.FitFinding {
+func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, layout *types.LayoutMetadata, geom GridGeometry, footerEnabled bool) []patterns.FitFinding {
 	if len(grid.Rows) == 0 {
 		return nil
 	}
@@ -754,13 +794,6 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 
 	if result != nil {
 		findings = append(findings, checkGridCellsStructural(grid, result, slideIdx, slideWidth, slideHeight, slidepath.ShapeGrid(slideIdx), ctx, 0)...)
-	}
-
-	// Sparse layout detection: bounds are authoritative (never shrink), so
-	// content may occupy a small fraction of the allocated bounds.
-	bounds := resolveGridBounds(grid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
-	if f := detectSparseLayoutForGrid(grid, result, bounds, slideIdx, patternName); f != nil {
-		findings = append(findings, *f)
 	}
 
 	return findings
@@ -904,19 +937,46 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 	return result
 }
 
-// detectSparseLayoutForGrid uses the same resolved geometry as rendering. A
-// painted card occupies its frame; unfilled text uses its wrapped ink height.
-func detectSparseLayoutForGrid(grid *ShapeGridInput, resolved *shapegrid.ResolveResult, bounds pptx.RectEmu, slideIdx int, patternName string) *patterns.FitFinding {
-	// Named patterns size their own cells: a KPI card is 2.6in tall because the
-	// pattern says so, not because its two short paragraphs need the room. This
-	// estimator measures TEXT height against bounds height, so it called a clean
-	// three-card KPI slide "6% filled" and, once breadth started counting, that
-	// false positive blocked a good deck. The real emptiness signals on pattern
-	// slides are SPARSE_FILL and SLIDE_UNDERUSED, which measure resolved ink
-	// against resolved geometry (go-slide-creator-q7ar).
-	if patternName != "" {
-		return nil
+// hasAuthorSizedCell reports whether a grid holds a cell whose content the
+// author sized: a shape, table, icon, image, diagram, composite or layers,
+// at any nesting depth. A cell that holds a nested pattern is sized by the
+// pattern.
+func hasAuthorSizedCell(grid *ShapeGridInput, depth int) bool {
+	if grid == nil || depth > maxGeomNestingDepth {
+		return false
 	}
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			if cell.Shape != nil || cell.Table != nil || cell.Icon != nil || cell.Image != nil ||
+				cell.Diagram != nil || cell.Composite != nil || len(cell.Layers) > 0 {
+				return true
+			}
+			if hasAuthorSizedCell(cell.Grid, depth+1) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// detectSparseLayoutForGrid reports an author-sized raw grid whose visible
+// content covers under 40% of its bounds. It resolves the grid with the same
+// geometry as rendering; bounds are authoritative (never shrink), so content
+// may occupy a small fraction of them. A painted card occupies its frame;
+// unfilled text uses its wrapped ink height.
+//
+// Named patterns and compose envelopes are not passed here (see the caller):
+// a KPI card is 2.6in tall because the pattern says so, not because its two
+// short paragraphs need the room. This estimator measures TEXT height against
+// bounds height, so it called a clean three-card KPI slide "6% filled" and,
+// once breadth started counting, that false positive blocked a good deck
+// (go-slide-creator-q7ar).
+func detectSparseLayoutForGrid(grid *ShapeGridInput, geom GridGeometry, slideIdx int, slideWidth, slideHeight int64) *patterns.FitFinding {
+	resolved := resolveGridForStructural(grid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
+	bounds := resolveGridBounds(grid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 	if resolved == nil || bounds.CX <= 0 || bounds.CY <= 0 {
 		return nil
 	}
@@ -934,12 +994,11 @@ func detectSparseLayoutForGrid(grid *ShapeGridInput, resolved *shapegrid.Resolve
 		BoundsHeightEMU:  bounds.CY,
 		ContentHeightEMU: contentH,
 		AreaMeasured:     true,
-		PatternName:      patternName,
 		FilledSlots:      filledSlots,
 		GridRows:         numRows,
 		GridCols:         numCols,
 	})
-	if f != nil && patternName == "" {
+	if f != nil {
 		// A raw grid has no pattern sizing contract to tighten. Recommend
 		// choosing a purpose-sized pattern with the same real content.
 		f.Fix = &patterns.FixSuggestion{Kind: "adopt_pattern", Params: map[string]any{
@@ -960,9 +1019,14 @@ func measuredGridContentHeightEMU(grid *ShapeGridInput, resolved *shapegrid.Reso
 	// A compose segment expanded from an open-column pattern counts its
 	// content-sized slots, as SLIDE_UNDERUSED does (openColumnPatterns).
 	slotInk := grid != nil && openColumnPatterns[strings.TrimPrefix(grid.Source, patternSourcePrefix)]
-	var paintedArea float64
+	// A figure drawn from a cell's layers counts once, as the rectangle the
+	// figure occupies, not layer by layer (figureCellPatterns).
+	paintedArea, figure := figureCellArea(grid, resolved.Cells, bounds)
 	for i, cell := range resolved.Cells {
 		visible := clippedGridCellBounds(cell.Bounds, bounds)
+		if figure && cell.Layer {
+			visible = pptx.RectEmu{}
+		}
 		if visible.CX <= 0 || visible.CY <= 0 {
 			continue
 		}
@@ -994,6 +1058,20 @@ func measuredGridContentHeightEMU(grid *ShapeGridInput, resolved *shapegrid.Reso
 		paintedArea += float64(visible.CX) * float64(inkH)
 	}
 	return int64(math.Round(math.Min(float64(bounds.CY), paintedArea/float64(bounds.CX))))
+}
+
+// figureCellArea is the area, inside bounds, of the figures a resolved grid
+// draws from the layers of its cells (figureCellBounds); figure is false, and
+// the area 0, for a grid that is not the expansion of a figure pattern.
+func figureCellArea(grid *ShapeGridInput, cells []shapegrid.ResolvedCell, bounds pptx.RectEmu) (area float64, figure bool) {
+	if grid == nil || !figureCellPatterns[strings.TrimPrefix(grid.Source, patternSourcePrefix)] {
+		return 0, false
+	}
+	for _, r := range figureCellBounds(cells) {
+		visible := clippedGridCellBounds(r, bounds)
+		area += float64(visible.CX) * float64(visible.CY)
+	}
+	return area, true
 }
 
 func clippedGridCellBounds(cell, bounds pptx.RectEmu) pptx.RectEmu {

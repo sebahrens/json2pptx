@@ -255,8 +255,17 @@ func frameGridFindings(frame contentFrame, si int, slide *SlideInput, layouts []
 	if slide.ShapeGrid == nil || !frame.CheckGrids {
 		return nil
 	}
+	path := slidepath.ShapeGrid(si)
+	// A pattern nested in a cell draws nothing until it is expanded: the
+	// block's left edge was read from the first authored shape, half a slide
+	// in when the pattern is the left cell (go-slide-creator-2ym44). Only the
+	// block's corner is read here, so the fallback font is enough.
+	grid := gridWithNestedPatternsExpanded(*slide, si, path, layouts, frame.SlideWidth, frame.SlideHeight, nil, nil, "", 0)
+	if grid == nil {
+		return nil
+	}
 	geom := resolveGridGeometry(*slide, layouts, frame.SlideWidth, frame.SlideHeight)
-	res := resolveGridForStructural(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, frame.SlideWidth, frame.SlideHeight)
+	res := resolveGridForStructural(grid, geom.OverrideBounds, geom.Zone, frame.SlideWidth, frame.SlideHeight)
 	if res == nil {
 		return nil
 	}
@@ -264,7 +273,6 @@ func frameGridFindings(frame contentFrame, si int, slide *SlideInput, layouts []
 	if !ok {
 		return nil
 	}
-	path := slidepath.ShapeGrid(si)
 	var out []patterns.FitFinding
 	// A sparse content-sized block is placed at the optical centre of the
 	// content area on purpose (go-slide-creator-yhzxt); its top is not held

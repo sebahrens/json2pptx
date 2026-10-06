@@ -137,7 +137,7 @@ Examples from finding codes:
 | `title_wraps` | `/slides/1/content/0` |
 | `slide_bounds_overflow` | `/slides/2/shape_grid/rows/1/cells/0` |
 | `footer_collision` | `/slides/3/shape_grid/rows/2/cells/0` |
-| `sparse_layout` | `/slides/1/shape_grid` (`/slides/1/pattern`, `/slides/1/compose` on a pattern or compose slide) |
+| `sparse_layout` | `/slides/1/shape_grid` (author-sized raw grids only; pattern and compose slides report `SLIDE_UNDERUSED` at `/slides/1`) |
 | `fit_overflow` | `/slides/0/content/0/table_value/rows/3/1` |
 | `density_exceeded` | `/slides/0/content/0` |
 | `contrast_autofixed` | `/slides/3/shape_grid/rows/0/cells/2/shape/text` — the authored element, as `contrast_predicted` names it (layout/run text uses the slide-level `/slides/1`) |
