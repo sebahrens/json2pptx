@@ -118,8 +118,16 @@ func TestProcessFlow_RestrainedByDefault(t *testing.T) {
 	if got := string(row.Cells[1].Shape.Fill); got != `"accent1"` {
 		t.Errorf("lone decision fill = %s, want the accent", got)
 	}
-	if row.Connector == nil || row.Connector.Color != "accent1" {
-		t.Errorf("connector = %+v, want accent1 arrows", row.Connector)
+	// The default look draws no connector; the flowchart look's are accent.
+	if row.Connector != nil {
+		t.Errorf("connector = %+v, want none in the chevron look", row.Connector)
+	}
+	flowchart := expandFor(t, "process-flow", ctx, &ProcessFlowValues{Steps: processSteps()}, &ProcessFlowOverrides{Style: processFlowStyleTinted})
+	if c := flowchart.Rows[0].Connector; c == nil || c.Color != "accent1" {
+		t.Errorf("flowchart connector = %+v, want accent1 arrows", c)
+	}
+	if n := solidAccentCells(flowchart); n != 1 {
+		t.Errorf("flowchart process-flow has %d solid accent shapes, want 1 (the decision)", n)
 	}
 	if row.MaxHeight <= 0 || row.MaxHeight > math.Round(contentH*processFlowMaxHeightFrac) {
 		t.Errorf("step height = %.0fpt, want content-sized within %.0f%% of %.0fpt", row.MaxHeight, processFlowMaxHeightFrac*100, contentH)
