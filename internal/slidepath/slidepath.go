@@ -153,6 +153,21 @@ func HasPrefix(path, prefix string) bool {
 	return true
 }
 
+// GridCellLayer reads the layer a grid-cell path addresses: the index after
+// ".../cells/<c>/layers/". ok is false for a path that names the cell itself.
+func GridCellLayer(path string) (layerIdx int, ok bool) {
+	i := strings.Index(path, "/cells/")
+	if i < 0 {
+		return 0, false
+	}
+	parts := strings.Split(path[i+len("/cells/"):], "/")
+	if len(parts) < 3 || parts[1] != "layers" {
+		return 0, false
+	}
+	n, err := strconv.Atoi(parts[2])
+	return n, err == nil && n >= 0
+}
+
 // ParseGridCell extracts slide, row, and cell indices from a grid cell path.
 // Returns ok=false if the path doesn't match the expected format.
 func ParseGridCell(path string) (slideIdx, rowIdx, cellIdx int, ok bool) {

@@ -136,6 +136,11 @@ func stampPatternTypeScale(grid *jsonschema.ShapeGridInput, mode string) {
 			if cell.Shape != nil && cell.Shape.TypeScale == "" {
 				cell.Shape.TypeScale = mode
 			}
+			for _, layer := range cell.Layers {
+				if layer.Shape != nil && layer.Shape.TypeScale == "" {
+					layer.Shape.TypeScale = mode
+				}
+			}
 			if cell.Composite != nil && cell.Composite.Text != nil {
 				cell.Composite.Text.TypeScale = mode
 			}
@@ -160,6 +165,11 @@ func stampPatternMeasureFonts(grid *jsonschema.ShapeGridInput, fonts jsonschema.
 			}
 			if cell.Shape != nil && cell.Shape.MeasureFonts == (jsonschema.MeasureFonts{}) {
 				cell.Shape.MeasureFonts = fonts
+			}
+			for _, layer := range cell.Layers {
+				if layer.Shape != nil && layer.Shape.MeasureFonts == (jsonschema.MeasureFonts{}) {
+					layer.Shape.MeasureFonts = fonts
+				}
 			}
 			stampPatternMeasureFonts(cell.Grid, fonts)
 		}
@@ -374,8 +384,8 @@ func expandPatternInCell(cell *jsonschema.GridCellInput, ctx patterns.ExpandCont
 		return cliPatternError("grid cell row %d col %d: 'pattern' and 'grid' are mutually exclusive", ri, ci)
 	}
 	if cell.Shape != nil || cell.Table != nil || cell.Icon != nil ||
-		cell.Image != nil || cell.Diagram != nil || cell.Composite != nil {
-		return cliPatternError("grid cell row %d col %d: nested 'pattern' is incompatible with sibling cell content (shape/table/icon/image/diagram/composite)", ri, ci)
+		cell.Image != nil || cell.Diagram != nil || cell.Composite != nil || len(cell.Layers) > 0 {
+		return cliPatternError("grid cell row %d col %d: nested 'pattern' is incompatible with sibling cell content (shape/table/icon/image/diagram/composite/layers)", ri, ci)
 	}
 	var pi PatternInput
 	if err := json.Unmarshal(cell.Pattern, &pi); err != nil {

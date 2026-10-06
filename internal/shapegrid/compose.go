@@ -233,7 +233,7 @@ func bandMaxScale(grid *Grid) float64 {
 	}
 	square := math.Inf(1)
 	for _, cell := range res.Cells {
-		if cell.Kind != CellKindShape || cell.ShapeSpec == nil || !hasNonEmptyText(cell.ShapeSpec.Text) || cell.Bounds.CY <= 0 {
+		if cell.Layer || cell.Kind != CellKindShape || cell.ShapeSpec == nil || !hasNonEmptyText(cell.ShapeSpec.Text) || cell.Bounds.CY <= 0 {
 			continue
 		}
 		square = math.Min(square, composeBandCardAspect*float64(cell.Bounds.CX)/float64(cell.Bounds.CY))
@@ -294,7 +294,7 @@ func loneRowTextSlackPt(grid *Grid, plan *composePlan) float64 {
 	}
 	slack, found := 0.0, false
 	for _, cell := range res.Cells {
-		if cell.Kind != CellKindShape || cell.ShapeSpec == nil {
+		if cell.Layer || cell.Kind != CellKindShape || cell.ShapeSpec == nil {
 			continue
 		}
 		tb, err := ResolveTextInput(cell.ShapeSpec.Text)
@@ -359,7 +359,11 @@ func typeStep(grid *Grid) map[float64]float64 {
 	seen := map[float64]bool{}
 	for _, row := range grid.Rows {
 		for _, c := range row.Cells {
-			for _, spec := range []*ShapeSpec{c.Shape, compositeText(c.Composite)} {
+			specs := []*ShapeSpec{c.Shape, compositeText(c.Composite)}
+			for _, layer := range c.Layers {
+				specs = append(specs, layer.Shape)
+			}
+			for _, spec := range specs {
 				if !steppable(spec, grid) {
 					continue
 				}

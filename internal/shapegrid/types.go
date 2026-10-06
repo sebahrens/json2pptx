@@ -5,6 +5,8 @@ package shapegrid
 
 import (
 	"encoding/json"
+	"math"
+	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -275,6 +277,50 @@ type Cell struct {
 	Composite   *CompositeSpec     // Composite stack: native text + sub-diagram in one cell
 	AccentBar   *AccentBarSpec     // Optional decorative accent bar alongside the cell
 	Placeholder bool               // Reserve bounds for a caller-managed sub-grid (Kind=CellKindSubGrid in result)
+	// Layers are native shapes stacked inside the cell, each in a frame given
+	// as fractions of the cell's fitted bounds (the rectangle its own shape
+	// gets, after Fit / bleed / inset). They draw after the cell's own content
+	// in order, so a later layer sits on top. A cell may hold only layers.
+	Layers []Layer
+}
+
+// Layer is one native shape stacked inside a cell (Cell.Layers).
+type Layer struct {
+	Frame LayerFrame
+	Shape *ShapeSpec
+	Name  string // Stable id reported in errors and kept on the resolved cell
+}
+
+// LayerFrame places a layer inside its cell's fitted bounds: X, Y, W and H are
+// fractions (0..1) of that rectangle, measured from its top-left corner.
+type LayerFrame struct {
+	X, Y, W, H float64
+}
+
+// layerFrameSlack is how far a frame may run past the cell's edge before it is
+// rejected: frames computed from trigonometry land a hair outside.
+const layerFrameSlack = 0.0001
+
+// LayerFrameOutOfCell is the token Validate puts in the message of a layer
+// frame that has no area or leaves its cell. It is not a finding code of its
+// own: like every grid validation error it is reported as INVALID_SLIDE at
+// the grid's path.
+const LayerFrameOutOfCell = "LAYER_FRAME_OUT_OF_CELL"
+
+// Rect returns the frame's rectangle inside fitted, the cell's fitted bounds.
+// Edges are rounded independently, so two frames that share an edge share it
+// in EMU as well.
+func (f LayerFrame) Rect(fitted pptx.RectEmu) pptx.RectEmu {
+	x0 := fitted.X + int64(math.Round(f.X*float64(fitted.CX)))
+	y0 := fitted.Y + int64(math.Round(f.Y*float64(fitted.CY)))
+	x1 := fitted.X + int64(math.Round((f.X+f.W)*float64(fitted.CX)))
+	y1 := fitted.Y + int64(math.Round((f.Y+f.H)*float64(fitted.CY)))
+	return pptx.RectEmu{X: x0, Y: y0, CX: x1 - x0, CY: y1 - y0}
+}
+
+// hasContent reports whether the cell renders anything or reserves bounds.
+func (c *Cell) hasContent() bool {
+	return c.Shape != nil || c.TableSpec != nil || c.Icon != nil || c.Image != nil || c.DiagramSpec != nil || c.Composite != nil || c.Placeholder || len(c.Layers) > 0
 }
 
 // CompositeSpec defines a composite cell that stacks a native text shape and
@@ -406,6 +452,24 @@ type ResolvedCell struct {
 	IconSpec     *IconSpec          // Set when Kind == CellKindIcon
 	ImageSpec    *ImageSpec         // Set when Kind == CellKindImage
 	DiagramSpec  *types.DiagramSpec // Set when Kind == CellKindDiagram
+	// Layer marks a shape of the cell's Layers: a CellKindShape entry that
+	// follows its cell's own entry (when the cell has one) and shares its
+	// RowIdx / ColIdx. LayerIdx is its index in Cell.Layers and LayerName the
+	// layer's name. Bounds is the layer's frame; CellBounds stays the host
+	// cell's rectangle. A layer is not a connector or link endpoint and does
+	// not share its row's autofit scale.
+	Layer     bool
+	LayerIdx  int
+	LayerName string
+}
+
+// PathSuffix is the JSON-pointer tail that tells a layer from its host cell:
+// "/layers/<index>" for a layer, "" for the cell's own content.
+func (c ResolvedCell) PathSuffix() string {
+	if !c.Layer {
+		return ""
+	}
+	return "/layers/" + strconv.Itoa(c.LayerIdx)
 }
 
 // ResolvedConnector is a connector line between two adjacent cells in a row.

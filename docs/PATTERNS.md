@@ -430,6 +430,81 @@ one per FREE column, not one per column.
 
 Each non-grid pattern should document in its `UseWhen`/`NotWhen` text or code comments why it does not expose the override.
 
+### Co-located layers (when the lattice is not enough)
+
+The lattice gives every shape its own rectangle, so it cannot put two shapes
+in one place. A ring is exactly that: N `blockArc` segments, their badges, an
+optional centre label and arrowheads all share one bounding square. For those
+a cell carries `Layers` (go-slide-creator-x1fjb):
+
+```go
+ring := &jsonschema.GridCellInput{
+	Fit: "contain", // the layers' frame is then the centred square
+	Layers: []jsonschema.LayerInput{
+		{Name: "segment-1", Frame: jsonschema.LayerFrameInput{X: 0, Y: 0, W: 1, H: 1},
+			Shape: &jsonschema.ShapeSpecInput{
+				Geometry:    "blockArc",
+				Fill:        neutralFill, // one solid accent segment at most
+				Line:        noLine,
+				Adjustments: map[string]int64{"adj1": 270 * 60000, "adj2": 0, "adj3": 20000},
+			}},
+		{Name: "badge-1", Frame: jsonschema.LayerFrameInput{X: 0.72, Y: 0.06, W: 0.2, H: 0.2},
+			Shape: &jsonschema.ShapeSpecInput{Geometry: "ellipse", Fill: accentFill, Line: noLine, Text: badgeText}},
+	},
+}
+```
+
+- **Frames are fractions of the cell's fitted bounds**: `X`, `Y`, `W`, `H` in
+  0..1 of the rectangle the cell's own shape gets — after `Fit`, `BleedLeft` /
+  `BleedTop`, `InsetTop` / `InsetBottom` and `MaxHeight`. With
+  `Fit: "contain"` frame `(0, 0, 1, 1)` is the centred square, so a ring stays
+  round in a compose segment, a nested grid cell or a short content area
+  without the pattern recomputing anything. Compute ring geometry in the unit
+  square and never in points.
+- **Z-order is input order**: the cell's own shape, then `Layers[0]`,
+  `Layers[1]`, … Later layers sit on top. Connectors stay behind all cells.
+- **A cell may hold only layers.** Its own shape is optional; without one the
+  cell is a transparent canvas.
+- **A layer shape is a cell shape.** It goes through the same conversion,
+  writer and checks: geometry, fill, line, text, `Rotation`, `FlipH`,
+  `Adjustments`, the expansion's `MeasureFonts` and type-scale stamps, autofit
+  measurement, capacity budgets, readability, geometry and contrast findings.
+  Size its text at 12pt or above and give filled layers `noLine`, as for any
+  shape. `Shape.Icon` is not supported on a layer.
+- **Findings name the layer by index**: `<cell path>/layers/<i>`, text at
+  `…/layers/<i>/shape/text`. `Name` is a stable id for tests and for the
+  `LAYER_FRAME_OUT_OF_CELL` validation error; it is not part of the path.
+- **Frames must stay inside the cell**: `W`, `H` > 0, `X + W <= 1`,
+  `Y + H <= 1` (0.0001 of slack for trigonometry). A label that must sit
+  outside the ring therefore needs a ring frame smaller than the cell, or its
+  own lattice cell beside the ring.
+- **What a layer is not**: it does not size its row (auto-height and row
+  estimates read the cell's own text), it is not a connector / `links`
+  endpoint, it does not share its row's autofit shrink, and
+  `defaults.cell_style` / `named_style` do not reach it.
+- Layers are refused on `table`, `diagram`, `composite`, `pattern` and `grid`
+  cells.
+
+Preset angles (verified in LibreOffice on midnight-blue and p-style): 60000ths
+of a degree, 0° at 3 o'clock, increasing **clockwise** (90° = 6 o'clock,
+270° = 12 o'clock).
+
+- `blockArc`: the band runs clockwise from `adj1` (start angle) to `adj2`
+  (end angle); `adj3` is its thickness as a fraction of the shorter side
+  (1/100000: `25000` = half the radius, `50000` and above = a full pie
+  slice). Defaults `10800000 / 0 / 25000` are the top half. `adj1 == adj2`
+  draws the whole ring. `Rotation` turns the shape clockwise; `FlipH` mirrors
+  it.
+- `circularArrow`: the shaft runs clockwise from `adj4` (start, the tail) to
+  `adj3` (where the head begins); the head covers the next `adj2` of angle,
+  so the tip is at `adj3 + adj2`. `adj1` is the shaft thickness and `adj5`
+  the head's overhang on each side of the shaft, both as fractions of the
+  shorter side. Defaults `12500 / 1142319 (19.04°) / 20457681 (340.96°) /
+  10800000 (180°) / 12500`: tail at 9 o'clock, tip at 3 o'clock. Keep `adj1`
+  at or under `adj5` and `adj5` at or under `12500`: at `adj1 = 2 × adj5` the
+  head disappears into the shaft, and at `adj5 = 25000` LibreOffice draws a
+  broken outline. `FlipH` makes it run anticlockwise.
+
 ### Test guidance
 
 Every grid-shaped pattern must include a table-driven test exercising all three modes (`uniform`, `alternate`, `progressive`) against at least two different base accents (e.g., `accent1` and `accent3`). Verify that the emitted cells carry the expected accent strings. See `overrides_test.go::TestResolveCellAccent` for the shared function tests; pattern-level tests should exercise the full `Expand()` path.

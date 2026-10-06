@@ -29,7 +29,7 @@ func alignFirstColumnText(cells []ResolvedCell, gridX, textLeft int64) {
 	def := pptx.ShapeTextInsets()[0]
 	for i := range cells {
 		c := &cells[i]
-		if c.Kind != CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 {
+		if c.Layer || c.Kind != CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 {
 			continue
 		}
 		if d := c.CellBounds.X - gridX; d < -1 || d > 1 || c.TextInsets[0] != 0 {

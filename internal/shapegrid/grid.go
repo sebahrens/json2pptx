@@ -186,7 +186,7 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 			// An empty spacer cell renders nothing but still claims its
 			// col_span × row_span footprint, so later cells land where the
 			// author placed them (go-slide-creator-s1uvj.38).
-			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil && cell.Composite == nil && !cell.Placeholder {
+			if !cell.hasContent() {
 				col += colSpan
 				continue
 			}
@@ -287,6 +287,20 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 				shapeRect.Y += top
 				shapeRect.CY -= top + bottom
 			}
+			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil && !cell.Placeholder {
+				// A cell of layers only: a transparent canvas, and so not a
+				// connector or link endpoint.
+				cells = appendLayers(cells, cell, shapeRect, cellRect, r, col, alloc)
+				if cell.AccentBar != nil {
+					accentBars = append(accentBars, ResolvedAccentBar{
+						Bounds: accentBarBounds(cellRect, cell.AccentBar),
+						ID:     alloc.Alloc(),
+						Spec:   cell.AccentBar,
+					})
+				}
+				col += colSpan
+				continue
+			}
 			rc := ResolvedCell{
 				Bounds:     shapeRect,
 				CellBounds: cellRect,
@@ -327,6 +341,7 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 			}
 			rowCellIDs[r] = append(rowCellIDs[r], len(cells))
 			cells = append(cells, rc)
+			cells = appendLayers(cells, cell, shapeRect, cellRect, r, col, alloc)
 
 			// Generate accent bar if specified
 			if cell.AccentBar != nil {
@@ -379,6 +394,31 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 	}, nil
 }
 
+// appendLayers resolves cell's layers into fitted, the rectangle the cell's own
+// shape gets, and appends them in order: each is a shape entry that shares the
+// cell's row and column and draws after what is already in cells.
+func appendLayers(cells []ResolvedCell, cell Cell, fitted, cellRect pptx.RectEmu, r, col int, alloc *pptx.ShapeIDAllocator) []ResolvedCell {
+	for i, layer := range cell.Layers {
+		if layer.Shape == nil {
+			continue
+		}
+		cells = append(cells, ResolvedCell{
+			Kind:       CellKindShape,
+			Bounds:     layer.Frame.Rect(fitted),
+			CellBounds: cellRect,
+			ID:         alloc.Alloc(),
+			RowIdx:     r,
+			ColIdx:     col,
+			Group:      cell.Group,
+			ShapeSpec:  layer.Shape,
+			Layer:      true,
+			LayerIdx:   i,
+			LayerName:  layer.Name,
+		})
+	}
+	return cells
+}
+
 // writtenRowOverflows drops the row overflows the writer contradicts. A row's
 // overflow is first estimated from its paragraphs at one line-height factor,
 // before the row is placed; the writer measures the same text in its face, at
@@ -402,6 +442,12 @@ func writtenRowOverflows(overflows []RowOverflow, grid *Grid, cells []ResolvedCe
 	return kept
 }
 
+// isRowText reports whether c is a text shape of row r that the row's height
+// estimate read: the cell's own shape, not a layer stacked in it.
+func (c *ResolvedCell) isRowText(r int) bool {
+	return !c.Layer && c.RowIdx == r && c.Kind == CellKindShape && c.ShapeSpec != nil && len(c.ShapeSpec.Text) > 0
+}
+
 // rowTextWrittenUnshrunk reports whether row r holds text and the writer
 // stores every text cell of it with no autofit shrink at its resolved bounds.
 func rowTextWrittenUnshrunk(grid *Grid, cells []ResolvedCell, r int) bool {
@@ -422,7 +468,7 @@ func rowTextWrittenUnshrunk(grid *Grid, cells []ResolvedCell, r int) bool {
 	measured := 0
 	for i := range cells {
 		c := &cells[i]
-		if c.RowIdx != r || c.Kind != CellKindShape || c.ShapeSpec == nil || len(c.ShapeSpec.Text) == 0 {
+		if !c.isRowText(r) {
 			continue
 		}
 		// The claim is about the row at its cap. A stretched grid resolves a

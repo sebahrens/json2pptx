@@ -431,6 +431,30 @@ func checkGridCellUnknownKeys(raw json.RawMessage, path string) []*patterns.Vali
 	if v, ok := obj["diagram"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.DiagramSpec{}), path+"/diagram")...)
 	}
+	if v, ok := obj["layers"]; ok {
+		var layers []json.RawMessage
+		if json.Unmarshal(v, &layers) == nil {
+			for i, layerRaw := range layers {
+				warnings = append(warnings, checkGridLayerUnknownKeys(layerRaw, fmt.Sprintf("%s/layers/%d", path, i))...)
+			}
+		}
+	}
+	return warnings
+}
+
+// checkGridLayerUnknownKeys checks one layer of a shape_grid cell.
+func checkGridLayerUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
+	warnings := checkUnknownKeysForType(raw, reflect.TypeOf(jsonschema.LayerInput{}), path)
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return warnings
+	}
+	if v, ok := obj["frame"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.LayerFrameInput{}), path+"/frame")...)
+	}
+	if v, ok := obj["shape"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(jsonschema.ShapeSpecInput{}), path+"/shape")...)
+	}
 	return warnings
 }
 

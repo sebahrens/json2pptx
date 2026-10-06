@@ -558,4 +558,5 @@ by field, degrades nowhere, and patches by `path`.
 | One finding, structured | raw `labeled-rows` (§9) |
 | 3 × 3 / 5 × 5 risk heat map with names | `risk_heatmap` (§10) |
 | Phases plus parallel workstreams | `roadmap` with `parallel_tracks` (§11) |
+| Shapes that share one place in a hand-built grid (ring segments, a badge on a shape) | raw `shape_grid` cell `layers` ([INPUT_FORMAT.md](../INPUT_FORMAT.md)) |
 | Whole patterns side by side or stacked | raw `compose` (§12) |

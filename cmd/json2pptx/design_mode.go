@@ -185,6 +185,13 @@ func checkGridCell(cell *GridCellInput, slideNum int, cellPath string, cellStyle
 		findings = append(findings, checkShapeSpec(cell.Shape, slideNum, cellPath+"/shape", cellStyle)...)
 	}
 
+	for i, layer := range cell.Layers {
+		if layer.Shape != nil {
+			// cell_style defaults are not applied to layers, so none is exempt.
+			findings = append(findings, checkShapeSpec(layer.Shape, slideNum, fmt.Sprintf("%s/layers/%d/shape", cellPath, i), nil)...)
+		}
+	}
+
 	if cell.AccentBar != nil && cell.AccentBar.Color != "" {
 		if f := checkColorField(cell.AccentBar.Color, slideNum,
 			cellPath+"/accent_bar/color"); f != nil {
