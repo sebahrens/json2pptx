@@ -318,9 +318,20 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 	// accent1 is nearly the canvas color. Preserve explicit author colors, but
 	// filter automatic theme/data-palette choices below 2:1 on the effective
 	// chart background. Diagrams retain their native theme-accent mapping.
+	//
+	// A template that declares a data_palette chose its series colours and
+	// their order; one that does not gets the tonal ladder of accent1
+	// (go-slide-creator-7bsbd) rather than its raw accent slots, which on a
+	// single-hue brand theme are three oranges and three pale greys.
 	if len(style.ThemeColors) > 0 && isSVGChartType(spec.Type) &&
 		(spec.Style == nil || len(spec.Style.Colors) == 0) {
-		style.DataPalette = visibleChartPalette(style.ThemeColors, style.DataPalette, contrastBackground)
+		if len(style.DataPalette) == 0 {
+			style.DataPalette = tonalChartPalette(style.ThemeColors, contrastBackground)
+			style.DataPaletteFixed = len(style.DataPalette) > 0
+		}
+		if !style.DataPaletteFixed {
+			style.DataPalette = visibleChartPalette(style.ThemeColors, style.DataPalette, contrastBackground)
+		}
 	}
 
 	// Forward per-slide chart_style token overrides (vertical gridlines,
@@ -361,9 +372,14 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		output.Scale = types.DefaultMinScale
 	}
 
+	title := spec.Title
+	if spec.TitleOnSlide {
+		title = ""
+	}
+
 	return &svggen.RequestEnvelope{
 		Type:     spec.Type,
-		Title:    spec.Title,
+		Title:    title,
 		Subtitle: spec.Subtitle,
 		Data:     resolveDiagramDataColors(spec.Data, effectiveTheme),
 		Output:   output,
@@ -560,6 +576,48 @@ func visibleChartPalette(theme []svggen.ThemeColorInput, preferred []string, bac
 		visible = append(visible, visible[len(visible)%baseCount])
 	}
 	return visible
+}
+
+// tonalChartPalette returns the tonal series ladder (svggen.TonalSeriesLadder)
+// of the theme's accent1 on the chart background: the solid accent, neutral
+// greys and the accent's own tint and shade, neighbours a clear luminance
+// step apart. It returns nil when the theme has no usable accent1, so the
+// caller falls back to the visible accent slots.
+func tonalChartPalette(theme []svggen.ThemeColorInput, backgroundHex string) []string {
+	background, err := svggen.ParseColor(backgroundHex)
+	if err != nil {
+		background = svggen.MustParseColor("#FFFFFF")
+	}
+	var accent, ink svggen.Color
+	for _, tc := range theme {
+		c, err := svggen.ParseColor(tc.RGB)
+		if err != nil {
+			continue
+		}
+		switch tc.Name {
+		case "accent1":
+			accent = c
+		case "dk1":
+			ink = c
+		}
+	}
+	if accent.A == 0 {
+		return nil
+	}
+	if ink.A == 0 {
+		ink = svggen.Color{A: 1}
+	}
+	// The first series must not vanish because accent1 is nearly the canvas
+	// colour: the ladder is built on its visible shade.
+	if accent = visibleShade(accent, background); accent.A == 0 {
+		return nil
+	}
+	ladder := svggen.TonalSeriesLadder(accent, background, ink)
+	out := make([]string, len(ladder))
+	for i, c := range ladder {
+		out[i] = strings.ToUpper(c.Hex())
+	}
+	return out
 }
 
 // visibleShade returns c when it has 2:1 contrast on background, otherwise the

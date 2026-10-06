@@ -1012,10 +1012,10 @@ func barNegativeLabelClearance(b *SVGBuilder, style *StyleGuide, cfg BarChartCon
 	// Linear, non-stacked, value-labelled vertical bars always draw in the
 	// labelled layout, so the label uses its font and gap (applyLabelledMode).
 	b.Push()
-	b.SetFontSize(labelledValueFontPt)
+	b.SetFontSize(labelledValueFont(style))
 	_, h := b.MeasureText(TrueMinus(cfg.ValueFmt.FormatOr(yMin, cfg.ValueFormat)))
 	b.Pop()
-	h = math.Max(h, labelledValueFontPt)
+	h = math.Max(h, labelledValueFont(style))
 	return labelledValueGapPt + h + style.Spacing.XS
 }
 
@@ -1196,7 +1196,7 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 		barConfig.PointColors = pointColors
 		barConfig.PointBold = pointBold
 		if bc.labelledMode {
-			barConfig.LabelFontSize = labelledValueFontPt
+			barConfig.LabelFontSize = labelledValueFont(b.StyleGuide())
 			barConfig.LabelGap = labelledValueGapPt
 		}
 
@@ -2126,10 +2126,18 @@ func (lc *LineChart) drawLines(data ChartData, plotArea Rect, xScale Scale, ySca
 	lineValueFormat := autoValueFormat(lc.config.ValueFormat, chartDataValues(data))
 
 	// Context series first, so a highlighted series is painted on top.
-	for _, seriesIdx := range seriesDrawOrder(data) {
+	order := seriesDrawOrder(data)
+	// Several filled areas are opaque and painted tallest first, so each
+	// stays its own colour and the lower series sit in front.
+	opaqueAreas := lc.config.FillArea && len(data.Series) > 1
+	if opaqueAreas {
+		order = areaDrawOrder(data)
+	}
+	for _, seriesIdx := range order {
 		series := data.Series[seriesIdx]
 		emphasised := seriesHighlighted(data, seriesIdx)
 		lineConfig := DefaultLineSeriesConfig()
+		lineConfig.FillOpaque = opaqueAreas
 		lineConfig.Color = colors[seriesIdx%len(colors)]
 		lineConfig.MarkerFillColor = lineConfig.Color
 		lineConfig.StrokeWidth = lc.config.StrokeWidth
@@ -2253,6 +2261,24 @@ func setLabelValues(points []DataPoint, labelValues []float64) {
 			points[i].hasValue = true
 		}
 	}
+}
+
+// areaDrawOrder lists series indices by descending peak value (ties keep the
+// authored order), the paint order of opaque overlapping areas.
+func areaDrawOrder(data ChartData) []int {
+	order := make([]int, len(data.Series))
+	peak := make([]float64, len(data.Series))
+	for i, s := range data.Series {
+		order[i] = i
+		peak[i] = math.Inf(-1)
+		for _, v := range s.Values {
+			if !math.IsNaN(v) && v > peak[i] {
+				peak[i] = v
+			}
+		}
+	}
+	sort.SliceStable(order, func(a, b int) bool { return peak[order[a]] > peak[order[b]] })
+	return order
 }
 
 // getColors returns colors for the series.

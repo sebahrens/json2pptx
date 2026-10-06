@@ -120,7 +120,7 @@ func TestNativeFrameworksStyleColorsRestoreAccentTints(t *testing.T) {
 			spec := nativeSurfaceSpecs()[name]
 			spec.Style = &types.DiagramStyle{Colors: []string{"accent3", "accent4"}}
 			xml := renderNativeSurfaceSpec(t, spec)
-			for _, want := range []string{`<a:schemeClr val="accent3"><a:tint val="20000"/>`, `<a:schemeClr val="accent4"><a:tint val="20000"/>`} {
+			for _, want := range []string{`<a:schemeClr val="accent3"><a:lumMod val="20000"/><a:lumOff val="80000"/>`, `<a:schemeClr val="accent4"><a:lumMod val="20000"/><a:lumOff val="80000"/>`} {
 				if !strings.Contains(xml, want) {
 					t.Errorf("style.colors not applied: missing %s", want)
 				}

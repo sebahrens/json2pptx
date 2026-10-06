@@ -60,7 +60,7 @@ func (c Color) lab() (l, a, b float64) {
 // sequence is kept exactly (TestChartPalette_PerTemplate).
 func distinctSeriesPalette(p *Palette, count int) []Color {
 	accents := p.AccentColors()
-	if count <= 1 || count >= len(accents) {
+	if count <= 1 || count >= len(accents) || p.SeriesFixed {
 		return accents
 	}
 	chosen := make([]Color, 0, len(accents)+4)
@@ -100,7 +100,7 @@ func distinctSeriesPalette(p *Palette, count int) []Color {
 		fallbacks := []Color{
 			accents[0].Darken(0.45),
 			NeutralInk(p, 0.5),
-			accents[0].Lighten(0.4),
+			accents[0].Tint(0.6),
 			NeutralInk(p, 0.28),
 			accents[0].Darken(0.65),
 		}

@@ -235,6 +235,12 @@ type DiagramSpec struct {
 	Warnings         []string             `json:"warnings,omitempty" yaml:"-"` // Non-fatal warnings (e.g., flat-map auto-conversion)
 	ChartDiagnostics []ChartDiagnostic    `json:"-" yaml:"-"`                  // Structured chart data diagnostics (internal use)
 
+	// TitleOnSlide is set by the generator when the slide's own title already
+	// says what Title says: the chart then draws no title of its own (the
+	// duplicate cost a quarter of the plot height) while Title still feeds
+	// the alt text (go-slide-creator-9nk6a). Internal use.
+	TitleOnSlide bool `json:"-" yaml:"-"`
+
 	// Alt is the description a screen reader announces for this diagram. Write one
 	// sentence saying what it shows; the engine derives a fallback from the
 	// data (type, title, counts and range) when it is absent, which is better

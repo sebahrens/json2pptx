@@ -60,7 +60,7 @@ func TestHeatmapValueContrastOnEveryTheme(t *testing.T) {
 					textScheme := heatmapValueColor(tone, colors)
 
 					base := schemeHex(t, tone.scheme, colors)
-					cell := patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: tone.lumMod}, white)
+					cell := patterns.EffectiveColorMods(base, diagramTintMods(tone.lumMod, tone.lumOff), white)
 					text := schemeHex(t, textScheme, colors)
 
 					if ratio := text.ContrastWith(cell); ratio < svggen.WCAGAANormal {
@@ -109,7 +109,7 @@ func TestHeatmapRedScaleUsesFixedRedRampAndReadableValues(t *testing.T) {
 		if tone.scheme != "#B91C1C" {
 			t.Errorf("value %.0f: base = %s, want fixed red", value, tone.scheme)
 		}
-		cell := patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: tone.lumMod}, white)
+		cell := patterns.EffectiveColorMods(base, diagramTintMods(tone.lumMod, tone.lumOff), white)
 		var xml bytes.Buffer
 		tone.fill().WriteTo(&xml)
 		if !strings.Contains(xml.String(), `val="`+strings.TrimPrefix(cell.Hex(), "#")+`"`) {
@@ -149,14 +149,14 @@ func TestHeatmapTintAndValueContrastOnSaturatedAccents(t *testing.T) {
 			tone := heatmapCellFill(value, 0, 100, scale)
 			var xml bytes.Buffer
 			tone.fill().WriteTo(&xml)
-			if tone.lumOff > 0 && !strings.Contains(xml.String(), `<a:tint val="`) {
-				t.Errorf("%s %.0f: expected RGB tint, got %s", scale, value, xml.String())
+			if tone.lumOff > 0 && !strings.Contains(xml.String(), `<a:lumOff val="`) {
+				t.Errorf("%s %.0f: expected a lumMod / lumOff tint, got %s", scale, value, xml.String())
 			}
-			if strings.Contains(xml.String(), "lumMod") || strings.Contains(xml.String(), "lumOff") {
-				t.Errorf("%s %.0f: HSL modifier still present: %s", scale, value, xml.String())
+			if strings.Contains(xml.String(), "<a:tint") {
+				t.Errorf("%s %.0f: linear-light tint still present: %s", scale, value, xml.String())
 			}
 			base := schemeHex(t, tone.scheme, colors)
-			cell := patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: tone.lumMod}, white)
+			cell := patterns.EffectiveColorMods(base, diagramTintMods(tone.lumMod, tone.lumOff), white)
 			text := schemeHex(t, heatmapValueColor(tone, colors), colors)
 			if ratio := text.ContrastWith(cell); ratio < svggen.WCAGAANormal {
 				t.Errorf("%s %.0f: value contrast %.2f:1 on %s", scale, value, ratio, cell.Hex())

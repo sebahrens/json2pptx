@@ -107,6 +107,12 @@ type Palette struct {
 	// theme slots. Theme-derived palettes leave it empty.
 	ExtraAccents []Color
 
+	// SeriesFixed marks the accent slots as a designed series sequence (the
+	// tonal ladder, go-slide-creator-7bsbd): its neighbours are separated by
+	// luminance, so automatic series colours take it in order instead of
+	// reordering it for hue distance.
+	SeriesFixed bool
+
 	// SeriesAvoid lists the accents a template names as semantic positive /
 	// negative (green / red). Automatic series colours defer them behind
 	// every other usable colour, so "EMEA" is not painted the alert red
@@ -459,6 +465,14 @@ type Typography struct {
 
 	// Line height multiplier.
 	LineHeight float64
+
+	// ReadableFloor is the smallest size any text of the chart may take when
+	// the viewing mode sets one (12pt in live-presentation mode, see
+	// applySmallTextFloor); zero means the role floors alone apply. Renderers
+	// that size a label themselves (data labels, treemap and funnel text)
+	// clamp to it, so no label on a presented slide is smaller than the body
+	// text of the patterns beside it (go-slide-creator-9nk6a).
+	ReadableFloor float64
 }
 
 // FontStack returns the font family with fallbacks as CSS-style string.
@@ -913,6 +927,7 @@ func StyleGuideFromSpec(spec StyleSpec) *StyleGuide {
 		}
 		if len(colors) > 0 {
 			applyDataPalette(guide.Palette, colors)
+			guide.Palette.SeriesFixed = spec.DataPaletteFixed
 		}
 	}
 

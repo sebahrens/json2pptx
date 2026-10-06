@@ -22,9 +22,8 @@ import (
 // SWOT's two-tone polarity, or the old rotation — are what style.colors asks
 // for.
 
-// taxonomyTint is one cell's fill: a theme color plus its retained-color and
-// white-blend percentages. The legacy field names are kept for the existing
-// shape-builder call signatures; diagramTintFill emits an RGB tint.
+// taxonomyTint is one cell's fill: a theme color plus its lumMod / lumOff
+// lightness modifiers, written by diagramTintFill as the patterns write them.
 type taxonomyTint struct {
 	scheme string
 	lumMod int

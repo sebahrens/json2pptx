@@ -408,7 +408,7 @@ func (fc *FunnelChart) reserveExternalLabelSpace(data FunnelData, plotArea Rect,
 
 	// Use adaptive font size consistent with drawLabel
 	adaptiveMaxFont := funnelAdaptiveFontSize(numSegments, style.Typography.SizeHeading)
-	minFont := DefaultMinFontSize
+	minFont := math.Max(DefaultMinFontSize, style.Typography.ReadableFloor)
 
 	// Build label text for each segment. Track whether any segment overflows
 	// and measure the widest external label across ALL segments (not just the
@@ -464,7 +464,7 @@ func (fc *FunnelChart) reserveExternalLabelSpace(data FunnelData, plotArea Rect,
 			preResult := preFit.Fit(b, label, availInside, 0)
 			b.SetFontSize(preResult.FontSize)
 			textW, _ := b.MeasureText(label)
-			if constraintWidth <= textW+margin || preResult.FontSize <= minFont {
+			if constraintWidth <= textW+margin || preResult.FontSize <= DefaultMinFontSize {
 				anyOverflow = true
 			}
 		}
@@ -543,7 +543,7 @@ func (fc *FunnelChart) drawLabel(point FunnelDataPoint, index int, centerX, y, t
 	if adaptiveMaxFont > heightCap && heightCap > DefaultMinFontSize {
 		adaptiveMaxFont = heightCap
 	}
-	minFont := DefaultMinFontSize
+	minFont := math.Max(DefaultMinFontSize, style.Typography.ReadableFloor)
 
 	b.SetFontSize(adaptiveMaxFont)
 	b.SetFontWeight(style.Typography.WeightMedium)
@@ -579,7 +579,7 @@ func (fc *FunnelChart) drawLabel(point FunnelDataPoint, index int, centerX, y, t
 			insideFit = fit.Fit(b, label, availInside, 0)
 			b.SetFontSize(insideFit.FontSize)
 			textW, _ := b.MeasureText(label)
-			fitsInside = constraintWidth > textW+margin && insideFit.FontSize > minFont
+			fitsInside = constraintWidth > textW+margin && insideFit.FontSize > DefaultMinFontSize
 		}
 
 		if fitsInside {
@@ -681,7 +681,7 @@ func sequentialRamp(base Color, count int) []Color {
 	const maxLighten = 0.55
 	out := make([]Color, count)
 	for i := range out {
-		out[i] = base.Lighten(maxLighten * float64(i) / float64(count-1))
+		out[i] = base.Tint(1 - maxLighten*float64(i)/float64(count-1))
 	}
 	return out
 }

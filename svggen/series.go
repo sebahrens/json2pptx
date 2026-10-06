@@ -453,6 +453,11 @@ type LineSeriesConfig struct {
 	// FillOpacity is the area fill opacity (0-1).
 	FillOpacity float64
 
+	// FillOpaque flattens the fill onto the chart background, so the areas
+	// of several series cover one another instead of mixing where they
+	// overlap (orange over grey reads as brown; go-slide-creator-7bsbd).
+	FillOpaque bool
+
 	// Smooth enables curved line interpolation.
 	Smooth bool
 
@@ -633,6 +638,10 @@ func (ls *LineSeries) drawAreaFill(coords []Point, baseY float64) {
 	// when the composited color lacks sufficient contrast.
 	bg := b.StyleGuide().Palette.Background
 	fillColor = ensureAreaFillContrast(fillColor, bg)
+	if ls.config.FillOpaque {
+		fillColor = blendOver(fillColor, bg.Opaque())
+		fillColor.A = 1
+	}
 
 	b.SetFillColor(fillColor)
 

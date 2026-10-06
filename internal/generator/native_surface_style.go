@@ -91,8 +91,8 @@ func nativeNeutralFill(pct int) pptx.Fill {
 }
 
 // fill renders the tint. The neutral ladder is ink coverage in HSL terms
-// (lumMod / lumOff), exactly as the patterns write it; an accent is blended
-// toward white instead (diagramTintFill), which keeps a saturated hue soft.
+// (lumMod / lumOff), exactly as the patterns write it, and so is an accent
+// tint (diagramTintFill): one tint family across both engines.
 func (t taxonomyTint) fill() pptx.Fill {
 	if t.scheme == patterns.NeutralSurfaceColor && t.lumOff != 0 {
 		return pptx.SchemeFill(t.scheme, pptx.LumMod(t.lumMod), pptx.LumOff(t.lumOff))
@@ -108,7 +108,7 @@ func (t taxonomyTint) mods() patterns.ColorMods {
 	if !pptx.IsSchemeColor(t.scheme) || t.lumOff == 0 {
 		return patterns.ColorMods{}
 	}
-	return patterns.ColorMods{Tint: t.lumMod}
+	return diagramTintMods(t.lumMod, t.lumOff)
 }
 
 // titleFill is the colour of the card's title: the tint's own ink when it

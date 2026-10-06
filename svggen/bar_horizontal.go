@@ -148,7 +148,7 @@ func (bc *BarChart) horizontalLayout(data ChartData, labelled bool) hbarLayout {
 	style := b.StyleGuide()
 	lay := hbarLayout{labelFont: style.Typography.SizeSmall, valueFont: style.Typography.SizeSmall}
 	if labelled {
-		lay.valueFont = labelledValueFontPt
+		lay.valueFont = labelledValueFont(style)
 	}
 	if bc.config.ShowTitle && data.Title != "" {
 		lay.header = style.Typography.SizeTitle + style.Spacing.MD
