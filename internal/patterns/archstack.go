@@ -321,14 +321,16 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 
-		// Tiers are structure: a neutral 16% block with dk1 text and a 3pt
-		// accent bar, separated by the 4pt white gutter. The old 100%→40%
-		// accent-alpha ramp painted every tier in muddy mid-tints that encode
-		// nothing (go-slide-creator-8xsj3); ApplyReadableInk darkens the text.
+		// Tiers are the content: the accent's content swatch (tonalContent)
+		// with dark text and a 3pt accent bar, separated by the 4pt white
+		// gutter — one tone for every tier, where the old 100%→40% alpha
+		// ramp encoded nothing (go-slide-creator-8xsj3) and the 16% neutral
+		// that replaced it was a stack of mid-grey boxes
+		// (go-slide-creator-x5m8f); ApplyReadableInk darkens the text.
 		cells[0] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     neutralFillJSON(NeutralTint16),
+				Fill:     tonalContent(ctx, baseAccent).fillJSON(),
 				Line:     noLine,
 				Text:     text,
 			},
@@ -346,7 +348,7 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 					RowSpan: len(vals.Tiers),
 					Shape: &jsonschema.ShapeSpecInput{
 						Geometry: "rect",
-						Fill:     neutralFillJSON(NeutralTint8),
+						Fill:     tonalRung(ctx, baseAccent, TonalLighterDeep).fillJSON(),
 						Text:     railText,
 					},
 				}

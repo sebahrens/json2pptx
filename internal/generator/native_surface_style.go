@@ -19,8 +19,10 @@ import (
 //
 //   - corner radius: none (patterns.SurfaceGeometry);
 //   - surface: the dk1 neutral ladder (patterns.NeutralTint4 for a card,
-//     NeutralTint8 for its header band or an emphasised cell, NeutralTint16
-//     for a structural step), with no outline;
+//     NeutralTint8 for its header band or an emphasised cell), with no
+//     outline; a shape that is the content itself (a value-chain step) takes
+//     the accent's Lighter 80% swatch instead (contentTint), as the patterns'
+//     tonal system does;
 //   - header: a bold, left-aligned title in the template's primary accent
 //     where that reads on the surface, else in the first theme ink that does
 //     (patterns.AccentInkOnNeutral) — the bmc-canvas pattern's cell header;
@@ -76,6 +78,20 @@ func (s nativeSurface) tint(i, pct, titleHundredths int) taxonomyTint {
 	t := nativeNeutralTint(pct)
 	t.ink = s.titleInk(pct, titleHundredths)
 	return t
+}
+
+// contentTint is the fill of a shape that IS the diagram's content (a value
+// chain's primary activity, its margin tip): the accent's "Lighter pct%"
+// swatch of the patterns' tonal system (patterns.TonalLighterContent), under
+// the text role that reads on it — or, when the diagram sets style.colors,
+// the i-th authored colour.
+func (s nativeSurface) contentTint(i, pct int) taxonomyTint {
+	if len(s.authored) > 0 {
+		t := s.authored[i%len(s.authored)]
+		t.ink = ""
+		return t
+	}
+	return taxonomyTint{scheme: s.accent(), lumMod: (100 - pct) * 1000, lumOff: pct * 1000}
 }
 
 // nativeNeutralTint is the neutral surface at pct% coverage as a cell tint.

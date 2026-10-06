@@ -247,42 +247,127 @@ func TestSCQASummary_Expand_DefaultLayout(t *testing.T) {
 	}
 }
 
-func TestSCQASummary_Expand_LabelCellsHaveAccentFill(t *testing.T) {
+// The labels are pentagon tabs pointing into their rows: Situation /
+// Complication / Questions in the accent's Lighter 80% swatch with ink measured
+// on it, the Answer — the one emphasis — in the solid accent.
+func TestSCQASummary_Expand_LabelCellsAreAccentTabs(t *testing.T) {
 	p, _ := Default().Get("scqa-summary")
-	grid, err := p.Expand(ExpandContext{}, validSCQAValues(), nil, nil)
-	if err != nil {
-		t.Fatalf("Expand failed: %v", err)
-	}
-	labels := []string{"Situation", "Complication", "Questions", "Answer"}
-	for i, row := range grid.Rows {
-		labelCell := row.Cells[0]
-		var fill string
-		if err := json.Unmarshal(labelCell.Shape.Fill, &fill); err != nil {
-			t.Fatalf("row[%d] label fill unmarshal: %v", i, err)
-		}
-		if fill != "accent1" {
-			t.Errorf("row[%d] label fill = %q, want accent1", i, fill)
-		}
-		if !strings.Contains(string(labelCell.Shape.Text), labels[i]) {
-			t.Errorf("row[%d] label text missing %q: %s", i, labels[i], string(labelCell.Shape.Text))
-		}
+	for _, tc := range []struct {
+		name string
+		ctx  ExpandContext
+	}{{"no theme", ExpandContext{}}, {"themed", fullThemeCtx()}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := tc.ctx
+			grid, err := p.Expand(ctx, validSCQAValues(), nil, nil)
+			if err != nil {
+				t.Fatalf("Expand failed: %v", err)
+			}
+			if len(grid.Rows) != 4 {
+				t.Fatalf("rows = %d, want 4", len(grid.Rows))
+			}
+			const wantTab = `{"color":"accent1","lumMod":20000,"lumOff":80000}`
+			tabTone := tonalContent(ctx, "accent1")
+			if string(tabTone.fillJSON()) != wantTab {
+				t.Fatalf("tonalContent(accent1) = %s, want the Lighter 80%% swatch", tabTone.fillJSON())
+			}
+			tabInk := tonalInk(ctx, tabTone)
+			answerTone, answerInk := tonalEmphasis(ctx, "accent1")
+			if answerTone.Color != "accent1" || answerTone.LumOff != 0 {
+				t.Fatalf("tonalEmphasis(accent1) = %+v, want the solid accent (shaded at most)", answerTone)
+			}
+			if tabInk == answerInk {
+				t.Fatalf("fixture: tab ink and answer ink are both %q; the pale tab and the solid tab should take opposite inks", tabInk)
+			}
+
+			// The expected point: 12pt deep on a tab labelW wide and an equal
+			// share of the height tall (no row of this fixture is floored).
+			var cols []float64
+			if err := json.Unmarshal(grid.Columns, &cols); err != nil || len(cols) != 2 {
+				t.Fatalf("columns %s: %v", grid.Columns, err)
+			}
+			areaW, areaH := sizingAreaPt(ctx)
+			labelW, _ := scqaColumnWidthsPt(ctx, areaW, cols[0])
+			rowH := (areaH - 3*ctx.Gap(scqaRowGapPt)) / 4
+			wantAdj := swimlanePointAdj(12, labelW, rowH)
+			if wantAdj <= 0 || wantAdj > 50000 {
+				t.Fatalf("expected adj = %d out of range", wantAdj)
+			}
+
+			labels := []string{"Situation", "Complication", "Questions", "Answer"}
+			for i, row := range grid.Rows {
+				if row.Flex != 0 {
+					t.Fatalf("fixture drifted: row %d is floored at its need; the equal-share point depth no longer applies", i)
+				}
+				labelCell := row.Cells[0]
+				wantFill, wantInk := wantTab, tabInk
+				if i == 3 {
+					wantFill, wantInk = string(answerTone.fillJSON()), answerInk
+				}
+				if labelCell.Shape.Geometry != "homePlate" {
+					t.Errorf("row[%d] label geometry = %q, want homePlate", i, labelCell.Shape.Geometry)
+				}
+				if got := string(labelCell.Shape.Fill); got != wantFill {
+					t.Errorf("row[%d] label fill = %s, want %s", i, got, wantFill)
+				}
+				if got := string(labelCell.Shape.Line); got != `"none"` {
+					t.Errorf("row[%d] label line = %s, want none", i, got)
+				}
+				if labelCell.AccentBar != nil {
+					t.Errorf("row[%d] label carries an accent bar: %+v", i, labelCell.AccentBar)
+				}
+				if got, ok := labelCell.Shape.Adjustments["adj"]; !ok || got != wantAdj || len(labelCell.Shape.Adjustments) != 1 {
+					t.Errorf("row[%d] adjustments = %v, want adj=%d (a 12pt point)", i, labelCell.Shape.Adjustments, wantAdj)
+				}
+				var obj scqaTextObj
+				if err := json.Unmarshal(labelCell.Shape.Text, &obj); err != nil {
+					t.Fatalf("row[%d] label text: %v", i, err)
+				}
+				if len(obj.Paragraphs) != 1 || obj.Paragraphs[0].Content != labels[i] || !obj.Paragraphs[0].Bold || obj.Paragraphs[0].Color != wantInk {
+					t.Errorf("row[%d] label text = %+v, want bold %s %q", i, obj.Paragraphs, wantInk, labels[i])
+				}
+				if got := string(labelCell.Shape.Text); got != string(buildSCQALabelText(labels[i], obj.Paragraphs[0].Size, wantInk)) {
+					t.Errorf("row[%d] label text = %s, want buildSCQALabelText in %s", i, got, wantInk)
+				}
+			}
+			if got := string(grid.Rows[3].Cells[0].Shape.Fill); tc.name == "no theme" && got != `"accent1"` {
+				t.Errorf("Answer tab fill = %s, want the solid accent1", got)
+			}
+		})
 	}
 }
 
-func TestSCQASummary_Expand_ContentCellsNoFill(t *testing.T) {
+// Situation / Complication / Questions content stays open; the Answer's
+// content is a pale band (the accent's Lighter 90% swatch) led by its solid
+// tab.
+func TestSCQASummary_Expand_ContentCellsOpenExceptAnswerBand(t *testing.T) {
 	p, _ := Default().Get("scqa-summary")
-	grid, err := p.Expand(ExpandContext{}, validSCQAValues(), nil, nil)
-	if err != nil {
-		t.Fatalf("Expand failed: %v", err)
-	}
-	for i, row := range grid.Rows {
-		contentCell := row.Cells[1]
-		var fill string
-		if err := json.Unmarshal(contentCell.Shape.Fill, &fill); err != nil {
-			t.Fatalf("row[%d] content fill unmarshal: %v", i, err)
+	for _, ctx := range []ExpandContext{{}, fullThemeCtx()} {
+		grid, err := p.Expand(ctx, validSCQAValues(), nil, nil)
+		if err != nil {
+			t.Fatalf("Expand failed: %v", err)
 		}
-		if fill != "none" {
-			t.Errorf("row[%d] content fill = %q, want none", i, fill)
+		if len(grid.Rows) != 4 {
+			t.Fatalf("rows = %d, want 4", len(grid.Rows))
+		}
+		const wantBand = `{"color":"accent1","lumMod":10000,"lumOff":90000}`
+		if got := string(tonalRung(ctx, "accent1", 90).fillJSON()); got != wantBand {
+			t.Fatalf("tonalRung(accent1, 90) = %s, want %s", got, wantBand)
+		}
+		for i, row := range grid.Rows {
+			contentCell := row.Cells[1]
+			want := `"none"`
+			if i == 3 {
+				want = wantBand
+			}
+			if got := string(contentCell.Shape.Fill); got != want {
+				t.Errorf("row[%d] content fill = %s, want %s", i, got, want)
+			}
+			if contentCell.Shape.Geometry != "rect" || len(contentCell.Shape.Adjustments) != 0 {
+				t.Errorf("row[%d] content cell = %q %v, want a plain rect", i, contentCell.Shape.Geometry, contentCell.Shape.Adjustments)
+			}
+			if got := string(contentCell.Shape.Line); got != `"none"` {
+				t.Errorf("row[%d] content line = %s, want none", i, got)
+			}
 		}
 	}
 }
@@ -329,12 +414,32 @@ func TestSCQASummary_Expand_AccentOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
+	// The override moves every accent-derived fill: the three pale tabs, the
+	// solid Answer tab and the Answer band.
+	for i := 0; i < 3; i++ {
+		if got := string(grid.Rows[i].Cells[0].Shape.Fill); got != `{"color":"accent3","lumMod":20000,"lumOff":80000}` {
+			t.Errorf("row[%d] label fill = %s, want accent3's Lighter 80%% swatch", i, got)
+		}
+		if got := string(grid.Rows[i].Cells[1].Shape.Fill); got != `"none"` {
+			t.Errorf("row[%d] content fill = %s, want none", i, got)
+		}
+	}
 	var fill string
-	if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
-		t.Fatalf("label fill unmarshal: %v", err)
+	if err := json.Unmarshal(grid.Rows[3].Cells[0].Shape.Fill, &fill); err != nil {
+		t.Fatalf("Answer label fill unmarshal: %v", err)
 	}
 	if fill != "accent3" {
-		t.Errorf("label fill = %q, want accent3", fill)
+		t.Errorf("Answer label fill = %q, want accent3", fill)
+	}
+	if got := string(grid.Rows[3].Cells[1].Shape.Fill); got != `{"color":"accent3","lumMod":10000,"lumOff":90000}` {
+		t.Errorf("Answer content fill = %s, want accent3's Lighter 90%% swatch", got)
+	}
+	for i, row := range grid.Rows {
+		for ci, cell := range row.Cells {
+			if strings.Contains(string(cell.Shape.Fill), "accent1") {
+				t.Errorf("row[%d] cell %d fill = %s still uses the default accent", i, ci, cell.Shape.Fill)
+			}
+		}
 	}
 }
 

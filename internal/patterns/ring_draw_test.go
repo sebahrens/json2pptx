@@ -32,9 +32,13 @@ func TestRingDraw_OpenArcWithPrefixAndNumbering(t *testing.T) {
 		if f := s.Frame; f.W != 0.9 || f.H != 0.9 || f.X != 0.05 || f.Y != 0.05 {
 			t.Errorf("segment %d frame %+v, want the 0.9 square centred", i, f)
 		}
-		solid := string(s.Shape.Fill) == `"accent2"`
-		if solid != (i == 1) {
-			t.Errorf("segment %d fill %s: only the highlight is a solid accent", i, s.Shape.Fill)
+		// The highlight is the solid accent, the others its Lighter 80% swatch.
+		want = `{"color":"accent2","lumMod":20000,"lumOff":80000}`
+		if i == 1 {
+			want = `"accent2"`
+		}
+		if string(s.Shape.Fill) != want {
+			t.Errorf("segment %d fill %s, want %s: only the highlight is a solid accent", i, s.Shape.Fill, want)
 		}
 	}
 	for i, b := range badges {
@@ -45,8 +49,30 @@ func TestRingDraw_OpenArcWithPrefixAndNumbering(t *testing.T) {
 			t.Errorf("badge %d frame %+v leaves the cell", i, b.Frame)
 		}
 	}
-	if string(badges[1].Shape.Fill) != `"lt1"` || string(badges[0].Shape.Fill) != `"accent2"` {
-		t.Errorf("badge fills %s / %s: the highlight's badge is the page colour", badges[0].Shape.Fill, badges[1].Shape.Fill)
+	// A badge is the neutral dark, never the accent; the highlight's badge is
+	// the page colour with the accent as ink.
+	if string(badges[1].Shape.Fill) != `"lt1"` || string(badges[0].Shape.Fill) != `"dk2"` || string(badges[2].Shape.Fill) != `"dk2"` {
+		t.Errorf("badge fills %s / %s / %s: want the neutral dark, and the page colour on the highlight", badges[0].Shape.Fill, badges[1].Shape.Fill, badges[2].Shape.Fill)
+	}
+	if !strings.Contains(string(badges[0].Shape.Text), `"color":"lt1"`) || !strings.Contains(string(badges[1].Shape.Text), `"color":"accent2"`) {
+		t.Errorf("badge inks %s / %s: want the page colour on the neutral dark, the accent on the highlight", badges[0].Shape.Text, badges[1].Shape.Text)
+	}
+	// Under a cell accent mode (Tinted) each badge keeps its item's accent and
+	// each segment the tint of its own accent.
+	tinted := paint
+	tinted.Tinted = true
+	tinted.Accents = []string{"accent2", "accent3", "accent4"}
+	for i, b := range ringBadgeLayers(ExpandContext{}, spec, items, tinted) {
+		want := `"` + tinted.Accents[i] + `"`
+		if i == 1 {
+			want = `"lt1"`
+		}
+		if string(b.Shape.Fill) != want {
+			t.Errorf("tinted badge %d fill %s, want %s", i, b.Shape.Fill, want)
+		}
+	}
+	if got, want := string(ringSegmentLayers(ExpandContext{}, spec, items, tinted)[2].Shape.Fill), string(inactiveTintTone("accent4").fillJSON()); got != want {
+		t.Errorf("tinted segment 2 fill %s, want %s", got, want)
 	}
 
 	cell := ringCell(segments, badges)
@@ -123,6 +149,14 @@ func TestRingDraw_LabelCells(t *testing.T) {
 		if near != ringLabelNearPt {
 			t.Errorf("align %s: the inset on the numeral's side is %v", align, near)
 		}
+	}
+	// The numeral takes its badge's colour: the text ink beside a neutral-dark
+	// badge (accent ""), the accent beside an accent one.
+	if got := string(ringNumberCell(ExpandContext{}, 3, "", 14, "l").Shape.Text); !strings.Contains(got, `"color":"dk1"`) {
+		t.Errorf("numeral beside a neutral-dark badge = %s, want dk1 ink", got)
+	}
+	if got := string(ringNumberCell(ExpandContext{}, 3, "accent1", 14, "l").Shape.Text); !strings.Contains(got, `"color":"accent1"`) {
+		t.Errorf("numeral beside an accent badge = %s, want accent1 ink", got)
 	}
 	if got := parse(ringLabelTextCell(ringLabelText("Plan", "", 14, 12, "l"))); len(got.Paragraphs) != 1 {
 		t.Errorf("a label without a description has %d paragraphs", len(got.Paragraphs))

@@ -28,11 +28,6 @@ import (
 // ---------------------------------------------------------------------------
 
 const (
-	// ringSegmentTint is the neutral step of a segment that is not the
-	// highlight: the structural-box tint, visible on white paper without
-	// competing with the one solid accent.
-	ringSegmentTint = NeutralTint16
-
 	// ringInkContrastMin is the bar accent ink must clear on its ground
 	// (the generator's contrast pass swaps anything under it).
 	ringInkContrastMin = 4.5
@@ -140,7 +135,8 @@ func ringBadgeDia(thickness, sidePt float64) float64 {
 }
 
 // ringSegmentTone is the fill of item i's segment: the solid accent for the
-// highlight, otherwise the neutral step (or the item's own light tint).
+// highlight, otherwise the content swatch of the tonal system — the accent's
+// Lighter 80% (of the item's own accent under a cell accent mode).
 func ringSegmentTone(ctx ExpandContext, p ringPaint, i int) fillTone {
 	switch {
 	case i == p.Highlight:
@@ -148,8 +144,26 @@ func ringSegmentTone(ctx ExpandContext, p ringPaint, i int) fillTone {
 	case p.Tinted:
 		return inactiveTintTone(p.accent(ctx, i))
 	default:
-		return neutralTone(ringSegmentTint)
+		return ringBandTone(ctx, p.accent(ctx, i))
 	}
+}
+
+// ringBandTone is the fill of a ring band that is not the highlight.
+func ringBandTone(ctx ExpandContext, accent string) fillTone {
+	return tonalContent(ctx, accent)
+}
+
+// labelAccents is the accent of the numeral beside each item's label: the
+// item's accent where its badge carries one (the highlight, or every item
+// under a cell accent mode), "" where the badge is the neutral dark.
+func (p ringPaint) labelAccents(ctx ExpandContext, n int) []string {
+	out := make([]string, n)
+	for i := range out {
+		if p.Tinted || i == p.Highlight {
+			out[i] = p.accent(ctx, i)
+		}
+	}
+	return out
 }
 
 // ringSegmentLayers is one layer per item: a blockArc in the band's frame, or
@@ -179,9 +193,11 @@ func ringSegmentLayers(ctx ExpandContext, spec ringSpec, items []ringItem, p rin
 }
 
 // ringBadgeLayers is one numbered circle per item on the band's centreline at
-// the middle of its segment: filled with the item's accent (ink measured
-// against it), or on the highlight — already a solid accent — with the page
-// colour and the accent as ink.
+// the middle of its segment: the neutral dark with the page colour as ink
+// (tonalBadge), so a ring of badges does not compete with the one solid
+// accent; on the highlight — already a solid accent — the page colour with
+// the accent as ink. Under a cell accent mode each badge takes its item's
+// accent, as the mode asks.
 func ringBadgeLayers(ctx ExpandContext, spec ringSpec, items []ringItem, p ringPaint) []jsonschema.LayerInput {
 	size := shapegrid.EffectiveTextSizePt(ResolveSize(p.NumberPt, scaleBodyPt))
 	dia := p.BadgeDia
@@ -191,8 +207,11 @@ func ringBadgeLayers(ctx ExpandContext, spec ringSpec, items []ringItem, p ringP
 	out := make([]jsonschema.LayerInput, 0, len(items))
 	for i, it := range items {
 		accent := p.accent(ctx, i)
-		fill := fillTone{Color: accent}
-		ink := readableTextOn(ctx, fill, "lt1")
+		fill, ink := tonalBadge(ctx)
+		if p.Tinted {
+			fill = fillTone{Color: accent}
+			ink = readableTextOn(ctx, fill, "lt1")
+		}
 		if i == p.Highlight {
 			fill = fillTone{Color: "lt1"}
 			ink = accentInkOnTone(ctx, accent, fill, ringInkContrastMin)
@@ -343,11 +362,16 @@ func ringLabelTextCell(text json.RawMessage) *jsonschema.GridCellInput {
 	}
 }
 
-// ringNumberCell is the numeral beside a label (ringNumberColPt wide), in the
-// item's accent where that reads on the page: the cue that ties the label to
-// its badge. align is the label's align, so the numeral hugs the label.
+// ringNumberCell is the numeral beside a label (ringNumberColPt wide): the
+// cue that ties the label to its badge, so it takes the badge's colour — the
+// item's accent where that reads on the page, or the text ink when accent is
+// "" (a neutral-dark badge, ringPaint.labelAccents). align is the label's
+// align, so the numeral hugs the label.
 func ringNumberCell(ctx ExpandContext, number int, accent string, sizePt float64, align string) *jsonschema.GridCellInput {
-	ink := accentInkOnTone(ctx, accent, fillTone{Color: "lt1"}, ringInkContrastMin)
+	ink := "dk1"
+	if accent != "" {
+		ink = accentInkOnTone(ctx, accent, fillTone{Color: "lt1"}, ringInkContrastMin)
+	}
 	numAlign := "r"
 	if align == "r" {
 		numAlign = "l"

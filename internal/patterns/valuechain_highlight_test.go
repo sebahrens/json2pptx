@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -85,12 +86,13 @@ func TestValueChainHighlightIsDistinctOnEveryBundledTheme(t *testing.T) {
 				t.Fatalf("Expand: %v", err)
 			}
 
-			if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != neutral16JSON {
-				t.Fatalf("plain step fill = %s, want neutral 16%%", got)
+			step := valueChainStepTone(ctx, ctx.DefaultAccent())
+			if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != string(step.fillJSON()) {
+				t.Fatalf("plain step fill = %s, want the accent's content swatch %s", got, step.fillJSON())
 			}
 			base := valueChainLabelFillName
 			highlight := fillOf(t, grid.Rows[0].Cells[2].Shape.Fill)
-			ratio, ok := fillContrast(ctx, valueChainLabelTone, fillTone{Color: highlight})
+			ratio, ok := fillContrast(ctx, step, fillTone{Color: highlight})
 			if !ok {
 				t.Fatalf("cannot measure %s vs %s", base, highlight)
 			}
@@ -119,8 +121,9 @@ func TestValueChainHighlightDefaultWithoutTheme(t *testing.T) {
 // measurement does not — but a highlight that cannot be seen is reported.
 func TestValueChainAuthoredHighlightIsHonouredAndReported(t *testing.T) {
 	vc := &valueChain{}
-	ctx := ExpandContext{Theme: types.ThemeInfo{Colors: bundledThemeColors["warm-coral"]}}
-	// warm-coral accent3 #FF8A65 is 1.59:1 against the neutral 16% step.
+	ctx := ExpandContext{Theme: types.ThemeInfo{Colors: bundledThemeColors["midnight-blue"]}}
+	// midnight-blue accent3 #E8A838 is 1.48:1 against the step fill, accent1's
+	// Lighter 80% swatch — under the 1.6:1 bar.
 	vals := &ValueChainValues{Steps: valueChainSteps(), HighlightColor: "accent3"}
 
 	grid, err := vc.Expand(ctx, vals, nil, nil)
@@ -138,8 +141,31 @@ func TestValueChainAuthoredHighlightIsHonouredAndReported(t *testing.T) {
 	if !strings.HasPrefix(warnings[0], ErrCodeLowContrastHighlight+":") {
 		t.Errorf("warning %q does not carry the finding code", warnings[0])
 	}
-	if !strings.Contains(warnings[0], "1.59") {
+	if !strings.Contains(warnings[0], "1.48:1") {
 		t.Errorf("warning should quote the measured ratio, got %q", warnings[0])
+	}
+	// The finding names what the highlight was measured against and the bar.
+	if want := "against the step fill (the accent's Lighter 80% swatch)"; !strings.Contains(warnings[0], want) ||
+		!strings.Contains(warnings[0], "("+valueChainLabelFillName+")") {
+		t.Errorf("warning should name the step fill %q, got %q", want, warnings[0])
+	}
+	if !strings.Contains(warnings[0], "below 1.6:1") || !strings.Contains(warnings[0], fmt.Sprintf("below %.1f:1", tonalEmphasisMin)) {
+		t.Errorf("warning should quote the 1.6:1 bar (tonalEmphasisMin), got %q", warnings[0])
+	}
+	// The plain steps it is measured against are that swatch.
+	if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != `{"color":"accent1","lumMod":20000,"lumOff":80000}` {
+		t.Errorf("plain step fill = %s, want accent1's Lighter 80%% swatch", got)
+	}
+
+	// The colour that used to be reported on warm-coral — accent3 #FF8A65,
+	// 1.59:1 against the old neutral 16% step — now reads at 1.64:1 against
+	// warm-coral's own accent swatch and clears the bar.
+	coral := ExpandContext{Theme: types.ThemeInfo{Colors: bundledThemeColors["warm-coral"]}}
+	if ratio, ok := fillContrast(coral, valueChainStepTone(coral, coral.DefaultAccent()), fillTone{Color: "accent3"}); !ok || ratio < valueChainHighlightMin || ratio > 1.7 {
+		t.Errorf("warm-coral accent3 on the step fill = %.2f:1 (ok=%t), want just above the %.1f:1 bar", ratio, ok, valueChainHighlightMin)
+	}
+	if w := vc.PostExpandWarnings(coral, vals, nil); len(w) != 0 {
+		t.Errorf("warm-coral accent3 clears the bar but drew %v", w)
 	}
 
 	// A highlight that does read draws nothing.

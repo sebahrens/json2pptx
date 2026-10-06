@@ -419,7 +419,9 @@ func cycleRingSolidAccents(ring *jsonschema.GridCellInput, prefix string) []stri
 }
 
 // By default no segment is a solid accent; a highlighted phase is the only
-// one, on every style, and its badge flips to the page colour.
+// one, on every style, and its badge flips to the page colour. The other
+// badges are the neutral dark, so none of them is a second solid accent; only
+// a cell accent mode gives each badge its item's accent.
 func TestCycleRingHighlightIsTheOnlySolidAccent(t *testing.T) {
 	for _, style := range cycleRingStyles {
 		for _, mode := range []string{"", "alternate", "progressive"} {
@@ -439,8 +441,21 @@ func TestCycleRingHighlightIsTheOnlySolidAccent(t *testing.T) {
 			if string(badges[5].Shape.Fill) != `"lt1"` {
 				t.Errorf("style %s mode %q: the highlight's badge fill = %s, want lt1", style, mode, badges[5].Shape.Fill)
 			}
-			if solid := cycleRingSolidAccents(ring, "badge-"); len(solid) != 7 {
-				t.Errorf("style %s mode %q: %d accent badges, want 7", style, mode, len(solid))
+			wantAccent, wantDark := 7, 0
+			if mode == "" {
+				wantAccent, wantDark = 0, 7
+			}
+			if solid := cycleRingSolidAccents(ring, "badge-"); len(solid) != wantAccent {
+				t.Errorf("style %s mode %q: %d accent badges (%v), want %d", style, mode, len(solid), solid, wantAccent)
+			}
+			dark := 0
+			for _, b := range badges {
+				if string(b.Shape.Fill) == `"dk2"` {
+					dark++
+				}
+			}
+			if dark != wantDark {
+				t.Errorf("style %s mode %q: %d neutral-dark badges, want %d", style, mode, dark, wantDark)
 			}
 		}
 	}
@@ -458,7 +473,7 @@ func TestCycleRing_ExpandStyling(t *testing.T) {
 		t.Errorf("default accent %s not used throughout", want)
 	}
 
-	// An accent override reaches badges, numerals and the highlight.
+	// An accent override reaches the segments, the highlight and its numerals.
 	v := cycleRingValues(4)
 	v.Phases[2].Highlight = true
 	raw, _ = json.Marshal(cycleRingExpand(t, ExpandContext{}, v, &CycleRingOverrides{TextOverrides: TextOverrides{Accent: "accent3", HeaderSize: 16, BodySize: 13}}))
@@ -472,9 +487,10 @@ func TestCycleRing_ExpandStyling(t *testing.T) {
 		t.Error("accent override not applied everywhere")
 	}
 
-	// cell_accent_mode x base accent: uniform keeps neutral segments and one
-	// badge colour; alternate uses two accents; progressive walks them. The
-	// non-uniform modes tint each segment with its own accent.
+	// cell_accent_mode x base accent: uniform sets every segment in the base
+	// accent's Lighter 80% swatch under neutral-dark badges; alternate uses two
+	// accents; progressive walks them. The non-uniform modes tint each segment
+	// with its own accent and give each badge that accent.
 	for _, base := range []string{"accent1", "accent3"} {
 		for _, mode := range []string{"uniform", "alternate", "progressive"} {
 			ovr := &CycleRingOverrides{TextOverrides: TextOverrides{Accent: base, CellAccentMode: mode}}
@@ -484,24 +500,28 @@ func TestCycleRing_ExpandStyling(t *testing.T) {
 				var fill string
 				_ = json.Unmarshal(b.Shape.Fill, &fill)
 				badgeFills[fill] = true
-				if want := ResolveCellAccent(base, i, mode); fill != want {
+				want := ResolveCellAccent(base, i, mode)
+				if mode == "uniform" {
+					want = "dk2"
+				}
+				if fill != want {
 					t.Errorf("%s/%s badge %d fill = %s, want %s", base, mode, i+1, fill, want)
 				}
 			}
 			wantDistinct := map[string]int{"uniform": 1, "alternate": 2, "progressive": 6}[mode]
 			if len(badgeFills) != wantDistinct {
-				t.Errorf("%s/%s: %d badge accents, want %d", base, mode, len(badgeFills), wantDistinct)
+				t.Errorf("%s/%s: %d badge fills, want %d", base, mode, len(badgeFills), wantDistinct)
 			}
 			for i, s := range cycleRingLayers(ring, "segment-") {
 				fill := string(s.Shape.Fill)
 				if mode == "uniform" {
-					if !strings.Contains(fill, `"dk1"`) || !strings.Contains(fill, `"lumMod":16000`) {
-						t.Errorf("%s/uniform segment %d fill = %s, want the dk1 16%% neutral", base, i+1, fill)
+					if want := `{"color":"` + base + `","lumMod":20000,"lumOff":80000}`; fill != want {
+						t.Errorf("%s/uniform segment %d fill = %s, want the accent's Lighter 80%% %s", base, i+1, fill, want)
 					}
 					continue
 				}
-				if want := ResolveCellAccent(base, i, mode); !strings.Contains(fill, `"`+want+`"`) || !strings.Contains(fill, `"lumMod"`) {
-					t.Errorf("%s/%s segment %d fill = %s, want a tint of %s", base, mode, i+1, fill, want)
+				if want := string(inactiveTintTone(ResolveCellAccent(base, i, mode)).fillJSON()); fill != want {
+					t.Errorf("%s/%s segment %d fill = %s, want %s", base, mode, i+1, fill, want)
 				}
 			}
 		}
@@ -516,9 +536,10 @@ func TestCycleRing_ExpandStyling(t *testing.T) {
 	}
 }
 
-// Ink is measured against the fill it sits on: a light accent gets dark
-// numerals in its badges, and a numeral beside a label that the accent cannot
-// carry on the page takes a theme ink.
+// Ink is measured against the fill it sits on: a neutral-dark badge carries
+// the page colour, an accent badge (cell accent modes) of a light accent gets
+// dark numerals, and a numeral beside a label that the accent cannot carry on
+// the page takes a theme ink.
 func TestCycleRing_InkIsMeasured(t *testing.T) {
 	ctx := ExpandContext{Theme: types.ThemeInfo{Colors: []types.ThemeColor{
 		{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"}, {Name: "dk2", RGB: "#1F2937"}, {Name: "lt2", RGB: "#EEEEEE"},
@@ -529,8 +550,16 @@ func TestCycleRing_InkIsMeasured(t *testing.T) {
 		v.Phases[1].Highlight = true
 		grid := cycleRingExpand(t, ctx, v, &CycleRingOverrides{TextOverrides: TextOverrides{Accent: accent}})
 		badges := cycleRingLayers(cycleRingCell(t, grid), "badge-")
-		if !strings.Contains(string(badges[0].Shape.Text), `"color":"`+wantBadgeInk+`"`) {
-			t.Errorf("%s badge ink: %s, want %s", accent, badges[0].Shape.Text, wantBadgeInk)
+		// The default badge is the neutral dark with the page colour as ink,
+		// whatever the accent.
+		if string(badges[0].Shape.Fill) != `"dk2"` || !strings.Contains(string(badges[0].Shape.Text), `"color":"lt1"`) {
+			t.Errorf("%s badge: fill %s text %s, want lt1 ink on dk2", accent, badges[0].Shape.Fill, badges[0].Shape.Text)
+		}
+		// Under a cell accent mode the badge is the accent, and its ink is
+		// measured on it.
+		tinted := cycleRingLayers(cycleRingCell(t, cycleRingExpand(t, ctx, v, &CycleRingOverrides{TextOverrides: TextOverrides{Accent: accent, CellAccentMode: "alternate"}})), "badge-")
+		if string(tinted[0].Shape.Fill) != `"`+accent+`"` || !strings.Contains(string(tinted[0].Shape.Text), `"color":"`+wantBadgeInk+`"`) {
+			t.Errorf("%s accent badge: fill %s text %s, want %s ink", accent, tinted[0].Shape.Fill, tinted[0].Shape.Text, wantBadgeInk)
 		}
 		// The highlight's badge is the page colour: its numeral is the accent
 		// only where the accent reads on white.
@@ -541,9 +570,15 @@ func TestCycleRing_InkIsMeasured(t *testing.T) {
 		if !strings.Contains(string(badges[1].Shape.Text), `"color":"`+wantOnPage+`"`) {
 			t.Errorf("%s highlight badge ink: %s, want %s", accent, badges[1].Shape.Text, wantOnPage)
 		}
+		// The numeral beside a label takes its badge's colour: the text ink
+		// for a neutral-dark badge, the accent (where it reads on the page)
+		// for the highlight.
 		raw, _ := json.Marshal(grid)
-		if !strings.Contains(string(raw), `"content":"1","size":14,"bold":true,"color":"`+wantOnPage+`"`) {
-			t.Errorf("%s: the numeral beside label 1 is not in %s", accent, wantOnPage)
+		if !strings.Contains(string(raw), `"content":"1","size":14,"bold":true,"color":"dk1"`) {
+			t.Errorf("%s: the numeral beside label 1 is not in dk1", accent)
+		}
+		if !strings.Contains(string(raw), `"content":"2","size":14,"bold":true,"color":"`+wantOnPage+`"`) {
+			t.Errorf("%s: the numeral beside the highlighted label 2 is not in %s", accent, wantOnPage)
 		}
 	}
 }

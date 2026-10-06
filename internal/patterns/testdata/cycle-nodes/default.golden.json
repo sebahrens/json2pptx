@@ -2,17 +2,13 @@
   "col_gap": 0.01,
   "row_gap": 0.01,
   "columns": [
-    25.879,
-    2.666,
-    12.134,
-    2.666,
+    28.546,
+    14.8,
     6.412,
     0.485,
     6.412,
-    2.666,
-    12.134,
-    2.666,
-    25.879
+    14.8,
+    28.546
   ],
   "rows": [
     {
@@ -26,8 +22,6 @@
       "min_height": 4.906,
       "max_height": 4.906,
       "cells": [
-        {},
-        {},
         {},
         {},
         {},
@@ -46,12 +40,12 @@
                 "geometry": "circularArrow",
                 "fill": {
                   "color": "dk1",
-                  "lumMod": 45000,
-                  "lumOff": 55000
+                  "lumMod": 24000,
+                  "lumOff": 76000
                 },
                 "line": "none",
                 "adjustments": {
-                  "adj1": 1263,
+                  "adj1": 2273,
                   "adj2": 464560,
                   "adj3": 19681282,
                   "adj4": 17654158,
@@ -71,12 +65,12 @@
                 "geometry": "circularArrow",
                 "fill": {
                   "color": "dk1",
-                  "lumMod": 45000,
-                  "lumOff": 55000
+                  "lumMod": 24000,
+                  "lumOff": 76000
                 },
                 "line": "none",
                 "adjustments": {
-                  "adj1": 1263,
+                  "adj1": 2273,
                   "adj2": 464560,
                   "adj3": 3481282,
                   "adj4": 1454158,
@@ -96,12 +90,12 @@
                 "geometry": "circularArrow",
                 "fill": {
                   "color": "dk1",
-                  "lumMod": 45000,
-                  "lumOff": 55000
+                  "lumMod": 24000,
+                  "lumOff": 76000
                 },
                 "line": "none",
                 "adjustments": {
-                  "adj1": 1263,
+                  "adj1": 2273,
                   "adj2": 464560,
                   "adj3": 8881282,
                   "adj4": 6854158,
@@ -121,12 +115,12 @@
                 "geometry": "circularArrow",
                 "fill": {
                   "color": "dk1",
-                  "lumMod": 45000,
-                  "lumOff": 55000
+                  "lumMod": 24000,
+                  "lumOff": 76000
                 },
                 "line": "none",
                 "adjustments": {
-                  "adj1": 1263,
+                  "adj1": 2273,
                   "adj2": 464560,
                   "adj3": 14281282,
                   "adj4": 12254158,
@@ -145,9 +139,9 @@
               "shape": {
                 "geometry": "ellipse",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 8000,
-                  "lumOff": 92000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "text": {
@@ -176,9 +170,9 @@
               "shape": {
                 "geometry": "ellipse",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 8000,
-                  "lumOff": 92000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "text": {
@@ -234,9 +228,9 @@
               "shape": {
                 "geometry": "ellipse",
                 "fill": {
-                  "color": "dk1",
-                  "lumMod": 8000,
-                  "lumOff": 92000
+                  "color": "accent1",
+                  "lumMod": 20000,
+                  "lumOff": 80000
                 },
                 "line": "none",
                 "text": {
@@ -267,34 +261,8 @@
         {},
         {},
         {},
-        {},
-        {},
         {
-          "shape": {
-            "geometry": "rect",
-            "fill": "none",
-            "line": "none",
-            "text": {
-              "align": "l",
-              "inset_bottom": 2,
-              "inset_left": 2,
-              "inset_right": 2,
-              "inset_top": 2,
-              "paragraphs": [
-                {
-                  "content": "1",
-                  "size": 14,
-                  "bold": true,
-                  "color": "accent1",
-                  "align": "l"
-                }
-              ],
-              "vertical_align": "t"
-            }
-          }
-        },
-        {
-          "col_span": 3,
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -369,60 +337,10 @@
             }
           }
         },
-        {
-          "shape": {
-            "geometry": "rect",
-            "fill": "none",
-            "line": "none",
-            "text": {
-              "align": "r",
-              "inset_bottom": 2,
-              "inset_left": 2,
-              "inset_right": 2,
-              "inset_top": 2,
-              "paragraphs": [
-                {
-                  "content": "4",
-                  "size": 14,
-                  "bold": true,
-                  "color": "accent1",
-                  "align": "r"
-                }
-              ],
-              "vertical_align": "t"
-            }
-          }
-        },
         {},
         {},
         {},
         {},
-        {},
-        {},
-        {
-          "shape": {
-            "geometry": "rect",
-            "fill": "none",
-            "line": "none",
-            "text": {
-              "align": "l",
-              "inset_bottom": 2,
-              "inset_left": 2,
-              "inset_right": 2,
-              "inset_top": 2,
-              "paragraphs": [
-                {
-                  "content": "2",
-                  "size": 14,
-                  "bold": true,
-                  "color": "accent1",
-                  "align": "l"
-                }
-              ],
-              "vertical_align": "t"
-            }
-          }
-        },
         {
           "shape": {
             "geometry": "rect",
@@ -468,7 +386,7 @@
       "max_height": 38,
       "cells": [
         {
-          "col_span": 3,
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -492,30 +410,6 @@
                   "content": "Compare the result with the target",
                   "size": 12,
                   "color": "dk1",
-                  "align": "r"
-                }
-              ],
-              "vertical_align": "t"
-            }
-          }
-        },
-        {
-          "shape": {
-            "geometry": "rect",
-            "fill": "none",
-            "line": "none",
-            "text": {
-              "align": "r",
-              "inset_bottom": 2,
-              "inset_left": 2,
-              "inset_right": 2,
-              "inset_top": 2,
-              "paragraphs": [
-                {
-                  "content": "3",
-                  "size": 14,
-                  "bold": true,
-                  "color": "accent1",
                   "align": "r"
                 }
               ],

@@ -87,16 +87,17 @@ const (
 
 // Value chain surfaces (go-slide-creator-amtkg). Support bars and primary
 // chevrons used to rotate through accent1–6 at 40% and 60% — up to six hues on
-// one diagram, none of them carrying information. They now take the shared
-// neutral ladder, as the value-chain pattern does: support activities on the
-// card surface, primary activities on the structural step, the margin between
-// the two. The diagram's one accent is the ink of the support and margin
-// titles. style.colors recolours the bars and the chevrons in order
-// (["accent1",…,"accent6"] restores a per-activity rotation).
+// one diagram, none of them carrying information. They now take the patterns'
+// tonal system (go-slide-creator-x5m8f): support activities, which group
+// under the chain, on the lightest neutral surface with accent titles; the
+// primary activities, which ARE the chain, in the accent's Lighter 80%
+// swatch as the value-chain pattern's steps are; and the margin, the chain's
+// tip, one rung deeper. style.colors recolours the bars and the chevrons in
+// order (["accent1",…,"accent6"] restores a per-activity rotation).
 const (
-	vcSupportTint = patterns.NeutralTint4
-	vcMarginTint  = patterns.NeutralTint8
-	vcPrimaryTint = patterns.NeutralTint16
+	vcSupportTint    = patterns.NeutralTint4
+	vcMarginLighter  = patterns.TonalLighterDeep
+	vcPrimaryLighter = patterns.TonalLighterContent
 )
 
 // isValueChainDiagram returns true if the diagram spec is a value_chain diagram type.
@@ -456,8 +457,7 @@ func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingB
 		isLast := i == meta.primaryCount-1
 		// A step label is centred on a structural fill, not a card
 		// title: it stays in the text ink.
-		tint := surface.tint(i, vcPrimaryTint, vcLabelFontSize)
-		tint.ink = ""
+		tint := surface.contentTint(i, vcPrimaryLighter)
 
 		xml := generateVCPrimaryChevronXML(
 			panel, chevronX, l.primaryY, l.chevronW, l.primaryH,
@@ -472,7 +472,7 @@ func generateValueChainGroupXML(panels []nativePanelData, bounds types.BoundingB
 		marginX := bounds.X + l.contentWidth + vcMarginGap
 		xml := generateVCMarginXML(
 			meta.marginLabel, marginX, bounds.Y, l.marginW, bounds.Height,
-			nextID, nativeSurface{colors: surface.colors}.tint(0, vcMarginTint, vcMarginFontSize),
+			nextID, nativeSurface{colors: surface.colors}.contentTint(0, vcMarginLighter),
 		)
 		children = append(children, []byte(xml))
 	}

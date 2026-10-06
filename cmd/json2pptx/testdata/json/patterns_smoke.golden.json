@@ -43,16 +43,26 @@
   },
   {
     "pattern_name": "card-grid",
-    "row_count": 2,
+    "row_count": 7,
     "cell_counts": [
+      3,
+      3,
+      3,
+      1,
+      3,
       3,
       3
     ]
   },
   {
     "pattern_name": "card-grid",
-    "row_count": 2,
+    "row_count": 7,
     "cell_counts": [
+      3,
+      3,
+      3,
+      1,
+      3,
       3,
       3
     ]
@@ -204,12 +214,12 @@
     "row_count": 9,
     "cell_counts": [
       1,
+      4,
+      5,
+      1,
       6,
-      8,
       1,
-      10,
       1,
-      2,
       1,
       1
     ]
@@ -388,8 +398,13 @@
   },
   {
     "pattern_name": "card-grid",
-    "row_count": 2,
+    "row_count": 7,
     "cell_counts": [
+      3,
+      3,
+      3,
+      1,
+      3,
       3,
       3
     ]

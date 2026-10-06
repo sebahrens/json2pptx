@@ -309,7 +309,9 @@ func cycleIntakeSplitValues(nIntake, nLoop int) *patterns.CycleIntakeValues {
 // touches the loop (from the left, or from above in the stacked layout a
 // narrow segment takes), and nothing is refused, shrunk or warned about.
 func TestCycleIntakeSplitLayoutsAcrossTemplates(t *testing.T) {
-	bullets := PatternInput{Name: "labeled-rows", Values: json.RawMessage(`{"rows":[{"label":"WHY","body":"Renewals carry most of the revenue"},{"label":"HOW","body":"One loop owned by the account team"}]}`)}
+	// label_style "text": the default labels are pentagon tabs, and this
+	// test counts the slide's pentagons as intake arrows.
+	bullets := PatternInput{Name: "labeled-rows", Values: json.RawMessage(`{"rows":[{"label":"WHY","body":"Renewals carry most of the revenue"},{"label":"HOW","body":"One loop owned by the account team"}]}`), Overrides: json.RawMessage(`{"label_style":"text"}`)}
 	kpi := PatternInput{Name: "kpi-inline", Values: json.RawMessage(`["71% | Revenue retained","112% | Net retention","1 in 5 | Refer a peer"]`)}
 	type layout struct {
 		name    string

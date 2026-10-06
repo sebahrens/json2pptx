@@ -91,7 +91,16 @@ func TestMotifForFollowsExplicitStyle(t *testing.T) {
 		{"stylish-panels", "", `{"style":"open"}`, MotifOpenColumns},
 		{"kpi-4up", "", "", MotifOpenColumns},
 		{"kpi-4up", "", `{"style":"tiles"}`, MotifTiles},
-		{"card-grid", "", "", MotifTiles},
+		// card-grid: the open default is open columns; every explicit tile
+		// style is tiles.
+		{"card-grid", "", "", MotifOpenColumns},
+		{"card-grid", "", `{"style":"open"}`, MotifOpenColumns},
+		{"card-grid", "", `{"style":"filled"}`, MotifTiles},
+		{"card-grid", "", `{"style":"accent-stripe"}`, MotifTiles},
+		{"card-grid", "", `{"style":"numbered-badge"}`, MotifTiles},
+		{"card-grid", "", `{"style":"icon-card"}`, MotifTiles},
+		{"card-grid", "", `{"style":"tinted"}`, MotifTiles},
+		{"card-grid", "", `{"style":"soft-card"}`, MotifTiles},
 		{"comparison-2col", "", `{"style":"tiles"}`, MotifTiles},
 		{"numbered-step-strip", `{"style":"chevron"}`, "", MotifFlow},
 		{"numbered-step-strip", `{"style":"toc"}`, "", MotifOpenList},

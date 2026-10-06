@@ -54,7 +54,7 @@ func computeTextBudgetGuide(pat patterns.Pattern) *textcapacity.TextBudgetGuide 
 		if values == nil {
 			return nil, nil
 		}
-		grid, err := pat.Expand(expandCtx, values, nil, nil)
+		grid, err := pat.Expand(expandCtx, values, budgetOverrides(pat), nil)
 		patterns.ApplyGridDefaults(grid)
 		return grid, err
 	}
@@ -62,6 +62,19 @@ func computeTextBudgetGuide(pat patterns.Pattern) *textcapacity.TextBudgetGuide 
 	bounds := shapegrid.DefaultBounds(slideWidth, slideHeight)
 
 	return textcapacity.ComputeBudgetGuide(configs, expandFn, bounds, slideWidth, slideHeight)
+}
+
+// budgetOverrides are the overrides a pattern's budget guide is measured
+// with. card-grid's guide reads one text cell per card (header over body),
+// which is the filled card: the open default splits a card into a heading
+// row and a body row on a slightly narrower column and sets it in the largest
+// type the grid holds, so the tile's budget is the figure an author can rely
+// on in either style.
+func budgetOverrides(pat patterns.Pattern) any {
+	if pat.Name() == "card-grid" {
+		return &patterns.CardGridOverrides{Style: "filled"}
+	}
+	return nil
 }
 
 // syntheticValues creates minimal valid values for a pattern at the given

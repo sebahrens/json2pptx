@@ -10,20 +10,29 @@
       "cells": [
         {
           "shape": {
-            "geometry": "rect",
-            "fill": "accent1",
+            "geometry": "homePlate",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "line": "none",
             "text": {
+              "align": "ctr",
+              "inset_right": 8.173228346456693,
               "paragraphs": [
                 {
-                  "content": "Situation",
-                  "size": 20,
+                  "align": "ctr",
                   "bold": true,
-                  "color": "lt1",
-                  "align": "ctr"
+                  "color": "dk1",
+                  "content": "Situation",
+                  "size": 20
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 15266
             }
           }
         },
@@ -31,6 +40,7 @@
           "shape": {
             "geometry": "rect",
             "fill": "none",
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -51,20 +61,29 @@
       "cells": [
         {
           "shape": {
-            "geometry": "rect",
-            "fill": "accent1",
+            "geometry": "homePlate",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "line": "none",
             "text": {
+              "align": "ctr",
+              "inset_right": 8.173228346456693,
               "paragraphs": [
                 {
-                  "content": "Complication",
-                  "size": 20,
+                  "align": "ctr",
                   "bold": true,
-                  "color": "lt1",
-                  "align": "ctr"
+                  "color": "dk1",
+                  "content": "Complication",
+                  "size": 20
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 15266
             }
           }
         },
@@ -72,6 +91,7 @@
           "shape": {
             "geometry": "rect",
             "fill": "none",
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -92,20 +112,29 @@
       "cells": [
         {
           "shape": {
-            "geometry": "rect",
-            "fill": "accent1",
+            "geometry": "homePlate",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "line": "none",
             "text": {
+              "align": "ctr",
+              "inset_right": 8.173228346456693,
               "paragraphs": [
                 {
-                  "content": "Questions",
-                  "size": 20,
+                  "align": "ctr",
                   "bold": true,
-                  "color": "lt1",
-                  "align": "ctr"
+                  "color": "dk1",
+                  "content": "Questions",
+                  "size": 20
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 15266
             }
           }
         },
@@ -113,6 +142,7 @@
           "shape": {
             "geometry": "rect",
             "fill": "none",
+            "line": "none",
             "text": {
               "paragraphs": [
                 {
@@ -141,27 +171,37 @@
       "cells": [
         {
           "shape": {
-            "geometry": "rect",
+            "geometry": "homePlate",
             "fill": "accent1",
+            "line": "none",
             "text": {
+              "align": "ctr",
+              "inset_right": 8.173228346456693,
               "paragraphs": [
                 {
-                  "content": "Answer",
-                  "size": 20,
+                  "align": "ctr",
                   "bold": true,
                   "color": "lt1",
-                  "align": "ctr"
+                  "content": "Answer",
+                  "size": 20
                 }
               ],
-              "align": "ctr",
               "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 15266
             }
           }
         },
         {
           "shape": {
             "geometry": "rect",
-            "fill": "none",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 10000,
+              "lumOff": 90000
+            },
+            "line": "none",
             "text": {
               "paragraphs": [
                 {

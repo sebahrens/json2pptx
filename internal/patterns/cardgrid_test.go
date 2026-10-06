@@ -2,11 +2,14 @@ package patterns
 
 import (
 	"encoding/json"
+	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -92,8 +95,20 @@ func TestCardGridShortCardsStayContentSized(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, zoneH := sizingAreaPt(fullThemeCtx())
-	if grid.Rows[0].MaxHeight > zoneH*0.4 {
-		t.Errorf("card row %.1fpt stretches past 40%% of the %.1fpt zone for two short cards", grid.Rows[0].MaxHeight, zoneH)
+	// An open card is a heading row, a rule row and a body row; the card is
+	// the three together.
+	if len(grid.Rows) != 3 {
+		t.Fatalf("rows = %d, want the heading, rule and body rows of one row of open cards", len(grid.Rows))
+	}
+	cardH := 2 * grid.RowGap
+	for r, row := range grid.Rows {
+		if row.MaxHeight <= 0 {
+			t.Errorf("row %d has no max height: it would stretch to the zone", r)
+		}
+		cardH += row.MaxHeight
+	}
+	if cardH > zoneH*0.4 {
+		t.Errorf("card row %.1fpt stretches past 40%% of the %.1fpt zone for two short cards", cardH, zoneH)
 	}
 	if grid.VerticalAlign != GridVerticalAlignDefault {
 		t.Errorf("card grid vertical_align = %q, want the middle-anchored default", grid.VerticalAlign)
@@ -422,7 +437,90 @@ func TestCardGrid(t *testing.T) {
 				{Header: "Card 6", Body: "Desc 6"},
 			},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		// The default is the open card: per row of cards a heading row, a rule
+		// row and a body row, and one spacer row between the two rows of cards.
+		open, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand (open default): %v", err)
+		}
+		if open == nil {
+			t.Fatal("Expand returned nil grid")
+		}
+		if len(open.Rows) != 7 {
+			t.Fatalf("open default: expected 7 rows (2 x heading/rule/body + 1 spacer), got %d", len(open.Rows))
+		}
+		if string(open.Columns) != "3" {
+			t.Errorf("open default: columns = %s, want 3", open.Columns)
+		}
+		if open.ColGap != cardGridOpenColGapPt || open.RowGap != cardGridOpenRowGapPt || open.Gap != 0 {
+			t.Errorf("open default: gaps col=%v row=%v gap=%v, want col %v, row %v, no uniform gap",
+				open.ColGap, open.RowGap, open.Gap, cardGridOpenColGapPt, cardGridOpenRowGapPt)
+		}
+		if spacer := open.Rows[3]; len(spacer.Cells) != 1 || spacer.Cells[0].Shape != nil || spacer.Cells[0].ColSpan != 3 ||
+			spacer.MinHeight <= 0 || spacer.MinHeight != spacer.MaxHeight {
+			t.Errorf("open default: row 3 = %+v, want one empty cell across the 3 columns at a fixed height", spacer)
+		}
+		for band := 0; band < 2; band++ {
+			headRow, ruleRow, bodyRow := open.Rows[4*band], open.Rows[4*band+1], open.Rows[4*band+2]
+			if headRow.MinHeight <= 0 || headRow.MinHeight != headRow.MaxHeight {
+				t.Errorf("open default: heading row %d height %v..%v, want fixed", band, headRow.MinHeight, headRow.MaxHeight)
+			}
+			if ruleRow.MinHeight != cardGridOpenRulePt || ruleRow.MaxHeight != cardGridOpenRulePt {
+				t.Errorf("open default: rule row %d height %v..%v, want %vpt", band, ruleRow.MinHeight, ruleRow.MaxHeight, cardGridOpenRulePt)
+			}
+			if bodyRow.MinHeight != 0 || bodyRow.MaxHeight <= 0 {
+				t.Errorf("open default: body row %d height %v..%v, want a max height only", band, bodyRow.MinHeight, bodyRow.MaxHeight)
+			}
+			for _, row := range []struct {
+				name string
+				row  []*jsonschema.GridCellInput
+			}{{"heading", headRow.Cells}, {"rule", ruleRow.Cells}, {"body", bodyRow.Cells}} {
+				if len(row.row) != 3 {
+					t.Fatalf("open default: %s row %d has %d cells, want 3", row.name, band, len(row.row))
+				}
+			}
+			for col := 0; col < 3; col++ {
+				n := band*3 + col + 1
+				head, rule, body := headRow.Cells[col], ruleRow.Cells[col], bodyRow.Cells[col]
+				if head.AccentBar != nil || rule.AccentBar != nil || body.AccentBar != nil {
+					t.Errorf("open default: card %d carries an accent bar", n)
+				}
+				if got := string(head.Shape.Fill); got != `"none"` {
+					t.Errorf("open default: card %d heading fill = %s, want none", n, got)
+				}
+				if got := string(rule.Shape.Fill); got != string(neutralFillJSON(NeutralTint60)) {
+					t.Errorf("open default: card %d rule fill = %s, want neutral 60%%", n, got)
+				}
+				if rule.BleedTop != 0 || len(rule.Shape.Text) != 0 {
+					t.Errorf("open default: card %d rule bleed_top = %v text = %s, want a plain 1pt rule", n, rule.BleedTop, rule.Shape.Text)
+				}
+				if got := string(body.Shape.Fill); got != `"none"` {
+					t.Errorf("open default: card %d body fill = %s, want none", n, got)
+				}
+				var headText, bodyText cardTextObj
+				if err := json.Unmarshal(head.Shape.Text, &headText); err != nil {
+					t.Fatalf("heading text unmarshal: %v", err)
+				}
+				if err := json.Unmarshal(body.Shape.Text, &bodyText); err != nil {
+					t.Fatalf("body text unmarshal: %v", err)
+				}
+				if len(headText.Paragraphs) != 1 || headText.VerticalAlign != "b" {
+					t.Fatalf("open default: card %d heading = %+v, want one bottom-anchored paragraph", n, headText)
+				}
+				if hp := headText.Paragraphs[0]; hp.Content != fmt.Sprintf("Card %d", n) || !hp.Bold || hp.Color != "dk1" {
+					t.Errorf("open default: card %d heading paragraph = %+v, want bold dk1 %q", n, hp, fmt.Sprintf("Card %d", n))
+				}
+				if len(bodyText.Paragraphs) != 1 || bodyText.VerticalAlign != "t" {
+					t.Fatalf("open default: card %d body = %+v, want one top-anchored paragraph", n, bodyText)
+				}
+				if bp := bodyText.Paragraphs[0]; bp.Content != fmt.Sprintf("Desc %d", n) || bp.Bold || bp.Color != "dk1" {
+					t.Errorf("open default: card %d body paragraph = %+v, want regular dk1 %q", n, bp, fmt.Sprintf("Desc %d", n))
+				}
+			}
+		}
+
+		// The filled tile, on request: one cell per card.
+		grid, err := p.Expand(ExpandContext{}, &vals, &CardGridOverrides{Style: "filled"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -463,7 +561,8 @@ func TestCardGrid(t *testing.T) {
 			Rows:    1,
 			Cells:   []CardGridCell{{Header: "A", Body: "B"}},
 		}
-		ovr := &CardGridOverrides{TextOverrides: TextOverrides{Accent: "accent5"}}
+		// A filled tile takes the accent as its fill.
+		ovr := &CardGridOverrides{TextOverrides: TextOverrides{Accent: "accent5"}, Style: "filled"}
 		grid, err := p.Expand(ExpandContext{}, &vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
@@ -474,6 +573,34 @@ func TestCardGrid(t *testing.T) {
 		}
 		if fill != "accent5" {
 			t.Errorf("fill = %q, want %q", fill, "accent5")
+		}
+
+		// The open default spends the accent only on an emphasised card's
+		// rule: a plain open card stays neutral whatever the accent, and the
+		// card that asks for accent_bar stands on a rule in that accent.
+		open, err := p.Expand(ExpandContext{}, &vals, &CardGridOverrides{TextOverrides: TextOverrides{Accent: "accent5"}}, nil)
+		if err != nil {
+			t.Fatalf("Expand (open default): %v", err)
+		}
+		if len(open.Rows) != 3 {
+			t.Fatalf("open default: expected 3 rows (heading, rule, body), got %d", len(open.Rows))
+		}
+		if got := string(open.Rows[0].Cells[0].Shape.Fill); got != `"none"` {
+			t.Errorf("open default: heading fill = %s, want none", got)
+		}
+		if got := string(open.Rows[1].Cells[0].Shape.Fill); got != string(neutralFillJSON(NeutralTint60)) {
+			t.Errorf("open default: rule fill = %s, want neutral 60%%", got)
+		}
+		if strings.Contains(string(open.Rows[0].Cells[0].Shape.Text)+string(open.Rows[2].Cells[0].Shape.Text), "accent5") {
+			t.Errorf("open default: plain card text takes the accent: %s / %s", open.Rows[0].Cells[0].Shape.Text, open.Rows[2].Cells[0].Shape.Text)
+		}
+		emph, err := p.Expand(ExpandContext{}, &vals, &CardGridOverrides{TextOverrides: TextOverrides{Accent: "accent5"}},
+			map[int]any{0: &CardGridCellOverride{AccentBar: true}})
+		if err != nil {
+			t.Fatalf("Expand (open, accent_bar): %v", err)
+		}
+		if got := string(emph.Rows[1].Cells[0].Shape.Fill); got != `"accent5"` {
+			t.Errorf("open default: emphasised rule fill = %s, want %q", got, "accent5")
 		}
 	})
 
@@ -489,7 +616,44 @@ func TestCardGrid(t *testing.T) {
 		cellOvr := map[int]any{
 			0: &CardGridCellOverride{AccentBar: true},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, cellOvr)
+		// On the open default accent_bar is the card's rule: the accent, 1pt
+		// heavier (bled upwards), and no AccentBar on any cell.
+		open, err := p.Expand(ExpandContext{}, &vals, nil, cellOvr)
+		if err != nil {
+			t.Fatalf("Expand (open default): %v", err)
+		}
+		if len(open.Rows) != 3 {
+			t.Fatalf("open default: expected 3 rows (heading, rule, body), got %d", len(open.Rows))
+		}
+		for r, row := range open.Rows {
+			if len(row.Cells) != 2 {
+				t.Fatalf("open default: row %d has %d cells, want 2", r, len(row.Cells))
+			}
+			for ci, cell := range row.Cells {
+				if cell.AccentBar != nil {
+					t.Errorf("open default: row %d cell %d carries an AccentBar; the rule is the accent bar", r, ci)
+				}
+			}
+		}
+		emphRule, plainRule := open.Rows[1].Cells[0], open.Rows[1].Cells[1]
+		if got := string(emphRule.Shape.Fill); got != `"accent1"` {
+			t.Errorf("open default: emphasised rule fill = %s, want %q", got, "accent1")
+		}
+		if emphRule.BleedTop != 1 {
+			t.Errorf("open default: emphasised rule bleed_top = %v, want 1pt", emphRule.BleedTop)
+		}
+		if got := string(plainRule.Shape.Fill); got != string(neutralFillJSON(NeutralTint60)) {
+			t.Errorf("open default: plain rule fill = %s, want neutral 60%%", got)
+		}
+		if plainRule.BleedTop != 0 {
+			t.Errorf("open default: plain rule bleed_top = %v, want 0", plainRule.BleedTop)
+		}
+		if open.Rows[0].Cells[0].BleedTop != 0 || open.Rows[2].Cells[0].BleedTop != 0 {
+			t.Errorf("open default: only the rule bleeds, got heading %v body %v", open.Rows[0].Cells[0].BleedTop, open.Rows[2].Cells[0].BleedTop)
+		}
+
+		// A filled tile carries the bar itself.
+		grid, err := p.Expand(ExpandContext{}, &vals, &CardGridOverrides{Style: "filled"}, cellOvr)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -567,10 +731,13 @@ func TestCardGridStyles(t *testing.T) {
 	}
 	vals := &CardGridValues{Columns: 2, Rows: 2, Cells: cells}
 
-	t.Run("filled_default", func(t *testing.T) {
-		grid, err := p.Expand(ExpandContext{}, vals, nil, nil)
+	t.Run("filled", func(t *testing.T) {
+		grid, err := p.Expand(ExpandContext{}, vals, &CardGridOverrides{Style: "filled"}, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
+		}
+		if len(grid.Rows) != 2 || len(grid.Rows[0].Cells) != 2 {
+			t.Fatalf("filled: want 2 rows of 2 one-cell cards, got %d rows", len(grid.Rows))
 		}
 		var fill string
 		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
@@ -578,6 +745,87 @@ func TestCardGridStyles(t *testing.T) {
 		}
 		if fill != "accent1" {
 			t.Errorf("filled: fill = %q, want %q", fill, "accent1")
+		}
+	})
+
+	// No style: the open card (heading, rule, body rows; 4N-1 grid rows).
+	t.Run("open_default", func(t *testing.T) {
+		for _, ovr := range []*CardGridOverrides{nil, {}, {Style: "open"}} {
+			var o any
+			eff := &CardGridOverrides{}
+			if ovr != nil {
+				o, eff = ovr, ovr
+			}
+			if got := cardGridStyle(vals, eff); got != "open" {
+				t.Errorf("cardGridStyle(%+v) = %q, want open", ovr, got)
+			}
+			if err := p.Validate(vals, o, nil); err != nil {
+				t.Fatalf("Validate(%+v): %v", ovr, err)
+			}
+			grid, err := p.Expand(ExpandContext{}, vals, o, nil)
+			if err != nil {
+				t.Fatalf("Expand: %v", err)
+			}
+			if len(grid.Rows) != 7 {
+				t.Fatalf("open (%+v): rows = %d, want 7", ovr, len(grid.Rows))
+			}
+			if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != `"none"` {
+				t.Errorf("open (%+v): heading fill = %s, want none", ovr, got)
+			}
+			if got := string(grid.Rows[1].Cells[0].Shape.Fill); got != string(neutralFillJSON(NeutralTint60)) {
+				t.Errorf("open (%+v): rule fill = %s, want neutral 60%%", ovr, got)
+			}
+			if got := string(grid.Rows[2].Cells[0].Shape.Fill); got != `"none"` {
+				t.Errorf("open (%+v): body fill = %s, want none", ovr, got)
+			}
+		}
+	})
+
+	// A deck that asks for a card surface, or attaches a secondary chart, is
+	// asking for a tile: the default falls back to the filled card.
+	t.Run("default_falls_back_to_filled", func(t *testing.T) {
+		withSecondary := &CardGridValues{Columns: 2, Rows: 2, Cells: append([]CardGridCell(nil), cells...)}
+		withSecondary.Cells[1].Secondary = &SecondaryChart{}
+		for _, tc := range []struct {
+			name string
+			vals *CardGridValues
+			ovr  *CardGridOverrides
+		}{
+			{"card_fill", vals, &CardGridOverrides{CardFill: "#FFF5ED"}},
+			{"line_color", vals, &CardGridOverrides{LineColor: "dk1"}},
+			{"line_width", vals, &CardGridOverrides{LineWidth: 1}},
+			{"border", vals, &CardGridOverrides{Border: "accent"}},
+			{"secondary", withSecondary, &CardGridOverrides{}},
+		} {
+			if got := cardGridStyle(tc.vals, tc.ovr); got != "filled" {
+				t.Errorf("%s: cardGridStyle = %q, want filled", tc.name, got)
+			}
+			// An explicit style still wins over the fallback.
+			explicit := *tc.ovr
+			explicit.Style = "open"
+			if got := cardGridStyle(tc.vals, &explicit); got != "open" {
+				t.Errorf("%s with style open: cardGridStyle = %q, want open", tc.name, got)
+			}
+		}
+		grid, err := p.Expand(ExpandContext{}, vals, &CardGridOverrides{CardFill: "#FFF5ED"}, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		if len(grid.Rows) != 2 || len(grid.Rows[0].Cells) != 2 {
+			t.Fatalf("card_fill: want 2 rows of 2 one-cell cards, got %d rows", len(grid.Rows))
+		}
+		if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != `"#FFF5ED"` {
+			t.Errorf("card_fill: fill = %s, want the authored surface", got)
+		}
+		bordered, err := p.Expand(ExpandContext{}, vals, &CardGridOverrides{Border: "accent"}, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		if len(bordered.Rows) != 2 {
+			t.Fatalf("border: rows = %d, want the 2 rows of filled cards", len(bordered.Rows))
+		}
+		if got := string(bordered.Rows[0].Cells[0].Shape.Fill); got != `"accent1"` {
+			t.Errorf("border: fill = %s, want the filled card's accent1", got)
 		}
 	})
 
@@ -775,6 +1023,9 @@ func TestCardGridStyles(t *testing.T) {
 		}
 		if !strings.Contains(err.Error(), "overrides.style") {
 			t.Errorf("error %q should mention overrides.style", err)
+		}
+		if want := "must be one of open, filled, accent-stripe, numbered-badge, icon-card, tinted, soft-card"; !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q should list the styles: %q", err, want)
 		}
 	})
 }
@@ -1077,7 +1328,10 @@ func TestExtractNumberPrefix(t *testing.T) {
 // TestCardGrid_HeadersShareABodyBaseline pins the fix for go-slide-creator-ommn:
 // a header that wraps to two lines while its neighbour's fits on one pushed
 // only that card's body down, so three panels meant to read as one comparison
-// came out ragged (measured: 19.2pt apart in the rendered PDF).
+// came out ragged (measured: 19.2pt apart in the rendered PDF). This is the
+// one-cell (filled) card, whose short header is padded with filler lines; the
+// open default solves it structurally — see
+// TestCardGrid_OpenHeadingsShareARule.
 func TestCardGrid_HeadersShareABodyBaseline(t *testing.T) {
 	p, _ := Default().Get("card-grid")
 	ctx := testThemeCtx()
@@ -1090,7 +1344,7 @@ func TestCardGrid_HeadersShareABodyBaseline(t *testing.T) {
 			{Header: "C | Exit freight", Body: "Releases capital immediately and removes the loss-making lane."},
 		},
 	}
-	grid, err := p.Expand(ctx, vals, nil, nil)
+	grid, err := p.Expand(ctx, vals, &CardGridOverrides{Style: "filled"}, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
@@ -1138,8 +1392,102 @@ func TestCardGrid_HeadersShareABodyBaseline(t *testing.T) {
 	}
 }
 
+// TestCardGrid_OpenHeadingsShareARule is the same row on the open default: the
+// headings are their own grid row, fixed at the tallest heading's height and
+// bottom-anchored, so a one-line heading stands on the same rule as a wrapped
+// one and the bodies start level — with no filler paragraphs.
+func TestCardGrid_OpenHeadingsShareARule(t *testing.T) {
+	p, _ := Default().Get("card-grid")
+	ctx := testThemeCtx()
+	vals := &CardGridValues{
+		Columns: 3,
+		Rows:    1,
+		Cells: []CardGridCell{
+			{Header: "A | Double down on parcel automation", Body: "Highest return, but it needs the Q3 capex envelope."},
+			{Header: "B | Acquire a regional freight forwarder", Body: "Buys network density fast; integration risk is front-loaded."},
+			{Header: "C | Exit freight", Body: "Releases capital immediately and removes the loss-making lane."},
+		},
+	}
+	grid, err := p.Expand(ctx, vals, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if len(grid.Rows) != 3 {
+		t.Fatalf("rows = %d, want heading, rule and body", len(grid.Rows))
+	}
+	headRow, ruleRow, bodyRow := grid.Rows[0], grid.Rows[1], grid.Rows[2]
+
+	contentW, _ := contentAreaPt(ctx)
+	textW := equalColumnWidthPt(contentW, 3, grid.ColGap) - 2*defaultShapeInsetLRPt
+	if grid.ColGap != ctx.Gap(cardGridOpenColGapPt) {
+		t.Errorf("col gap = %v, want %v", grid.ColGap, ctx.Gap(cardGridOpenColGapPt))
+	}
+	tallest, maxLines, minLines := 0.0, 0, 99
+	for i, cell := range headRow.Cells {
+		var obj cardTextObj
+		if err := json.Unmarshal(cell.Shape.Text, &obj); err != nil {
+			t.Fatalf("heading %d text: %v", i, err)
+		}
+		if len(obj.Paragraphs) != 1 {
+			t.Fatalf("heading %d has %d paragraphs, want the authored heading alone (no filler lines)", i, len(obj.Paragraphs))
+		}
+		para := obj.Paragraphs[0]
+		if para.Content != vals.Cells[i].Header || !para.Bold || para.Color != "dk1" {
+			t.Errorf("heading %d = %+v, want the bold dk1 authored header", i, para)
+		}
+		if obj.VerticalAlign != "b" {
+			t.Errorf("heading %d vertical_align = %q, want b (standing on its rule)", i, obj.VerticalAlign)
+		}
+		lines := measuredLines(para.Content, ctx.Theme.BodyFont, para.Bold, para.Size, textW)
+		maxLines, minLines = max(maxLines, lines), min(minLines, lines)
+		if h := shapeTextHeightPt(ctx.Theme.BodyFont, cell.Shape.Text, textW); h > tallest {
+			tallest = h
+		}
+	}
+	if maxLines < 2 || minLines != 1 {
+		t.Fatalf("fixture drifted: headings take %d..%d lines, want a one-line heading beside a wrapped one", minLines, maxLines)
+	}
+	// One fixed height for the whole heading row: it holds the tallest
+	// (wrapped) heading, so it is taller — by at least a line of heading type
+	// — than the same row with one-line headings.
+	if headRow.MinHeight != headRow.MaxHeight || headRow.MinHeight != math.Ceil(headRow.MinHeight) {
+		t.Errorf("heading row height %v..%v, want one fixed whole-point height", headRow.MinHeight, headRow.MaxHeight)
+	}
+	if headRow.MinHeight < tallest {
+		t.Errorf("heading row height %v is under the tallest heading's %v text height", headRow.MinHeight, tallest)
+	}
+	short := &CardGridValues{Columns: 3, Rows: 1, Cells: []CardGridCell{
+		{Header: "A", Body: vals.Cells[0].Body}, {Header: "B", Body: vals.Cells[1].Body}, {Header: "C", Body: vals.Cells[2].Body},
+	}}
+	shortGrid, err := p.Expand(ctx, short, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand (one-line headings): %v", err)
+	}
+	headerSize := ResolveSize(0, sizeHeaderPt)
+	if grew := headRow.MinHeight - shortGrid.Rows[0].MinHeight; grew < headerSize*float64(maxLines-1) {
+		t.Errorf("heading row grew %vpt for %d-line headings, want at least %d more line(s) of %vpt type", grew, maxLines, maxLines-1, headerSize)
+	}
+	// The body row is unaffected by the heading wrap: bodies start level.
+	if bodyRow.MaxHeight != shortGrid.Rows[2].MaxHeight {
+		t.Errorf("body row max height %v differs from %v with one-line headings", bodyRow.MaxHeight, shortGrid.Rows[2].MaxHeight)
+	}
+	if ruleRow.MinHeight != cardGridOpenRulePt || ruleRow.MaxHeight != cardGridOpenRulePt {
+		t.Errorf("rule row height %v..%v, want %vpt", ruleRow.MinHeight, ruleRow.MaxHeight, cardGridOpenRulePt)
+	}
+	for i, cell := range bodyRow.Cells {
+		var obj cardTextObj
+		if err := json.Unmarshal(cell.Shape.Text, &obj); err != nil {
+			t.Fatalf("body %d text: %v", i, err)
+		}
+		if len(obj.Paragraphs) != 1 || obj.Paragraphs[0].Content != vals.Cells[i].Body || obj.VerticalAlign != "t" {
+			t.Errorf("body %d = %+v, want the authored body alone, top-anchored under the rule", i, obj)
+		}
+	}
+}
+
 // TestCardGrid_EqualHeadersAreNotPadded checks the pass is a no-op when every
-// header already occupies the same number of lines.
+// header already occupies the same number of lines (the one-cell filled card;
+// an open card never pads).
 func TestCardGrid_EqualHeadersAreNotPadded(t *testing.T) {
 	p, _ := Default().Get("card-grid")
 	ctx := testThemeCtx()
@@ -1152,9 +1500,12 @@ func TestCardGrid_EqualHeadersAreNotPadded(t *testing.T) {
 			{Header: "Risk", Body: "One integration team, one cutover."},
 		},
 	}
-	grid, err := p.Expand(ctx, vals, nil, nil)
+	grid, err := p.Expand(ctx, vals, &CardGridOverrides{Style: "filled"}, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
+	}
+	if len(grid.Rows) != 1 || len(grid.Rows[0].Cells) != 3 {
+		t.Fatalf("want one row of three one-cell cards, got %d rows", len(grid.Rows))
 	}
 	for i, cell := range grid.Rows[0].Cells {
 		var obj cardTextObj

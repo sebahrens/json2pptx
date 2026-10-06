@@ -448,6 +448,8 @@ func TestConvertPresentationSlides_PatternExpansion(t *testing.T) {
 func TestExpandPattern_CalloutCardGrid(t *testing.T) {
 	input := &PatternInput{
 		Name: "card-grid",
+		// The filled card: one text cell per card (the open default is three rows).
+		Overrides: json.RawMessage(`{"style":"filled"}`),
 		Values: json.RawMessage(`{
 			"columns": 2,
 			"rows": 1,
@@ -565,6 +567,8 @@ func TestExpandPattern_CalloutUnsupportedPattern(t *testing.T) {
 func TestExpandPattern_NoCalloutNilDoesNothing(t *testing.T) {
 	input := &PatternInput{
 		Name: "card-grid",
+		// The filled card: one text cell per card (the open default is three rows).
+		Overrides: json.RawMessage(`{"style":"filled"}`),
 		Values: json.RawMessage(`{
 			"columns": 1,
 			"rows": 1,
@@ -764,6 +768,8 @@ func TestExpandPattern_CellOverridesUnchangedWithCallout(t *testing.T) {
 	// Expand card-grid with cell_overrides[0] accent bar, WITHOUT callout
 	baseInput := &PatternInput{
 		Name: "card-grid",
+		// The filled card: one text cell per card (the open default is three rows).
+		Overrides: json.RawMessage(`{"style":"filled"}`),
 		Values: json.RawMessage(`{
 			"columns": 2,
 			"rows": 1,
@@ -787,6 +793,8 @@ func TestExpandPattern_CellOverridesUnchangedWithCallout(t *testing.T) {
 	// Expand same card-grid with cell_overrides[0] accent bar, WITH callout
 	calloutInput := &PatternInput{
 		Name: "card-grid",
+		// The filled card: one text cell per card (the open default is three rows).
+		Overrides: json.RawMessage(`{"style":"filled"}`),
 		Values: json.RawMessage(`{
 			"columns": 2,
 			"rows": 1,

@@ -192,8 +192,17 @@ func TestGenerateValueChainGroupXML_Basic(t *testing.T) {
 			t.Errorf("value chain should not reach for accent%d by default", i)
 		}
 	}
-	if !strings.Contains(result, `<a:lumMod val="16000"/><a:lumOff val="84000"/>`) {
-		t.Error("primary activities should sit on the neutral 16% structural step")
+	// The tonal system (go-slide-creator-x5m8f): primary activities are the
+	// accent's Lighter 80% swatch, the margin one rung deeper, and nothing
+	// sits on the neutral 16% mid grey any more.
+	if !strings.Contains(result, `<a:schemeClr val="accent1"><a:lumMod val="20000"/><a:lumOff val="80000"/>`) {
+		t.Error("primary activities should be the accent's Lighter 80% swatch")
+	}
+	if !strings.Contains(result, `<a:schemeClr val="accent1"><a:lumMod val="40000"/><a:lumOff val="60000"/>`) {
+		t.Error("the margin should be the accent's Lighter 60% swatch")
+	}
+	if strings.Contains(result, `<a:lumMod val="16000"/><a:lumOff val="84000"/>`) {
+		t.Error("no shape should sit on the neutral 16% mid grey")
 	}
 
 	// Should use homePlate geometry for primary activities (not last)

@@ -503,7 +503,9 @@ func pickDistinctFill(ctx ExpandContext, base fillTone, minRatio float64, candid
 		return "", false
 	}
 	for _, name := range candidates {
-		if name == base.Color {
+		// The base itself is no candidate; a tint of a candidate is one
+		// (a solid accent against its own Lighter swatch).
+		if (fillTone{Color: name}) == base {
 			continue
 		}
 		ratio, ok := fillContrast(ctx, base, fillTone{Color: name})

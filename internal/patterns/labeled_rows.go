@@ -62,17 +62,34 @@ const (
 	labeledRowsMinLabelPt  = 12.0
 	labeledRowsMinFillFrac = 0.60
 
+	labeledRowsStyleTab    = "tab"
 	labeledRowsStyleTinted = "tinted"
 	labeledRowsStyleFilled = "filled"
 	labeledRowsStyleText   = "text"
+
+	// labeledRowsTabPointPt is the depth of a tab's point: the pentagon
+	// points into the row it labels.
+	labeledRowsTabPointPt = 12.0
+	// labeledRowsTabInsetRight is a tab's right text inset: the uniform
+	// margin less the half point the preset's text rectangle already keeps
+	// clear, so the keyword has the width a plain block gave it.
+	labeledRowsTabInsetRight = defaultShapeInsetLRPt - labeledRowsTabPointPt/2
 )
 
 // labeledRowsStyles are the accepted overrides.label_style values.
-var labeledRowsStyles = []string{labeledRowsStyleTinted, labeledRowsStyleFilled, labeledRowsStyleText}
+var labeledRowsStyles = []string{labeledRowsStyleTab, labeledRowsStyleTinted, labeledRowsStyleFilled, labeledRowsStyleText}
+
+// labeledRowsStyle is the effective overrides.label_style.
+func labeledRowsStyle(ovr *LabeledRowsOverrides) string {
+	if ovr == nil || ovr.LabelStyle == "" {
+		return labeledRowsStyleTab
+	}
+	return ovr.LabelStyle
+}
 
 func (l *labeledRows) Name() string { return "labeled-rows" }
 func (l *labeledRows) Description() string {
-	return "2-6 rows, each a keyword label block on the left (neutral-tint block under an accent rule with bold accent keyword + optional sublabel, a solid accent block, or accent-coloured text) beside 1-4 lines of body text, rules between content-sized rows"
+	return "2-6 rows, each a keyword label on the left (a pale accent pentagon tab pointing into its row with a bold keyword + optional sublabel, a neutral-tint block under an accent rule, a solid accent block, or accent-coloured text) beside 1-4 lines of body text, rules between content-sized rows"
 }
 func (l *labeledRows) UseWhen() string {
 	return "2–6 parallel themes each introduced by a short keyword label (WHY / WHAT / HOW, Smarter / Faster / Leaner, Adopt / Adapt / Assemble) followed by 1–4 lines of explanation; prefer exec-summary for 3–5 numbered sentence-length conclusions, metric-list when each row leads with a number, comparison-2col for two options side by side, scqa-summary for a Situation / Complication / Questions / Answer arc"
@@ -159,7 +176,7 @@ func (l *labeledRows) Schema() *Schema {
 		map[string]*Schema{
 			"accent":           StringSchema(0).WithDescription("Accent scheme color for the label rules, keywords and filled blocks (default: the template's color_roles.primary_fill)").WithDefault("accent1"),
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"label_style":      EnumSchema(labeledRowsStyles...).WithDescription("tinted (default): neutral-tint block under a thin accent rule, keyword in bold accent type, so a column of labels does not read as a row of accent blocks; filled: solid accent block with the keyword in measured-contrast text (legacy look); text: no fill, keyword in accent-coloured bold type").WithDefault(labeledRowsStyleTinted),
+			"label_style":      EnumSchema(labeledRowsStyles...).WithDescription("tab (default): pale accent pentagon tab pointing into its row, bold keyword; tinted: neutral-tint block under a thin accent rule, keyword in bold accent type; filled: solid accent block with the keyword in measured-contrast text (legacy look); text: no fill, keyword in accent-coloured bold type").WithDefault(labeledRowsStyleTab),
 			"label_width_pct":  NumberSchema(labeledRowsMinLabelPct, labeledRowsMaxLabelPct).WithDescription("Width of the label column as a percentage of the pattern width (default 22)"),
 			"label_size":       NumberSchema(12, 40).WithDescription("Keyword font size in points (default 22 stepping down to 16 as content grows)"),
 			"body_size":        NumberSchema(12, 28).WithDescription("Body font size in points (default 15 stepping down to 12); the sublabel is 2pt smaller than the body, never below 12"),
@@ -197,7 +214,7 @@ func (l *labeledRows) Validate(values, overrides any, cellOverrides map[int]any)
 				errs = append(errs, err)
 			}
 			switch ovr.LabelStyle {
-			case "", labeledRowsStyleTinted, labeledRowsStyleFilled, labeledRowsStyleText:
+			case "", labeledRowsStyleTab, labeledRowsStyleTinted, labeledRowsStyleFilled, labeledRowsStyleText:
 			default:
 				errs = append(errs, newValidationError(name, "overrides.label_style", ErrCodeUnknownEnum,
 					fmt.Sprintf("labeled-rows: overrides.label_style must be one of %s, got %q", strings.Join(labeledRowsStyles, ", "), ovr.LabelStyle),
@@ -255,6 +272,7 @@ type labeledRowsLayout struct {
 	unfitLabels                   []int // rows whose keyword breaks mid-word even at the floor
 	labelTextW, bodyFrameW, areaH float64
 	rowGapPt                      float64 // labeledRowsRowGapPt on the template grid
+	labelColW                     float64 // label column width
 }
 
 func (l labeledRowsLayout) natural() float64 {
@@ -312,7 +330,11 @@ func measureLabeledRows(ctx ExpandContext, vals *LabeledRowsValues, cols []float
 	if filled {
 		inset = labeledRowsBlockInset
 	}
+	// A tab costs the keyword no width: the pentagon's own text rectangle
+	// gives up half the point and the tab's right inset gives it back
+	// (labeledRowsTabInsetRight).
 	lay.labelTextW = labelColW - 2*inset
+	lay.labelColW = labelColW
 	size := labelSize
 	for _, r := range vals.Rows {
 		for _, w := range strings.Fields(r.Label) {
@@ -391,6 +413,7 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	lay := layoutLabeledRows(ctx, vals, ovr)
+	style := labeledRowsStyle(ovr)
 	subInkOnLight := inkOnLight(ctx, "dk2", 4.5)
 
 	var rows []jsonschema.GridRowInput
@@ -402,7 +425,9 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		co, _ := cellOverrides[i].(*LabeledRowsCellOverride)
 
 		var labelCell *jsonschema.GridCellInput
-		if lay.filled && ovr.LabelStyle != labeledRowsStyleFilled {
+		if style == labeledRowsStyleTab {
+			labelCell = labeledRowsTabCell(ctx, r, lay, accent, co)
+		} else if lay.filled && style != labeledRowsStyleFilled {
 			// Tinted by default: a column of solid accent label blocks was a
 			// wall of colour (go-slide-creator-fl11f). The block keeps the
 			// filled geometry and insets, so the measured layout is shared.
@@ -479,7 +504,39 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		Rows:    rows,
 	}
 	fillCappedRows(ctx, grid.Rows, grid.RowGap, labeledRowsMinFillFrac, func(i int) bool { return i%2 == 0 })
+	if style == labeledRowsStyleTab {
+		labeledRowsPointTabs(grid.Rows, lay.labelColW)
+	}
 	return grid, nil
+}
+
+// labeledRowsTabCell is a row's label as a pale pentagon tab pointing into
+// its row: the shape says "this labels that", where the tile under an accent
+// rule was a web card beside a second system of row rules
+// (go-slide-creator-mot7a). The fill is the accent's content swatch and the
+// ink is measured on it.
+func labeledRowsTabCell(ctx ExpandContext, r LabeledRow, lay labeledRowsLayout, accent string, co *LabeledRowsCellOverride) *jsonschema.GridCellInput {
+	tone := tonalContent(ctx, accent)
+	ink := tonalInk(ctx, tone)
+	if co != nil && co.Color != "" {
+		ink = co.Color
+	}
+	return &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+		Geometry: "homePlate",
+		Fill:     tone.fillJSON(),
+		Line:     noLine,
+		Text:     withTextInsetSides(labeledRowsLabelText(r, lay, ink, ink), labeledRowsTabInsetRight, "inset_right"),
+	}}
+}
+
+// labeledRowsPointTabs gives every tab (the first cell of each even row) one
+// point depth, whatever height its row took.
+func labeledRowsPointTabs(rows []jsonschema.GridRowInput, labelColW float64) {
+	for i := 0; i < len(rows); i += 2 {
+		if tab := rows[i].Cells[0]; tab != nil && tab.Shape != nil {
+			tab.Shape.Adjustments = map[string]int64{"adj": swimlanePointAdj(labeledRowsTabPointPt, labelColW, rows[i].MaxHeight)}
+		}
+	}
 }
 
 // PostExpandWarnings reports a keyword that breaks mid-word even at the floor

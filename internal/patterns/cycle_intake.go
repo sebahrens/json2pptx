@@ -257,7 +257,7 @@ func (p *cycleIntake) Schema() *Schema {
 	overrides := textOverridesSchema()
 	overrides.raw.Properties["header_size"] = NumberSchema(12, 24).WithDescription("Label size in points: loop labels (default 14, stepping down to 12 when the list needs it) and intake labels (default 12)")
 	overrides.raw.Properties["body_size"] = NumberSchema(12, 20).WithDescription("Description size in points (default 12)")
-	overrides.raw.Properties["cell_accent_mode"] = EnumSchema("uniform", "alternate", "progressive").WithDescription("Loop only (the intake stays neutral). uniform (default): neutral phases, numbers in the accent. alternate / progressive: each phase takes a light tint of its own accent").WithDefault("uniform")
+	overrides.raw.Properties["cell_accent_mode"] = EnumSchema("uniform", "alternate", "progressive").WithDescription("Loop only (the intake keeps the base tint). uniform (default): tinted phases, dark badges. alternate / progressive: each phase takes a light tint of its own accent").WithDefault("uniform")
 	overrides.raw.Properties["loop_style"] = EnumSchema(cycleIntakeStyles...).WithDescription("segments (default): a ring of phase segments with numbered badges. nodes: numbered circles joined by curved arrows").WithDefault(cycleIntakeStyleSegments)
 
 	return ObjectSchema(map[string]*Schema{
@@ -596,11 +596,11 @@ func cycleIntakeFitLane(ctx ExpandContext, v *CycleIntakeValues, stepW, labelPt 
 }
 
 // cycleIntakeLaneCells is the intake lane: a pentagon, then chevrons whose
-// tails tuck under the point before them, on the neutral step tint with dark
-// ink. The adjust values are set by the caller once the lane's height is
+// tails tuck under the point before them, on the ring's own band tone (the
+// accent's content swatch) with measured ink. The adjust values are set by the caller once the lane's height is
 // known.
-func cycleIntakeLaneCells(ctx ExpandContext, v *CycleIntakeValues, fit valueChainArrowFit) []*jsonschema.GridCellInput {
-	tone := neutralTone(ProcessFlowStepTintPct)
+func cycleIntakeLaneCells(ctx ExpandContext, v *CycleIntakeValues, fit valueChainArrowFit, accent string) []*jsonschema.GridCellInput {
+	tone := ringBandTone(ctx, accent)
 	ink := readableInkOn(ctx, tone, "dk1", ringInkContrastMin)
 	cells := make([]*jsonschema.GridCellInput, len(v.Intake))
 	for i, s := range v.Intake {
@@ -623,7 +623,7 @@ func cycleIntakeLaneCells(ctx ExpandContext, v *CycleIntakeValues, fit valueChai
 // of the writer's measure and the capacity model's line count, so a face
 // wider than the theme font's metrics still gets its lines.
 func cycleIntakeLaneHeight(ctx ExpandContext, v *CycleIntakeValues, fit valueChainArrowFit) float64 {
-	h := fit.rowHeightPt(ctx.themeFonts(), cycleIntakeLaneCells(ctx, v, fit))
+	h := fit.rowHeightPt(ctx.themeFonts(), cycleIntakeLaneCells(ctx, v, fit, ctx.DefaultAccent()))
 	for i, s := range v.Intake {
 		inner := fit.textRectPt(i) - 2*valueChainArrowInsetPt
 		lines := paragraphLines(ctx, sizedPara{text: strings.TrimSpace(s.Label), sizePt: fit.labelPt, bold: true}, inner+2*sizingInsetLRPt)
@@ -855,7 +855,7 @@ func (p *cycleIntake) Expand(ctx ExpandContext, values, overrides any, _ map[int
 	var places []ringPlacement
 	stepW := lay.fit.colWPt
 	laneH := lay.lane.y1 - lay.lane.y0
-	for i, cell := range cycleIntakeLaneCells(ctx, v, lay.fit) {
+	for i, cell := range cycleIntakeLaneCells(ctx, v, lay.fit, base) {
 		cell.Shape.Adjustments = map[string]int64{"adj": lay.fit.adj(i, laneH)}
 		x0 := lay.laneX0 + float64(i)*(stepW+valueChainArrowGapPt)
 		places = append(places, ringPlacement{X0: x0, X1: x0 + stepW, Y0: lay.lane.y0, Y1: lay.lane.y1, Cell: cell})
@@ -955,5 +955,5 @@ func cycleIntakeRing(ctx ExpandContext, v *CycleIntakeValues, ovr *CycleIntakeOv
 	if centre, ok := ringCentreLayer(lay.spec, label, "", lay.centrePt, ""); ok {
 		layers = append(layers, []jsonschema.LayerInput{centre})
 	}
-	return ringCell(layers...), accents
+	return ringCell(layers...), paint.labelAccents(ctx, n)
 }

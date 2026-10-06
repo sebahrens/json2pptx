@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 
@@ -112,20 +113,119 @@ func TestLabeledRows_Validate(t *testing.T) {
 	}
 }
 
-// TestLabeledRows_ExpandTintedDefault: the default label block is a neutral
-// tint under a thin accent rule with the keyword in accent ink, not a solid
-// accent block (go-slide-creator-fl11f).
-func TestLabeledRows_ExpandTintedDefault(t *testing.T) {
+// TestLabeledRows_ExpandTabDefault: the default label is a pentagon tab in the
+// accent's Lighter 80% swatch pointing into its row, with the keyword and the
+// sublabel in ink measured on that swatch — no accent rule, no outline
+// (go-slide-creator-mot7a).
+func TestLabeledRows_ExpandTabDefault(t *testing.T) {
 	p := labeledRowsPattern(t)
 	vals := p.(Exemplar).ExemplarValues().(*LabeledRowsValues)
-	grid, err := p.Expand(fullThemeCtx(), vals, nil, nil)
+	ctx := fullThemeCtx()
+	for _, ovr := range []*LabeledRowsOverrides{nil, {}, {LabelStyle: "tab"}} {
+		eff := &LabeledRowsOverrides{}
+		var o any
+		if ovr != nil {
+			o, eff = ovr, ovr
+		}
+		if got := labeledRowsStyle(eff); got != "tab" {
+			t.Fatalf("labeledRowsStyle(%+v) = %q, want tab", ovr, got)
+		}
+		if err := p.Validate(vals, o, nil); err != nil {
+			t.Fatalf("Validate(%+v): %v", ovr, err)
+		}
+		grid, err := p.Expand(ctx, vals, o, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rows := contentRows(grid)
+		if len(rows) != len(vals.Rows) {
+			t.Fatalf("content rows = %d, want %d", len(rows), len(vals.Rows))
+		}
+		labelColW := layoutLabeledRows(ctx, vals, eff).labelColW
+		tone := tonalContent(ctx, "accent1")
+		const wantFill = `{"color":"accent1","lumMod":20000,"lumOff":80000}`
+		if string(tone.fillJSON()) != wantFill {
+			t.Fatalf("tonalContent(accent1) = %s, want the Lighter 80%% swatch %s", tone.fillJSON(), wantFill)
+		}
+		wantInk := tonalInk(ctx, tone)
+		if wantInk != "dk2" {
+			t.Fatalf("tonalInk on the accent1 swatch = %q, want dk2 on this theme", wantInk)
+		}
+		wantInset := math.Max(swimlanePointInsetMinPt, defaultShapeInsetLRPt-labeledRowsTabPointPt/2)
+		for i, r := range rows {
+			cell := r.Cells[0]
+			if cell.Shape.Geometry != "homePlate" {
+				t.Errorf("row %d label geometry = %q, want the homePlate pentagon", i, cell.Shape.Geometry)
+			}
+			if got := string(cell.Shape.Fill); got != wantFill {
+				t.Errorf("row %d label fill = %s, want %s", i, got, wantFill)
+			}
+			if got := string(cell.Shape.Line); got != `"none"` {
+				t.Errorf("row %d label line = %s, want none", i, got)
+			}
+			if cell.AccentBar != nil {
+				t.Errorf("row %d accent bar = %+v, want none on a tab", i, cell.AccentBar)
+			}
+			wantAdj := swimlanePointAdj(12, labelColW, r.MaxHeight)
+			if got, ok := cell.Shape.Adjustments["adj"]; !ok || got != wantAdj || wantAdj <= 0 || len(cell.Shape.Adjustments) != 1 {
+				t.Errorf("row %d adjustments = %v, want adj=%d (a 12pt point on a %.1f x %.1fpt tab)", i, cell.Shape.Adjustments, wantAdj, labelColW, r.MaxHeight)
+			}
+			txt := cellText(t, cell.Shape.Text)
+			if txt.Paragraphs[0].Content != vals.Rows[i].Label || txt.Paragraphs[0].Color != wantInk || !txt.Paragraphs[0].Bold {
+				t.Errorf("row %d keyword = %+v, want bold %s %q", i, txt.Paragraphs[0], wantInk, vals.Rows[i].Label)
+			}
+			if len(txt.Paragraphs) != 2 || txt.Paragraphs[1].Color != wantInk || txt.Paragraphs[1].Bold {
+				t.Errorf("row %d sublabel = %+v, want one regular %s line", i, txt.Paragraphs[1:], wantInk)
+			}
+			var raw map[string]any
+			if err := json.Unmarshal(cell.Shape.Text, &raw); err != nil {
+				t.Fatal(err)
+			}
+			if got, ok := raw["inset_right"].(float64); !ok || got != wantInset || wantInset >= defaultShapeInsetLRPt {
+				t.Errorf("row %d inset_right = %v, want %v (reduced: the point already clears the body)", i, raw["inset_right"], wantInset)
+			}
+			if _, ok := raw["inset_left"]; ok {
+				t.Errorf("row %d sets inset_left = %v; only the pointed side is reduced", i, raw["inset_left"])
+			}
+			if body := r.Cells[1]; string(body.Shape.Fill) != `"none"` || body.Shape.Geometry != "rect" || body.AccentBar != nil {
+				t.Errorf("row %d body cell = %+v, want an open rect", i, body.Shape)
+			}
+		}
+	}
+
+	// The tab follows the accent override.
+	grid, err := p.Expand(ctx, vals, &LabeledRowsOverrides{Accent: "accent2"}, nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if got, want := string(contentRows(grid)[0].Cells[0].Shape.Fill), string(tonalContent(ctx, "accent2").fillJSON()); got != want || !strings.Contains(got, `"accent2"`) {
+		t.Errorf("accent override: tab fill = %s, want %s", got, want)
+	}
+}
+
+// TestLabeledRows_ExpandTinted: label_style "tinted" (the previous default)
+// still gives a neutral tint under a thin accent rule with the keyword in
+// accent ink, not a solid accent block (go-slide-creator-fl11f).
+func TestLabeledRows_ExpandTinted(t *testing.T) {
+	p := labeledRowsPattern(t)
+	vals := p.(Exemplar).ExemplarValues().(*LabeledRowsValues)
+	grid, err := p.Expand(fullThemeCtx(), vals, &LabeledRowsOverrides{LabelStyle: "tinted"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := len(contentRows(grid)); got != len(vals.Rows) {
+		t.Fatalf("content rows = %d, want %d", got, len(vals.Rows))
 	}
 	for i, r := range contentRows(grid) {
 		cell := r.Cells[0]
 		if strings.HasPrefix(strings.Trim(string(cell.Shape.Fill), `"`), "accent") {
 			t.Errorf("row %d label fill = %s, want a neutral tint", i, cell.Shape.Fill)
+		}
+		if got := string(cell.Shape.Fill); got != neutral4JSON {
+			t.Errorf("row %d label fill = %s, want neutral 4%%", i, got)
+		}
+		if cell.Shape.Geometry != "rect" || len(cell.Shape.Adjustments) != 0 {
+			t.Errorf("row %d label = %q %v, want a plain rect block", i, cell.Shape.Geometry, cell.Shape.Adjustments)
 		}
 		if cell.AccentBar == nil || cell.AccentBar.Position != "top" || cell.AccentBar.Color != "accent1" {
 			t.Errorf("row %d accent bar = %+v, want a top accent1 rule", i, cell.AccentBar)

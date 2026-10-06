@@ -3,6 +3,7 @@ package patterns
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -77,8 +78,9 @@ func TestRadialHub_IconsSitInTheSatellites(t *testing.T) {
 	}
 }
 
-// The icon's ink is measured on the disc it sits on: the neutral tint, the
-// highlighted accent tint and every solid accent of cell_accent_mode.
+// The icon's ink is measured on the disc it sits on: the accent's Lighter 80%
+// swatch, the highlighted deeper rung and every solid accent of
+// cell_accent_mode.
 func TestRadialHub_IconInkReadsOnEveryFill(t *testing.T) {
 	ctx := rhCtx(899, 360)
 	for _, tc := range []struct {
@@ -216,7 +218,8 @@ func TestRingIconsParseBothForms(t *testing.T) {
 }
 
 // A step's icon takes the numeral's place in the node, in the numeral's ink;
-// the number stays as the cue beside the label.
+// only then does the number move beside the label as a cue. A step whose node
+// still shows its numeral is numbered once and gets no cue.
 func TestCycleNodes_IconReplacesTheNumeral(t *testing.T) {
 	ctx := fullThemeCtx()
 	for _, mode := range []string{"", CellAccentProgressive} {
@@ -249,17 +252,52 @@ func TestCycleNodes_IconReplacesTheNumeral(t *testing.T) {
 				t.Errorf("mode %q %s: icon %s on %s is %.2f:1, under %.1f:1", mode, l.Name, ic.Fill, l.Shape.Fill, c, cycleNodesInkContrast)
 			}
 		}
-		// Every step keeps its number cue beside the label.
-		cues := map[string]bool{}
+		// The cue column is reserved once any node shows an icon, but a cue is
+		// drawn only beside the steps whose node shows one: in the text ink,
+		// or in the step's accent ink for the highlighted step and under a
+		// varied cell accent mode.
+		lay, err := cycleNodesMeasure(ctx, v, ovr)
+		if err != nil || lay.mode != cycleNodesLabelsOutside || lay.cueW != cycleNodesCueColPt {
+			t.Fatalf("mode %q: layout %q with a %.1fpt cue column (err %v), want outside with %.1fpt", mode, lay.mode, lay.cueW, err, cycleNodesCueColPt)
+		}
+		cues := map[string]string{}
+		labels := 0
 		for _, c := range cycleNodesTextCells(t, grid) {
-			if len(c.paras) == 1 {
-				cues[c.paras[0].Content] = true
+			if _, err := strconv.Atoi(c.paras[0].Content); err == nil && len(c.paras) == 1 {
+				cues[c.paras[0].Content] = c.paras[0].Color
+				continue
 			}
+			labels++
+		}
+		if labels != len(v.Steps) {
+			t.Errorf("mode %q: %d label cells, want %d", mode, labels, len(v.Steps))
 		}
 		for i := range v.Steps {
-			if !cues[fmt.Sprint(i+1)] {
-				t.Errorf("mode %q: step %d lost its number cue", mode, i+1)
+			ink, has := cues[fmt.Sprint(i+1)]
+			if has != (v.Steps[i].Icon != nil) {
+				t.Errorf("mode %q: step %d number cue = %v, want it only beside an icon node", mode, i+1, has)
+				continue
 			}
+			if !has {
+				continue
+			}
+			want := "dk1"
+			if mode != "" || i == v.Highlight-1 {
+				want = accentInkOnLight(ctx, ctx.ResolveCellAccent(ctx.ResolveAccent("", ""), i, mode), cycleNodesInkContrast)
+			}
+			if ink != want || ink != paints[i].cueInk {
+				t.Errorf("mode %q: step %d cue ink %s, want %s", mode, i+1, ink, want)
+			}
+		}
+	}
+	// Without an icon no step has a cue and no column is reserved for one.
+	v := cycleNodesTestValues(5)
+	if lay, err := cycleNodesMeasure(ctx, v, &CycleNodesOverrides{}); err != nil || lay.cueW != 0 {
+		t.Errorf("no icons: cue column %.1fpt (err %v), want none", lay.cueW, err)
+	}
+	for _, c := range cycleNodesTextCells(t, cycleNodesExpand(t, ctx, v, nil)) {
+		if _, err := strconv.Atoi(c.paras[0].Content); err == nil && len(c.paras) == 1 {
+			t.Errorf("no icons: number cue %q beside a numbered node", c.paras[0].Content)
 		}
 	}
 }

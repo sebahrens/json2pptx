@@ -330,14 +330,31 @@ func (s *scqaSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		{"Answer", vals.Answer},
 	}
 
+	// Roles (go-slide-creator-mot7a, go-slide-creator-x5m8f): each label is
+	// a pentagon tab pointing into its row, in the accent's content swatch;
+	// the Answer — what the page is for — is the one emphasis: a solid accent
+	// tab leading a pale band. The four accent tiles this replaces were
+	// softened to grey tiles under four accent rules.
+	tabTone := tonalContent(ctx, accent)
+	tabInk := tonalInk(ctx, tabTone)
+	answerTone, answerInk := tonalEmphasis(ctx, accent)
+	bandTone := tonalRung(ctx, accent, TonalLighterPale)
+
 	rows := make([]jsonschema.GridRowInput, len(rowSpecs))
 	cellIdx := 0
 	for i, spec := range rowSpecs {
+		tone, ink := tabTone, tabInk
+		contentFill := json.RawMessage(`"none"`)
+		if i == len(rowSpecs)-1 {
+			tone, ink = answerTone, answerInk
+			contentFill = bandTone.fillJSON()
+		}
 		labelCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-				Text:     buildSCQALabelText(spec.label, headerSize),
+				Geometry: "homePlate",
+				Fill:     tone.fillJSON(),
+				Line:     noLine,
+				Text:     buildSCQALabelText(spec.label, headerSize, ink),
 			},
 		}
 		applySCQACellOverride(labelCell, cellOverrides, cellIdx, accent)
@@ -346,7 +363,8 @@ func (s *scqaSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		contentCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(`"none"`),
+				Fill:     contentFill,
+				Line:     noLine,
 				Text:     buildSCQAContentText(spec.body, bodySize),
 			},
 		}
@@ -360,6 +378,21 @@ func (s *scqaSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	needs, avail := scqaRowNeeds(ctx, rowSpecs, labelFit, bodySize)
 	floorFlexRowsAtNeeds(rows, needs, avail)
+	// One point depth on every tab: the rows share the height equally, or in
+	// proportion to their needs once floorFlexRowsAtNeeds floors them.
+	areaW, _ := sizingAreaPt(ctx)
+	labelW, _ := scqaColumnWidthsPt(ctx, areaW, labelFit.weight)
+	total := 0.0
+	for _, n := range needs {
+		total += n
+	}
+	for i := range rows {
+		h := avail / float64(len(rows))
+		if rows[i].Flex > 0 && total > 0 {
+			h = math.Max(needs[i], needs[i]*avail/total)
+		}
+		rows[i].Cells[0].Shape.Adjustments = map[string]int64{"adj": swimlanePointAdj(scqaTabPointPt, labelW, h)}
+	}
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(fmt.Sprintf(`[%g, 4]`, labelFit.weight)),
@@ -374,6 +407,8 @@ func (s *scqaSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 const (
 	scqaColGapPt = 8.0
 	scqaRowGapPt = 6.0
+	// scqaTabPointPt is the depth of a label tab's point.
+	scqaTabPointPt = 12.0
 )
 
 // scqaLabels are the four row labels, each a single word.
@@ -440,7 +475,7 @@ func scqaRowNeeds(ctx ExpandContext, specs []struct {
 	labelW, contentW := scqaColumnWidthsPt(ctx, areaW, label.weight)
 	needs := make([]float64, len(specs))
 	for i, s := range specs {
-		needs[i] = math.Max(writtenFitHeightPt(ctx.themeFonts(), buildSCQALabelText(s.label, label.size), labelW, 0),
+		needs[i] = math.Max(writtenFitHeightPt(ctx.themeFonts(), buildSCQALabelText(s.label, label.size, "dk1"), labelW, 0),
 			writtenFitHeightPt(ctx.themeFonts(), buildSCQAContentText(s.body, bodySize), contentW, 0))
 	}
 	return needs, areaH - float64(len(specs)-1)*ctx.Gap(scqaRowGapPt)
@@ -465,17 +500,19 @@ type scqaTextObj struct {
 	VerticalAlign string          `json:"vertical_align"`
 }
 
-// buildSCQALabelText builds the centered, white-on-accent row label.
-func buildSCQALabelText(label string, size float64) json.RawMessage {
+// buildSCQALabelText builds the centred row label in the given ink.
+func buildSCQALabelText(label string, size float64, ink string) json.RawMessage {
 	textObj := scqaTextObj{
 		Paragraphs: []scqaParagraph{
-			{Content: label, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+			{Content: label, Size: size, Bold: true, Color: ink, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",
 	}
 	data, _ := json.Marshal(textObj)
-	return data
+	// The tab's own text rectangle keeps half the point clear; the right
+	// inset gives that half back, so a label has the width a block gave it.
+	return withTextInsetSides(data, defaultShapeInsetLRPt-scqaTabPointPt/2, "inset_right")
 }
 
 // buildSCQAContentText builds the right-column body text. A single-item list

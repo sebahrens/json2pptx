@@ -99,7 +99,7 @@ var patternMotifs = map[string]patternMotif{
 		overrideStyles: map[string]Motif{"panels": MotifTiles}},
 	"bmc-canvas":           {base: MotifTiles},
 	"capability-heatmap":   {base: MotifTiles},
-	"card-grid":            {base: MotifTiles},
+	"card-grid":            {base: MotifOpenColumns, overrideStyles: cardGridTileStyles},
 	"chart-insights-split": {base: MotifChart},
 	"comparison-2col": {base: MotifOpenColumns,
 		overrideStyles: map[string]Motif{"tiles": MotifTiles}},

@@ -356,7 +356,7 @@ func (r *roadmapPhased) expandBars(ctx ExpandContext, vals *RoadmapPhasedValues,
 	}
 	rows := []jsonschema.GridRowInput{{Cells: header, MinHeight: lay.headerH, MaxHeight: lay.headerH}}
 
-	labelFill := neutralFillJSON(NeutralTint8)
+	labelFill := tonalPanel(ctx, accent).fillJSON()
 	if solid {
 		labelFill = json.RawMessage(`"lt2"`)
 	}

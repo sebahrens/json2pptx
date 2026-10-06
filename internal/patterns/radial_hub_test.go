@@ -451,9 +451,10 @@ func rhSolidAccentLayers(ring *jsonschema.GridCellInput, minFrac float64) []stri
 	return out
 }
 
-// By default the hub is the one solid accent block: the satellites are
-// neutral tints, the highlighted one a tint of the accent, and the spokes are
-// too thin to be blocks.
+// By default the hub is the one solid accent block: the satellites are the
+// accent's Lighter 80% swatch, the highlighted one a deeper rung of the same
+// ladder (Lighter 40%) and still no solid, and the spokes are too thin to be
+// blocks.
 func TestRadialHubHubIsTheOnlySolidAccent(t *testing.T) {
 	for _, hl := range []int{0, 3} {
 		for n := rhMinSpokes; n <= rhMaxSpokes; n++ {
@@ -470,11 +471,11 @@ func TestRadialHubHubIsTheOnlySolidAccent(t *testing.T) {
 					t.Fatalf("satellite %d fill %s", i+1, s.Shape.Fill)
 				}
 				if hl == i+1 {
-					if tone.Color != "accent1" || tone.Tint == 0 {
-						t.Errorf("highlighted satellite fill %s, want a tint of the accent", s.Shape.Fill)
+					if want := (fillTone{Color: "accent1", LumMod: 60000, LumOff: 40000}); tone != want || tone != rhHighlightTone(rhCtx(899, 360), "accent1") {
+						t.Errorf("highlighted satellite fill %s, want the accent's Lighter 40%% %+v", s.Shape.Fill, want)
 					}
-				} else if tone.Color != "dk1" || tone.LumMod == 0 {
-					t.Errorf("satellite %d fill %s, want a neutral tint", i+1, s.Shape.Fill)
+				} else if want := (fillTone{Color: "accent1", LumMod: 20000, LumOff: 80000}); tone != want || tone != tonalContent(rhCtx(899, 360), "accent1") {
+					t.Errorf("satellite %d fill %s, want the accent's Lighter 80%% %+v", i+1, s.Shape.Fill, want)
 				}
 			}
 		}
@@ -508,7 +509,12 @@ func TestRadialHub_ExpandStyling(t *testing.T) {
 				ovr := &RadialHubOverrides{TextOverrides: TextOverrides{Accent: base, CellAccentMode: mode}}
 				ring := rhRingCell(t, rhExpand(t, ctx, rhValues(6, false), ovr))
 				for i, s := range rhLayersNamed(ring, "satellite-") {
-					want := string(neutralFillJSON(NeutralTint16))
+					// Uniform: the base accent's Lighter 80% swatch; the varied
+					// modes ask for accent-filled satellites.
+					want := `{"color":"` + base + `","lumMod":20000,"lumOff":80000}`
+					if got := string(rhSatelliteTone(ctx, base, i, false, mode).fillJSON()); mode == CellAccentUniform && got != want {
+						t.Errorf("rhSatelliteTone(%s, uniform) = %s, want %s", base, got, want)
+					}
 					if mode != CellAccentUniform {
 						want = fmt.Sprintf("%q", ResolveCellAccent(base, i, mode))
 					}

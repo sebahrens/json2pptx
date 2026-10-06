@@ -7,7 +7,8 @@ import (
 // Neutral surfaces and rules (go-slide-creator-pgdkp, go-slide-creator-8xsj3).
 //
 // Pattern surfaces are neutral tints of the template's dk1 ink, not outlined
-// white boxes and not 40–70% accent mid-tints. Filled shapes carry no outline:
+// white boxes and not 40–70% accent mid-tints (which role takes a neutral and
+// which the accent's Lighter swatch is tonal_system.go's). Filled shapes carry no outline:
 // neighbours are separated by white gutters over a neutral field, or by two
 // neutral steps (4% / 8%). The only strokes a pattern draws are thin row
 // dividers (dk1 15%), a header underline, or a 2–3pt accent bar.
@@ -21,7 +22,11 @@ const (
 	NeutralTint4 = 4
 	// NeutralTint8 is the second step of an alternating pair.
 	NeutralTint8 = 8
-	// NeutralTint16 is a structural box (value-chain step, stack tier).
+	// NeutralTint16 is the mid neutral. It is no longer a structural default
+	// (go-slide-creator-x5m8f, tonal_system.go): a shape that is the content
+	// takes the accent's Lighter swatch. It remains the "low" step of a data
+	// ladder, the fallback rung on a template whose accent tint collides, and
+	// the fill of the explicit legacy styles.
 	NeutralTint16 = 16
 	// NeutralTint60 replaces a dk2 structural fill when dk2 is black.
 	NeutralTint60 = 60
