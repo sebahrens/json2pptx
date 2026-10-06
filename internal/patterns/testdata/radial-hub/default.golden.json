@@ -3,9 +3,11 @@
   "row_gap": 0.01,
   "columns": [
     28.402,
-    1.454,
-    40.288,
-    1.454,
+    8.158,
+    13.198,
+    0.485,
+    13.198,
+    8.158,
     28.402
   ],
   "rows": [
@@ -15,9 +17,10 @@
       "cells": [
         {},
         {},
+        {},
         {
           "row_span": 7,
-          "fit": "contain",
+          "fit": "fit-height",
           "layers": [
             {
               "frame": {
@@ -159,7 +162,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "speakerphone",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-1"
             },
@@ -177,7 +186,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "trending-up",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-2"
             },
@@ -195,7 +210,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "headset",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-3"
             },
@@ -213,7 +234,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "report-money",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-4"
             },
@@ -231,7 +258,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "shield-check",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-5"
             },
@@ -249,7 +282,13 @@
                   "lumMod": 16000,
                   "lumOff": 84000
                 },
-                "line": "none"
+                "line": "none",
+                "icon": {
+                  "name": "bulb",
+                  "fill": "accent1",
+                  "position": "center",
+                  "scale": 0.55
+                }
               },
               "name": "satellite-6"
             }
@@ -262,6 +301,7 @@
       "max_height": 39,
       "cells": [
         {
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -295,6 +335,7 @@
         {},
         {},
         {
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -371,6 +412,8 @@
         },
         {},
         {},
+        {},
+        {},
         {
           "shape": {
             "geometry": "rect",
@@ -416,6 +459,7 @@
       "max_height": 39,
       "cells": [
         {
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",
@@ -449,6 +493,7 @@
         {},
         {},
         {
+          "col_span": 2,
           "shape": {
             "geometry": "rect",
             "fill": "none",

@@ -289,6 +289,12 @@ type Layer struct {
 	Frame LayerFrame
 	Shape *ShapeSpec
 	Name  string // Stable id reported in errors and kept on the resolved cell
+	// Icon is an icon overlaid on Shape, laid out inside the layer's frame
+	// exactly as a cell's shape + icon overlay is inside the cell
+	// (iconOverlayBounds): centred when the shape has no text, else beside or
+	// above the text, which gets the matching extra inset. Icons are pictures
+	// written after the slide's shapes, so one sits above every layer.
+	Icon *IconSpec
 }
 
 // LayerFrame places a layer inside its cell's fitted bounds: X, Y, W and H are

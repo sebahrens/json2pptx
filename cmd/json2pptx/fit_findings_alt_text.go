@@ -173,16 +173,9 @@ func cellAltFindingsAt(slideIdx int, cell *GridCellInput, authored bool, cellPat
 			findings = append(findings, makeAltTextFinding(path, slideIdx, "image", src))
 		}
 	}
-	if cell.Icon != nil {
-		if src := iconSourceKind(cell.Icon); src != "" && strings.TrimSpace(cell.Icon.Alt) == "" {
-			path := cellPath + "/icon"
-			findings = append(findings, makeAltTextFinding(path, slideIdx, "icon", src))
-		}
-	}
-	if cell.Shape != nil && cell.Shape.Icon != nil {
-		if src := iconSourceKind(cell.Shape.Icon); src != "" && strings.TrimSpace(cell.Shape.Icon.Alt) == "" {
-			path := cellPath + "/shape/icon"
-			findings = append(findings, makeAltTextFinding(path, slideIdx, "icon", src))
+	for _, ref := range gridCellIcons(cell) {
+		if src := iconSourceKind(ref.icon); src != "" && strings.TrimSpace(ref.icon.Alt) == "" {
+			findings = append(findings, makeAltTextFinding(cellPath+"/"+ref.field, slideIdx, "icon", src))
 		}
 	}
 	return findings

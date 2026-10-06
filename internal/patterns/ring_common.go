@@ -526,6 +526,12 @@ type ringRowsSpec struct {
 	Top      float64         // rows stay inside [Top, Bottom]
 	Bottom   float64         //
 	Exclude  []ringExclusion // bands the rows of a side keep out of
+	// Outward moves a left / right row away from the ring's equator by this
+	// share of half its height times sin² of its item's angle: 0 centres every
+	// row on its anchor, 1 sets the row of an item at 12 o'clock wholly above
+	// its anchor and one at 6 o'clock wholly below (rows at 3 and 9 o'clock
+	// stay centred), clear of whatever leaves the item along the ring.
+	Outward float64
 }
 
 // ringRow is the label row of one item.
@@ -558,6 +564,8 @@ func ringLabelRows(items []ringItem, spec ringRowsSpec) (rows []ringRow, fits bo
 		}
 		rows[i] = ringRow{Index: it.Index, Side: it.Side, AnchorY: ay, Y: ay, H: h}
 		if it.Side == ringSideLeft || it.Side == ringSideRight {
+			sin := math.Sin(degToRad(it.MidDeg))
+			rows[i].Y += spec.Outward * sin * math.Abs(sin) * h / 2
 			bySide[it.Side] = append(bySide[it.Side], i)
 		}
 	}
@@ -566,10 +574,10 @@ func ringLabelRows(items []ringItem, spec ringRowsSpec) (rows []ringRow, fits bo
 		if len(idx) == 0 {
 			continue
 		}
-		sort.SliceStable(idx, func(a, b int) bool { return rows[idx[a]].AnchorY < rows[idx[b]].AnchorY })
+		sort.SliceStable(idx, func(a, b int) bool { return rows[idx[a]].Y < rows[idx[b]].Y })
 		anchors, heights := make([]float64, len(idx)), make([]float64, len(idx))
 		for k, i := range idx {
-			anchors[k], heights[k] = rows[i].AnchorY, rows[i].H
+			anchors[k], heights[k] = rows[i].Y, rows[i].H
 		}
 		ys, ok := ringSpreadBands(anchors, heights, spec.GapPt, ringFreeBands(spec.Top, spec.Bottom, side, spec.Exclude))
 		fits = fits && ok
@@ -942,3 +950,163 @@ func ooxmlAngle(deg float64) int64 {
 func degToRad(deg float64) float64 { return deg * math.Pi / 180 }
 
 func radToDeg(rad float64) float64 { return rad * 180 / math.Pi }
+
+// ---------------------------------------------------------------------------
+// Labels at a constant gap from their circle
+// ---------------------------------------------------------------------------
+//
+// A label beside a ring belongs to one circle: its node, its satellite, or
+// the ring's outer edge at its own height. Its block (number cue included)
+// starts ringLabelGapPt from that circle, measured horizontally where the
+// circle reaches furthest within the row's height (ringBandEdgeX), so every
+// label of every pattern of the family stands the same distance from its
+// circle and the labels follow the curve: a side's labels share no column x.
+//
+// A label that follows the curve stands inside the ring's bounding square, so
+// the ring cell cannot be that square on the lattice (two lattice cells never
+// overlap). The ring cell is a ringSpinePt-wide column through the ring's
+// centre instead, as tall as the ring, with fit "fit-height": its fitted
+// bounds are the square of the cell's height centred on the spine, which is
+// the ring square, and it is a square whatever width the lattice resolves at.
+// No label reaches the spine: a label block ends at least the gap from the
+// centre line.
+
+const (
+	// ringLabelGapPt is the gap between a circle and its label block for the
+	// whole family (scaled to the template gutter by ExpandContext.Gap).
+	ringLabelGapPt = 12.0
+	// ringSpinePt is the width of the ring cell's lattice column: under twice
+	// the label gap, over the lattice's edge-merge distance.
+	ringSpinePt = 4.0
+	// ringSpineFit keeps the ring cell's layers on the square of the cell's
+	// height, centred on the spine.
+	ringSpineFit = "fit-height"
+	// ringSettlePasses bounds ringSettleRows.
+	ringSettlePasses = 4
+	// ringSettleWidthShare is the share of a row's width ringSettleRows
+	// measures it at: a renderer's own face may run a little wider than the
+	// measurer's, and a label that only just holds one line here would wrap
+	// there and outgrow the row sized for it.
+	ringSettleWidthShare = 0.94
+)
+
+// ringEdgeXAt is the x at which a circle of radius rPt about (cxPt, cyPt)
+// ends on the given side (ringSideLeft, otherwise right) at the height yPt.
+// Above and below the circle it is the centre's x.
+func ringEdgeXAt(cxPt, cyPt, rPt, yPt float64, side string) float64 {
+	half := 0.0
+	if dy := math.Abs(yPt - cyPt); dy < rPt {
+		half = math.Sqrt(rPt*rPt - dy*dy)
+	}
+	if side == ringSideLeft {
+		return cxPt - half
+	}
+	return cxPt + half
+}
+
+// ringBandEdgeX is the furthest the circle reaches on the given side within
+// the band y0Pt..y1Pt: its edge at the height of the band nearest its centre.
+func ringBandEdgeX(cxPt, cyPt, rPt, y0Pt, y1Pt float64, side string) float64 {
+	return ringEdgeXAt(cxPt, cyPt, rPt, math.Min(math.Max(cyPt, y0Pt), y1Pt), side)
+}
+
+// ringLabelEdgeX is where the label block of the row y0Pt..y1Pt begins (right
+// of the circle) or ends (left of it): gapPt clear of the circle.
+func ringLabelEdgeX(cxPt, cyPt, rPt, y0Pt, y1Pt, gapPt float64, side string) float64 {
+	edge := ringBandEdgeX(cxPt, cyPt, rPt, y0Pt, y1Pt, side)
+	if side == ringSideLeft {
+		return edge - gapPt
+	}
+	return edge + gapPt
+}
+
+// ringSpinePlacement places a ring cell whose square is sidePt across, centred
+// on cxPt with its top at y0Pt: the lattice column is the spine, and the
+// cell's fit makes its layers' frame the whole square.
+func ringSpinePlacement(cxPt, y0Pt, sidePt float64, cell *jsonschema.GridCellInput) ringPlacement {
+	cell.Fit = ringSpineFit
+	return ringPlacement{X0: cxPt - ringSpinePt/2, X1: cxPt + ringSpinePt/2, Y0: y0Pt, Y1: y0Pt + sidePt, Cell: cell}
+}
+
+// ringSettleRows is ringLabelRows for rows whose width depends on where they
+// stand (a label that follows the curve is wider near a pole than at 3
+// o'clock). spec.Heights are the heights at the narrowest width any row can
+// get, indexed by ringItem.Index; they always hold, and are what comes back
+// when nothing better settles. The left / right rows are then measured again
+// at the width their place gives them, less a margin (widthOf; needAt measures
+// item index at a width), and placed again, until every row holds its text at the width of
+// the place it ends up in. need is the height each item's text takes in the
+// rows returned, indexed like spec.Heights.
+func ringSettleRows(items []ringItem, spec ringRowsSpec, widthOf func(ringRow) float64, needAt func(index int, widthPt float64) float64) (rows []ringRow, need []float64, fits bool) {
+	base := append([]float64(nil), spec.Heights...)
+	spec.Heights = base
+	rows, fits = ringLabelRows(items, spec)
+	if widthOf == nil || needAt == nil {
+		return rows, base, fits
+	}
+	cur, curFits := rows, fits
+	need = append([]float64(nil), base...)
+	for pass := 0; pass < ringSettlePasses; pass++ {
+		next, grew := append([]float64(nil), need...), false
+		for _, r := range cur {
+			if (r.Side != ringSideLeft && r.Side != ringSideRight) || r.Index < 0 || r.Index >= len(base) {
+				continue
+			}
+			// A row never needs more than at the narrowest width.
+			h := math.Min(needAt(r.Index, widthOf(r)*ringSettleWidthShare), base[r.Index])
+			switch {
+			case pass == 0:
+				next[r.Index] = h
+			case h > need[r.Index]+ringAngleEps:
+				next[r.Index], grew = h, true
+			}
+		}
+		if pass > 0 && !grew {
+			// cur was placed at need, and every row holds where it stands.
+			if curFits || !fits {
+				return cur, need, curFits
+			}
+			break
+		}
+		need = next
+		spec.Heights = need
+		cur, curFits = ringLabelRows(items, spec)
+	}
+	return rows, base, fits
+}
+
+// ringProtectEdges keeps the lattice from moving a label block's gap edge.
+// ringLattice collapses x edges under ringEdgeMergePt apart into the lower
+// one, so a block's near edge that happens to lie that close to another cell's
+// edge (a number cue is about as wide as the step between two rows on the
+// curve) would move, and its gap with it. Here every other x edge of places
+// within the merge distance of a gap edge is set onto it, and gap edges that
+// close to each other meet at their mean, before the lattice sees them.
+func ringProtectEdges(places []ringPlacement, gapEdges []float64) {
+	if len(gapEdges) == 0 {
+		return
+	}
+	keep := append([]float64(nil), gapEdges...)
+	sort.Float64s(keep)
+	// Runs of gap edges chained under the merge distance meet at their mean.
+	snapped := make([]float64, 0, len(keep))
+	for i := 0; i < len(keep); {
+		j, sum := i, 0.0
+		for ; j < len(keep) && (j == i || keep[j]-keep[j-1] < ringEdgeMergePt); j++ {
+			sum += keep[j]
+		}
+		snapped = append(snapped, sum/float64(j-i))
+		i = j
+	}
+	snap := func(x float64) float64 {
+		for _, e := range snapped {
+			if math.Abs(x-e) < ringEdgeMergePt+ringAngleEps {
+				return e
+			}
+		}
+		return x
+	}
+	for i := range places {
+		places[i].X0, places[i].X1 = snap(places[i].X0), snap(places[i].X1)
+	}
+}

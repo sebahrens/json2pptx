@@ -25,13 +25,22 @@ import (
 // right.
 //
 // Each lobe is its own fit-"contain" lattice cell, so both stay round in any
-// area; the two squares share an edge, so the rings touch at the crossing.
-// The wedge left open there is the one at which a lobe's centreline is
-// tangent to the straight line through the touching point: cos δ = R / outer
-// radius. Along those two lines run the four arms of the crossing, two per
-// cell (a rotated rect from the lobe's end to the touching point); together
-// they are the X of the eight. The arm that leaves a lobe carries a small
-// arrowhead in the page colour: the direction through the crossing.
+// area; the two squares share an edge, and the middle of that edge is the
+// crossing point. The wedge a lobe leaves open towards it is the one at which
+// the lobe's centreline is tangent to the straight line through the crossing
+// point: cos δ = R / 0.5. Along those two lines run the four arms of the
+// crossing, two per cell: a rotated rect as wide as the band, from inside the
+// lobe's end segment to just past the crossing point, in the band's fill and
+// without an outline — so the band runs through the crossing in one piece and
+// the only gaps in the ribbon are the ones between two numbered segments. (A
+// highlighted or tinted segment keeps its own colour to its end: the neutral
+// arm starts a segment gap away from it.) A rotated layer's frame has to stay
+// inside its cell, which a full-width arm ending on the cell's edge only does
+// when the lobe is a little smaller than its square (cfeBandRadius): the two
+// rings stop 1-5% of a side short of each other and the arms bridge it.
+//
+// The direction is a small dark arrowhead on each arm that leaves the crossing
+// INTO a lobe — the two upper arms, mirror images of each other.
 //
 // Labels are cycle-ring's rows (ring_draw.go, cycleRingOutsideRows): the left
 // lobe's in a right-aligned column on the far left, the right lobe's on the
@@ -137,15 +146,23 @@ const (
 	cfeMinWidthPt  = 2*cfeMinSidePt + 2*(ringNumberColPt+cfeMinLabelPt)
 	cfeMinHeightPt = cfeMinSidePt
 
-	// The crossing. An arm starts cfeArmGapDeg of arc past the lobe's end
-	// (the gap between two segments) and is as wide as the band, or as wide
-	// as its frame can be inside the lobe's cell (cfeArmEdgeFrac of the room
-	// to the cell's edge). The arrowhead on a leaving arm is cfeHeadBaseFrac
-	// of the arm wide and cfeHeadLength times that long.
-	cfeArmGapDeg    = ringDefaultGapDeg
-	cfeArmEdgeFrac  = 0.98
-	cfeHeadBaseFrac = 0.5
-	cfeHeadLength   = 1.5
+	// The crossing. An arm is as wide as the band. It starts cfeArmLapFrac
+	// of a side inside its segment (drawn under it, in the same fill) — or,
+	// when that segment has a colour of its own, cfeArmGapDeg of arc past its
+	// end, the gap between two segments — and ends cfeArmPastFrac of a side
+	// past the crossing point, where the opposite cell's arm takes over.
+	cfeArmGapDeg   = ringDefaultGapDeg
+	cfeArmLapFrac  = 0.02
+	cfeArmPastFrac = 0.012
+
+	// The direction arrowhead on an entering arm: a triangle cfeHeadBaseFrac
+	// of the band wide and cfeHeadLength times that long (longer than wide,
+	// so its point is unmistakable), in the text colour at cfeHeadAlpha
+	// opacity. It sits midway along the part of the arm the other band does
+	// not cross.
+	cfeHeadBaseFrac = 0.38
+	cfeHeadLength   = 1.45
+	cfeHeadAlpha    = 60.0
 )
 
 // cfeLeftCount is how many of n phases sit on the left lobe: the authored
@@ -299,7 +316,7 @@ type cfeLobe struct {
 	labelPt   float64
 	labelFits bool
 	arms      [2]cfeArm // into the lobe's first segment, out of its last
-	head      cfeArm    // the arrowhead on the leaving arm
+	head      cfeArm    // the direction arrowhead on the entering arm
 }
 
 // cfeLayout carries every measurement Expand and PostExpandWarnings share. The
@@ -318,36 +335,85 @@ type cfeArm struct {
 	rotDeg float64
 }
 
-// cfeOpenDeg is the half-opening of a lobe at the crossing: the angle at
-// which the lobe's centreline is tangent to the straight line through the
-// point where the two rings touch (cos δ = R / outer radius).
-func cfeOpenDeg(spec ringSpec) float64 {
-	return radToDeg(math.Acos(math.Min(spec.Radius/spec.outerRadius(), 1)))
+// cfeCrossDist is how far the crossing point is from a lobe's centre: half
+// the cell's side (the middle of the edge the two cells share).
+const cfeCrossDist = 0.5
+
+// cfeBandRadius is the centreline radius of a lobe whose band is thickness
+// wide (fractions of the cell's side): the largest at which a full-width arm
+// from the lobe's end to the crossing point has its unrotated frame inside
+// the cell. The arm's centre is halfway between the lobe's end, at
+// x = 0.5 + R·cos δ = 0.5 + 2R², and the cell's edge, so half the arm's width
+// has to fit in (0.5 − 2R²)/2: R = √((0.5 − thickness)/2). The band then
+// stops short of the cell's edge.
+func cfeBandRadius(thickness float64) float64 {
+	return math.Min(math.Sqrt(math.Max(cfeCrossDist-thickness, 0)/2), cfeCrossDist-thickness/2)
 }
 
-// cfeArmAt is the arm between the lobe's centreline at deg and the touching
-// point (touchX, 0.5) on the cell's edge, and the arrowhead on it pointing at
-// that point. The arm starts a segment gap away from the lobe's end.
-func cfeArmAt(spec ringSpec, deg, touchX float64) (arm, head cfeArm) {
+// cfeLobeDiameter is the outer diameter (fraction of the cell's side) of a
+// lobe whose band is frac of that diameter wide: cfeBandRadius solved for a
+// thickness of frac × diameter.
+func cfeLobeDiameter(frac float64) float64 {
+	return (math.Sqrt(frac*frac+(1-frac)*(1-frac)) - frac) / ((1 - frac) * (1 - frac))
+}
+
+// cfeOpenDeg is the half-opening of a lobe at the crossing: the angle at
+// which the lobe's centreline is tangent to the straight line through the
+// crossing point (cos δ = R / distance to that point).
+func cfeOpenDeg(spec ringSpec) float64 {
+	return radToDeg(math.Acos(math.Min(spec.Radius/cfeCrossDist, 1)))
+}
+
+// cfeArmAt is the arm between the lobe's centreline at deg and the crossing
+// point (touchX, 0.5) on the cell's edge. A joined arm starts inside the
+// lobe's end segment, any other a segment gap past it; both end just past the
+// crossing point.
+func cfeArmAt(spec ringSpec, deg, touchX float64, joined bool) cfeArm {
 	px, py := pointOnCircle(0.5, 0.5, spec.Radius, deg)
 	dx, dy := touchX-px, 0.5-py
 	dist := math.Hypot(dx, dy)
 	if dist < ringAngleEps {
-		return arm, head
+		return cfeArm{}
 	}
 	ux, uy := dx/dist, dy/dist
-	gap := math.Min(spec.Radius*degToRad(cfeArmGapDeg), dist/2)
-	px, py = px+gap*ux, py+gap*uy
-	length := dist - gap
-	mx, my := (px+touchX)/2, (py+0.5)/2
+	from := -cfeArmLapFrac
+	if !joined {
+		from = math.Min(spec.Radius*degToRad(cfeArmGapDeg), dist/2)
+	}
+	to := dist + cfeArmPastFrac
+	mid := (from + to) / 2
+	mx, my := px+mid*ux, py+mid*uy
 	// The unrotated frame (width × length) must stay inside the cell.
-	width := math.Min(spec.Thickness, 2*math.Abs(touchX-mx)*cfeArmEdgeFrac)
-	rot := normDeg(radToDeg(math.Atan2(ux, -uy))) // a triangle points up at 0
-	arm = cfeArm{frame: ringFrame{X: mx - width/2, Y: my - length/2, W: width, H: length}, rotDeg: rot}
-	base := width * cfeHeadBaseFrac
-	headLen := math.Min(base*cfeHeadLength, length*0.8)
-	head = cfeArm{frame: ringFrame{X: mx - base/2, Y: my - headLen/2, W: base, H: headLen}, rotDeg: rot}
-	return arm, head
+	width := math.Min(spec.Thickness, 2*math.Min(mx, 1-mx))
+	return cfeArm{
+		frame:  ringFrame{X: mx - width/2, Y: my - (to-from)/2, W: width, H: to - from},
+		rotDeg: normDeg(radToDeg(math.Atan2(ux, -uy))), // the frame's top points at the crossing
+	}
+}
+
+// cfeHeadAt is the direction arrowhead on the arm that enters the lobe at
+// deg: centred on the arm's axis, pointing away from the crossing point,
+// midway along the stretch between the other band's edge and the lobe's end.
+func cfeHeadAt(spec ringSpec, deg, touchX float64) cfeArm {
+	px, py := pointOnCircle(0.5, 0.5, spec.Radius, deg)
+	dx, dy := touchX-px, 0.5-py
+	dist := math.Hypot(dx, dy)
+	if dist < ringAngleEps {
+		return cfeArm{}
+	}
+	ux, uy := dx/dist, dy/dist
+	// The two bands cross at twice the arm's angle to the horizontal; the
+	// other band covers this one up to free from the crossing point.
+	sin, cos := math.Abs(2*ux*uy), math.Abs(ux*ux-uy*uy)
+	free := math.Min(spec.Thickness/2*(1+cos)/math.Max(sin, ringAngleEps), dist)
+	at := (free + dist) / 2
+	cx, cy := touchX-at*ux, 0.5-at*uy
+	base := spec.Thickness * cfeHeadBaseFrac
+	length := math.Min(base*cfeHeadLength, (dist-free)*0.8)
+	return cfeArm{
+		frame:  ringFrame{X: cx - base/2, Y: cy - length/2, W: base, H: length},
+		rotDeg: normDeg(radToDeg(math.Atan2(-ux, uy))), // a triangle points up at 0
+	}
 }
 
 // errCFENarrow refuses an area that cannot hold two lobes and their label
@@ -424,9 +490,14 @@ func cfePlace(ctx ExpandContext, v *CycleFigureEightValues, ovr *CycleFigureEigh
 	lay.x0 = (lay.w - 2*lay.side) / 2
 	lay.labelW = math.Max(lay.x0-ringNumberColPt, 1)
 
-	band := newRingSpec(1).withBand(1, ringBandFrac(cycleRingThicknessFrac(ovr.Thickness), lay.side))
+	// The band is its share of the lobe's diameter (wider on a small lobe, so
+	// it still carries its badge), and the lobe as large as its arms allow.
+	want := cycleRingThicknessFrac(ovr.Thickness)
+	thickness := ringBandFrac(want*cfeLobeDiameter(want), lay.side)
+	band := newRingSpec(1).withBand(2*cfeBandRadius(thickness)+thickness, thickness)
 	open := cfeOpenDeg(band)
 	touch := [2]float64{1, 0}
+	plain := ovr.CellAccentMode != "alternate" && ovr.CellAccentMode != "progressive"
 	// Left: counter-clockwise from the upper side of the crossing (3 o'clock
 	// on its ring). Right: clockwise from the upper side of the crossing
 	// (9 o'clock on its ring).
@@ -437,7 +508,7 @@ func cfePlace(ctx ExpandContext, v *CycleFigureEightValues, ovr *CycleFigureEigh
 	lay.items = lay.items[:0:0]
 	for li := range lay.lobes {
 		lobe := &lay.lobes[li]
-		lobe.spec = lobe.spec.withBand(1, band.Thickness)
+		lobe.spec = lobe.spec.withBand(2*band.outerRadius(), band.Thickness)
 		items, err := lobe.spec.items()
 		if err != nil {
 			return lay, fmt.Errorf("cycle-figure-eight: %w", err)
@@ -452,8 +523,10 @@ func cfePlace(ctx ExpandContext, v *CycleFigureEightValues, ovr *CycleFigureEigh
 			it.Side = labelSide
 			lay.items = append(lay.items, it)
 		}
-		lobe.arms[0], _ = cfeArmAt(lobe.spec, items[0].StartDeg, touch[li])
-		lobe.arms[1], lobe.head = cfeArmAt(lobe.spec, items[len(items)-1].EndDeg, touch[li])
+		first, last := lobe.from, lobe.from+len(items)-1
+		lobe.arms[0] = cfeArmAt(lobe.spec, items[0].StartDeg, touch[li], plain && !v.Phases[first].Highlight)
+		lobe.arms[1] = cfeArmAt(lobe.spec, items[len(items)-1].EndDeg, touch[li], plain && !v.Phases[last].Highlight)
+		lobe.head = cfeHeadAt(lobe.spec, items[0].StartDeg, touch[li])
 		lobe.labelPt, lobe.labelFits = ringCentreFit(ctx, lobe.spec, lay.side, lobe.label, "")
 	}
 	lay.spec = lay.lobes[0].spec
@@ -561,16 +634,17 @@ func (p *cycleFigureEight) Expand(ctx ExpandContext, values, overrides any, _ ma
 			{
 				cfeArmLayer(lobe.prefix+"arm-in", "rect", lobe.arms[0], neutralFillJSON(ringSegmentTint)),
 				cfeArmLayer(lobe.prefix+"arm-out", "rect", lobe.arms[1], neutralFillJSON(ringSegmentTint)),
-				cfeArmLayer(lobe.prefix+"arrowhead", "triangle", lobe.head, fillTone{Color: "lt1"}.fillJSON()),
 			},
 			ringSegmentLayers(ctx, lobe.spec, lobe.items, paint),
+			{cfeHeadLayer(lobe.prefix+"arrowhead", lobe.head)},
 			ringBadgeLayers(ctx, lobe.spec, lobe.items, paint),
 		}
 		if centre, ok := ringCentreLayer(lobe.spec, lobe.label, "", lobe.labelPt, lobe.prefix); ok {
 			layers = append(layers, []jsonschema.LayerInput{centre})
 		}
-		x0 := lay.x0 + float64(li)*lay.side
-		places = append(places, ringPlacement{X0: x0, X1: x0 + lay.side, Y0: lay.y0, Y1: lay.y0 + lay.side, Cell: ringCell(layers...)})
+		// The labels follow the lobes into their bounding squares, so each
+		// lobe's cell is the spine column through its centre.
+		places = append(places, ringSpinePlacement(lay.x0+(float64(li)+0.5)*lay.side, lay.y0, lay.side, ringCell(layers...)))
 	}
 	places = append(places, lay.labelPlaces(ctx, v.Phases, accents)...)
 
@@ -589,4 +663,10 @@ func cfeArmLayer(name, geometry string, a cfeArm, fill json.RawMessage) jsonsche
 		Frame: a.frame.layer(),
 		Shape: &jsonschema.ShapeSpecInput{Geometry: geometry, Fill: fill, Line: noLine, Rotation: a.rotDeg},
 	}
+}
+
+// cfeHeadLayer is the direction arrowhead on an entering arm: the text
+// colour, muted, so it reads on the band without being a second accent.
+func cfeHeadLayer(name string, a cfeArm) jsonschema.LayerInput {
+	return cfeArmLayer(name, "triangle", a, fillTone{Color: "dk1", Alpha: cfeHeadAlpha}.fillJSON())
 }

@@ -303,6 +303,18 @@ var patternValueWarningCodes = map[string]bool{
 	patterns.ErrCodeBodyTooLong:      true,
 	patterns.ErrCodeHeadlineTooLong:  true,
 	patterns.ErrCodeTextExceedsShape: true,
+	patterns.ErrCodeNodeLabelTooLong: true,
+}
+
+// patternWarningFix is the executable fix a pattern warning's code carries by
+// itself, whatever value it names: NODE_LABEL_TOO_LONG moves the labels of a
+// circular pattern out of its circles (go-slide-creator-ptf78). nil for the
+// codes whose remedy is a rewrite.
+func patternWarningFix(code string) *patterns.FixSuggestion {
+	if code == patterns.ErrCodeNodeLabelTooLong {
+		return patterns.OutsideLabelsFix()
+	}
+	return nil
 }
 
 // patternValueAliases are the authored keys a pattern accepts for a value it
@@ -329,7 +341,13 @@ func patternWarningFinding(slideIdx int, p *PatternInput, warning string) *patte
 		return nil
 	}
 	f := patternWarningAsFinding(slideIdx, p.Name, warning)
-	if f == nil || !patternValueWarningCodes[f.Code] || len(p.Values) == 0 {
+	if f == nil {
+		return nil
+	}
+	// The fix edits the slide's own pattern block, so it is carried only here
+	// (a compose segment's pattern is not what repair_slide addresses).
+	f.Fix = patternWarningFix(f.Code)
+	if !patternValueWarningCodes[f.Code] || len(p.Values) == 0 {
 		return f
 	}
 	m := patternWarningRE.FindStringSubmatch(warning)

@@ -216,8 +216,9 @@ func TestCycleFigureEightComposeSegmentsAcrossTemplates(t *testing.T) {
 // Whatever rectangle the lobes' cells finally get, each lobe resolves to a
 // square and both to the same size, side by side and never overlapping: here
 // the expansion is nested in a grid of the default slide bounds, wider and
-// taller than the area the pattern measured. (At the measured size the lobes
-// touch: internal/patterns TestFigureEightLobesAreTangent.)
+// taller than the area the pattern measured. (At the measured size the lobes'
+// squares share an edge: internal/patterns
+// TestFigureEightLobesMeetAtTheCrossing.)
 func TestCycleFigureEightLobesStayRound(t *testing.T) {
 	reg := patterns.Default()
 	figure := PatternInput{Name: "cycle-figure-eight", Values: json.RawMessage(`{"phases":[{"label":"Plan"},{"label":"Code"},{"label":"Test"},{"label":"Release"},{"label":"Operate"},{"label":"Monitor"}]}`)}
@@ -320,6 +321,7 @@ var (
 	cfeSpRe  = regexp.MustCompile(`(?s)<p:sp>.*?</p:sp>`)
 	cfeOffRe = regexp.MustCompile(`<a:off x="(-?\d+)" y="(-?\d+)"/><a:ext cx="(\d+)" cy="(\d+)"/>`)
 	cfeSldSz = regexp.MustCompile(`<p:sldSz cx="(\d+)" cy="(\d+)"`)
+	cfeAdj3  = regexp.MustCompile(`<a:gd name="adj3" fmla="val (\d+)"/>`)
 )
 
 func cfeZipText(t *testing.T, pptxPath, name string) string {
@@ -343,10 +345,11 @@ func cfeZipText(t *testing.T, pptxPath, name string) string {
 
 // Run with JSON2PPTX_CYCLE_FIGURE_EIGHT_RENDER=1 (needs soffice and pdftoppm
 // on PATH): renders the figure through LibreOffice and samples the crossing.
-// The four arms must leave no unfilled gap along either diagonal between the
-// touching point and 60% of the way to each lobe's end — the only designed
-// gap is the segment-wide one where an arm meets its lobe — and the touching
-// point itself must be filled.
+// The band must run through it in one piece: along both diagonals, from the
+// crossing point to each lobe's end and on into the lobe's end segment, no
+// pixel is the page colour (no gap where an arm meets its lobe, none at the
+// crossing point). The two upper arms — the ones that enter a lobe — carry a
+// dark arrowhead on the band; the two lower arms carry nothing.
 func TestCycleFigureEightCrossingRendersFilled(t *testing.T) {
 	if os.Getenv("JSON2PPTX_CYCLE_FIGURE_EIGHT_RENDER") == "" {
 		t.Skip("set JSON2PPTX_CYCLE_FIGURE_EIGHT_RENDER=1")
@@ -388,23 +391,28 @@ func TestCycleFigureEightCrossingRendersFilled(t *testing.T) {
 				}
 				slideW, _ := strconv.ParseFloat(m[1], 64)
 				slideH, _ := strconv.ParseFloat(m[2], 64)
-				var minX, maxX, top, side float64
+				var minX, maxX, top, side, bandFrac float64
 				minX = math.Inf(1)
 				for _, sp := range cfeSpRe.FindAllString(cfeZipText(t, path, "ppt/slides/slide1.xml"), -1) {
 					if !strings.Contains(sp, `prst="blockArc"`) {
 						continue
 					}
 					o := cfeOffRe.FindStringSubmatch(sp)
-					if o == nil {
+					g := cfeAdj3.FindStringSubmatch(sp)
+					if o == nil || g == nil {
 						continue
 					}
 					x, _ := strconv.ParseFloat(o[1], 64)
 					y, _ := strconv.ParseFloat(o[2], 64)
 					cx, _ := strconv.ParseFloat(o[3], 64)
-					minX, maxX, top, side = math.Min(minX, x), math.Max(maxX, x), y, cx
+					adj3, _ := strconv.ParseFloat(g[1], 64)
+					minX, maxX, top, side, bandFrac = math.Min(minX, x), math.Max(maxX, x), y, cx, adj3/100000
 				}
-				if side == 0 || maxX-minX < side*0.99 || maxX-minX > side*1.01 {
-					t.Fatalf("lobes at x=%.0f and x=%.0f with side %.0f EMU are not two touching squares", minX, maxX, side)
+				// The rings are a little smaller than their cells, which share
+				// an edge: the centres are one cell side apart.
+				cell := maxX - minX
+				if side == 0 || side > cell*1.001 || side < cell*0.94 {
+					t.Fatalf("lobes at x=%.0f and x=%.0f, %.0f EMU across, are not two rings of 94-100%% of adjoining squares", minX, maxX, side)
 				}
 				b := img.Bounds()
 				px := func(x, y float64) color.Color {
@@ -416,26 +424,38 @@ func TestCycleFigureEightCrossingRendersFilled(t *testing.T) {
 					d := func(p, q uint32) float64 { return math.Abs(float64(p) - float64(q)) }
 					return d(ar, cr)+d(ag, cg)+d(ab, cb) < 3*0x0600
 				}
-				touchX, touchY := maxX, top+side/2
+				touchX, touchY := minX+side/2+cell/2, top+side/2
 				// The page: the hole of the left lobe (no lobe title on this deck).
 				page := px(minX+side/2, touchY)
 				fill := px(touchX, touchY)
 				if same(fill, page) {
-					t.Fatalf("the touching point is the page colour: the crossing is not filled")
+					t.Fatalf("the crossing point is the page colour: the crossing is not filled")
 				}
-				// Regular band: the lobe's end is at (±0.18, ±0.24) of the side
-				// from the touching point. The leaving (lower) arms carry the
-				// page-coloured arrowhead from about a quarter of the way.
-				for _, dir := range [][2]float64{{-0.18, -0.24}, {-0.18, 0.24}, {0.18, -0.24}, {0.18, 0.24}} {
-					limit := 0.6
-					if dir[1] > 0 {
-						limit = 0.2
-					}
-					for step := 0.0; step <= limit; step += 0.05 {
-						x, y := touchX+dir[0]*side*step, touchY+dir[1]*side*step
-						if got := px(x, y); !same(got, fill) && same(got, page) {
+				// A lobe's end, in cell sides from the crossing point: its
+				// centreline radius is R, the tangent from the crossing point
+				// (half a side from the centre) meets it at cos δ = 2R.
+				radius := (side - bandFrac*side) / 2 / cell
+				endX, endY := 0.5-2*radius*radius, radius*math.Sqrt(1-4*radius*radius)
+				for _, dir := range [][2]float64{{-endX, -endY}, {-endX, endY}, {endX, -endY}, {endX, endY}} {
+					dark := 0
+					// Past 100% the samples are on the lobe's end segment (the
+					// tangent leaves the band slowly).
+					for step := 0.0; step <= 1.12; step += 0.02 {
+						x, y := touchX+dir[0]*cell*step, touchY+dir[1]*cell*step
+						got := px(x, y)
+						switch {
+						case same(got, fill):
+						case same(got, page):
 							t.Errorf("arm towards (%.2f, %.2f): unfilled at %.0f%% of its length", dir[0], dir[1], step*100)
+						default:
+							dark++
 						}
+					}
+					switch upper := dir[1] < 0; {
+					case upper && dark < 3:
+						t.Errorf("arm towards (%.2f, %.2f) enters its lobe: %d samples on an arrowhead, want at least 3", dir[0], dir[1], dark)
+					case !upper && dark > 0:
+						t.Errorf("arm towards (%.2f, %.2f) leaves its lobe: %d samples are neither band nor page, want a plain band", dir[0], dir[1], dark)
 					}
 				}
 			})

@@ -44,9 +44,9 @@
         "name": "cycle-nodes",
         "values": {
           "steps": [
-            {"label": "Sense demand", "description": "Read orders, stock and competitor prices every night"},
-            {"label": "Reprice", "description": "Move list prices inside the guardrails set by category leads"},
-            {"label": "Learn", "description": "Feed the margin and volume response back into the model"}
+            {"label": "Sense demand", "description": "Read orders, stock and competitor prices every night", "icon": "eye"},
+            {"label": "Reprice", "description": "Move list prices inside the guardrails set by category leads", "icon": "currency-dollar"},
+            {"label": "Learn", "description": "Feed the margin and volume response back into the model", "icon": "bulb"}
           ],
           "center": {"label": "Pricing loop"},
           "highlight": 1

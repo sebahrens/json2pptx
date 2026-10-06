@@ -24,10 +24,14 @@ import (
 // "contain", so it stays round wherever it lands, and every node, arrow and
 // the optional centre label is a layer of that cell (ring_nodes_draw.go).
 //
-// Labels stand outside the ring in two clean columns, each row beside its
-// node's height and led by the step number that the node carries: the number
-// is the cue that ties a label to its circle. Rows are lattice cells
-// (ringLattice), so nothing can overlap whatever size the grid resolves at.
+// Labels stand outside the ring, each row beside its own node at one constant
+// gap from that node's circle (ringLabelEdgeX), so the labels follow the ring's
+// curve, and each is led by the step number that the node carries: the number
+// is the cue that ties a label to its circle. A step's optional icon takes the
+// numeral's place in the node; the number stays beside the label, and the
+// loop's order is still read from 12 o'clock along the arrows. Rows are lattice cells
+// (ringLattice) and the ring cell is the spine column through the ring's
+// centre (ringSpinePlacement), whose fitted square is the ring.
 // In an area too narrow for two label columns (a compose half) the labels move
 // to one legend column beside the ring; overrides.labels "inside" puts short
 // labels in the nodes themselves.
@@ -40,7 +44,7 @@ type cycleNodes struct{}
 
 func (c *cycleNodes) Name() string { return "cycle-nodes" }
 func (c *cycleNodes) Description() string {
-	return "Recurring loop of 3-8 numbered circles on a ring joined by curved arrows, each step labelled outside the ring (label + optional description), with an optional centre label and one highlighted step"
+	return "Recurring loop of 3-8 numbered circles on a ring joined by curved arrows, each step labelled outside the ring (label + optional description; an optional icon takes the number's place in the circle), with an optional centre label and one highlighted step"
 }
 func (c *cycleNodes) UseWhen() string {
 	return "A closed loop of 3-8 discrete steps that returns to its start (plan-do-check-act, sense-decide-act-learn, a feedback or continuous-improvement cycle) where the steps and the hand-offs between them are the message; prefer cycle-ring when the phases form one continuous filled ring, cycle-intake when linear steps feed the loop, and numbered-step-strip or process-flow when the sequence does not return to the start"
@@ -79,8 +83,9 @@ func (c *cycleNodes) ExemplarValues() any {
 
 // CycleNodesStep is one step of the loop.
 type CycleNodesStep struct {
-	Label       string `json:"label"`
-	Description string `json:"description,omitempty"`
+	Label       string   `json:"label"`
+	Description string   `json:"description,omitempty"`
+	Icon        *IconRef `json:"icon,omitempty"` // replaces the numeral in the node
 }
 
 // CycleNodesCenter is the optional label in the middle of the ring.
@@ -150,14 +155,21 @@ const (
 	// cycleNodesMaxLegendColPt caps the one legend column: a list beside the
 	// ring reads at a longer line than a label hugging its node.
 	cycleNodesMaxLegendColPt = 420.0
-	cycleNodesRingGapPt      = 12.0 // ring square edge to the number cue
-	cycleNodesCueColPt       = 22.0 // number cue column: the numeral plus its gap to the label
+	cycleNodesRingGapPt      = ringLabelGapPt // node circle (legend: ring square) to the number cue
+	cycleNodesCueColPt       = 22.0           // number cue column: the numeral plus its gap to the label
 	cycleNodesRowGapPt       = 6.0
 	cycleNodesMinRowGapPt    = 2.0 // what the row gap gives way to before text shrinks
 	cycleNodesLabelInsetPt   = 2.0 // text margin of the unfilled label frames
 	cycleNodesNodeInsetPt    = 2.0 // text margin of a node that carries its label
 	cycleNodesLabelSpacePt   = 1.0 // space after a label above its description
 	cycleNodesRowSlackPt     = 1.0
+	// cycleNodesRowOutward sets the label of the node at 12 o'clock above its
+	// centre line and the one at 6 o'clock below it (ringRowsSpec.Outward), so
+	// neither stands on the arrow that leaves or meets that node.
+	cycleNodesRowOutward = 1.0
+	// cycleNodesHeadroomShare is the most of its side the ring gives up so
+	// that those labels have the height to stand there.
+	cycleNodesHeadroomShare = 0.2
 
 	// Inside labels use larger nodes; the number moves to a small badge on the
 	// node's inner edge.
@@ -173,7 +185,10 @@ const (
 	// cycleNodesNumeralShare is the largest numeral as a share of its node's
 	// diameter.
 	cycleNodesNumeralShare = 0.40
-	cycleNodesInkContrast  = 4.5
+	// cycleNodesIconScale is a node icon's side as a share of the node's
+	// diameter: inside the circle's inscribed square with air around it.
+	cycleNodesIconScale   = 0.5
+	cycleNodesInkContrast = 4.5
 )
 
 // cycleNodesLegendWidthFracs are the shares of the width the ring takes in
@@ -195,6 +210,7 @@ func (c *cycleNodes) Schema() *Schema {
 	step := ObjectSchema(map[string]*Schema{
 		"label":       StringSchema(cycleNodesLabelMax).WithDescription("Step name, e.g. \"Plan\". Readable budget: about 28 characters with 3-6 steps, 22 with 7-8; 14 (two short words) with labels \"inside\""),
 		"description": StringSchema(cycleNodesDescMax).WithDescription("Optional one-sentence detail under the label. Readable budget: about 70 characters with 3-6 steps, 40 with 7-8 (in a compose half about 50 with 3-5 steps, 20 with 6-7, none with 8); BODY_TOO_LONG names the step that outgrows its row. Not drawn with labels \"inside\""),
+		"icon":        IconRefSchema("Optional icon in the node in place of its number (the number stays beside the label): bundled name or {name|path|url|svg_data, fill?, alt?}. Not with labels \"inside\""),
 	}, []string{"label"}).WithAdditionalProperties(false)
 
 	valuesSchema := ObjectSchema(map[string]*Schema{
@@ -301,7 +317,7 @@ func validateCycleNodesSteps(steps []CycleNodesStep, inside bool) []error {
 	if inside && n > cycleNodesInsideMaxSteps {
 		errs = append(errs, newValidationError(name, "overrides.labels", ErrCodeInvalidShape,
 			fmt.Sprintf("cycle-nodes: labels \"inside\" holds at most %d steps (got %d): the nodes of a larger ring are too small for a label — use labels \"outside\"", cycleNodesInsideMaxSteps, n),
-			RemoveFieldFix("overrides.labels")))
+			OutsideLabelsFix()))
 	}
 	for i, s := range steps {
 		labelPath := fmt.Sprintf("steps[%d].label", i)
@@ -313,7 +329,7 @@ func validateCycleNodesSteps(steps []CycleNodesStep, inside bool) []error {
 		case inside && l > cycleNodesInsideLabelMax:
 			errs = append(errs, newValidationError(name, labelPath, ErrCodeMaxLength,
 				fmt.Sprintf("cycle-nodes: %s is %d characters; a label set inside its node holds at most %d — shorten it or use labels \"outside\"", labelPath, l, cycleNodesInsideLabelMax),
-				RemoveFieldFix("overrides.labels")))
+				OutsideLabelsFix()))
 		}
 		descPath := fmt.Sprintf("steps[%d].description", i)
 		switch l := runeLen(s.Description); {
@@ -324,6 +340,17 @@ func validateCycleNodesSteps(steps []CycleNodesStep, inside bool) []error {
 				fmt.Sprintf("cycle-nodes: %s is set but labels \"inside\" draws no descriptions — remove it or use labels \"outside\"", descPath),
 				RemoveFieldFix(descPath)))
 		}
+		if s.Icon == nil {
+			continue
+		}
+		iconPath := fmt.Sprintf("steps[%d].icon", i)
+		if inside && !s.Icon.IsEmpty() {
+			errs = append(errs, newValidationError(name, iconPath, ErrCodeInvalidShape,
+				fmt.Sprintf("cycle-nodes: %s is set but with labels \"inside\" the node carries the label — remove it or use labels \"outside\"", iconPath),
+				RemoveFieldFix(iconPath)))
+			continue
+		}
+		errs = append(errs, validateIconRef(name, iconPath, *s.Icon)...)
 	}
 	return errs
 }
@@ -349,6 +376,8 @@ type cycleNodesLayout struct {
 	mode       string // resolved labels mode
 	w, h       float64
 	side       float64 // ring square
+	widthFrac  float64 // share of the width the ring square may take
+	sideCap    float64 // outside: largest ring square that leaves the pole labels their headroom (0 = none)
 	ringX      float64
 	ringY      float64
 	spec       ringSpec
@@ -357,7 +386,8 @@ type cycleNodesLayout struct {
 	labelSize  float64
 	bodySize   float64
 	numeralPt  float64
-	textW      float64 // label text frame width
+	gap        float64 // node circle to its label block (legend: ring square to the list)
+	textW      float64 // label text frame width: the narrowest a row gets (beside 3 and 9 o'clock)
 	rows       []cycleNodesRow
 	rowsFit    bool
 	rowGap     float64            // gap between label rows the layout settled on
@@ -374,12 +404,12 @@ type cycleNodesLayout struct {
 // cycleNodesMode resolves the labels mode: an authored mode stands; the
 // default is outside, or legend when two label columns would be narrower than
 // cycleNodesMinLabelColPt.
-func cycleNodesMode(ovr *CycleNodesOverrides, w, h float64) string {
+func cycleNodesMode(ovr *CycleNodesOverrides, w, h, gap float64) string {
 	if ovr.Labels != "" {
 		return ovr.Labels
 	}
 	side := cycleNodesRingSide(w, h, cycleNodesRingWidthFrac)
-	if (w-side)/2-cycleNodesRingGapPt-cycleNodesCueColPt < cycleNodesMinLabelColPt {
+	if (w-side)/2-gap-cycleNodesCueColPt < cycleNodesMinLabelColPt {
 		return cycleNodesLabelsLegend
 	}
 	return cycleNodesLabelsOutside
@@ -426,7 +456,8 @@ func cycleNodesMeasure(ctx ExpandContext, v *CycleNodesValues, ovr *CycleNodesOv
 	w, h := sizingAreaPt(ctx)
 	n := len(v.Steps)
 	lay := cycleNodesLayout{
-		mode:     cycleNodesMode(ovr, w, h),
+		mode:     cycleNodesMode(ovr, w, h, ctx.Gap(cycleNodesRingGapPt)),
+		gap:      ctx.Gap(cycleNodesRingGapPt),
 		w:        w,
 		h:        h,
 		bodySize: shapegrid.EffectiveTextSizePt(ResolveSize(ovr.BodySize, cycleNodesBodyPt)),
@@ -462,6 +493,7 @@ func cycleNodesMeasure(ctx ExpandContext, v *CycleNodesValues, ovr *CycleNodesOv
 	for _, frac := range fracs {
 		for _, size := range sizes {
 			lay.labelSize = size
+			lay.sideCap = 0
 			lay.arrange(frac)
 			if lay.mode != cycleNodesLabelsInside {
 				lay.placeRows(ctx, v)
@@ -528,66 +560,83 @@ func (l *cycleNodesLayout) overflow() float64 {
 // legend column with which it is centred as a block. widthFrac is the share
 // of the width the ring may take in the outside and legend layouts.
 func (l *cycleNodesLayout) arrange(widthFrac float64) {
+	l.widthFrac = widthFrac
 	switch l.mode {
 	case cycleNodesLabelsInside:
 		l.side = math.Max(math.Min(l.w, l.h), 1)
 		l.ringX = (l.w - l.side) / 2
 	case cycleNodesLabelsLegend:
 		l.side = cycleNodesRingSide(l.w, l.h, widthFrac)
-		l.textW = math.Min(l.w-l.side-cycleNodesRingGapPt-cycleNodesCueColPt, cycleNodesMaxLegendColPt)
+		l.textW = math.Min(l.w-l.side-l.gap-cycleNodesCueColPt, cycleNodesMaxLegendColPt)
 		l.textW = math.Max(l.textW, 1)
-		l.ringX = math.Max((l.w-l.side-cycleNodesRingGapPt-cycleNodesCueColPt-l.textW)/2, 0)
+		l.ringX = math.Max((l.w-l.side-l.gap-cycleNodesCueColPt-l.textW)/2, 0)
 	default:
 		l.side = cycleNodesRingSide(l.w, l.h, widthFrac)
+		if l.sideCap > 0 {
+			l.side = math.Min(l.side, l.sideCap)
+		}
 		l.ringX = (l.w - l.side) / 2
-		l.textW = math.Min(l.ringX-cycleNodesRingGapPt-cycleNodesCueColPt, cycleNodesMaxLabelColPt)
+		l.textW = math.Min(l.ringX-l.gap-cycleNodesCueColPt, cycleNodesMaxLabelColPt)
 		l.textW = math.Max(l.textW, 1)
 	}
 	l.ringY = (l.h - l.side) / 2
 }
 
 // placeRows measures every label at the current sizes and places its row:
-// beside its node's height in the outside layout, stacked in step order in the
+// beside its own node in the outside layout, stacked in step order in the
 // legend.
 func (l *cycleNodesLayout) placeRows(ctx ExpandContext, v *CycleNodesValues) {
-	n := len(v.Steps)
-	heights := make([]float64, n)
-	for i, s := range v.Steps {
-		heights[i] = cycleNodesRowNeedPt(ctx, s, *l)
+	needAt := func(i int, widthPt float64) float64 {
+		return cycleNodesRowNeedPt(ctx, v.Steps[i], *l, widthPt)
 	}
 	// The gap between rows gives way before any text does.
-	l.placeRowsAt(heights, ctx.Gap(cycleNodesRowGapPt))
+	l.placeRowsAt(len(v.Steps), needAt, ctx.Gap(cycleNodesRowGapPt))
+	if l.mode == cycleNodesLabelsOutside {
+		// The label of a node near 12 or 6 o'clock stands beyond that node's
+		// centre line (cycleNodesRowOutward). Where the block is too short
+		// for that, the ring gives the label its headroom.
+		if side := l.headroomSide(); side < l.side-cycleNodesRowSlackPt {
+			l.sideCap = side
+			l.arrange(l.widthFrac)
+			l.placeRowsAt(len(v.Steps), needAt, ctx.Gap(cycleNodesRowGapPt))
+		}
+	}
 	if !l.rowsFit {
-		l.placeRowsAt(heights, ctx.Gap(cycleNodesMinRowGapPt))
+		l.placeRowsAt(len(v.Steps), needAt, ctx.Gap(cycleNodesMinRowGapPt))
 	}
 }
 
-// placeRowsAt places the rows of the given written heights gap apart.
-func (l *cycleNodesLayout) placeRowsAt(heights []float64, gap float64) {
-	n := len(heights)
+// placeRowsAt places the n rows gap apart; needAt is the written height of
+// step i's label in a text frame of the given width.
+func (l *cycleNodesLayout) placeRowsAt(n int, needAt func(i int, widthPt float64) float64, gap float64) {
 	l.rowGap = gap
 	l.rows = make([]cycleNodesRow, n)
 	l.roomPt = map[string]float64{}
 	l.needPt = map[string]float64{}
 	l.rowsFit = true
+	// Every row holds its text at the narrowest frame a row can get.
+	heights := make([]float64, n)
+	for i := range heights {
+		heights[i] = needAt(i, l.textW)
+	}
 
-	// stack lays the given steps out top to bottom, centred in the block; rows
-	// that are taller than the block together are scaled down to it (the
-	// writer then shrinks their text, and PostExpandWarnings says which).
-	fitHeights := func(idx []int) []float64 {
-		need := float64(len(idx)-1) * gap
+	// fitHeights books the room and the need of the side the steps idx stand
+	// on; rows that are taller than the block together are scaled down to it
+	// (the writer then shrinks their text, and PostExpandWarnings says which).
+	fitHeights := func(idx []int, need []float64) []float64 {
+		total := float64(len(idx)-1) * gap
 		for _, i := range idx {
-			need += heights[i]
+			total += need[i]
 		}
 		side := l.rows[idx[0]].side
-		l.needPt[side], l.roomPt[side] = need, l.h
+		l.needPt[side], l.roomPt[side] = total, l.h
 		out := make([]float64, n)
-		copy(out, heights)
-		if need > l.h {
+		copy(out, need)
+		if total > l.h {
 			l.rowsFit = false
-			scale := math.Max(l.h-float64(len(idx)-1)*gap, 1) / (need - float64(len(idx)-1)*gap)
+			scale := math.Max(l.h-float64(len(idx)-1)*gap, 1) / (total - float64(len(idx)-1)*gap)
 			for _, i := range idx {
-				out[i] = math.Floor(heights[i] * scale)
+				out[i] = math.Floor(need[i] * scale)
 			}
 		}
 		return out
@@ -599,13 +648,13 @@ func (l *cycleNodesLayout) placeRowsAt(heights []float64, gap float64) {
 			idx[i] = i
 			l.rows[i].side = ringSideRight
 		}
-		hs := fitHeights(idx)
+		hs := fitHeights(idx, heights)
 		total := float64(n-1) * gap
 		for _, i := range idx {
 			total += hs[i]
 		}
 		y := math.Max((l.h-total)/2, 0)
-		cue := l.ringX + l.side + cycleNodesRingGapPt
+		cue := l.ringX + l.side + l.gap
 		for _, i := range idx {
 			l.rows[i] = cycleNodesRow{side: ringSideRight, cueX0: cue, cueX1: cue + cycleNodesCueColPt,
 				textX0: cue + cycleNodesCueColPt, textX1: cue + cycleNodesCueColPt + l.textW,
@@ -621,45 +670,89 @@ func (l *cycleNodesLayout) placeRowsAt(heights []float64, gap float64) {
 		l.rows[it.Index].side = it.Side
 		bySide[it.Side] = append(bySide[it.Side], it.Index)
 	}
+	spec := ringRowsSpec{
+		CentreY:  l.h / 2,
+		RadiusPt: l.spec.Radius * l.side,
+		Heights:  heights,
+		GapPt:    gap,
+		Top:      0,
+		Bottom:   l.h,
+		Outward:  cycleNodesRowOutward,
+	}
+	// A row beside a node away from 3 and 9 o'clock starts nearer the centre
+	// line and is wider: it is measured again at the width its place gives it.
+	placed, need, _ := ringSettleRows(items, spec, func(r ringRow) float64 {
+		row := l.rowAt(r)
+		return row.textX1 - row.textX0
+	}, needAt)
 	hs := make([]float64, n)
-	copy(hs, heights)
+	copy(hs, need)
 	for _, side := range []string{ringSideLeft, ringSideRight} {
 		if idx := bySide[side]; len(idx) > 0 {
-			fitted := fitHeights(idx)
+			fitted := fitHeights(idx, need)
 			for _, i := range idx {
 				hs[i] = fitted[i]
 			}
 		}
 	}
-	placed, _ := ringLabelRows(items, ringRowsSpec{
-		CentreY:  l.h / 2,
-		RadiusPt: l.spec.Radius * l.side,
-		Heights:  hs,
-		GapPt:    gap,
-		Top:      0,
-		Bottom:   l.h,
-	})
+	if !l.rowsFit {
+		spec.Heights = hs
+		placed, _ = ringLabelRows(items, spec)
+	}
 	for _, r := range placed {
-		row := cycleNodesRow{side: r.Side, need: heights[r.Index],
-			y0: math.Max(r.Y-r.H/2, 0), y1: math.Min(r.Y+r.H/2, l.h)}
-		if r.Side == ringSideRight {
-			row.cueX0 = l.ringX + l.side + cycleNodesRingGapPt
-			row.cueX1 = row.cueX0 + cycleNodesCueColPt
-			row.textX0, row.textX1 = row.cueX1, row.cueX1+l.textW
-		} else {
-			row.cueX1 = l.ringX - cycleNodesRingGapPt
-			row.cueX0 = row.cueX1 - cycleNodesCueColPt
-			row.textX0, row.textX1 = row.cueX0-l.textW, row.cueX0
-		}
+		row := l.rowAt(r)
+		row.need = need[r.Index]
 		l.rows[r.Index] = row
 	}
 }
 
+// headroomSide is the largest ring square at which every label row of the
+// outside layout stands where its node's angle sets it without leaving the
+// block: the far edge of a row is (1 + outward·sin²)/2 of its height from its
+// node's centre line, and that centre line R·side·|sin| from the block's
+// middle. The ring gives up at most cycleNodesHeadroomShare of its side.
+func (l *cycleNodesLayout) headroomSide() float64 {
+	side := l.side
+	for i, node := range l.nodes {
+		sin := math.Abs(math.Sin(degToRad(node.Deg)))
+		if sin < ringAngleEps || i >= len(l.rows) {
+			continue
+		}
+		reach := (1 + cycleNodesRowOutward*sin*sin) * (l.rows[i].y1 - l.rows[i].y0) / 2
+		side = math.Min(side, (l.h/2-reach)/(l.spec.Radius*sin))
+	}
+	return math.Max(side, math.Max(l.side*(1-cycleNodesHeadroomShare), math.Min(ringMinSidePt, l.side)))
+}
+
+// nodeCircle is node i's circle in points from the block's top-left corner.
+func (l *cycleNodesLayout) nodeCircle(i int) (cx, cy, r float64) {
+	f := l.nodes[i].Frame
+	return l.ringX + (f.X+f.W/2)*l.side, l.ringY + (f.Y+f.H/2)*l.side, f.W * l.side / 2
+}
+
+// rowAt is the label row of the outside layout for a placed ring row: its
+// block (number cue, then label) starts the gap from its own node's circle on
+// the side it stands on, and its text frame runs to the outer edge every row
+// of that side shares.
+func (l *cycleNodesLayout) rowAt(r ringRow) cycleNodesRow {
+	row := cycleNodesRow{side: r.Side, y0: math.Max(r.Y-r.H/2, 0), y1: math.Min(r.Y+r.H/2, l.h)}
+	cx, cy, rad := l.nodeCircle(r.Index)
+	edge := ringLabelEdgeX(cx, cy, rad, row.y0, row.y1, l.gap, r.Side)
+	if r.Side == ringSideRight {
+		row.cueX0, row.cueX1 = edge, edge+cycleNodesCueColPt
+		row.textX0, row.textX1 = row.cueX1, l.ringX+l.side+l.gap+cycleNodesCueColPt+l.textW
+	} else {
+		row.cueX0, row.cueX1 = edge-cycleNodesCueColPt, edge
+		row.textX0, row.textX1 = l.ringX-l.gap-cycleNodesCueColPt-l.textW, row.cueX0
+	}
+	return row
+}
+
 // cycleNodesRowNeedPt is the height the writer needs for one label at the
-// layout's sizes and text width, plus a point of rounding slack.
-func cycleNodesRowNeedPt(ctx ExpandContext, s CycleNodesStep, lay cycleNodesLayout) float64 {
+// layout's sizes in a text frame widthPt wide, plus a point of rounding slack.
+func cycleNodesRowNeedPt(ctx ExpandContext, s CycleNodesStep, lay cycleNodesLayout, widthPt float64) float64 {
 	text := cycleNodesLabelText(s, "l", lay.labelSize, lay.bodySize)
-	return math.Ceil(writtenFitHeightPt(ctx.themeFonts(), text, lay.textW, 0)) + cycleNodesRowSlackPt
+	return math.Ceil(writtenFitHeightPt(ctx.themeFonts(), text, widthPt, 0)) + cycleNodesRowSlackPt
 }
 
 // cycleNodesPlain strips inline markdown markers for measuring.
@@ -668,9 +761,10 @@ func cycleNodesPlain(s string) string {
 }
 
 // PostExpandWarnings reports, by measurement on the current template, the
-// steps whose label rows cannot hold their text at the 12pt floor, an inside
-// label that does not fit its node and a centre label that does not fit the
-// ring.
+// steps whose label rows cannot hold their text at the 12pt floor
+// (BODY_TOO_LONG), an inside label that does not fit its node
+// (NODE_LABEL_TOO_LONG, whose fix moves the labels outside) and a centre label
+// that does not fit the ring (BODY_TOO_LONG).
 func (c *cycleNodes) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*CycleNodesValues)
 	if !ok || v == nil || len(v.Steps) < ringMinItems || len(v.Steps) > ringMaxItems {
@@ -684,8 +778,8 @@ func (c *cycleNodes) PostExpandWarnings(ctx ExpandContext, values, overrides any
 	if lay.mode == cycleNodesLabelsInside {
 		for i, fits := range lay.nodeFits {
 			if !fits {
-				warnings = append(warnings, fmt.Sprintf("%s: cycle-nodes steps[%d].label does not fit its %.0fpt node at %.0fpt on %d lines (a word breaks or the label runs past the circle); keep inside labels to two short words, or set overrides.labels to \"outside\"",
-					ErrCodeBodyTooLong, i, lay.dia*lay.side, cycleNodesFloorPt, cycleNodesInsideLines))
+				warnings = append(warnings, fmt.Sprintf("%s: cycle-nodes steps[%d].label does not fit its %.0fpt node at %.0fpt on %d lines (a word breaks or the label runs past the circle); keep inside labels to two short words, or remove overrides.labels so the labels stand \"outside\" the ring",
+					ErrCodeNodeLabelTooLong, i, lay.dia*lay.side, cycleNodesFloorPt, cycleNodesInsideLines))
 			}
 		}
 	} else if !lay.rowsFit {
@@ -774,6 +868,16 @@ func (c *cycleNodes) Expand(ctx ExpandContext, values, overrides any, _ map[int]
 			return ringNodePaint{Fill: p.fill, Text: ringNodeTextJSON("ctr", "ctr", cycleNodesNodeInsetPt,
 				ringNodePara{Content: pptx.ConvertMarkdownEmphasis(v.Steps[i].Label), Size: lay.nodePt, Bold: true, Color: p.labelInk})}
 		}
+		if icon := v.Steps[i].Icon; icon != nil && !icon.IsEmpty() {
+			// The icon takes the numeral's place and its ink (measured on the
+			// node's own fill), so marks and numerals on one ring share a
+			// colour; the number cue beside the label stays.
+			in := icon.Resolve(p.ink, "center")
+			if in.Scale == 0 {
+				in.Scale = cycleNodesIconScale
+			}
+			return ringNodePaint{Fill: p.fill, Icon: in}
+		}
 		return ringNodePaint{Fill: p.fill, Text: ringNodeTextJSON("ctr", "ctr", -1,
 			ringNodePara{Content: strconv.Itoa(i + 1), Size: lay.numeralPt, Bold: true, Color: p.ink})}
 	})...)
@@ -794,18 +898,29 @@ func (c *cycleNodes) Expand(ctx ExpandContext, values, overrides any, _ map[int]
 			ringNodePara{Content: pptx.ConvertMarkdownEmphasis(v.Center.Label), Size: lay.centrePt, Bold: true, Color: "dk1"})))
 	}
 
+	// Outside labels follow the ring into its bounding square, so the ring
+	// cell is the spine column there; the other layouts keep the square.
 	places := []ringPlacement{{X0: lay.ringX, X1: lay.ringX + lay.side, Y0: lay.ringY, Y1: lay.ringY + lay.side, Cell: ring}}
+	if lay.mode == cycleNodesLabelsOutside {
+		places[0] = ringSpinePlacement(lay.ringX+lay.side/2, lay.ringY, lay.side, ring)
+	}
+	var gapEdges []float64
 	for i, r := range lay.rows {
 		// The label turns towards the ring: right-aligned in the left column.
 		align := "l"
+		gapEdges = append(gapEdges, r.cueX0)
 		if r.side == ringSideLeft {
 			align = "r"
+			gapEdges[i] = r.cueX1
 		}
 		places = append(places,
 			ringPlacement{X0: r.cueX0, X1: r.cueX1, Y0: r.y0, Y1: r.y1, Cell: cycleNodesTextCell(ringNodeTextJSON(align, "t", cycleNodesLabelInsetPt,
 				ringNodePara{Content: strconv.Itoa(i + 1), Size: lay.labelSize, Bold: true, Color: paints[i].cueInk}))},
 			ringPlacement{X0: r.textX0, X1: r.textX1, Y0: r.y0, Y1: r.y1, Cell: cycleNodesTextCell(cycleNodesLabelText(v.Steps[i], align, lay.labelSize, lay.bodySize))},
 		)
+	}
+	if lay.mode == cycleNodesLabelsOutside {
+		ringProtectEdges(places, gapEdges)
 	}
 	grid, err := ringLattice(places, lay.w, lay.h)
 	if err != nil {
@@ -818,7 +933,7 @@ func (c *cycleNodes) Expand(ctx ExpandContext, values, overrides any, _ map[int]
 // cycleNodesPaint is the colouring of one step.
 type cycleNodesPaint struct {
 	fill     json.RawMessage
-	ink      string // numeral in the node
+	ink      string // numeral, or icon, in the node
 	labelInk string // label in the node (labels inside)
 	cueInk   string // number cue beside the label
 }

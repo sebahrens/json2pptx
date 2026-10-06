@@ -1370,8 +1370,8 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 }
 
 // validateGridLayerShapes checks the shapes of a cell's layers as a cell shape
-// is checked (geometry, fill) and refuses an icon on one. It returns how many
-// shapes the layers add to the slide.
+// is checked (geometry, fill). It returns how many shapes the layers add to the
+// slide.
 func validateGridLayerShapes(layers []jsonschema.LayerInput, slideNum, rowIdx, cellIdx int) (shapes int, errors []string) {
 	for li, layer := range layers {
 		if layer.Shape == nil {
@@ -1384,9 +1384,6 @@ func validateGridLayerShapes(layers []jsonschema.LayerInput, slideNum, rowIdx, c
 			errors = append(errors, where+": geometry is required")
 		case !pptx.IsKnownGeometry(layer.Shape.Geometry):
 			errors = append(errors, fmt.Sprintf("%s: unknown geometry %q", where, layer.Shape.Geometry))
-		}
-		if layer.Shape.Icon != nil {
-			errors = append(errors, where+": \"icon\" is not supported on a layer shape; put the icon on the cell (\"icon\" beside \"layers\") or in its own cell")
 		}
 		if len(layer.Shape.Fill) > 0 {
 			if _, err := shapegrid.ResolveFillInput(layer.Shape.Fill); err != nil {

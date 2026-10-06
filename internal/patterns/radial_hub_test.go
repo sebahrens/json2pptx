@@ -305,8 +305,8 @@ func TestRadialHub_ExpandLayout(t *testing.T) {
 		t.Run(fmt.Sprintf("n=%d", n), func(t *testing.T) {
 			grid := rhExpand(t, rhCtx(899, 360), rhValues(n, true), nil)
 			ring := rhRingCell(t, grid)
-			if ring.Fit != "contain" || ring.Shape != nil {
-				t.Errorf("ring cell: fit %q, shape %v; want a contain canvas with layers only", ring.Fit, ring.Shape)
+			if ring.Fit != ringSpineFit || ring.Shape != nil {
+				t.Errorf("ring cell: fit %q, shape %v; want the spine canvas (%s) with layers only", ring.Fit, ring.Shape, ringSpineFit)
 			}
 			spokes, sats, hubs := rhLayersNamed(ring, "spoke-"), rhLayersNamed(ring, "satellite-"), rhLayersNamed(ring, "hub")
 			if len(spokes) != n || len(sats) != n || len(hubs) != 1 || len(ring.Layers) != 2*n+1 {
@@ -373,12 +373,12 @@ func TestRadialHub_LabelSides(t *testing.T) {
 			count[it.side]++
 			switch it.side {
 			case ringSideLeft:
-				if it.text.x1 > lay.ring.x0 {
-					t.Errorf("n=%d: left label %+v enters the ring %+v", n, it.text, lay.ring)
+				if centre := (lay.ring.x0 + lay.ring.x1) / 2; it.text.x1 > centre-ringLabelGapPt+1e-6 {
+					t.Errorf("n=%d: left label %+v crosses the ring's centre line %.1f", n, it.text, centre)
 				}
 			case ringSideRight:
-				if it.text.x0 < lay.ring.x1 {
-					t.Errorf("n=%d: right label %+v enters the ring %+v", n, it.text, lay.ring)
+				if centre := (lay.ring.x0 + lay.ring.x1) / 2; it.text.x0 < centre+ringLabelGapPt-1e-6 {
+					t.Errorf("n=%d: right label %+v crosses the ring's centre line %.1f", n, it.text, centre)
 				}
 			case ringSideBottom:
 				if it.text.y0 < lay.ring.y1 {
@@ -710,10 +710,31 @@ func TestRadialHubNoOverlapForEveryCount(t *testing.T) {
 					if err != nil {
 						t.Fatalf("%s: %v", name, err)
 					}
+					// Outside labels follow the discs into the ring's bounding
+					// square: they keep clear of the discs and the hub instead
+					// of the square, whose lattice cell is the spine.
 					rects := []rhRect{lay.ring}
+					if lay.mode == rhLabelsOutside {
+						cx := (lay.ring.x0 + lay.ring.x1) / 2
+						rects[0] = rhRect{cx - ringSpinePt/2, cx + ringSpinePt/2, lay.ring.y0, lay.ring.y1}
+					}
+					discs := []ringTestCircle{{(lay.ring.x0 + lay.ring.x1) / 2, (lay.ring.y0 + lay.ring.y1) / 2, lay.hubDia * lay.side() / 2}}
 					for _, it := range lay.items {
-						if it.text.w() > 0 {
-							rects = append(rects, it.text)
+						f := lay.spec.badgeFrame(it.ring, lay.satDia)
+						discs = append(discs, ringTestCircle{lay.ring.x0 + (f.X+f.W/2)*lay.side(), lay.ring.y0 + (f.Y+f.H/2)*lay.side(), f.W * lay.side() / 2})
+					}
+					for i, it := range lay.items {
+						if it.text.w() <= 0 {
+							continue
+						}
+						rects = append(rects, it.text)
+						if lay.mode != rhLabelsOutside {
+							continue
+						}
+						for d, disc := range discs {
+							if clear := disc.clear(ringTestRect{it.text.x0, it.text.x1, it.text.y0, it.text.y1}); clear < 3 {
+								t.Errorf("%s: label %d %+v stands %.1fpt from disc %d (0 = the hub)", name, i+1, it.text, clear, d)
+							}
 						}
 					}
 					for i, a := range rects {
@@ -790,8 +811,8 @@ func TestRadialHub_PostExpandWarnings(t *testing.T) {
 		v.Spokes[1].Label = "Infrastructure"
 		v.Center = RadialHubCenter{Label: "Core"}
 		w := p.PostExpandWarnings(rhCtx(300, 200), v, &RadialHubOverrides{Labels: rhLabelsInside})
-		if len(w) != 1 || !strings.Contains(w[0], "spokes[1].label does not fit") {
-			t.Errorf("warnings = %v, want the one label that does not fit its satellite", w)
+		if len(w) != 1 || !strings.HasPrefix(w[0], ErrCodeNodeLabelTooLong+": radial-hub spokes[1].label does not fit") || !strings.Contains(w[0], `"outside"`) {
+			t.Errorf("warnings = %v, want one NODE_LABEL_TOO_LONG for the label that does not fit its satellite", w)
 		}
 	})
 
@@ -841,6 +862,61 @@ func TestRadialHub_RecommendIntents(t *testing.T) {
 		res := Recommend(Default(), tc.intent, tc.hints, 5)
 		if len(res.Candidates) == 0 || res.Candidates[0].PatternName != tc.want {
 			t.Errorf("intent %q: top = %v, want %s", tc.intent, res.Candidates, tc.want)
+		}
+	}
+}
+
+// TestRadialHubLabelsKeepOneGapFromTheirDisc: in the outside layout every side
+// label stands the same horizontal gap from its own satellite's disc, for
+// every count, with and without descriptions and icons, in every body size,
+// read from the resolved grid. (A label at a pole stands above / below its
+// disc, centred on it.)
+func TestRadialHubLabelsKeepOneGapFromTheirDisc(t *testing.T) {
+	for _, body := range ringGapBodies {
+		for n := rhMinSpokes; n <= rhMaxSpokes; n++ {
+			for _, variant := range []string{"labels", "descriptions", "icons"} {
+				name := fmt.Sprintf("%s/%d/%s", body.name, n, variant)
+				ctx, v := rhCtx(body.w, body.h), rhValues(n, variant != "labels")
+				if variant == "icons" {
+					for i := range v.Spokes {
+						v.Spokes[i].Icon = &IconRef{Name: ringTestIcons[i%len(ringTestIcons)]}
+					}
+				}
+				lay, err := rhMeasure(ctx, v, &RadialHubOverrides{})
+				if err != nil || lay.mode != rhLabelsOutside {
+					t.Fatalf("%s: mode %q, err %v; want the outside layout", name, lay.mode, err)
+				}
+				grid := rhExpand(t, ctx, v, nil)
+				res := cycleNodesResolveAt(t, grid, body.w, body.h)
+				texts := ringGapTexts(t, res)
+				if len(texts) != n {
+					t.Fatalf("%s: %d label cells, want %d", name, len(texts), n)
+				}
+				gaps := map[int]float64{}
+				for i, it := range lay.items {
+					var block *ringTestRect
+					for _, tx := range texts {
+						if tx.first == v.Spokes[i].Label {
+							block = &tx.rect
+						}
+					}
+					if block == nil {
+						t.Fatalf("%s: no label cell for spoke %d", name, i+1)
+					}
+					disc := ringGapLayerCircle(t, res, fmt.Sprintf("satellite-%d", i+1), false)
+					if it.side != ringSideLeft && it.side != ringSideRight {
+						if math.Abs((block.x0+block.x1)/2-disc.cx) > 1 || block.y0 < disc.cy+disc.r {
+							t.Errorf("%s: pole label %d %+v is not centred under its disc %+v", name, i+1, *block, disc)
+						}
+						continue
+					}
+					gaps[i+1] = disc.hGap(*block)
+					if block.x0 < -0.5 || block.x1 > body.w+0.5 || block.y0 < -0.5 || block.y1 > body.h+0.5 {
+						t.Errorf("%s: label %d %+v leaves the %.0f x %.0fpt area", name, i+1, *block, body.w, body.h)
+					}
+				}
+				ringGapCheck(t, name, gaps, rhLabelGapPt)
+			}
 		}
 	}
 }
