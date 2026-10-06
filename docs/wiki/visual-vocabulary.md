@@ -108,3 +108,13 @@ svggen diagrams (gantt, venn, org chart). Carry them as a `raw_json2pptx`
 slide inside the DeckSpec — the whole pattern block verbatim from
 `show_pattern` — not as a lowered raw deck; `recommend_visual` returns such a
 slide ready to run for any pattern or diagram candidate.
+
+`radial-hub` (raw path) — "everything relates to the centre": one hub with
+4–8 unordered peers around it (a platform and its capabilities, an
+operating-model hub, a stakeholder or ecosystem map). Short labels, at most a
+one-line description each; `highlight` one spoke when the title argues it.
+Avoid it when the items follow one another (use a `process`, or the cycle
+patterns), when they are today/future pairs (`state-shift-hub`) and when there
+is no centre (`pillars`, a card grid). In a half-width split it falls back to
+a keyed legend; give it 60% of the width or short labels with
+`labels: "inside"`.

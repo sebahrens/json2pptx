@@ -21,7 +21,7 @@ These pattern-rich decks are the best entry points for AI agents building new de
 |------|-------------|----------|
 | `patterns-smoke.json` | Pattern library smoke test: one slide per pattern across a broad slice of the registry (KPI, canvas, matrix, timeline, card-grid, roadmap, heatmap, directory, bios, and more) | midnight-blue |
 | `cycle-ring.json` | Cycle ring: a four-phase PDCA loop with a centre label, an eight-phase customer lifecycle with one highlighted phase, a six-phase flywheel in the `arrows` style, and a 50% compose segment (legend layout) beside a metric list | midnight-blue |
-| `<pattern-name>.json` | Many patterns also have a dedicated deck named after the pattern (e.g. `driver-tree.json`, `waterfall-bridge.json`, `team-bios.json`) | varies |
+| `<pattern-name>.json` | Many patterns also have a dedicated deck named after the pattern (e.g. `driver-tree.json`, `waterfall-bridge.json`, `team-bios.json`, `radial-hub.json`) | varies |
 | `concentric-rings.json` | Onion model with a side ladder: 3 layers, 5 layers, 4 layers with a highlighted ring, and a 50% compose split beside `labeled-rows` | midnight-blue |
 
 ### Testing & QA decks

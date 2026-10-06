@@ -42,6 +42,8 @@
     {"intent": "compare revenue across 5 regions", "expect": ["bar"]},
     {"intent": "SCQA storyline for the recommendation", "expect": ["scqa-summary"]},
     {"intent": "driver tree decomposing margin into its drivers", "expect": ["driver-tree"]},
+    {"intent": "hub and spoke view of the platform with six capabilities around it", "expect": ["radial-hub"]},
+    {"intent": "stakeholder map around the programme office", "expect": ["radial-hub"]},
     {"intent": "section divider for the appendix", "expect": ["section"]},
     {"intent": "title slide for the board deck", "expect": ["title"]},
     {"intent": "case study with a customer photo and results", "expect": ["image-text-split"]},

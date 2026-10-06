@@ -375,6 +375,24 @@ var rules = []rule{
 		itemMax:   8,
 	},
 
+	// Radial hub — one central idea with 4-8 unordered spokes to satellites
+	{
+		pattern:   "radial-hub",
+		keywords:  []string{"hub and spoke", "hub-and-spoke", "hub & spoke", "radial hub", "stakeholder map", "ecosystem map", "ecosystem around", "around the platform", "around the core", "around the hub", "capabilities around", "partners around", "everything connects to", "central platform with"},
+		baseScore: 0.93,
+		rationale: "Central hub circle with 4-8 spokes to labelled satellites: peers that all relate to one idea, with no order among them",
+		itemMin:   4,
+		itemMax:   8,
+	},
+	{
+		pattern:   "radial-hub",
+		keywords:  []string{"hub", "spokes", "ecosystem", "stakeholders", "orbit", "revolves around", "at the centre", "at the center", "central platform"},
+		baseScore: 0.76,
+		rationale: "Radial hub when 4-8 unordered items all relate to one central idea (use cycle-ring when they follow one another)",
+		itemMin:   4,
+		itemMax:   8,
+	},
+
 	// Process flow
 	{
 		pattern:   "process-flow",
