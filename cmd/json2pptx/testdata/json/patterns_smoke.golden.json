@@ -92,10 +92,8 @@
   },
   {
     "pattern_name": "phase-roadmap",
-    "row_count": 5,
+    "row_count": 3,
     "cell_counts": [
-      4,
-      1,
       4,
       4,
       4
