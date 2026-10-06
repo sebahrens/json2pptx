@@ -153,7 +153,7 @@ func cycleRingResolved(t *testing.T, grid *jsonschema.ShapeGridInput) (w, h int6
 // In a split layout the ring stays round and the labels move into the legend
 // beside it: a 50% and a 60% horizontal compose segment, a vertical segment
 // and a nested grid cell, on every template.
-func TestCycleRingStaysRoundInSplitLayouts(t *testing.T) {
+func TestCycleRingStaysRoundInSplitLayoutsAcrossTemplates(t *testing.T) {
 	ring := PatternInput{Name: "cycle-ring", Values: json.RawMessage(`{"phases":[{"label":"Forecast"},{"label":"Performance review"},{"label":"Decide and commit"},{"label":"Execute"},{"label":"Close the books"}]}`)}
 	side := PatternInput{Name: "metric-list", Values: json.RawMessage(`{"items":[{"label":"Actions closed on time","value":"14 of 16"},{"label":"Forecast accuracy","value":"96%"},{"label":"Days to close","value":"4"}]}`)}
 	templates := testutil.AllTestTemplateNames()
