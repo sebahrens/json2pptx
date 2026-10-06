@@ -10,6 +10,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ---------------------------------------------------------------------------
@@ -765,8 +766,10 @@ func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHo
 		tone := chevronGradientTone(accent, i, n)
 
 		// Label (and optionally body) inside the chevron, in whichever text
-		// colour reads on this link's own tint.
-		textContent := buildChevronTextContent(stop, labelSize, bodySize, timelineGradientTextColor(ctx, tone))
+		// colour reads on this link's own tint — and on a link no theme ink
+		// reads on, lt1 on the link deepened until it does.
+		tone, ink := rescueChevronInk(ctx, tone, timelineGradientTextColor(ctx, tone))
+		textContent := buildChevronTextContent(stop, labelSize, bodySize, ink)
 
 		shape := &jsonschema.ShapeSpecInput{
 			Geometry: "homePlate",
@@ -915,6 +918,28 @@ func timelineGradientTextColor(ctx ExpandContext, tone fillTone) string {
 		fallback = "dk2"
 	}
 	return readableTextOn(ctx, tone, fallback)
+}
+
+// timelineInkMinContrast is the bar the 12pt body inside a chevron link or a
+// gantt bar must clear: WCAG AA for normal text.
+const timelineInkMinContrast = svggen.WCAGAANormal
+
+// timelineGradientMinKeep is the deepest shade a rescued gradient link may
+// take: the gradient's own links already run to about shade 23000, so a link
+// deepened this far is still inside the chain's range. The general floor
+// (shadeMinKeep) would leave a mid-grey accent's links between two inks.
+const timelineGradientMinKeep = 0.2
+
+// rescueChevronInk returns the fill and ink one gradient link is painted in.
+// The ink chosen for the link is kept whenever it clears
+// timelineInkMinContrast on the link's effective fill, so templates on which
+// an ink reads are untouched. When it does not — the plain-accent midpoint on
+// a template with soft darks, where lt1 and dk2 both miss 4.5:1 — the link is
+// deepened with the shadeForLightInk rescue and set in lt1
+// (go-slide-creator-pr5bx). Tinted links are light surfaces and are never
+// shaded.
+func rescueChevronInk(ctx ExpandContext, tone fillTone, ink string) (fillTone, string) {
+	return rescueFailingInk(ctx, tone, ink, timelineInkMinContrast, timelineGradientMinKeep)
 }
 
 // buildChevronTextContent creates text for inside a chevron shape (label +

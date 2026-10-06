@@ -318,6 +318,14 @@ const (
 // are returned as the shaded hex (the shape-grid resolver honours modifiers on
 // scheme colours only).
 func shadeForLightInk(ctx ExpandContext, tone fillTone, minContrast float64) (fillTone, bool) {
+	return shadeForLightInkTo(ctx, tone, minContrast, shadeMinKeep)
+}
+
+// shadeForLightInkTo is shadeForLightInk with the deepest shade allowed given
+// by the caller, as the linear-light fraction of the fill kept. A pattern
+// whose own fills already run deeper than shadeMinKeep (the timeline gradient)
+// passes its own floor.
+func shadeForLightInkTo(ctx ExpandContext, tone fillTone, minContrast, minKeep float64) (fillTone, bool) {
 	// A near-opaque fill (alpha >= 80%) still reads as the accent; a more
 	// translucent one is a tint and takes dark ink instead.
 	if tone.Tint > 0 || tone.LumOff > 0 || (tone.Alpha > 0 && tone.Alpha < 80) {
@@ -347,7 +355,7 @@ func shadeForLightInk(ctx ExpandContext, tone fillTone, minContrast float64) (fi
 	if tone.Shade > 0 {
 		base = tone.Shade
 	}
-	for keep := base - shadeStep; float64(keep) >= shadeMinKeep*100000; keep -= shadeStep {
+	for keep := base - shadeStep; float64(keep) >= minKeep*100000; keep -= shadeStep {
 		cand := tone
 		cand.Shade = keep
 		c, cok := effectiveFillColor(ctx, cand)
@@ -373,6 +381,49 @@ func accentFillAndInk(ctx ExpandContext, tone fillTone, minContrast float64) (fi
 		return shaded, "lt1"
 	}
 	return tone, readableInkOn(ctx, tone, "lt1", minContrast)
+}
+
+// rescueFailingInk is the last resort for text on an accent fill no theme ink
+// reads on. readableInkOn answers the best of lt1 / dk2 / dk1 even when none
+// clears the bar: on a template whose darks are soft (dk1 = dk2 = #2E353A) a
+// plain #FD5108 block gets dk2 at 3.77:1 (go-slide-creator-pr5bx). When the
+// chosen ink misses minContrast on tone, the fill is deepened by the smallest
+// a:shade at which lt1 reads — the rescue ApplyReadableInk applies to failing
+// light ink — and lt1 is returned. An ink that already reads, a fill that
+// cannot be resolved and a fill shadeForLightInk leaves alone (a tint, a
+// neutral, a pale accent) come back unchanged, so a template on which an ink
+// reads is written exactly as before. minKeep is the deepest shade allowed
+// (shadeMinKeep unless the pattern's own fills run deeper).
+func rescueFailingInk(ctx ExpandContext, tone fillTone, ink string, minContrast, minKeep float64) (fillTone, string) {
+	fill, ok := effectiveFillColor(ctx, tone)
+	if !ok {
+		return tone, ink
+	}
+	c, ok := resolveThemeColor(ctx, ink)
+	if !ok || c.ContrastWith(fill) >= minContrast {
+		return tone, ink
+	}
+	if shaded, sok := shadeForLightInkTo(ctx, tone, minContrast, minKeep); sok {
+		return shaded, "lt1"
+	}
+	return tone, ink
+}
+
+// noThemeInkReads reports whether every theme ink the fixer would try misses
+// minContrast on fill.
+func noThemeInkReads(ctx ExpandContext, fill svggen.Color, minContrast float64) bool {
+	resolved := false
+	for _, scheme := range readableInkCandidates {
+		c, ok := resolveThemeColor(ctx, scheme)
+		if !ok {
+			continue
+		}
+		resolved = true
+		if c.ContrastWith(fill) >= minContrast {
+			return false
+		}
+	}
+	return resolved
 }
 
 // applyLumModOff applies the OOXML lumMod / lumOff transforms (in HSL space).

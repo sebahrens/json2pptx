@@ -18,7 +18,10 @@ import (
 // and only a fill no shade can rescue (a pale accent, a tint) keeps its
 // surface and has the pattern-authored light text swapped for the first
 // readable theme ink. Only light inks written by the pattern are touched, so
-// author-chosen colours and dark text are never rewritten.
+// author-chosen colours and dark text are never rewritten — with one
+// exception: on a fill no theme ink reads on (soft darks on a mid-tone
+// accent) the dark ink a pattern fell back to fails too, so that fill is
+// deepened and its theme inks set to lt1 (go-slide-creator-pr5bx).
 func ApplyReadableInk(ctx ExpandContext, grid *jsonschema.ShapeGridInput) {
 	if grid == nil || len(ctx.Theme.Colors) == 0 {
 		return
@@ -88,12 +91,88 @@ func fixShapeInk(ctx ExpandContext, shape *jsonschema.ShapeSpecInput) {
 			return
 		}
 	}
+	// No theme ink reads on this fill (soft darks on a mid-tone accent), so the
+	// dark ink a pattern fell back to fails as well: deepen the fill and set
+	// the text in lt1, the same rescue as above (go-slide-creator-pr5bx).
+	if noThemeInkReads(ctx, fill, minContrast) && hasFailingThemeInk(ctx, text, fill, minContrast) {
+		if shaded, sok := shadeForLightInk(ctx, tone, minContrast); sok {
+			shape.Fill = shaded.fillJSON()
+			if setThemeInk(text, "lt1") {
+				if data, err := json.Marshal(text); err == nil {
+					shape.Text = data
+				}
+			}
+			return
+		}
+	}
 	if !recolorLightInk(ctx, text, fill, tone, minContrast) {
 		return
 	}
 	if data, err := json.Marshal(text); err == nil {
 		shape.Text = data
 	}
+}
+
+// isThemeInk reports whether c is one of the neutral theme inks a pattern
+// sets text in (lt1 / dk1 / dk2 or an alias). Accent-coloured text is not.
+func isThemeInk(c string) bool {
+	if isLightInk(c) {
+		return true
+	}
+	switch strings.ToLower(c) {
+	case "dk1", "tx1", "dk2", "tx2":
+		return true
+	}
+	return false
+}
+
+// hasFailingThemeInk reports whether any theme-ink "color" in the text object
+// misses minContrast on fill.
+func hasFailingThemeInk(ctx ExpandContext, node any, fill svggen.Color, minContrast float64) bool {
+	switch v := node.(type) {
+	case map[string]any:
+		if c, ok := v["color"].(string); ok && isThemeInk(c) {
+			if ink, iok := resolveThemeColor(ctx, c); iok && ink.ContrastWith(fill) < minContrast {
+				return true
+			}
+		}
+		for k, child := range v {
+			if k != "color" && hasFailingThemeInk(ctx, child, fill, minContrast) {
+				return true
+			}
+		}
+	case []any:
+		for _, child := range v {
+			if hasFailingThemeInk(ctx, child, fill, minContrast) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// setThemeInk rewrites every theme-ink "color" in the text object to ink.
+func setThemeInk(node any, ink string) bool {
+	changed := false
+	switch v := node.(type) {
+	case map[string]any:
+		if c, ok := v["color"].(string); ok && isThemeInk(c) && c != ink {
+			v["color"] = ink
+			changed = true
+		}
+		for k, child := range v {
+			if k != "color" && setThemeInk(child, ink) {
+				changed = true
+			}
+		}
+	case []any:
+		for _, child := range v {
+			if setThemeInk(child, ink) {
+				changed = true
+			}
+		}
+	}
+	return changed
 }
 
 // recolorLightInk rewrites every light-ink "color" in the text object (top

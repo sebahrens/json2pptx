@@ -227,7 +227,11 @@ func shapeNamesNoColor(shape *shapeXML) bool {
 	if shape.TextBody == nil {
 		return false
 	}
-	if shape.TextBody.ListStyle != nil && strings.Contains(shape.TextBody.ListStyle.Inner, "<a:solidFill>") {
+	// Only the levels the text sits on count: a colour the slide states on a
+	// level no paragraph uses colours nothing, and the lstStyle pass skips it
+	// too (go-slide-creator-6s2w4). Counting it here would leave the text's
+	// real, inherited colour to neither pass.
+	if shape.TextBody.ListStyle != nil && listStyleNamesColorOnUsedLevel(shape.TextBody.ListStyle.Inner, usedListLevels(shape)) {
 		return false
 	}
 	for pi := range shape.TextBody.Paragraphs {
