@@ -402,8 +402,12 @@ func CycleIssues(body map[string]any) []CycleIssue {
 		})
 	}
 	if n := len(p.Intake); p.Style == CycleStyleIntake && (n < 1 || n > 3) {
+		hint := "merge the intake steps, or draw them as a process slide before the cycle"
+		if n == 0 {
+			hint = "list the one-off steps that feed the loop in intake, or use style ring"
+		}
 		out = append(out, CycleIssue{Field: "intake", Min: 1, Max: 3, Required: n == 0,
-			Message: fmt.Sprintf("style intake holds 1–3 intake steps before the loop; found %d — %s", n, map[bool]string{true: "list the one-off steps that feed the loop in intake, or use style ring", false: "merge the intake steps, or draw them as a process slide before the cycle"}[n == 0])})
+			Message: fmt.Sprintf("style intake holds 1–3 intake steps before the loop; found %d — %s", n, hint)})
 	}
 	if p.Style == CycleStyleRadial && p.CenterLabel == "" {
 		out = append(out, CycleIssue{Field: "center", Required: true,
