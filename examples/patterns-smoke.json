@@ -388,6 +388,44 @@
     {
       "layout_id": "content",
       "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Six functions read from one customer platform"}
+      ],
+      "pattern": {
+        "name": "radial-hub",
+        "values": {
+          "center": {"label": "Customer platform", "sublabel": "One governed source"},
+          "spokes": [
+            {"label": "Marketing", "description": "Audiences and attribution"},
+            {"label": "Sales", "description": "Next best action per account"},
+            {"label": "Service", "description": "History at every contact"},
+            {"label": "Finance", "description": "Billing and revenue assurance"},
+            {"label": "Risk and compliance", "description": "Consent and audit trail"},
+            {"label": "Product", "description": "Usage signals for the roadmap"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Every plant change runs one plan-do-check-act loop"}
+      ],
+      "pattern": {
+        "name": "cycle-nodes",
+        "values": {
+          "steps": [
+            {"label": "Plan", "description": "Set the target and the test for it"},
+            {"label": "Do", "description": "Run the change on one line first"},
+            {"label": "Check", "description": "Compare the result with the target"},
+            {"label": "Act", "description": "Standardise what worked, then repeat"}
+          ],
+          "highlight": 3
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Self-service can close the growth gap within 18 months"}
       ],
       "pattern": {

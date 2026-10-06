@@ -1,0 +1,144 @@
+{
+  "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
+  "output_filename": "radial-hub.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "One customer platform"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Hub-and-spoke views of the target operating model"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Four functions already read from the customer platform"}
+      ],
+      "pattern": {
+        "name": "radial-hub",
+        "values": {
+          "center": {"label": "Customer platform", "sublabel": "One governed source"},
+          "spokes": [
+            {"label": "Marketing", "description": "Audiences and campaign attribution"},
+            {"label": "Sales", "description": "Account insight and next best action"},
+            {"label": "Service", "description": "Full history at every contact"},
+            {"label": "Finance", "description": "Billing and revenue assurance"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Risk and compliance is the next function to connect"}
+      ],
+      "pattern": {
+        "name": "radial-hub",
+        "values": {
+          "center": {"label": "Customer platform", "sublabel": "One governed source"},
+          "spokes": [
+            {"label": "Marketing", "description": "Audiences and campaign attribution"},
+            {"label": "Sales", "description": "Account insight and next best action"},
+            {"label": "Service", "description": "Full history at every contact"},
+            {"label": "Finance", "description": "Billing and revenue assurance"},
+            {"label": "Risk and compliance", "description": "Consent, retention and audit trail"},
+            {"label": "Product", "description": "Usage signals for roadmap choices"}
+          ],
+          "highlight": 5
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "By 2028 eight teams and partners draw on the same record"}
+      ],
+      "pattern": {
+        "name": "radial-hub",
+        "values": {
+          "center": {"label": "Customer platform", "sublabel": "One governed source"},
+          "spokes": [
+            {"label": "Marketing", "description": "Audiences and attribution"},
+            {"label": "Sales", "description": "Next best action per account"},
+            {"label": "Service", "description": "History at every contact"},
+            {"label": "Finance", "description": "Billing and revenue assurance"},
+            {"label": "Risk and compliance", "description": "Consent and audit trail"},
+            {"label": "Product", "description": "Usage signals for the roadmap"},
+            {"label": "Partners", "description": "Shared leads and joint accounts"},
+            {"label": "Data science", "description": "Features for churn models"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Six stakeholder groups shape the programme"}
+      ],
+      "pattern": {
+        "name": "radial-hub",
+        "values": {
+          "center": {"label": "Programme office"},
+          "spokes": [
+            {"label": "Board"},
+            {"label": "Lenders"},
+            {"label": "Clients"},
+            {"label": "Staff"},
+            {"label": "Vendors"},
+            {"label": "Owners"}
+          ]
+        },
+        "overrides": {"labels": "inside"}
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Connecting the functions removes six private copies of the customer"}
+      ],
+      "compose": {
+        "direction": "horizontal",
+        "segments": [
+          {
+            "size_pct": 60,
+            "pattern": {
+              "name": "radial-hub",
+              "values": {
+                "center": {"label": "Customer platform"},
+                "spokes": [
+                  {"label": "Marketing"},
+                  {"label": "Sales"},
+                  {"label": "Service"},
+                  {"label": "Finance"},
+                  {"label": "Risk"},
+                  {"label": "Product"}
+                ]
+              }
+            }
+          },
+          {
+            "size_pct": 40,
+            "pattern": {
+              "name": "labeled-rows",
+              "values": {
+                "rows": [
+                  {"label": "WHY", "body": "Each function keeps its own copy of the customer today."},
+                  {"label": "WHAT", "body": "One governed platform that every function reads from."},
+                  {"label": "HOW", "body": "Connect risk and compliance first, then sales."}
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

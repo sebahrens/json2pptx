@@ -522,6 +522,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"contact-directory":            3.8,  // Still refused by the generated-font floor; not a readable schema budget.
 	"cycle-figure-eight":           10.3, // 8 phases at the 3-per-lobe maxima (26 / 60) in W: four rows a side share the height
 	"cycle-ring":                   9.4,  // 8 phases at the 4-phase maxima (28 / 90): rows share the height
+	"cycle-nodes":                  10.6,
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
 	"exec-summary":                 4.8,
@@ -561,6 +562,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"pull-quote":          0.0,
 	"pyramid":             7.3,
 	"quote-cluster":       6.2,
+	"radial-hub":          10.1,
 	"risk-heatmap":        3.4, // twenty 40-character names in one cell of a 5 × 5 (go-slide-creator-ec74l)
 	"roadmap-phased":      6.0, // twelve one-period bars per workstream, lanes share the height (go-slide-creator-4a0sm)
 	"scqa-summary":        5.5, // content-weighted rows (k3eb3)
@@ -597,6 +599,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"concentric-rings":             0,
 	"cycle-figure-eight":           0.0,
 	"cycle-ring":                   11.3,
+	"cycle-nodes":                  11.5,
 	"driver-tree":                  4.8,
 	"dual-org-ladder":              7.6,
 	"exec-summary":                 6.5,
@@ -624,6 +627,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"pull-quote":                   0,
 	"pyramid":                      8.4,
 	"quote-cluster":                7.0,
+	"radial-hub":                   0,
 	"risk-heatmap":                 3.8,
 	"roadmap-phased":               6.0, // bars in lanes (go-slide-creator-4a0sm)
 	"scqa-summary":                 6.0,

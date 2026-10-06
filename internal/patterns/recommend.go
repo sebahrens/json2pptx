@@ -393,6 +393,42 @@ var rules = []rule{
 		itemMax:   8,
 	},
 
+	// Radial hub — one central idea with 4-8 unordered spokes to satellites
+	{
+		pattern:   "radial-hub",
+		keywords:  []string{"hub and spoke", "hub-and-spoke", "hub & spoke", "radial hub", "stakeholder map", "ecosystem map", "ecosystem around", "around the platform", "around the core", "around the hub", "capabilities around", "partners around", "everything connects to", "central platform with"},
+		baseScore: 0.93,
+		rationale: "Central hub circle with 4-8 spokes to labelled satellites: peers that all relate to one idea, with no order among them",
+		itemMin:   4,
+		itemMax:   8,
+	},
+	{
+		pattern:   "radial-hub",
+		keywords:  []string{"hub", "spokes", "ecosystem", "stakeholders", "orbit", "revolves around", "at the centre", "at the center", "central platform"},
+		baseScore: 0.76,
+		rationale: "Radial hub when 4-8 unordered items all relate to one central idea (use cycle-ring when they follow one another)",
+		itemMin:   4,
+		itemMax:   8,
+	},
+
+	// Cycle nodes — a closed loop of discrete steps joined by arrows
+	{
+		pattern:   "cycle-nodes",
+		keywords:  []string{"sense decide act", "observe orient decide act", "ooda", "learning loop", "innovation loop", "improvement loop", "loop of steps", "cycle of steps", "discrete steps in a loop", "numbered circles"},
+		baseScore: 0.90,
+		rationale: "3-8 numbered circles on a ring joined by curved arrows: a loop of discrete steps that returns to its start, labels outside",
+		itemMin:   3,
+		itemMax:   8,
+	},
+	{
+		pattern:   "cycle-nodes",
+		keywords:  []string{"loop", "plan do check act", "feedback loop", "iterate"},
+		baseScore: 0.70,
+		rationale: "Cycle nodes when a sequence of 3-8 steps returns to its start",
+		itemMin:   3,
+		itemMax:   8,
+	},
+
 	// Process flow
 	{
 		pattern:   "process-flow",

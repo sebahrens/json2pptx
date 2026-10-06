@@ -1,0 +1,530 @@
+{
+  "col_gap": 0.01,
+  "row_gap": 0.01,
+  "columns": [
+    25.879,
+    2.666,
+    1.454,
+    40,
+    1.454,
+    2.666,
+    25.879
+  ],
+  "rows": [
+    {
+      "min_height": 1.188,
+      "max_height": 1.188,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 23.906,
+      "max_height": 23.906,
+      "cells": [
+        {},
+        {},
+        {},
+        {
+          "row_span": 7,
+          "fit": "contain",
+          "layers": [
+            {
+              "frame": {
+                "x": 0.10399999999999998,
+                "y": 0.10399999999999998,
+                "w": 0.792,
+                "h": 0.792
+              },
+              "shape": {
+                "geometry": "circularArrow",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 45000,
+                  "lumOff": 55000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 1263,
+                  "adj2": 464560,
+                  "adj3": 19681282,
+                  "adj4": 17654158,
+                  "adj5": 3283
+                }
+              },
+              "name": "link-1"
+            },
+            {
+              "frame": {
+                "x": 0.10399999999999998,
+                "y": 0.10399999999999998,
+                "w": 0.792,
+                "h": 0.792
+              },
+              "shape": {
+                "geometry": "circularArrow",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 45000,
+                  "lumOff": 55000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 1263,
+                  "adj2": 464560,
+                  "adj3": 3481282,
+                  "adj4": 1454158,
+                  "adj5": 3283
+                }
+              },
+              "name": "link-2"
+            },
+            {
+              "frame": {
+                "x": 0.10399999999999998,
+                "y": 0.10399999999999998,
+                "w": 0.792,
+                "h": 0.792
+              },
+              "shape": {
+                "geometry": "circularArrow",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 45000,
+                  "lumOff": 55000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 1263,
+                  "adj2": 464560,
+                  "adj3": 8881282,
+                  "adj4": 6854158,
+                  "adj5": 3283
+                }
+              },
+              "name": "link-3"
+            },
+            {
+              "frame": {
+                "x": 0.10399999999999998,
+                "y": 0.10399999999999998,
+                "w": 0.792,
+                "h": 0.792
+              },
+              "shape": {
+                "geometry": "circularArrow",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 45000,
+                  "lumOff": 55000
+                },
+                "line": "none",
+                "adjustments": {
+                  "adj1": 1263,
+                  "adj2": 464560,
+                  "adj3": 14281282,
+                  "adj4": 12254158,
+                  "adj5": 3283
+                }
+              },
+              "name": "link-4"
+            },
+            {
+              "frame": {
+                "x": 0.36999999999999994,
+                "y": 0,
+                "w": 0.26,
+                "h": 0.26
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 8000,
+                  "lumOff": 92000
+                },
+                "line": "none",
+                "text": {
+                  "align": "ctr",
+                  "paragraphs": [
+                    {
+                      "content": "1",
+                      "size": 24,
+                      "bold": true,
+                      "color": "accent1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "node-1"
+            },
+            {
+              "frame": {
+                "x": 0.74,
+                "y": 0.37,
+                "w": 0.26,
+                "h": 0.26
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 8000,
+                  "lumOff": 92000
+                },
+                "line": "none",
+                "text": {
+                  "align": "ctr",
+                  "paragraphs": [
+                    {
+                      "content": "2",
+                      "size": 24,
+                      "bold": true,
+                      "color": "accent1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "node-2"
+            },
+            {
+              "frame": {
+                "x": 0.37,
+                "y": 0.74,
+                "w": 0.26,
+                "h": 0.26
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "accent1",
+                "line": "none",
+                "text": {
+                  "align": "ctr",
+                  "paragraphs": [
+                    {
+                      "content": "3",
+                      "size": 24,
+                      "bold": true,
+                      "color": "lt1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "node-3"
+            },
+            {
+              "frame": {
+                "x": 0,
+                "y": 0.37,
+                "w": 0.26,
+                "h": 0.26
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 8000,
+                  "lumOff": 92000
+                },
+                "line": "none",
+                "text": {
+                  "align": "ctr",
+                  "paragraphs": [
+                    {
+                      "content": "4",
+                      "size": 24,
+                      "bold": true,
+                      "color": "accent1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "vertical_align": "ctr"
+                }
+              },
+              "name": "node-4"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "min_height": 38,
+      "max_height": 38,
+      "cells": [
+        {},
+        {},
+        {},
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "align": "l",
+              "inset_bottom": 2,
+              "inset_left": 2,
+              "inset_right": 2,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "1",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "align": "l",
+              "inset_bottom": 2,
+              "inset_left": 2,
+              "inset_right": 2,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "Plan",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Set the target and the test for it",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 84.118,
+      "max_height": 84.118,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 38,
+      "max_height": 38,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "align": "r",
+              "inset_bottom": 2,
+              "inset_left": 2,
+              "inset_right": 2,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "Act",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "r",
+                  "space_after": 1
+                },
+                {
+                  "content": "Standardise what worked, then repeat",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "r"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "align": "r",
+              "inset_bottom": 2,
+              "inset_left": 2,
+              "inset_right": 2,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "4",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        },
+        {},
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "align": "l",
+              "inset_bottom": 2,
+              "inset_left": 2,
+              "inset_right": 2,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "2",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "align": "l",
+              "inset_bottom": 2,
+              "inset_left": 2,
+              "inset_right": 2,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "Do",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Run the change on one line first",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 84.118,
+      "max_height": 84.118,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 38,
+      "max_height": 38,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "align": "r",
+              "inset_bottom": 2,
+              "inset_left": 2,
+              "inset_right": 2,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "Check",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "r",
+                  "space_after": 1
+                },
+                {
+                  "content": "Compare the result with the target",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "r"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "align": "r",
+              "inset_bottom": 2,
+              "inset_left": 2,
+              "inset_right": 2,
+              "inset_top": 2,
+              "paragraphs": [
+                {
+                  "content": "3",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r"
+                }
+              ],
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 23.906,
+      "max_height": 23.906,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 1.188,
+      "max_height": 1.188,
+      "cells": [
+        {}
+      ]
+    }
+  ],
+  "vertical_align": "center"
+}

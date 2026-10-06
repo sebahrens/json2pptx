@@ -1,0 +1,493 @@
+{
+  "col_gap": 0.01,
+  "row_gap": 0.01,
+  "columns": [
+    28.402,
+    1.454,
+    40.288,
+    1.454,
+    28.402
+  ],
+  "rows": [
+    {
+      "min_height": 30.118,
+      "max_height": 30.118,
+      "cells": [
+        {},
+        {},
+        {
+          "row_span": 7,
+          "fit": "contain",
+          "layers": [
+            {
+              "frame": {
+                "x": 0.58,
+                "y": 0.272577,
+                "w": 0.1,
+                "h": 0.004512
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "accent1",
+                "line": "none",
+                "rotation": 300
+              },
+              "name": "spoke-1"
+            },
+            {
+              "frame": {
+                "x": 0.71,
+                "y": 0.497744,
+                "w": 0.1,
+                "h": 0.004512
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "accent1",
+                "line": "none"
+              },
+              "name": "spoke-2"
+            },
+            {
+              "frame": {
+                "x": 0.58,
+                "y": 0.72291,
+                "w": 0.1,
+                "h": 0.004512
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "accent1",
+                "line": "none",
+                "rotation": 60.00000000000001
+              },
+              "name": "spoke-3"
+            },
+            {
+              "frame": {
+                "x": 0.32,
+                "y": 0.72291,
+                "w": 0.1,
+                "h": 0.004512
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "accent1",
+                "line": "none",
+                "rotation": 120.00000000000001
+              },
+              "name": "spoke-4"
+            },
+            {
+              "frame": {
+                "x": 0.19,
+                "y": 0.497744,
+                "w": 0.1,
+                "h": 0.004512
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "accent1",
+                "line": "none",
+                "rotation": 180
+              },
+              "name": "spoke-5"
+            },
+            {
+              "frame": {
+                "x": 0.32,
+                "y": 0.272577,
+                "w": 0.1,
+                "h": 0.004512
+              },
+              "shape": {
+                "geometry": "rect",
+                "fill": "accent1",
+                "line": "none",
+                "rotation": 240.00000000000003
+              },
+              "name": "spoke-6"
+            },
+            {
+              "frame": {
+                "x": 0.29,
+                "y": 0.29,
+                "w": 0.42,
+                "h": 0.42
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": "accent1",
+                "line": "none",
+                "text": {
+                  "paragraphs": [
+                    {
+                      "content": "Customer data platform",
+                      "size": 16,
+                      "bold": true,
+                      "color": "lt1",
+                      "align": "ctr"
+                    },
+                    {
+                      "content": "One governed source",
+                      "size": 12,
+                      "color": "lt1",
+                      "align": "ctr"
+                    }
+                  ],
+                  "align": "ctr",
+                  "vertical_align": "ctr",
+                  "inset_left": 2,
+                  "inset_right": 2,
+                  "inset_top": 2,
+                  "inset_bottom": 2
+                }
+              },
+              "name": "hub"
+            },
+            {
+              "frame": {
+                "x": 0.6075,
+                "y": 0.05426,
+                "w": 0.19,
+                "h": 0.19
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none"
+              },
+              "name": "satellite-1"
+            },
+            {
+              "frame": {
+                "x": 0.81,
+                "y": 0.405,
+                "w": 0.19,
+                "h": 0.19
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none"
+              },
+              "name": "satellite-2"
+            },
+            {
+              "frame": {
+                "x": 0.6075,
+                "y": 0.75574,
+                "w": 0.19,
+                "h": 0.19
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none"
+              },
+              "name": "satellite-3"
+            },
+            {
+              "frame": {
+                "x": 0.2025,
+                "y": 0.75574,
+                "w": 0.19,
+                "h": 0.19
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none"
+              },
+              "name": "satellite-4"
+            },
+            {
+              "frame": {
+                "x": -0,
+                "y": 0.405,
+                "w": 0.19,
+                "h": 0.19
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none"
+              },
+              "name": "satellite-5"
+            },
+            {
+              "frame": {
+                "x": 0.2025,
+                "y": 0.05426,
+                "w": 0.19,
+                "h": 0.19
+              },
+              "shape": {
+                "geometry": "ellipse",
+                "fill": {
+                  "color": "dk1",
+                  "lumMod": 16000,
+                  "lumOff": 84000
+                },
+                "line": "none"
+              },
+              "name": "satellite-6"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "min_height": 39,
+      "max_height": 39,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Product",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "r",
+                  "space_after": 1
+                },
+                {
+                  "content": "Usage signals for roadmap choices",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "ctr",
+              "inset_left": 0,
+              "inset_right": 0,
+              "inset_top": 3,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {},
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Marketing",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Audiences and campaign attribution",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr",
+              "inset_left": 0,
+              "inset_right": 0,
+              "inset_top": 3,
+              "inset_bottom": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 77.594,
+      "max_height": 77.594,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 39,
+      "max_height": 39,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Risk and compliance",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "r",
+                  "space_after": 1
+                },
+                {
+                  "content": "Consent, retention and audit trail",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "ctr",
+              "inset_left": 0,
+              "inset_right": 0,
+              "inset_top": 3,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {},
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Sales",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Account insight and next best action",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr",
+              "inset_left": 0,
+              "inset_right": 0,
+              "inset_top": 3,
+              "inset_bottom": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 77.594,
+      "max_height": 77.594,
+      "cells": [
+        {}
+      ]
+    },
+    {
+      "min_height": 39,
+      "max_height": 39,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Finance",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "r",
+                  "space_after": 1
+                },
+                {
+                  "content": "Billing and revenue assurance",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "ctr",
+              "inset_left": 0,
+              "inset_right": 0,
+              "inset_top": 3,
+              "inset_bottom": 3
+            }
+          }
+        },
+        {},
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Service",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 1
+                },
+                {
+                  "content": "Full history at every contact",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr",
+              "inset_left": 0,
+              "inset_right": 0,
+              "inset_top": 3,
+              "inset_bottom": 3
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 30.118,
+      "max_height": 30.118,
+      "cells": [
+        {}
+      ]
+    }
+  ],
+  "vertical_align": "center"
+}
