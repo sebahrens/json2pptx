@@ -295,6 +295,7 @@ type metricListLayout struct {
 	valueSize, labelSize, detailSize float64
 	rowPt                            float64 // uniform item row height
 	calloutPt                        float64 // 0 = no callout
+	calloutSqueezePt                 float64 // the part of calloutPt the grid gives up before text shrinks
 	unfitValues                      []int   // items whose value wraps even at the floor
 	rowGapPt                         float64 // metricListRowGapPt on the template grid
 	tight                            bool    // rows use metricListTightInsetPt
@@ -327,7 +328,7 @@ func (l metricListLayout) natural(n int) float64 {
 func (l metricListLayout) minimal(n int) float64 {
 	h := l.natural(n)
 	if l.calloutPt > 0 {
-		h -= TakeawaySpacerPt(l.rowGapPt) + 2*SubGridInsetPt + takeawaySafetyPt
+		h -= l.calloutSqueezePt
 	}
 	return h
 }
@@ -483,6 +484,7 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, ovr *MetricLis
 	lay.rowPt = math.Ceil(row)
 	if strings.TrimSpace(vals.Callout) != "" {
 		lay.calloutPt = TakeawayRowHeightPt(ctx, metricListTakeaway(vals.Callout, "", ovr.TakeawayEmphasis), areaW, ctx.Gap(metricListRowGapPt))
+		lay.calloutSqueezePt = TakeawaySqueezePt(metricListTakeaway(vals.Callout, "", ovr.TakeawayEmphasis), ctx.Gap(metricListRowGapPt))
 	}
 	return lay
 }
@@ -621,8 +623,10 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 		// The so-what is the shared takeaway band, not a solid accent banner
 		// (go-slide-creator-7b5o6).
 		areaW, _ := sizingAreaPt(ctx)
-		rows = append(rows, TakeawayRow(ctx, metricListTakeaway(vals.Callout, baseAccent, ovr.TakeawayEmphasis), 2, areaW, ctx.Gap(metricListRowGapPt)))
-		itemRow = append(itemRow, false)
+		for _, row := range TakeawayRows(ctx, metricListTakeaway(vals.Callout, baseAccent, ovr.TakeawayEmphasis), 2, areaW, ctx.Gap(metricListRowGapPt)) {
+			rows = append(rows, row)
+			itemRow = append(itemRow, false)
+		}
 	}
 
 	colsJSON, _ := json.Marshal(lay.cols)

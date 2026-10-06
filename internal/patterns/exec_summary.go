@@ -380,10 +380,9 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	if bottomPt > 0 {
-		// The ask is the shared takeaway component: a flush accent bar and
-		// bold dk1 text, no box, no outline (go-slide-creator-7b5o6). It
-		// replaced a closing rule + chevron "BOTTOM LINE" flag + tinted box.
-		rows = append(rows, TakeawayRow(ctx, execSummaryTakeaway(vals.BottomLine, baseAccent, ovr.TakeawayEmphasis), len(cols), areaW, lay.rowGapPt))
+		// The ask is the shared takeaway component: the full-width band
+		// (go-slide-creator-3a1rm).
+		rows = append(rows, TakeawayRows(ctx, execSummaryTakeaway(vals.BottomLine, baseAccent, ovr.TakeawayEmphasis), len(cols), areaW, lay.rowGapPt)...)
 	}
 
 	colsJSON, _ := json.Marshal(cols)

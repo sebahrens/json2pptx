@@ -274,7 +274,9 @@ func reserveCalloutBand(ctx patterns.ExpandContext, callout *patterns.PatternCal
 // always bold; "italic" / "bold-italic" set it italic, and "subtle" / "strong"
 // pick the tinted or solid-accent variant.
 func calloutTakeawaySpec(callout *patterns.PatternCallout) patterns.TakeawaySpec {
-	spec := patterns.TakeawaySpec{Text: callout.Text, Accent: callout.Accent}
+	// The envelope callout keeps the bar look (the skill documents it); the
+	// pattern-owned takeaways are the filled band (go-slide-creator-3a1rm).
+	spec := patterns.TakeawaySpec{Text: callout.Text, Accent: callout.Accent, Emphasis: patterns.TakeawayEmphasisBar}
 	switch callout.Emphasis {
 	case "italic", "bold-italic":
 		spec.Italic = true

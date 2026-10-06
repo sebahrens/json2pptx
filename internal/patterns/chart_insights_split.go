@@ -963,7 +963,7 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 		}}})
 		used += h
 	}
-	var soWhatRow *jsonschema.GridRowInput
+	var soWhatRows []jsonschema.GridRowInput
 	if hasSoWhat {
 		// The so-what is the shared takeaway band (go-slide-creator-7b5o6):
 		// a flush accent bar and bold dk1 text, no tinted box. Its row is
@@ -974,8 +974,7 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 			spec.SizePt = scaleBodyPt
 		}
 		h := TakeawayRowHeightPt(ctx, spec, colW, ctx.Gap(cisColumnRowGapPt))
-		row := TakeawayRow(ctx, spec, 1, colW, ctx.Gap(cisColumnRowGapPt))
-		soWhatRow = &row
+		soWhatRows = TakeawayRows(ctx, spec, 1, colW, ctx.Gap(cisColumnRowGapPt))
 		used += h
 	}
 	need := 0.0
@@ -985,9 +984,7 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 			need = writtenFitHeightPt(ctx.themeFonts(), insights.Shape.Text, colW, 0)
 		}
 	}
-	if soWhatRow != nil {
-		rows = append(rows, *soWhatRow)
-	}
+	rows = append(rows, soWhatRows...)
 	short := used + need + ctx.Gap(cisColumnRowGapPt)*float64(len(rows)-1) - colH
 	return &jsonschema.GridCellInput{Grid: &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`1`),
