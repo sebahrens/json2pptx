@@ -33,6 +33,10 @@ type FitResult struct {
 	LnSpcReduction int
 	// Overflow is true if text still doesn't fit even at minimum settings.
 	Overflow bool
+	// LineSpacingRaised is true when a paragraph wraps at the fitted size and
+	// Params.WrappedLineSpacing replaced a tighter LineSpacing for it. The
+	// caller has to write that spacing; the inherited one is tighter.
+	LineSpacingRaised bool
 	// Readable is independent of geometric fit. A shape can fit while violating
 	// the selected viewing-mode minimum.
 	Readable        bool
@@ -75,6 +79,14 @@ type Params struct {
 	// level 1 bullets) which reduces the available width for text wrapping.
 	// Paragraphs beyond the slice length use 0 (no extra margin).
 	LeftMarginsPt []float64
+	// WrappedLineSpacing, when above LineSpacing, is the line spacing
+	// multiplier a paragraph takes once it wraps to more than one line. A
+	// mixed-case title whose layout declares 80% leading reads well on one
+	// line, but on two or three the descenders of one line touch the
+	// ascenders of the next (go-slide-creator-vxnfu). A one-line paragraph
+	// keeps LineSpacing; the autofit line-spacing reduction applies to
+	// whichever of the two a paragraph uses. Zero = no wrapped spacing.
+	WrappedLineSpacing float64
 	// MinFontScalePct overrides the minimum font scale percentage floor.
 	// Default (0) uses the package constant (60%). Dense content like 10+ bullet
 	// lists can set this lower (e.g., 45) to allow more text to fit before
@@ -93,6 +105,9 @@ type Params struct {
 const (
 	// emuPerPoint converts points to EMU.
 	emuPerPoint = int64(types.EMUPerPoint)
+	// DefaultMinFontScalePct is the font scale floor Calculate uses when
+	// Params.MinFontScalePct is zero.
+	DefaultMinFontScalePct = minFontScalePct
 	// minFontScalePct is the minimum font scale percentage (OOXML floor).
 	// At 60%, a 24pt capped body font floors at ~14pt, keeping dense
 	// bullet-group content readable on projected slides. Content that
@@ -181,15 +196,15 @@ func Calculate(p Params) (FitResult, error) {
 		scale := float64(scalePct) / 100.0
 		scaledFontPt := fontSizePt * scale
 
-		totalHeight := estimateTextHeightUpTo(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, usableHeightPt)
+		totalHeight, raised := estimateTextHeightUpTo(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.WrappedLineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, usableHeightPt)
 
 		if totalHeight <= usableHeightPt {
 			readability := CheckReadability(p.FontSizeHPt, scalePct*1000, p.ViewingMode, p.TextRole)
 			if scalePct == 100 {
-				return FitResult{Readable: readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted}, nil
+				return FitResult{LineSpacingRaised: raised, Readable: readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted}, nil
 			}
 			return FitResult{
-				FontScale: scalePct * 1000, Readable: readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted,
+				FontScale: scalePct * 1000, LineSpacingRaised: raised, Readable: readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted,
 			}, nil
 		}
 	}
@@ -199,10 +214,10 @@ func Calculate(p Params) (FitResult, error) {
 	// fits at 88% is incorrectly reported as needing compressed lines.
 	if (100-minScale)%fontScaleStep != 0 {
 		scaledFontPt := fontSizePt * float64(minScale) / 100.0
-		totalHeight := estimateTextHeightUpTo(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, usableHeightPt)
+		totalHeight, raised := estimateTextHeightUpTo(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.WrappedLineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, usableHeightPt)
 		if totalHeight <= usableHeightPt {
 			readability := CheckReadability(p.FontSizeHPt, minScale*1000, p.ViewingMode, p.TextRole)
-			return FitResult{FontScale: minScale * 1000, Readable: readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted}, nil
+			return FitResult{FontScale: minScale * 1000, LineSpacingRaised: raised, Readable: readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted}, nil
 		}
 	}
 
@@ -210,26 +225,29 @@ func Calculate(p Params) (FitResult, error) {
 	minScaleF := float64(minScale) / 100.0
 	scaledFontPt := fontSizePt * minScaleF
 	for lnReduction := 5; lnReduction <= maxLnSpcReductionPct; lnReduction += 5 {
-		reducedSpacing := p.LineSpacing * (1.0 - float64(lnReduction)/100.0)
-		totalHeight := estimateTextHeightUpTo(ff, p.Paragraphs, scaledFontPt, usableWidthPt, reducedSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, usableHeightPt)
+		keep := 1.0 - float64(lnReduction)/100.0
+		totalHeight, raised := estimateTextHeightUpTo(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing*keep, p.WrappedLineSpacing*keep, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, usableHeightPt)
 
 		if totalHeight <= usableHeightPt {
 			readability := CheckReadability(p.FontSizeHPt, minScale*1000, p.ViewingMode, p.TextRole)
 			return FitResult{
-				FontScale:      minScale * 1000,
-				LnSpcReduction: lnReduction * 1000,
-				Readable:       readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted,
+				FontScale:         minScale * 1000,
+				LnSpcReduction:    lnReduction * 1000,
+				LineSpacingRaised: raised,
+				Readable:          readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted,
 			}, nil
 		}
 	}
 
 	// Still doesn't fit — return maximum reduction values and flag overflow
 	readability := CheckReadability(p.FontSizeHPt, minScale*1000, p.ViewingMode, p.TextRole)
+	_, raised := estimateTextHeightUpTo(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.WrappedLineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, math.Inf(1))
 	return FitResult{
-		FontScale:      minScale * 1000,
-		LnSpcReduction: maxLnSpcReductionPct * 1000,
-		Overflow:       true,
-		Readable:       readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted,
+		FontScale:         minScale * 1000,
+		LnSpcReduction:    maxLnSpcReductionPct * 1000,
+		Overflow:          true,
+		LineSpacingRaised: raised,
+		Readable:          readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted,
 	}, nil
 }
 
@@ -239,7 +257,8 @@ func Calculate(p Params) (FitResult, error) {
 // perParaSpacings overrides extraSpacingPt for each corresponding paragraph index.
 // leftMargins is per-paragraph left margin in points (from bullet marL); reduces available width.
 func estimateTextHeight(ff *canvas.FontFamily, paragraphs []string, fontSizePt, widthPt, lineSpacing, extraSpacingPt float64, perParaSpacings, leftMargins []float64) float64 {
-	return estimateTextHeightUpTo(ff, paragraphs, fontSizePt, widthPt, lineSpacing, extraSpacingPt, perParaSpacings, leftMargins, math.Inf(1))
+	h, _ := estimateTextHeightUpTo(ff, paragraphs, fontSizePt, widthPt, lineSpacing, 0, extraSpacingPt, perParaSpacings, leftMargins, math.Inf(1))
+	return h
 }
 
 // estimateTextHeightUpTo is estimateTextHeight that stops measuring once the
@@ -248,7 +267,11 @@ func estimateTextHeight(ff *canvas.FontFamily, paragraphs []string, fontSizePt, 
 // early exit changes no answer, but an overflowing 2000-paragraph body now
 // shapes only the paragraphs that fit plus one per scale step instead of all
 // of them (go-slide-creator-8hg02).
-func estimateTextHeightUpTo(ff *canvas.FontFamily, paragraphs []string, fontSizePt, widthPt, lineSpacing, extraSpacingPt float64, perParaSpacings, leftMargins []float64, limitPt float64) float64 {
+//
+// wrappedSpacing, when above lineSpacing, is the spacing of a paragraph that
+// wraps to more than one line (Params.WrappedLineSpacing); raised reports
+// that at least one measured paragraph took it.
+func estimateTextHeightUpTo(ff *canvas.FontFamily, paragraphs []string, fontSizePt, widthPt, lineSpacing, wrappedSpacing, extraSpacingPt float64, perParaSpacings, leftMargins []float64, limitPt float64) (height float64, raised bool) {
 	face := newFace(ff, fontSizePt, canvas.FontRegular)
 
 	lineHeightPt := fontSizePt * lineSpacing
@@ -256,7 +279,7 @@ func estimateTextHeightUpTo(ff *canvas.FontFamily, paragraphs []string, fontSize
 
 	for i, para := range paragraphs {
 		if totalHeight > limitPt {
-			return totalHeight
+			return totalHeight, raised
 		}
 		spacing := extraSpacingPt
 		if i < len(perParaSpacings) {
@@ -276,10 +299,15 @@ func estimateTextHeightUpTo(ff *canvas.FontFamily, paragraphs []string, fontSize
 			}
 		}
 		lines := wrapText(face, para, effectiveWidth)
+		if lines > 1 && wrappedSpacing > lineSpacing {
+			raised = true
+			totalHeight += float64(lines)*fontSizePt*wrappedSpacing + spacing
+			continue
+		}
 		totalHeight += float64(lines)*lineHeightPt + spacing
 	}
 
-	return totalHeight
+	return totalHeight, raised
 }
 
 // MaxFontForWidth returns the maximum font size in hundredths of a point (hPt)
@@ -384,7 +412,7 @@ func MeasureHeight(p Params) (int64, error) {
 		return int64(math.Ceil(heightPt * float64(emuPerPoint))), nil
 	}
 
-	heightPt := estimateTextHeight(ff, p.Paragraphs, fontSizePt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
+	heightPt, _ := estimateTextHeightUpTo(ff, p.Paragraphs, fontSizePt, usableWidthPt, p.LineSpacing, p.WrappedLineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt, math.Inf(1))
 	return int64(math.Ceil(heightPt * float64(emuPerPoint))), nil
 }
 
@@ -409,6 +437,10 @@ func estimateStyledTextHeight(face *canvas.FontFace, p Params, fontSizePt, width
 		lines := 0
 		for _, line := range strings.Split(para, "\n") {
 			lines += wrapLineWith(measure, line, w)
+		}
+		if lines > 1 && p.WrappedLineSpacing > p.LineSpacing {
+			total += float64(lines)*fontSizePt*p.WrappedLineSpacing + spacing
+			continue
 		}
 		total += float64(lines)*lineHeightPt + spacing
 	}

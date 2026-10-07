@@ -129,68 +129,42 @@
       ]
     },
     {
+      "min_height": 12,
+      "max_height": 12,
+      "cells": [
+        {
+          "col_span": 2
+        }
+      ]
+    },
+    {
       "auto_height": true,
-      "min_height": 41,
+      "min_height": 35,
       "cells": [
         {
           "col_span": 2,
-          "grid": {
-            "col_gap": 0.01,
-            "row_gap": 0.01,
-            "columns": [
-              0.35046728971962615,
-              99.64953271028037
-            ],
-            "rows": [
-              {
-                "min_height": 10,
-                "max_height": 10,
-                "cells": [
-                  {
-                    "col_span": 2
-                  }
-                ]
-              },
-              {
-                "min_height": 23,
-                "max_height": 23,
-                "cells": [
-                  {
-                    "shape": {
-                      "geometry": "rect",
-                      "fill": "accent1",
-                      "line": "none"
-                    }
-                  },
-                  {
-                    "shape": {
-                      "geometry": "rect",
-                      "fill": "none",
-                      "line": "none",
-                      "text": {
-                        "paragraphs": [
-                          {
-                            "content": "Key takeaway: performance and reliability are non-negotiable",
-                            "size": 14,
-                            "bold": true,
-                            "color": "dk1",
-                            "align": "l"
-                          }
-                        ],
-                        "align": "l",
-                        "vertical_align": "t",
-                        "inset_left": 12,
-                        "inset_right": 0,
-                        "inset_top": 2,
-                        "inset_bottom": 2
-                      }
-                    }
-                  }
-                ]
-              }
-            ],
-            "vertical_align": "bottom",
-            "source": "pattern:card-grid"
+          "shape": {
+            "geometry": "rect",
+            "type_scale": "compact",
+            "fill": "dk2",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Key takeaway: performance and reliability are non-negotiable",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr",
+              "inset_left": 12,
+              "inset_right": 12,
+              "inset_top": 8,
+              "inset_bottom": 8
+            }
           }
         }
       ]

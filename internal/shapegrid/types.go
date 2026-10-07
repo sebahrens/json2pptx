@@ -173,6 +173,12 @@ type Grid struct {
 	// is inset to start there; 0 leaves insets alone (go-slide-creator-svrpx).
 	TextLeft int64
 
+	// MeasurePeers makes Resolve record each text cell's peer key and growth
+	// on its ResolvedCell, for NewPeerScope. Peers is the scope sibling grids
+	// of one parent agreed on in such a measuring pass: a cell grows no
+	// further than its peer group across those grids did (peer_growth.go).
+	MeasurePeers bool
+	Peers        *PeerScope
 	// KeepTextSizes leaves authored cell font sizes as written. By default
 	// sized text settles onto the type scale (tokens.SnapTextHPt); callers
 	// set this only for a design_mode "free" deck's own grids.
@@ -483,6 +489,12 @@ type ResolvedCell struct {
 	Layer     bool
 	LayerIdx  int
 	LayerName string
+	// peer, peered and peerGrow are what a measuring resolve
+	// (Grid.MeasurePeers) recorded for NewPeerScope: the cell's peer key and
+	// the growth its own grid settled on, before that growth was written.
+	peer     peerKey
+	peered   bool
+	peerGrow float64
 }
 
 // PathSuffix is the JSON-pointer tail that tells a layer from its host cell:
@@ -536,4 +548,9 @@ type ResolveResult struct {
 	// (compose.go): a sparse content-sized block at the optical centre of its
 	// area instead of hung from the body line.
 	Composed bool
+	// SubGridPeers is the peer scope of the grids nested in this one's
+	// sub-grid cells, set by the caller that resolves them (it owns the
+	// nested grids; Resolve only reserves their frames). Each nested grid is
+	// resolved with it as Grid.Peers. Nil when no nested text is held.
+	SubGridPeers *PeerScope
 }

@@ -21,8 +21,10 @@ func init() {
 
 type matrix2x2 struct{}
 
-func (m *matrix2x2) Name() string        { return "matrix-2x2" }
-func (m *matrix2x2) Description() string { return "2×2 quadrant matrix with axis labels" }
+func (m *matrix2x2) Name() string { return "matrix-2x2" }
+func (m *matrix2x2) Description() string {
+	return "2×2 quadrant matrix: four tonal quadrant fields split by a white gutter (one optional highlight quadrant in the solid accent), each with a bold name over its body, and two dark axis bars carrying low end, title and high end"
+}
 func (m *matrix2x2) UseWhen() string {
 	return "Items positioned on two named axes (priority/effort, impact/feasibility); prefer comparison-2col when only one dimension matters, card-grid when items don't map to axes"
 }
@@ -62,8 +64,9 @@ type Matrix2x2Quadrant struct {
 	Header string   `json:"header"`
 	Body   string   `json:"body,omitempty"`
 	Icon   *IconRef `json:"icon,omitempty"` // Icon: bundled-name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object
-	// Highlight tints this quadrant (at most one): the quadrant the slide is
-	// about, and the only filled area of the open matrix.
+	// Highlight marks the quadrant the slide is about (at most one): the
+	// solid accent field of the tonal matrix, the only tinted area of the
+	// open one.
 	Highlight bool `json:"highlight,omitempty"`
 }
 
@@ -151,20 +154,37 @@ func (v *Matrix2x2Values) UnmarshalJSON(data []byte) error {
 type Matrix2x2Overrides struct {
 	TextOverrides
 	LabelSize float64 `json:"label_size,omitempty"`
-	// Style is "open" (default: two crossing axis lines, open quadrants, axis
-	// titles and low / high ends along the left and bottom edges) or "tiles"
-	// (four filled quadrant tiles with arrow axes above and beside them, the
-	// look before go-slide-creator-jnkiq).
+	// Style is "tonal" (default: four quadrant fields in the accent's tint
+	// split by a white gutter, the highlight quadrant in the solid accent,
+	// and two dark axis bars, go-slide-creator-ckpye), "open" (two crossing
+	// axis lines, open quadrants, axis titles and low / high ends along the
+	// left and bottom edges, go-slide-creator-jnkiq) or "tiles" (four neutral
+	// quadrant tiles with thin arrow axes above and beside them).
 	Style string `json:"style,omitempty"`
 }
 
-// matrix2x2Styles are the accepted overrides.style values.
-var matrix2x2Styles = []string{"open", "tiles"}
+// The accepted overrides.style values.
+const (
+	matrix2x2StyleTonal = "tonal"
+	matrix2x2StyleOpen  = "open"
+	matrix2x2StyleTiles = "tiles"
+)
+
+var matrix2x2Styles = []string{matrix2x2StyleTonal, matrix2x2StyleOpen, matrix2x2StyleTiles}
+
+// matrix2x2Style is the style the matrix renders in.
+func matrix2x2Style(ovr *Matrix2x2Overrides) string {
+	if ovr == nil || ovr.Style == "" {
+		return matrix2x2StyleTonal
+	}
+	return ovr.Style
+}
 
 // matrix2x2Open reports whether the matrix renders in the open style.
-func matrix2x2Open(ovr *Matrix2x2Overrides) bool {
-	return ovr == nil || ovr.Style != "tiles"
-}
+func matrix2x2Open(ovr *Matrix2x2Overrides) bool { return matrix2x2Style(ovr) == matrix2x2StyleOpen }
+
+// matrix2x2Tonal reports whether the matrix renders in the tonal style.
+func matrix2x2Tonal(ovr *Matrix2x2Overrides) bool { return matrix2x2Style(ovr) == matrix2x2StyleTonal }
 
 // Matrix2x2CellOverride is an alias for the shared CellOverride struct.
 type Matrix2x2CellOverride = CellOverride
@@ -257,7 +277,7 @@ func (m *matrix2x2) Schema() *Schema {
 			"header":    StringSchema(80).WithDescription("Quadrant header text"),
 			"body":      StringSchema(200).WithDescription("Quadrant body text; keep unbroken runs near 163 characters (126 beside a long header; 40 and at most 40 characters of copy beside a header with an unbroken run over 47) or add word breaks"),
 			"icon":      IconRefSchema(""),
-			"highlight": BooleanSchema().WithDescription("Tint this quadrant (at most one): the only filled area of the open matrix"),
+			"highlight": BooleanSchema().WithDescription("The quadrant the slide is about (at most one): drawn in the solid accent"),
 		},
 		[]string{"header"},
 	).WithAdditionalProperties(false)
@@ -313,7 +333,7 @@ func (m *matrix2x2) Schema() *Schema {
 					"header_size":     NumberSchema(6, 120).WithDescription("Font size for quadrant headers in points"),
 					"body_size":       NumberSchema(6, 120).WithDescription("Font size for quadrant body text in points"),
 					"label_size":      NumberSchema(6, 120).WithDescription("Font size for axis labels in points"),
-					"style":           EnumSchema(matrix2x2Styles...).WithDescription("open (default: two crossing axis lines through the matrix, open quadrants, axis titles with low / high ends along the left and bottom edges) or tiles (four filled quadrant tiles with arrow axes)").WithDefault("open"),
+					"style":           EnumSchema(matrix2x2Styles...).WithDescription("tonal (default: four accent-tint quadrant fields split by a white gutter, the highlight quadrant solid, dark axis bars carrying low end, title and high end), open (two crossing axis lines, unfilled quadrants) or tiles (four neutral quadrant tiles with thin arrow axes)").WithDefault(matrix2x2StyleTonal),
 				},
 				nil,
 			).WithAdditionalProperties(false),
@@ -426,6 +446,9 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	lay := layoutMatrix2x2(ctx, vals, ovr)
 	headerSize, bodySize := lay.headerSize, lay.bodySize
 	labelSize := ResolveSize(ovr.LabelSize, scaleSubheadPt)
+	if matrix2x2Tonal(ovr) {
+		return expandMatrix2x2Tonal(ctx, vals, lay, labelSize, accent, cellOverrides), nil
+	}
 	if matrix2x2Open(ovr) {
 		return expandMatrix2x2Open(ctx, vals, lay, labelSize, accent, cellOverrides), nil
 	}
@@ -538,6 +561,7 @@ type matrix2x2Layout struct {
 	headerSize, bodySize float64
 	needs                [2]float64
 	availPt              float64
+	bars                 matrix2x2Bars // tonal style: the measured axis bars
 }
 
 // Open matrix geometry (go-slide-creator-jnkiq).
@@ -695,17 +719,27 @@ func layoutMatrix2x2(ctx ExpandContext, v *Matrix2x2Values, ovr *Matrix2x2Overri
 		quadW = (areaW*(100-matrix2x2YStripPct)/100 - matrix2x2AxisLinePt) / 2
 		lay.availPt = areaH - matrix2x2AxisLinePt - matrix2x2XStripPt(ctx, v, ResolveSize(ovr.LabelSize, scaleSubheadPt))
 	}
-	sizes := []float64{ResolveSize(ovr.HeaderSize, sizeHeaderPt)}
+	sizes := [][2]float64{{ResolveSize(ovr.HeaderSize, sizeHeaderPt), lay.bodySize}}
 	if ovr.HeaderSize == 0 {
-		sizes = append(sizes, 14, matrix2x2MinHeaderPt)
+		sizes = append(sizes, [2]float64{scaleSubheadPt, lay.bodySize}, [2]float64{matrix2x2MinHeaderPt, lay.bodySize})
+	}
+	content := buildMatrix2x2QuadrantContent
+	if matrix2x2Tonal(ovr) {
+		lay.bars = layoutMatrix2x2Bars(ctx, v, ResolveSize(ovr.LabelSize, scaleSubheadPt))
+		quadW, lay.availPt = lay.bars.quadW, lay.bars.availPt
+		content = matrix2x2TonalContent
+		if ovr.HeaderSize == 0 && ovr.BodySize == 0 {
+			sizes = matrix2x2TonalScales
+		}
 	}
 	pairs := [2][2]Matrix2x2Quadrant{{v.TopLeft, v.TopRight}, {v.BottomLeft, v.BottomRight}}
-	for _, size := range sizes {
-		lay.headerSize = size
+	for _, step := range sizes {
+		size := step[0]
+		lay.headerSize, lay.bodySize = size, step[1]
 		for r, pair := range pairs {
 			lay.needs[r] = 0
 			for _, q := range pair {
-				fit := writtenFitHeightPt(ctx.themeFonts(), buildMatrix2x2QuadrantContent(q, size, lay.bodySize, "accent1"), quadW, 0)
+				fit := writtenFitHeightPt(ctx.themeFonts(), content(q, size, lay.bodySize, "accent1"), quadW, 0)
 				lay.needs[r] = math.Max(lay.needs[r], matrix2x2QuadrantNeedPt(fit, quadW, q.Icon != nil && !q.Icon.IsEmpty()))
 			}
 		}

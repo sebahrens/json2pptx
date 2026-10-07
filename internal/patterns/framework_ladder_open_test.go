@@ -12,13 +12,78 @@ func isRuleRow(row jsonschema.GridRowInput) bool {
 	return len(row.Cells) == 1 && row.Cells[0].Shape != nil && len(row.Cells[0].Shape.Text) == 0 && row.MaxHeight > 0 && row.MaxHeight < 2
 }
 
-// go-slide-creator-rpz53: the default framework fills no cell. Rows are a
-// label and open cards between full-width hairline rules; a ragged row still
-// leaves its trailing columns empty.
-func TestFrameworkGridOpenDefault(t *testing.T) {
+// go-slide-creator-7k694: the default framework sets each dimension label on
+// a pentagon tab pointing into one pale band that runs the row's full width;
+// the type takes the larger step where the rows have the room, and a
+// highlighted row is the only solid accent block.
+func TestFrameworkGridTabsDefault(t *testing.T) {
 	p := &frameworkGrid{}
 	v := p.ExemplarValues().(*FrameworkGridValues)
-	grid, err := p.Expand(testThemeCtx(), v, nil, nil)
+	v.Rows[1].Highlight = true // the two-card row of a three-column framework
+	ctx := testThemeCtx()
+	grid, err := p.Expand(ctx, v, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grid.Rows) != len(v.Rows) {
+		t.Fatalf("rows = %d, want one per dimension and no rule rows", len(grid.Rows))
+	}
+	solid := 0
+	for i, row := range grid.Rows {
+		if len(row.Cells) != 2+3 {
+			t.Fatalf("row %d has %d cells, want tab, gap and 3 band cells", i, len(row.Cells))
+		}
+		tab, gap := row.Cells[0], row.Cells[1]
+		if tab.Shape == nil || tab.Shape.Geometry != "homePlate" || tab.Shape.Adjustments["adj"] <= 0 || !strings.Contains(string(tab.Shape.Text), `"bold":true`) {
+			t.Errorf("row %d label = %+v, want a bold pentagon tab", i, tab.Shape)
+		}
+		if gap.Shape != nil {
+			t.Errorf("row %d: the gap between tab and band must stay empty", i)
+		}
+		if string(tab.Shape.Fill) == `"accent1"` {
+			solid++
+			if i != 1 {
+				t.Errorf("row %d tab is solid accent, want only the highlighted row", i)
+			}
+		}
+		band := string(row.Cells[2].Shape.Fill)
+		for j, c := range row.Cells[2:] {
+			if c.Shape == nil || string(c.Shape.Fill) != band || band == `"none"` {
+				t.Errorf("row %d band cell %d: the band must run the full width in one fill", i, j)
+			}
+		}
+		if (i == 1) != strings.Contains(band, "accent1") {
+			t.Errorf("row %d band = %s: only the highlighted row's band is an accent tint", i, band)
+		}
+	}
+	if solid != 1 {
+		t.Errorf("solid accent tabs = %d, want 1", solid)
+	}
+	if l := fgMeasure(ctx, v, &FrameworkGridOverrides{}); l.titlePt != fgTabsScale[0] || l.bodyPt != fgTabsScale[1] {
+		t.Errorf("exemplar set at %.0f / %.0fpt, want the larger step %v", l.titlePt, l.bodyPt, fgTabsScale)
+	}
+	// An authored size is kept.
+	if l := fgMeasure(ctx, v, &FrameworkGridOverrides{BodySize: 12}); l.titlePt != scaleSubheadPt || l.bodyPt != 12 {
+		t.Errorf("authored body_size: set at %.0f / %.0fpt, want 14 / 12", l.titlePt, l.bodyPt)
+	}
+	// A tab widens for a label word its default column would break.
+	narrow := ctx
+	narrow.LayoutBounds = LayoutBounds{Width: 4200000, Height: 4000000}
+	if l := fgMeasure(narrow, v, &FrameworkGridOverrides{}); l.labelPct <= fgDefaultLabelPct || l.labelPct > fgMaxLabelPct {
+		t.Errorf("narrow framework: label column %.0f%%, want it widened past the default %.0f%%", l.labelPct, fgDefaultLabelPct)
+	}
+	if l := fgMeasure(narrow, v, &FrameworkGridOverrides{LabelWidthPct: 20}); l.labelPct != 20 {
+		t.Errorf("authored label_width_pct: column %.0f%%, want 20", l.labelPct)
+	}
+}
+
+// go-slide-creator-rpz53: the open framework fills no cell. Rows are a
+// label and open cards between full-width hairline rules; a ragged row still
+// leaves its trailing columns empty.
+func TestFrameworkGridOpenStyle(t *testing.T) {
+	p := &frameworkGrid{}
+	v := p.ExemplarValues().(*FrameworkGridValues)
+	grid, err := p.Expand(testThemeCtx(), v, &FrameworkGridOverrides{Style: "open"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +140,8 @@ func TestFrameworkGridOpenDefault(t *testing.T) {
 	}
 }
 
-// A highlighted row is one unbroken band, the only filled area.
+// A highlighted row of the open framework is one unbroken band, the only
+// filled area.
 func TestFrameworkGridHighlight(t *testing.T) {
 	p := &frameworkGrid{}
 	v := p.ExemplarValues().(*FrameworkGridValues)
@@ -83,7 +149,7 @@ func TestFrameworkGridHighlight(t *testing.T) {
 	if err := p.Validate(v, nil, nil); err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	grid, err := p.Expand(testThemeCtx(), v, nil, nil)
+	grid, err := p.Expand(testThemeCtx(), v, &FrameworkGridOverrides{Style: "open"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

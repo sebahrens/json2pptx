@@ -11,17 +11,19 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ---------------------------------------------------------------------------
-// framework-grid pattern — 2-6 dimension rows, each a bold row label followed
-// by 1-4 open cards (accent title + short body), rows separated by hairline
-// rules. The tiles style fills the label band and every card.
+// framework-grid pattern — 2-6 dimension rows, each a bold row label on a
+// pentagon tab pointing into one pale band that holds the row's 1-4 cards
+// (bold title + short body). The open style drops the fills for hairline
+// rules; the tiles style fills the label band and every card.
 //
-//   [ People      ][ Leadership ][ Skills     ][ Incentives ]
-//   [ Process     ][ Governance ][ Workflows  ]
-//   [ Technology  ][ Platforms  ][ Data       ][ Tooling    ]
+//   [ People     > [ Leadership   Skills       Incentives  ]
+//   [ Process    > [ Governance   Workflows                ]
+//   [ Technology > [ Platforms    Data         Tooling     ]
 //
 // The column count is the longest row's card count; shorter rows leave the
 // trailing space empty so a card always sits under the same column heading.
@@ -60,7 +62,7 @@ const (
 
 func (p *frameworkGrid) Name() string { return fgName }
 func (p *frameworkGrid) Description() string {
-	return "Framework grid: 2-6 dimension rows separated by hairline rules, each a bold row label followed by 1-4 open cards (accent title + short body); shorter rows leave trailing space empty and one row can be highlighted"
+	return "Framework grid: 2-6 dimension rows, each a bold label on a pentagon tab pointing into one pale band of 1-4 cards (bold title + short body); shorter rows leave trailing space empty and one row can be highlighted"
 }
 func (p *frameworkGrid) UseWhen() string {
 	return "A framework whose rows are named dimensions (people / process / technology, levers by dimension, change-management building blocks) and whose cells are 1-4 short titled levers per dimension that need not line up as the same criteria; prefer card-grid for a flat set of tiles without row labels, table-highlight for options scored against shared criteria, stylish-panels for 3-5 pillars with bullet lists"
@@ -141,19 +143,54 @@ type FrameworkGridOverrides struct {
 	TitleSize      float64 `json:"title_size,omitempty"`
 	BodySize       float64 `json:"body_size,omitempty"`
 	CellAccentMode string  `json:"cell_accent_mode,omitempty"` // uniform | alternate | progressive
-	// Style is "open" (default: unfilled labels and cards, rows separated by
-	// hairline rules) or "tiles" (a filled label band and a filled tile per
-	// card, the look before go-slide-creator-rpz53).
+	// Style is "tabs" (default: each label on a pentagon tab pointing into
+	// one pale band that holds the row's cards, go-slide-creator-7k694),
+	// "open" (unfilled labels and cards, rows separated by hairline rules) or
+	// "tiles" (a filled label band and a filled tile per card, the look
+	// before go-slide-creator-rpz53).
 	Style string `json:"style,omitempty"`
 }
 
-// fgStyles are the accepted overrides.style values.
-var fgStyles = []string{"open", "tiles"}
+// The accepted overrides.style values.
+const (
+	fgStyleTabs  = "tabs"
+	fgStyleOpen  = "open"
+	fgStyleTiles = "tiles"
+)
+
+var fgStyles = []string{fgStyleTabs, fgStyleOpen, fgStyleTiles}
+
+// fgStyle is the style the framework renders in.
+func fgStyle(ovr *FrameworkGridOverrides) string {
+	if ovr == nil || ovr.Style == "" {
+		return fgStyleTabs
+	}
+	return ovr.Style
+}
 
 // fgOpen reports whether the framework renders in the open style.
-func fgOpen(ovr *FrameworkGridOverrides) bool {
-	return ovr == nil || ovr.Style != "tiles"
-}
+func fgOpen(ovr *FrameworkGridOverrides) bool { return fgStyle(ovr) == fgStyleOpen }
+
+// fgTabs reports whether the framework renders in the tabs style.
+func fgTabs(ovr *FrameworkGridOverrides) bool { return fgStyle(ovr) == fgStyleTabs }
+
+// Tabs framework geometry (go-slide-creator-7k694).
+const (
+	// fgTabPointPt is the depth of a tab's point, the one labeled-rows and
+	// scqa-summary draw.
+	fgTabPointPt = labeledRowsTabPointPt
+	// fgTabGapPt separates a tab's point from the band it points into.
+	fgTabGapPt = 6.0
+	// fgTabsFillFrac is the share of the content height the framework may
+	// need at the larger type step: past it the step would leave the rows no
+	// air, and the framework is set at the standard sizes.
+	fgTabsFillFrac = 0.95
+)
+
+// fgTabsScale is the larger type step of the tabs style, title then body: a
+// framework that has the room is set at 18 / 14pt, so a sparse one does not
+// sit at the floor in a block that fills the slide.
+var fgTabsScale = [2]float64{scaleLeadPt, scaleSubheadPt}
 
 // Open framework geometry.
 const (
@@ -185,7 +222,7 @@ func (p *frameworkGrid) Schema() *Schema {
 
 	rowSchema := ObjectSchema(map[string]*Schema{
 		"label":     StringSchema(fgLabelMax).WithDescription("Dimension name shown bold at the left of its row"),
-		"highlight": BooleanSchema().WithDescription("Tint this row (at most one): the only filled area of the open framework"),
+		"highlight": BooleanSchema().WithDescription("Emphasise this row (at most one): a solid accent tab and an accent-tinted band"),
 		"cards":     ArraySchema(cardSchema, fgMinCards, fgMaxCards).WithDescription("1-4 cards; the longest row sets the column count and shorter rows leave trailing space empty"),
 	}, []string{"label", "cards"}).WithAdditionalProperties(false)
 
@@ -197,10 +234,10 @@ func (p *frameworkGrid) Schema() *Schema {
 		"accent":           StringSchema(0).WithDescription("Accent scheme color for card titles and tints (default accent1)").WithDefault("accent1"),
 		"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 		"label_width_pct":  NumberSchema(fgMinLabelPct, fgMaxLabelPct).WithDescription("Row-label column width as a percent of the grid (default 18)"),
-		"title_size":       NumberSchema(12, 40).WithDescription("Card title and row label size in points (default 14)"),
-		"body_size":        NumberSchema(12, 40).WithDescription("Card body size in points (default 12)"),
+		"title_size":       NumberSchema(12, 40).WithDescription("Card title and row label size in points (default 14; 18 in the tabs style when the rows have the room)"),
+		"body_size":        NumberSchema(12, 40).WithDescription("Card body size in points (default 12; 14 in the tabs style when the rows have the room)"),
 		"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-column accent variation: uniform (default), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
-		"style":            EnumSchema(fgStyles...).WithDescription("open (default: unfilled labels and cards, rows separated by hairline rules) or tiles (a filled label band and a filled tile per card)").WithDefault("open"),
+		"style":            EnumSchema(fgStyles...).WithDescription("tabs (default: each label on a pentagon tab pointing into one pale band of cards), open (unfilled labels and cards, rows separated by hairline rules) or tiles (a filled label band and a filled tile per card)").WithDefault(fgStyleTabs),
 	}, nil).WithAdditionalProperties(false)
 
 	return ObjectSchema(map[string]*Schema{
@@ -280,6 +317,10 @@ func (p *frameworkGrid) Validate(values, overrides any, cellOverrides map[int]an
 type fgLayout struct {
 	cols       int
 	labelPct   float64
+	labelW     float64 // label column, points
+	gapW       float64 // gap between a tab and its band (tabs style)
+	cardW      float64 // one card column, points
+	brokenWord bool    // a label or title word is wider than its column
 	labelTextW float64
 	cardTextW  float64
 	titlePt    float64
@@ -310,21 +351,46 @@ func fgResolveOverrides(overrides any) *FrameworkGridOverrides {
 func fgMeasure(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOverrides) fgLayout {
 	type step struct{ pad, gap, title float64 }
 	title := ResolveSize(ovr.TitleSize, scaleSubheadPt)
+	body := ResolveSize(ovr.BodySize, scaleBodyPt)
+	// The tabs style first tries the larger type step, and keeps it when the
+	// framework still has air at it (fgTabsFillFrac).
+	if fgTabs(ovr) && ovr.TitleSize == 0 && ovr.BodySize == 0 {
+		if l := fgMeasureAt(ctx, v, ovr, fgCardPadPt, ctx.Gap(fgRowGapPt), fgTabsScale[0], fgTabsScale[1]); l.neededHPt <= l.areaHPt*fgTabsFillFrac && !l.brokenWord {
+			return l
+		}
+	}
 	steps := []step{{fgCardPadPt, ctx.Gap(fgRowGapPt), title}, {fgTightPadPt, ctx.Gap(fgTightRowGapPt), title}}
 	if ovr.TitleSize == 0 {
 		steps = append(steps, step{fgTightPadPt, ctx.Gap(fgTightRowGapPt), shapegrid.MinTextSizePt})
 	}
 	for _, st := range steps {
-		if l := fgMeasureAt(ctx, v, ovr, st.pad, st.gap, st.title); l.neededHPt <= l.areaHPt {
+		if l := fgMeasureAt(ctx, v, ovr, st.pad, st.gap, st.title, body); l.neededHPt <= l.areaHPt {
 			return l
 		}
 	}
-	return fgMeasureAt(ctx, v, ovr, steps[0].pad, steps[0].gap, steps[0].title)
+	return fgMeasureAt(ctx, v, ovr, steps[0].pad, steps[0].gap, steps[0].title, body)
 }
 
-func fgMeasureAt(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOverrides, padPt, rowGapPt, titleSize float64) fgLayout {
+// fgColumns is the grid's column split in points: the label column, the gap
+// between a tab and its band (tabs style only), and one card column.
+func fgColumns(ctx ExpandContext, ovr *FrameworkGridOverrides, cols int, labelPct float64) (labelW, gapW, cardW float64) {
+	contentW, _ := contentAreaPt(ctx)
+	colGap := ctx.Gap(fgColGapPt)
+	if !fgTabs(ovr) {
+		if fgOpen(ovr) {
+			colGap = fgOpenColGapPt
+		}
+		gridW := contentW - colGap*float64(cols)
+		return gridW * labelPct / 100, 0, gridW * (100 - labelPct) / 100 / float64(cols)
+	}
+	labelW = contentW * labelPct / 100
+	gapW = ctx.Gap(fgTabGapPt)
+	return labelW, gapW, math.Max(contentW-labelW-gapW, 1) / float64(cols)
+}
+
+func fgMeasureAt(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOverrides, padPt, rowGapPt, titleSize, bodySize float64) fgLayout {
 	font := ctx.Theme.BodyFont
-	contentW, contentH := contentAreaPt(ctx)
+	_, contentH := contentAreaPt(ctx)
 	l := fgLayout{areaHPt: contentH, padPt: padPt, rowGapPt: rowGapPt}
 	for _, row := range v.Rows {
 		l.cols = max(l.cols, len(row.Cards))
@@ -334,20 +400,44 @@ func fgMeasureAt(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOv
 	if ovr.LabelWidthPct > 0 {
 		l.labelPct = clampPt(ovr.LabelWidthPct, fgMinLabelPct, fgMaxLabelPct)
 	}
-	colGap := ctx.Gap(fgColGapPt)
-	if fgOpen(ovr) {
-		colGap = fgOpenColGapPt
-	}
-	gridW := contentW - colGap*float64(l.cols)
-	l.labelTextW = math.Max(gridW*l.labelPct/100-2*defaultShapeInsetLRPt, 1)
-	cardW := gridW * (100 - l.labelPct) / 100 / float64(l.cols)
-	l.cardTextW = math.Max(cardW-2*defaultShapeInsetLRPt, 1)
 	l.titlePt = shapegrid.EffectiveTextSizePt(titleSize)
-	l.bodyPt = shapegrid.EffectiveTextSizePt(ResolveSize(ovr.BodySize, scaleBodyPt))
+	l.bodyPt = shapegrid.EffectiveTextSizePt(bodySize)
+	tabs := fgTabs(ovr)
+	wordFits := func(text string, widthPt float64) bool {
+		for _, w := range strings.Fields(inlineMarkupRe.ReplaceAllString(text, "")) {
+			if measuredLines(w, font, true, l.titlePt, textfit.AtomicTokenWidthPt(font, widthPt)) > 1 {
+				return false
+			}
+		}
+		return true
+	}
+	var labelW, gapW, cardW float64
+	for {
+		labelW, gapW, cardW = fgColumns(ctx, ovr, l.cols, l.labelPct)
+		l.labelTextW = math.Max(labelW-2*defaultShapeInsetLRPt, 1)
+		// A tab is as wide as its longest word needs (a narrow compose
+		// segment broke "Technology" in two), up to the widest label column.
+		if !tabs || ovr.LabelWidthPct > 0 || l.labelPct >= fgMaxLabelPct || !slices.ContainsFunc(v.Rows, func(r FrameworkGridRow) bool { return !wordFits(r.Label, l.labelTextW) }) {
+			break
+		}
+		l.labelPct = math.Min(l.labelPct+1, fgMaxLabelPct)
+	}
+	if tabs && ovr.LabelWidthPct == 0 && l.labelPct >= fgMaxLabelPct && slices.ContainsFunc(v.Rows, func(r FrameworkGridRow) bool { return !wordFits(r.Label, l.labelTextW) }) {
+		// No width holds the label: the cards keep theirs.
+		l.labelPct = fgDefaultLabelPct
+		labelW, gapW, cardW = fgColumns(ctx, ovr, l.cols, l.labelPct)
+		l.labelTextW = math.Max(labelW-2*defaultShapeInsetLRPt, 1)
+	}
+	l.labelW, l.gapW, l.cardW = labelW, gapW, cardW
+	l.cardTextW = math.Max(cardW-2*defaultShapeInsetLRPt, 1)
 
 	for i, row := range v.Rows {
 		h := textBlockHeightPt(font, l.labelTextW, textParagraph{text: inlineMarkupRe.ReplaceAllString(row.Label, ""), size: l.titlePt, bold: true})
+		// A label or title word wider than its column breaks mid-word: the
+		// larger type step is not taken over it.
+		l.brokenWord = l.brokenWord || !wordFits(row.Label, l.labelTextW)
 		for _, card := range row.Cards {
+			l.brokenWord = l.brokenWord || !wordFits(card.Title, l.cardTextW)
 			h = math.Max(h, textBlockHeightPt(font, l.cardTextW,
 				textParagraph{text: inlineMarkupRe.ReplaceAllString(card.Title, ""), size: l.titlePt, bold: true},
 				textParagraph{text: inlineMarkupRe.ReplaceAllString(card.Body, ""), size: l.bodyPt}))
@@ -357,7 +447,11 @@ func fgMeasureAt(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOv
 		// inset: sized by the theme-font model alone, abstract's cards were
 		// stored at 92% autofit, below the body floor (go-slide-creator-n1muf).
 		// So must the label band, whose long labels wrap in the narrow column.
-		h = math.Max(h, writtenNeedOrOverflowPt(font, fgLabelTextJSON(row.Label, l.titlePt, "dk2"), gridW*l.labelPct/100))
+		labelText := fgLabelTextJSON(row.Label, l.titlePt, "dk2")
+		if tabs {
+			labelText = fgTabTextJSON(row.Label, l.titlePt, "dk2")
+		}
+		h = math.Max(h, writtenNeedOrOverflowPt(font, labelText, labelW))
 		for _, card := range row.Cards {
 			h = math.Max(h, writtenNeedOrOverflowPt(font, fgCardTextJSON(card, l, "dk1", "dk1", math.Round(defaultShapeInsetTBPt+padPt)), cardW))
 		}
@@ -450,6 +544,9 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 	base := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	l := fgMeasure(ctx, vals, ovr)
 
+	if fgTabs(ovr) {
+		return fgExpandTabs(ctx, vals, ovr, l, base, cellOverrides), nil
+	}
 	open := fgOpen(ovr)
 	labelTone := fgLabelTone(base)
 	labelInk := readableTextOn(ctx, labelTone, "dk2")
@@ -550,6 +647,84 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 		grid.RowGap = l.rowGapPt / 2
 	}
 	return grid, nil
+}
+
+// fgExpandTabs draws the tabs style: each dimension label on a pentagon tab
+// (the accent's content swatch) pointing into one pale band that holds the
+// row's cards, white gutters between rows. The shape says "this labels that
+// row"; the band groups the levers of one dimension, where the open style's
+// hairlines left 12pt text floating in a table (go-slide-creator-7k694). The
+// highlighted row takes the solid accent on its tab — the framework's only
+// solid block — and the palest accent swatch on its band.
+func fgExpandTabs(ctx ExpandContext, vals *FrameworkGridValues, ovr *FrameworkGridOverrides, l fgLayout, base string, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
+	insetTop := math.Round(defaultShapeInsetTBPt + l.padPt + (l.rowHPt-l.contentHPt)/2)
+	tabTone := tonalContent(ctx, base)
+	panel := tonalPanel(ctx, base)
+
+	rows := make([]jsonschema.GridRowInput, 0, len(vals.Rows))
+	idx := 0
+	for _, row := range vals.Rows {
+		tone, ink, band := tabTone, tonalInk(ctx, tabTone), panel
+		if row.Highlight {
+			tone, ink = tonalEmphasis(ctx, base)
+			band = tonalRung(ctx, base, TonalLighterPale)
+		}
+		// Outlined in its own colour: the cells of one band sit a hair apart
+		// and the page would show through as seams.
+		bandFill, bandLine := band.fillJSON(), metricListBandLine(band)
+
+		tab := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+			Geometry:    "homePlate",
+			Fill:        tone.fillJSON(),
+			Line:        noLine,
+			Adjustments: map[string]int64{"adj": swimlanePointAdj(fgTabPointPt, l.labelW, l.rowHPt)},
+			Text:        fgTabTextJSON(row.Label, l.titlePt, ink),
+		}}
+		fgApplyCellOverride(tab, cellOverrides, idx, base)
+		cells := []*jsonschema.GridCellInput{tab, {}}
+		idx++
+
+		for j := 0; j < l.cols; j++ {
+			if j >= len(row.Cards) {
+				// The band of a ragged row runs to the edge.
+				cells = append(cells, &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: bandFill, Line: bandLine}})
+				continue
+			}
+			card := row.Cards[j]
+			accent := ctx.ResolveCellAccent(base, j, ovr.CellAccentMode)
+			body := strings.TrimSpace(card.Body)
+			cell := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "rect",
+				Fill:     bandFill,
+				Line:     bandLine,
+				Text:     fgCardTextJSON(card, l, fgTitleInk(ctx, accent, band, l.titlePt, body != ""), readableTextOn(ctx, band, "dk1"), insetTop),
+			}}
+			fgApplyCellOverride(cell, cellOverrides, idx, accent)
+			cells = append(cells, cell)
+			idx++
+		}
+		rows = append(rows, jsonschema.GridRowInput{MinHeight: l.rowHPt, MaxHeight: l.rowHPt, Cells: cells})
+	}
+
+	cols := []float64{l.labelW, l.gapW}
+	for j := 0; j < l.cols; j++ {
+		cols = append(cols, math.Round(l.cardW*100)/100)
+	}
+	colsJSON, _ := json.Marshal(cols)
+	return &jsonschema.ShapeGridInput{
+		Columns:       json.RawMessage(colsJSON),
+		ColGap:        fgOpenColGapPt,
+		RowGap:        l.rowGapPt,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
+	}
+}
+
+// fgTabTextJSON is the text object a row's pentagon tab is written with: the
+// label centred on the tab's height, its right inset giving back the width
+// the point takes (labeledRowsTabInsetRight).
+func fgTabTextJSON(label string, sizePt float64, ink string) json.RawMessage {
+	return withTextInsetSides(fgLabelTextJSON(label, sizePt, ink), labeledRowsTabInsetRight, "inset_right")
 }
 
 // fgApplyCellOverride applies the D15 per-cell override (accent_bar).

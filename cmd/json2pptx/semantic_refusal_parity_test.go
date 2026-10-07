@@ -140,8 +140,10 @@ func TestRenderDeckSpecRefusalIsSourceAddressedAndRepairable(t *testing.T) {
 	}
 	measured, _ := d.Evidence["measured"].(map[string]any)
 	allowed, _ := d.Evidence["allowed"].(map[string]any)
-	if measured["font_pt"] != 10.08 || allowed["min_font_pt"] != 12.0 {
-		t.Errorf("evidence = %+v, want measured 10.08pt against allowed 12pt", d.Evidence)
+	// 8.88pt since the slide takeaway is a band 12pt taller than the bar was
+	// (go-slide-creator-fmmec); 10.08pt before.
+	if measured["font_pt"] != 8.88 || allowed["min_font_pt"] != 12.0 {
+		t.Errorf("evidence = %+v, want measured 8.88pt against allowed 12pt", d.Evidence)
 	}
 	if d.Evidence["text"] != "Web console, Mobile approvals, Partner portal for resellers and distributors" {
 		t.Errorf("evidence.text = %v", d.Evidence["text"])
