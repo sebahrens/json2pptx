@@ -31,7 +31,8 @@ type OrgChartConfig struct {
 	// VerticalGap is the vertical spacing between hierarchy levels.
 	VerticalGap float64
 
-	// CornerRadius is the radius for rounded node corners.
+	// CornerRadius is the radius for rounded node corners. Zero (the
+	// default) draws square boxes, the surface every native framework uses.
 	CornerRadius float64
 
 	// ConnectorColor overrides the color of connector lines (nil = use TextSecondary).
@@ -50,6 +51,9 @@ type OrgChartConfig struct {
 	// levelFontScales holds per-depth font scale multipliers computed during
 	// scaleToFit for level-aware font scaling. Index is depth, value is 0..1.
 	levelFontScales []float64
+
+	// growth is the factor growToFit enlarged the tree by (1 = not grown).
+	growth float64
 }
 
 // DefaultOrgChartConfig returns default org chart configuration.
@@ -69,7 +73,7 @@ func DefaultOrgChartConfig(width, height float64) OrgChartConfig {
 		NodeHeight:         nodeH,
 		HorizontalGap:      hGap,
 		VerticalGap:        vGap,
-		CornerRadius:       6,
+		CornerRadius:       0,
 		MaxVisibleSiblings: 9,
 		nameFontFloor:      8,
 		titleFontFloor:     7,
@@ -142,7 +146,17 @@ func (oc *OrgChartRenderer) Draw(data OrgChartData) error {
 	b := oc.builder
 	style := b.StyleGuide()
 
+	// The tree runs to the edges of its canvas: the page margin is the
+	// placeholder's own, and a second one inside it left the chart using
+	// half the body (go-slide-creator-mhc3k).
 	plotArea := oc.config.PlotArea()
+	if edge := orgChartEdgePad; plotArea.W > 0 && plotArea.H > 0 {
+		top := edge
+		if oc.config.ShowTitle && data.Title != "" {
+			top = oc.config.MarginTop
+		}
+		plotArea = Rect{X: edge, Y: top, W: math.Max(0, oc.config.Width-2*edge), H: math.Max(0, oc.config.Height-top-edge)}
+	}
 
 	// Adjust for title
 	headerHeight := 0.0
@@ -170,6 +184,8 @@ func (oc *OrgChartRenderer) Draw(data OrgChartData) error {
 
 	// Scale node dimensions if tree won't fit
 	oc.scaleToFit(root, plotArea)
+	// ... and let a small tree grow into the space it was given.
+	oc.growToFit(root, plotArea)
 
 	// Position nodes top-down
 	oc.positionNodes(root, plotArea.X+plotArea.W/2, plotArea.Y+oc.config.NodeHeight/2, plotArea)
@@ -428,6 +444,8 @@ func (oc *OrgChartRenderer) scaleToFit(root *layoutNode, plotArea Rect) {
 	floor := oc.builder.MinFontSize()
 	minNameFloor := floor
 	minTitleFloor := floor
+	oc.config.nameFontFloor = math.Max(oc.config.nameFontFloor, floor)
+	oc.config.titleFontFloor = math.Max(oc.config.titleFontFloor, floor)
 
 	if complexity > 6 {
 		// Scale font floor down toward minimum: at complexity 6 use default,
@@ -489,6 +507,47 @@ func (oc *OrgChartRenderer) scaleToFit(root *layoutNode, plotArea Rect) {
 			oc.computeSubtreeWidths(root)
 		}
 	}
+}
+
+// Tree growth. A three-person chart drawn at the default box size used a
+// third of a body placeholder; boxes, gaps and type grow together, up to
+// orgChartMaxGrowth, until the tree reaches the plot's width or height.
+const (
+	orgChartMaxGrowth = 1.35
+	// orgChartEdgePad is the space between the canvas edge and the tree.
+	orgChartEdgePad = 4.0
+	// orgChartMaxNamePt and orgChartMaxTitlePt cap the grown type.
+	orgChartMaxNamePt  = 16.0
+	orgChartMaxTitlePt = 14.0
+	// orgChartNameStep sets a name one type step above the floor its title
+	// stands on (14pt over 12pt) where the box is wide enough.
+	orgChartNameStep = 14.0 / 12.0
+	// orgChartMaxTitleLines is the most lines a wrapped job title takes.
+	orgChartMaxTitleLines = 3
+	// orgChartConnectorWidth is the connector weight: a neutral 1.25pt line.
+	orgChartConnectorWidth = 1.25
+)
+
+// growToFit enlarges boxes and gaps by one factor when the tree is smaller
+// than the plot in both directions, and records the factor for the type.
+func (oc *OrgChartRenderer) growToFit(root *layoutNode, plotArea Rect) {
+	oc.config.growth = 1
+	oc.computeSubtreeWidths(root)
+	depth := oc.maxDepth(root)
+	totalH := float64(depth+1)*oc.config.NodeHeight + float64(depth)*oc.config.VerticalGap
+	if root.subtreeWidth <= 0 || totalH <= 0 {
+		return
+	}
+	g := math.Min(orgChartMaxGrowth, math.Min(plotArea.W/root.subtreeWidth, plotArea.H/totalH))
+	if g <= 1 {
+		return
+	}
+	oc.config.growth = g
+	oc.config.NodeWidth *= g
+	oc.config.NodeHeight *= g
+	oc.config.HorizontalGap *= g
+	oc.config.VerticalGap *= g
+	oc.computeSubtreeWidths(root)
 }
 
 // pruneDeepestLevel removes all children at the specified depth, replacing
@@ -662,14 +721,15 @@ func (oc *OrgChartRenderer) drawConnectors(node *layoutNode) {
 	b := oc.builder
 	style := b.StyleGuide()
 
-	connColor := style.Palette.TextSecondary
+	// A neutral line: the accent belongs to the boxes, never to a hairline.
+	connColor := NeutralInk(style.Palette, tonalRuleShare)
 	if oc.config.ConnectorColor != nil {
 		connColor = *oc.config.ConnectorColor
 	}
 
 	b.Push()
 	b.SetStrokeColor(connColor)
-	b.SetStrokeWidth(style.Strokes.WidthNormal)
+	b.SetStrokeWidth(orgChartConnectorWidth)
 	b.SetFillColor(Color{A: 0}) // no fill
 
 	parentBottomY := node.y + oc.config.NodeHeight/2
@@ -732,63 +792,44 @@ func (oc *OrgChartRenderer) drawNode(node *layoutNode) {
 		H: nodeH,
 	}
 
-	// Choose color based on depth
-	colors := oc.getColors(style)
-	color := colors[node.depth%len(colors)]
+	// The level's tonal role: the root is the one solid accent block, its
+	// direct reports take the accent's light tint, everyone below sits on
+	// the neutral panel surface. The hierarchy is read from the fill, so the
+	// boxes need no outline and no accent rule (go-slide-creator-w107j).
+	fill := oc.levelFill(style, node.depth)
+	ink := diagramInkOn(style, fill)
+	muted := ink
+	if node.depth >= 2 || fill.ContrastWith(style.Palette.Background.Opaque()) < 1.6 {
+		if m := diagramMutedInk(style); m.ContrastWith(fill) >= diagramInkMinimum {
+			muted = m
+		}
+	}
 
-	// Overflow placeholder nodes get a distinct dashed-border style with
-	// centered label and no accent bar.
+	// Overflow placeholder: a dashed neutral outline, no fill.
 	if node.isOverflow {
 		b.Push()
-		b.SetFillColor(color.WithAlpha(0.06))
-		b.SetStrokeColor(color.WithAlpha(0.50))
-		b.SetStrokeWidth(style.Strokes.WidthNormal)
+		b.SetFillColor(Color{A: 0})
+		b.SetStrokeColor(NeutralInk(style.Palette, tonalRuleShare))
+		b.SetStrokeWidth(1)
 		b.SetDashes(4, 3)
-		if oc.config.CornerRadius > 0 {
-			b.DrawRoundedRect(rect, oc.config.CornerRadius)
-		} else {
-			b.DrawRect(rect)
-		}
+		oc.drawNodeBox(rect)
 		b.Pop()
 
-		// Draw the "+N more" label centered in the node.
 		fontSize := math.Max(oc.config.nameFontFloor, math.Min(style.Typography.SizeSmall, nodeW*0.10))
 		b.Push()
 		b.SetFontSize(fontSize)
 		b.SetFontWeight(style.Typography.WeightNormal)
-		b.SetTextColor(style.Palette.TextSecondary)
+		b.SetTextColor(diagramMutedInk(style))
 		b.DrawText(node.name, node.x, node.y, TextAlignCenter, TextBaselineMiddle)
 		b.Pop()
 		return
 	}
 
-	// Draw node background
 	b.Push()
-	b.SetFillColor(color.WithAlpha(0.15))
-	b.SetStrokeColor(color)
-	b.SetStrokeWidth(style.Strokes.WidthNormal)
-	if oc.config.CornerRadius > 0 {
-		b.DrawRoundedRect(rect, oc.config.CornerRadius)
-	} else {
-		b.DrawRect(rect)
-	}
-	b.Pop()
-
-	// Draw color accent bar at the top of the node
-	accentH := math.Max(3, nodeH*0.06)
-	b.Push()
-	b.SetFillColor(color)
+	b.SetFillColor(fill)
+	b.SetStrokeWidth(0)
 	b.SetStrokeColor(Color{A: 0})
-	accentRect := Rect{X: rect.X, Y: rect.Y, W: rect.W, H: accentH}
-	if oc.config.CornerRadius > 0 {
-		b.DrawRoundedRect(accentRect, oc.config.CornerRadius)
-		// Cover the bottom rounded corners with a plain rect
-		if accentH < oc.config.CornerRadius*2 {
-			b.FillRect(Rect{X: rect.X, Y: rect.Y + accentH/2, W: rect.W, H: accentH / 2})
-		}
-	} else {
-		b.FillRect(accentRect)
-	}
+	oc.drawNodeBox(rect)
 	b.Pop()
 
 	// Tier-depth font scaling: use the pre-computed level font scales from
@@ -801,8 +842,12 @@ func (oc *OrgChartRenderer) drawNode(node *layoutNode) {
 	}
 
 	// Compute base text sizes scaled by tier depth.
-	namePreset := math.Max(oc.config.nameFontFloor, math.Min(style.Typography.SizeBody, nodeW*0.11)) * tierScale
-	titlePreset := math.Max(oc.config.titleFontFloor, math.Min(style.Typography.SizeSmall, nodeW*0.09)) * tierScale
+	// A grown tree grows its type with it, up to the caps; no level drops
+	// below the floor.
+	growth := math.Max(1, oc.config.growth)
+	nameBase := math.Max(style.Typography.SizeBody, oc.config.nameFontFloor*orgChartNameStep)
+	namePreset := math.Max(oc.config.nameFontFloor, math.Min(math.Min(nameBase*growth, math.Max(orgChartMaxNamePt, nameBase)), nodeW*0.11)*tierScale)
+	titlePreset := math.Max(oc.config.titleFontFloor, math.Min(math.Min(style.Typography.SizeSmall*growth, math.Max(orgChartMaxTitlePt, style.Typography.SizeSmall)), nodeW*0.09)*tierScale)
 
 	textMaxW := nodeW * 0.85
 
@@ -817,14 +862,36 @@ func (oc *OrgChartRenderer) drawNode(node *layoutNode) {
 
 	titleFontSize := titlePreset
 	titleText := ""
+	// A title too long for one line at the floor takes a second line when
+	// the box has the height for it: "Chief Financial Officer" cut to
+	// "Chief Financ…" lost the one word that says what the person does.
+	var titleLines []string
 	if node.title != "" {
-		titleFit := LabelFitStrategy{PreferredSize: titlePreset, MinSize: oc.config.titleFontFloor, MinCharWidth: 5.5}
 		b.Push()
 		b.SetFontWeight(style.Typography.WeightNormal)
-		titleResult := titleFit.Fit(b, node.title, textMaxW, 0)
+		b.SetFontSize(oc.config.titleFontFloor)
+		if w, _ := b.MeasureText(node.title); w > textMaxW {
+			lines := fishboneWrap(b, node.title, textMaxW)
+			fits := len(lines) <= orgChartMaxTitleLines &&
+				namePreset*orgLabelLeadingFactor+float64(len(lines))*oc.config.titleFontFloor*orgLabelLeadingFactor <= nodeH*0.92
+			for _, line := range lines {
+				if lw, _ := b.MeasureText(line); lw > textMaxW {
+					fits = false
+				}
+			}
+			if fits {
+				titleLines = lines
+				titleFontSize = oc.config.titleFontFloor
+				titleText = lines[0]
+			}
+		}
+		if titleLines == nil {
+			titleFit := LabelFitStrategy{PreferredSize: titlePreset, MinSize: oc.config.titleFontFloor, MinCharWidth: 5.5}
+			titleResult := titleFit.Fit(b, node.title, textMaxW, 0)
+			titleFontSize = titleResult.FontSize
+			titleText = titleResult.DisplayText
+		}
 		b.Pop()
-		titleFontSize = titleResult.FontSize
-		titleText = titleResult.DisplayText
 	}
 
 	// Smart-abbreviate the name before falling back to hard truncation.
@@ -866,7 +933,7 @@ func (oc *OrgChartRenderer) drawNode(node *layoutNode) {
 	b.Push()
 	b.SetFontSize(nameFontSize)
 	b.SetFontWeight(style.Typography.WeightBold)
-	b.SetTextColor(style.Palette.TextPrimary)
+	b.SetTextColor(ink)
 
 	// Both labels are drawn on a middle baseline, so the whole two- or
 	// three-line block is laid out from its own centre: every gap is a real
@@ -885,7 +952,10 @@ func (oc *OrgChartRenderer) drawNode(node *layoutNode) {
 	// Build the block bottom-up so every line is spaced by a real leading and
 	// the whole stack stays centred in the node box.
 	secondary := make([]string, 0, 2)
-	if hasTitle {
+	switch {
+	case len(titleLines) > 0:
+		secondary = append(secondary, titleLines...)
+	case hasTitle:
 		secondary = append(secondary, titleText)
 	}
 	if reportsText != "" {
@@ -914,7 +984,7 @@ func (oc *OrgChartRenderer) drawNode(node *layoutNode) {
 	b.Push()
 	b.SetFontSize(titleFontSize)
 	b.SetFontWeight(style.Typography.WeightNormal)
-	b.SetTextColor(style.Palette.TextSecondary)
+	b.SetTextColor(muted)
 	y := baseY + nameLineSpacing
 	for _, line := range secondary {
 		y += leading
@@ -976,7 +1046,38 @@ func orgFitText(b *SVGBuilder, text string, maxWidth, fontSize float64) string {
 	return text
 }
 
-// getColors returns the color palette for org chart levels.
+// drawNodeBox draws a node's box with the configured corners.
+func (oc *OrgChartRenderer) drawNodeBox(rect Rect) {
+	if oc.config.CornerRadius > 0 {
+		oc.builder.DrawRoundedRect(rect, oc.config.CornerRadius)
+		return
+	}
+	oc.builder.DrawRect(rect)
+}
+
+// levelFill is the fill of a node at depth. By default the tonal roles carry
+// the hierarchy: solid accent root, accent-tint second level, neutral panel
+// below. Authored colours, or a deck accent strategy that rotates accents,
+// paint each level solid in its own colour instead.
+func (oc *OrgChartRenderer) levelFill(style *StyleGuide, depth int) Color {
+	if colors := oc.getColors(style); len(colors) > 0 {
+		return colors[depth%len(colors)].Opaque()
+	}
+	switch depth {
+	case 0:
+		return diagramAccent(style)
+	case 1:
+		return diagramContentFill(style)
+	default:
+		return diagramPanelFill(style)
+	}
+}
+
+// getColors returns the per-level colours an author or a rotating accent
+// strategy asked for, or nil for the default tonal roles (levelFill). Taking
+// accent1, accent2, ... per level by default painted the second level red on
+// midnight-blue and a foreign blue on abstract, a colour nothing else in a
+// primary-accent deck uses (go-slide-creator-libnz).
 func (oc *OrgChartRenderer) getColors(style *StyleGuide) []Color {
 	if len(oc.config.Colors) > 0 {
 		return oc.config.Colors
@@ -986,12 +1087,7 @@ func (oc *OrgChartRenderer) getColors(style *StyleGuide) []Color {
 			return accents
 		}
 	}
-	// One hue, lighter by depth: the deck's primary accent at the top, then
-	// tints. Taking accent1, accent2, ... per level painted the second level
-	// red on midnight-blue and a foreign blue on abstract, a colour nothing
-	// else in a primary-accent deck uses (go-slide-creator-libnz).
-	primary := style.Palette.Accent1
-	return []Color{primary, primary.Tint(0.8), primary.Tint(0.65), primary.Tint(0.55)}
+	return nil
 }
 
 // orgChartLevelAccents reports whether data asks for one accent per level:
@@ -1066,6 +1162,7 @@ func (d *OrgChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 			return err
 		}
 
+		assumeSlidePlacement(builder, req)
 		width, height := builder.Width(), builder.Height()
 		config := DefaultOrgChartConfig(width, height)
 

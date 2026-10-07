@@ -30,6 +30,14 @@ type VennConfig struct {
 	// intersection caption inside the lens. Set when the author supplied
 	// overlap_ratio.
 	FixedOverlap bool
+
+	// Translucent selects the former look: one accent per circle at
+	// CircleOpacity under a darker outline. Set when the author supplied
+	// circle_opacity, and implied by explicit Colors. The default is tonal:
+	// opaque circles in the accent's light tint, deeper pairwise overlaps
+	// and the innermost overlap as the one solid accent area, separated by
+	// background-coloured gutters instead of outlines.
+	Translucent bool
 }
 
 // DefaultVennConfig returns default Venn configuration.
@@ -86,6 +94,10 @@ type VennChart struct {
 	config  VennConfig
 	// layouts are the circles of the last Draw, for region checks in tests.
 	layouts []circleLayout
+	// tonal is set by Draw when the default tonal look applies.
+	tonal bool
+	// itemInk is the ink of the overlap whose items are being drawn.
+	itemInk Color
 }
 
 // NewVennChart creates a new Venn chart renderer.
@@ -122,7 +134,16 @@ func (vc *VennChart) Draw(data VennData) error {
 	b := vc.builder
 	style := b.StyleGuide()
 
+	// The circles run to the edges of the canvas: the page margin is the
+	// placeholder's own (go-slide-creator-mhc3k).
 	plotArea := vc.config.PlotArea()
+	if plotArea.W > 0 && plotArea.H > 0 {
+		top := vennEdgePad
+		if vc.config.ShowTitle && data.Title != "" {
+			top = vc.config.MarginTop
+		}
+		plotArea = Rect{X: vennEdgePad, Y: top, W: math.Max(0, vc.config.Width-2*vennEdgePad), H: math.Max(0, vc.config.Height-top-vennEdgePad)}
+	}
 
 	// Adjust for title
 	headerHeight := 0.0
@@ -143,6 +164,13 @@ func (vc *VennChart) Draw(data VennData) error {
 	plotArea.H -= headerHeight + footerHeight
 
 	colors := vc.getColors(style, numCircles)
+	vc.tonal = !vc.config.Translucent && len(vc.config.Colors) < numCircles
+	if vc.tonal {
+		// One accent: the regions differ in tone, not in hue.
+		for i := range colors {
+			colors[i] = diagramAccent(style)
+		}
+	}
 
 	// Compute circle layouts
 	var layouts []circleLayout
@@ -156,14 +184,18 @@ func (vc *VennChart) Draw(data VennData) error {
 
 	vc.layouts = layouts
 
-	// Draw circles (background fill)
-	for _, cl := range layouts {
-		vc.drawCircleFill(cl)
-	}
+	if vc.tonal {
+		vc.drawTonalRegions(layouts)
+	} else {
+		// Draw circles (background fill)
+		for _, cl := range layouts {
+			vc.drawCircleFill(cl)
+		}
 
-	// Draw circle outlines on top
-	for _, cl := range layouts {
-		vc.drawCircleStroke(cl)
+		// Draw circle outlines on top
+		for _, cl := range layouts {
+			vc.drawCircleStroke(cl)
+		}
 	}
 
 	// Draw circle labels (exclusive region text)
@@ -234,7 +266,10 @@ func (vc *VennChart) layout3Circles(area Rect, colors []Color) []circleLayout {
 	// captions — grows the circles into the space it frees instead of
 	// shrinking the diagram.
 	spread := 1.0 - vc.config.OverlapRatio
-	radius := math.Min(area.W/math.Min(3.2, 2+math.Sqrt(3)*spread), area.H/math.Min(3.0, 2+1.5*spread))
+	// The circles now run to the canvas edge, so the footprint is fitted
+	// exactly: the old ceilings let a low-overlap triangle overrun the plot
+	// by up to 0.2r, which the inner margin used to hide.
+	radius := math.Min(area.W/(2+math.Sqrt(3)*spread), area.H/(2+1.5*spread))
 	offset := radius * spread
 
 	// Equilateral triangle arrangement:
@@ -251,6 +286,145 @@ func (vc *VennChart) layout3Circles(area Rect, colors []Color) []circleLayout {
 		{cx: centerX - offset*math.Cos(math.Pi/6), cy: triCenterY + offset*math.Sin(math.Pi/6), radius: radius, color: colors[1]}, // bottom-left
 		{cx: centerX + offset*math.Cos(math.Pi/6), cy: triCenterY + offset*math.Sin(math.Pi/6), radius: radius, color: colors[2]}, // bottom-right
 	}
+}
+
+// vennEdgePad is the space between the canvas edge and the circles.
+const vennEdgePad = 4.0
+
+// vennPairKeep is the tint of a pairwise overlap in a three-circle diagram:
+// the accent's "Lighter 50%" swatch, between the circles' Lighter 80% and the
+// solid centre.
+const vennPairKeep = 0.5
+
+// Region fills of the tonal look.
+func (vc *VennChart) circleFill() Color { return diagramContentFill(vc.builder.StyleGuide()) }
+
+func (vc *VennChart) pairFill() Color {
+	style := vc.builder.StyleGuide()
+	bg := style.Palette.Background.Opaque()
+	if !bg.IsLight() {
+		return diagramAccent(style).WithAlpha(0.65).BlendOver(bg)
+	}
+	return diagramAccent(style).Tint(vennPairKeep)
+}
+
+func (vc *VennChart) coreFill() Color { return diagramAccent(vc.builder.StyleGuide()) }
+
+// regionInk is the text colour for a region: key "" is a circle's own area,
+// a two-letter key a pairwise overlap, "abc" the centre. In the translucent
+// look it is the former darkened blend, passed in as legacy.
+func (vc *VennChart) regionInk(key string, numCircles int, legacy Color) Color {
+	if !vc.tonal {
+		return legacy
+	}
+	style := vc.builder.StyleGuide()
+	switch {
+	case key == "":
+		return diagramInkOn(style, vc.circleFill())
+	case len(key) == numCircles:
+		return diagramInkOn(style, vc.coreFill())
+	default:
+		return diagramInkOn(style, vc.pairFill())
+	}
+}
+
+// drawTonalRegions paints the circles and their overlaps as opaque tonal
+// areas: each circle in the content tint, each pairwise overlap one step
+// deeper (the solid accent when there are only two circles), the triple
+// overlap in the solid accent, then a background-coloured gutter along every
+// circle so the three shapes stay readable without an outline.
+func (vc *VennChart) drawTonalRegions(layouts []circleLayout) {
+	b := vc.builder
+	style := b.StyleGuide()
+	n := len(layouts)
+
+	b.Push()
+	b.SetStrokeColor(Color{A: 0})
+	b.SetStrokeWidth(0)
+	b.SetFillColor(vc.circleFill())
+	for _, cl := range layouts {
+		b.DrawCircle(cl.cx, cl.cy, cl.radius)
+	}
+
+	pair := vc.pairFill()
+	if n == 2 {
+		pair = vc.coreFill()
+	}
+	b.SetFillColor(pair)
+	for i := 0; i < n; i++ {
+		for j := i + 1; j < n; j++ {
+			p1, p2, ok := circleIntersections(layouts[i], layouts[j])
+			if !ok {
+				continue
+			}
+			r := layouts[i].radius
+			b.BeginPath().MoveTo(p1.X, p1.Y).
+				ArcTo(r, r, 0, false, true, p2.X, p2.Y).
+				ArcTo(r, r, 0, false, true, p1.X, p1.Y).
+				Close().Fill()
+		}
+	}
+
+	if n == 3 {
+		// The centre is bounded by one arc of each circle, between the two
+		// pairwise crossing points that lie inside the third circle.
+		var v [3]Point // v[k] is the crossing of the two circles other than k
+		ok := true
+		for k := 0; k < 3; k++ {
+			i, j := (k+1)%3, (k+2)%3
+			p1, p2, crossed := circleIntersections(layouts[i], layouts[j])
+			if !crossed {
+				ok = false
+				break
+			}
+			v[k] = p1
+			if math.Hypot(p2.X-layouts[k].cx, p2.Y-layouts[k].cy) < math.Hypot(p1.X-layouts[k].cx, p1.Y-layouts[k].cy) {
+				v[k] = p2
+			}
+			if math.Hypot(v[k].X-layouts[k].cx, v[k].Y-layouts[k].cy) > layouts[k].radius {
+				ok = false
+			}
+		}
+		if ok {
+			// v[0] and v[1] both lie on circle 2, v[1] and v[2] on circle 0,
+			// v[2] and v[0] on circle 1. The arcs bulge outward, so the sweep
+			// follows the direction the vertices are walked in.
+			cross := (v[1].X-v[0].X)*(v[2].Y-v[0].Y) - (v[1].Y-v[0].Y)*(v[2].X-v[0].X)
+			sweep := cross > 0
+			r := layouts[0].radius
+			b.SetFillColor(vc.coreFill())
+			b.BeginPath().MoveTo(v[0].X, v[0].Y).
+				ArcTo(r, r, 0, false, sweep, v[1].X, v[1].Y).
+				ArcTo(r, r, 0, false, sweep, v[2].X, v[2].Y).
+				ArcTo(r, r, 0, false, sweep, v[0].X, v[0].Y).
+				Close().Fill()
+		}
+	}
+	b.Pop()
+
+	if vc.config.StrokeWidth > 0 {
+		b.Push()
+		b.SetFillColor(Color{A: 0})
+		b.SetStrokeColor(style.Palette.Background.Opaque())
+		b.SetStrokeWidth(vc.config.StrokeWidth)
+		for _, cl := range layouts {
+			b.DrawCircle(cl.cx, cl.cy, cl.radius)
+		}
+		b.Pop()
+	}
+}
+
+// circleIntersections returns the two points where circles a and b cross.
+func circleIntersections(a, b circleLayout) (p1, p2 Point, ok bool) {
+	dx, dy := b.cx-a.cx, b.cy-a.cy
+	d := math.Hypot(dx, dy)
+	if d == 0 || d >= a.radius+b.radius || d <= math.Abs(a.radius-b.radius) {
+		return p1, p2, false
+	}
+	along := (a.radius*a.radius - b.radius*b.radius + d*d) / (2 * d)
+	h := math.Sqrt(math.Max(0, a.radius*a.radius-along*along))
+	mx, my := a.cx+along*dx/d, a.cy+along*dy/d
+	return Point{X: mx + h*dy/d, Y: my - h*dx/d}, Point{X: mx - h*dy/d, Y: my + h*dx/d}, true
 }
 
 // drawCircleFill draws the filled background of a circle.
@@ -278,8 +452,13 @@ func (vc *VennChart) drawCircleStroke(cl circleLayout) {
 // Uses SizeSmall for bold labels and SizeCaption for item text.
 const vennLoScale = 1.0
 
+// vennLabelStep is the size of a region label relative to item text.
+const vennLabelStep = 14.0 / 12.0
+
 func vennFontSizes(style *StyleGuide) (labelSize, itemSize float64) {
-	labelSize = style.Typography.SizeSmall  // bold circle/intersection labels
+	// Bold circle and intersection labels stand one type step above the
+	// items (14pt over 12pt on a slide).
+	labelSize = style.Typography.SizeSmall * vennLabelStep
 	itemSize = style.Typography.SizeCaption // item text
 	return
 }
@@ -337,6 +516,7 @@ func (vc *VennChart) drawLabels2(data VennData, layouts []circleLayout) {
 		{bLabelX, bLabelY, layouts[1].color},
 	}
 
+	origFloor := b.MinFontSize()
 	for i, pos := range positions {
 		if i >= len(data.Circles) {
 			break
@@ -347,7 +527,7 @@ func (vc *VennChart) drawLabels2(data VennData, layouts []circleLayout) {
 		// Draw circle label (bold), clamped to fit loScaled width, wrapped at full width.
 		// Use 6pt floor so long single-word labels (e.g. "Engineering") can shrink
 		// enough to fit narrow crescent regions without truncation.
-		vennLabelMin := math.Max(6, math.Min(8, exclusiveWidth*0.10))
+		vennLabelMin := math.Max(origFloor, math.Max(6, math.Min(8, exclusiveWidth*0.10)))
 		labelFit := LabelFitStrategy{PreferredSize: labelSize, MinSize: vennLabelMin, MinCharWidth: 4.0}
 		origMin := b.MinFontSize()
 		b.SetMinFontSize(vennLabelMin)
@@ -367,7 +547,7 @@ func (vc *VennChart) drawLabels2(data VennData, layouts []circleLayout) {
 		b.Push()
 		b.SetFontSize(labelFontSize)
 		b.SetFontWeight(style.Typography.WeightBold)
-		b.SetTextColor(pos.color.Darken(0.3))
+		b.SetTextColor(vc.regionInk("", len(layouts), pos.color.Darken(0.3)))
 
 		// Widen wrap boundary if widest word still overflows at min font,
 		// so WrapText never resorts to character-level breaking.
@@ -423,7 +603,7 @@ func (vc *VennChart) drawLabels3(data VennData, layouts []circleLayout) {
 		exclusiveW := cl.radius * 0.80
 		// Clamp font to fit within loScaled width, then wrap at full geometric width.
 		// Lower min floor for narrow 3-circle exclusive regions.
-		vennLabelMin3 := math.Max(6, math.Min(8, exclusiveW*0.10))
+		vennLabelMin3 := math.Max(b.MinFontSize(), math.Max(6, math.Min(8, exclusiveW*0.10)))
 		labelFit3 := LabelFitStrategy{PreferredSize: labelSize, MinSize: vennLabelMin3, MinCharWidth: 4.0}
 		origMin3 := b.MinFontSize()
 		b.SetMinFontSize(vennLabelMin3)
@@ -443,7 +623,7 @@ func (vc *VennChart) drawLabels3(data VennData, layouts []circleLayout) {
 		b.Push()
 		b.SetFontSize(labelFontSize3)
 		b.SetFontWeight(style.Typography.WeightBold)
-		b.SetTextColor(cl.color.Darken(0.3))
+		b.SetTextColor(vc.regionInk("", len(layouts), cl.color.Darken(0.3)))
 
 		// Widen wrap boundary if widest word still overflows at min font,
 		// so WrapText never resorts to character-level breaking.
@@ -500,7 +680,7 @@ func (vc *VennChart) layoutIntersection2(region VennRegion, layouts []circleLayo
 	floor := vc.vennCaptionFloor(r)
 	labelSize, itemSize := vennFontSizes(style)
 	lens := vennRegionShape{in: layouts[:2], pad: vc.vennCaptionPad(floor)}
-	l.fit = vc.fitCaptionInRegion(region.Label, lens, l.ix, l.iy, labelSize, floor, style.Typography.WeightMedium)
+	l.fit = vc.fitCaptionInRegion(region.Label, lens, l.ix, l.iy, labelSize, floor, style.Typography.WeightBold)
 
 	l.itemsTop = l.iy + l.fit.height()/2 + labelSize*0.4
 	l.itemsMaxH = l.iy + r*0.50 - l.itemsTop
@@ -611,7 +791,9 @@ func (vc *VennChart) drawIntersection2(data VennData, layouts []circleLayout, ar
 	// its full height, at a size no smaller than the builder's floor.
 	l := vc.layoutIntersection2(region, layouts)
 	blendColor := blendColors(layouts[0].color, layouts[1].color)
-	vc.drawCaption(l.fit, l.ix, style.Typography.WeightMedium, blendColor.Darken(0.3))
+	vc.itemInk = vc.regionInk("ab", 2, style.Palette.TextPrimary)
+	defer func() { vc.itemInk = Color{} }()
+	vc.drawCaption(l.fit, l.ix, style.Typography.WeightBold, vc.regionInk("ab", 2, blendColor.Darken(0.3)))
 	if !l.fit.ok {
 		suggested := 0.0
 		if vc.config.FixedOverlap {
@@ -770,8 +952,10 @@ func (vc *VennChart) drawIntersections3(data VennData, layouts []circleLayout) {
 	r := layouts[0].radius
 	labelSize, itemSize := vennFontSizes(style)
 
+	defer func() { vc.itemInk = Color{} }()
 	for _, p := range vc.placeCaptions3(data, layouts) {
-		vc.drawCaption(p.fit, p.x, p.weight, p.color)
+		vc.itemInk = vc.regionInk(p.key, 3, style.Palette.TextPrimary)
+		vc.drawCaption(p.fit, p.x, p.weight, vc.regionInk(p.key, 3, p.color))
 		if !p.fit.ok {
 			vc.reportRegionOverflow(p.key, p.region.Label, p.fit, data, 0)
 		}
@@ -910,7 +1094,7 @@ func (vc *VennChart) drawVennItemsAligned(items []string, x, startY, maxWidth, f
 	b.Push()
 	b.SetFontSize(fontSize)
 	b.SetFontWeight(style.Typography.WeightNormal)
-	b.SetTextColor(style.Palette.TextPrimary)
+	b.SetTextColor(vc.itemColor(style))
 
 	lineSpacing := fontSize
 	if style.Typography != nil {
@@ -955,7 +1139,7 @@ func (vc *VennChart) drawVennItemsBudgeted(items []string, x, startY, maxWidth, 
 	b.Push()
 	b.SetFontSize(fontSize)
 	b.SetFontWeight(style.Typography.WeightNormal)
-	b.SetTextColor(style.Palette.TextPrimary)
+	b.SetTextColor(vc.itemColor(style))
 
 	lineSpacing := fontSize
 	if style.Typography != nil {
@@ -995,8 +1179,9 @@ const vennMaxCircles = 3
 // vennItemsHeightFrac is the share of a circle's radius reserved for its
 // exclusive item list, below the circle label. At the previous 0.30 a
 // three-circle Venn had room for barely one short item, so ordinary 2-4 item
-// lists were silently truncated (go-slide-creator-onop).
-const vennItemsHeightFrac = 0.55
+// lists were silently truncated (go-slide-creator-onop). 0.62 holds seven
+// one-line items at the 12pt slide floor on a full canvas.
+const vennItemsHeightFrac = 0.62
 
 // reportDroppedItems emits a diagram.items_dropped finding when a circle's item
 // list did not fit its budget. The items are gone from the picture by the time
@@ -1029,6 +1214,18 @@ func (vc *VennChart) reportDroppedItems(total, drawn int, circleLabel string) {
 			},
 		},
 	})
+}
+
+// itemColor is the ink of an item list: the region's measured ink while an
+// overlap is being drawn, else the text ink (circle fills are light tints).
+func (vc *VennChart) itemColor(style *StyleGuide) Color {
+	if vc.itemInk.A > 0 {
+		return vc.itemInk
+	}
+	if vc.tonal {
+		return diagramInkOn(style, vc.circleFill())
+	}
+	return style.Palette.TextPrimary
 }
 
 // blendColors creates a simple average blend of two colors.
@@ -1113,12 +1310,14 @@ func (d *VennDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVG
 			return err
 		}
 
+		assumeSlidePlacement(builder, req)
 		width, height := builder.Width(), builder.Height()
 		config := DefaultVennConfig(width, height)
 
 		// Apply custom options
 		if opacity, ok := req.Data["circle_opacity"].(float64); ok {
 			config.CircleOpacity = opacity
+			config.Translucent = true
 		}
 		if strokeW, ok := req.Data["stroke_width"].(float64); ok {
 			config.StrokeWidth = strokeW
@@ -1154,8 +1353,8 @@ func (d *VennDiagram) DataSchema() *DataSchema {
 			"bc":  vennRegionSchema,
 			"abc": vennRegionSchema,
 		}, nil),
-		"circle_opacity": NumberDataSchema("Circle fill opacity"),
-		"stroke_width":   NumberDataSchema("Circle outline width"),
+		"circle_opacity": NumberDataSchema("Circle fill opacity; selects translucent, outlined circles in one accent each instead of the tonal default"),
+		"stroke_width":   NumberDataSchema("Width of the line between circles"),
 		"overlap_ratio":  NumberDataSchema("Fixed overlap ratio"),
 		"footnote":       StringDataSchema("Footnote text"),
 	}, nil)
