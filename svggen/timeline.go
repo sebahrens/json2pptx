@@ -67,6 +67,16 @@ type TimelineActivity struct {
 
 	// field is the request path of the item ("data.items[2]"), for findings.
 	field string
+
+	// dateText is the item's authored "date" string when it parsed as a
+	// date; the milestone track prints a date written in words as written.
+	dateText string
+	// dateOnly is set when "date" is the item's only date field: the item is
+	// a moment, even where the string names a period ("Mar 2026").
+	dateOnly bool
+	// undated is set when the item carried no date and was given a
+	// placeholder position; no date is printed for it.
+	undated bool
 }
 
 // TimelineData represents the data for a timeline diagram.
@@ -169,6 +179,12 @@ type TimelineConfig struct {
 
 	// TimeGridColor is the color for time grid lines.
 	TimeGridColor Color
+
+	// LegacyLayout selects the former row-and-grid layout (bars on rows
+	// over a ruled date axis) instead of the milestone track. Set when the
+	// author supplies label_position; progress shading, phase bands,
+	// explicit rows and icons select it as well (timelineNeedsLegacy).
+	LegacyLayout bool
 }
 
 // DefaultTimelineConfig returns default configuration for timeline diagrams.
@@ -271,6 +287,10 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 	// any layout or date-range work depends on activity types. Operates on a
 	// copy, so the caller's data is untouched.
 	data.Activities = normalizeTimelineActivities(data.Activities)
+
+	if !tc.timelineNeedsLegacy(data) {
+		return tc.drawTrack(data)
+	}
 
 	b := tc.builder
 	style := b.StyleGuide()
@@ -2072,6 +2092,11 @@ func (d *Timeline) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVGDoc
 		}
 		if labelPos, ok := req.Data["label_position"].(string); ok {
 			config.LabelPosition = labelPos
+			config.LegacyLayout = true
+		}
+		if !NewTimelineChart(builder, config).timelineNeedsLegacy(data) {
+			// The track sets every text at the slide's body size or above.
+			assumeSlidePlacement(builder, req)
 		}
 
 		chart := NewTimelineChart(builder, config)
@@ -2217,7 +2242,7 @@ func (d *Timeline) DataSchema() *DataSchema {
 		"time_unit":      StringDataSchema("Axis unit: day, week, month, quarter, year"),
 		"show_progress":  BooleanDataSchema("Shade activity progress"),
 		"show_labels":    BooleanDataSchema("Draw item labels"),
-		"label_position": StringDataSchema("Label placement"),
+		"label_position": StringDataSchema("Label placement; selects the row-and-grid layout instead of the milestone track"),
 		"footnote":       StringDataSchema("Footnote text"),
 		"start_date":     StringDataSchema("Axis start override"),
 		"end_date":       StringDataSchema("Axis end override"),
@@ -2307,6 +2332,8 @@ func parseTimelineActivity(raw any, index int) TimelineActivity {
 		}
 		if dateStr, ok := a["date"].(string); ok {
 			if start, end, err := parseDateRange(dateStr); err == nil {
+				activity.dateText = dateStr
+				activity.dateOnly = activity.StartDate.IsZero() && activity.EndDate.IsZero()
 				if start.Equal(end) {
 					// Point-in-time date: use as StartDate for
 					// activities when no explicit start_date was
@@ -2396,6 +2423,7 @@ func autoAssignDatelessActivities(activities []TimelineActivity) []TimelineActiv
 		frac := float64(j+1) / float64(n+1)
 		t := minDate.Add(time.Duration(float64(duration) * frac))
 		act := &activities[idx]
+		act.undated = true
 		if act.Type == TimelineActivityTypeMilestone {
 			act.Date = t
 		} else {

@@ -25,9 +25,9 @@ func programmeTimelineRequest() *RequestEnvelope {
 }
 
 var (
-	timelineBarPath     = regexp.MustCompile(`<path d="M([\d.]+) ([\d.]+)H([\d.]+)V([\d.]+)H[\d.]+z" fill="(#[0-9a-f]{6})"`)
-	timelineDiamondPath = regexp.MustCompile(`<path d="M([\d.]+) ([\d.]+)L([\d.]+) ([\d.]+)L[\d.]+ ([\d.]+)L([\d.]+) [\d.]+z" fill="(#[0-9a-f]{6})"`)
-	timelineLabelSize   = regexp.MustCompile(`font-size:([\d.]+)px;font-weight:500[^>]*><tspan[^>]*>([^<]+)<`)
+	timelineBarPath   = regexp.MustCompile(`<path d="M([\d.]+) ([\d.]+)H([\d.]+)V([\d.]+)H[\d.]+z" fill="(#[0-9a-f]{6})"`)
+	timelineDiscPath  = regexp.MustCompile(`<path d="M([\d.]+) ([\d.]+)A([\d.]+) [\d.]+ 0 00[\d.]+ [\d.]+A[\d.]+ [\d.]+ 0 00[\d.]+ [\d.]+z" fill="(#[0-9a-f]{6})"`)
+	timelineLabelSize = regexp.MustCompile(`font-size:([\d.]+)px;font-weight:700[^>]*><tspan[^>]*>([^<]+)<`)
 )
 
 func num(t *testing.T, s string) float64 {
@@ -39,10 +39,11 @@ func num(t *testing.T, s string) float64 {
 	return v
 }
 
-// TestTimeline_OneAccentFlatBarsAndMilestoneBand pins go-slide-creator-a6sux:
-// every bar shares one fill and every milestone another (no index-cycled
-// rainbow), bars are flat rectangles, milestones sit on their own band where
-// no diamond intersects a bar, and every event label is drawn at one size.
+// TestTimeline_OneAccentFlatBarsAndMilestoneBand pins go-slide-creator-a6sux
+// on the milestone track (go-slide-creator-o8cqh): every bar shares one fill
+// and every milestone marker another (no index-cycled rainbow), bars are flat
+// rectangles hanging from the axis, milestone discs sit on the axis line
+// where none intersects a bar, and every event name is drawn at one size.
 func TestTimeline_OneAccentFlatBarsAndMilestoneBand(t *testing.T) {
 	doc, err := (&Timeline{NewBaseDiagram("timeline")}).Render(programmeTimelineRequest())
 	if err != nil {
@@ -62,38 +63,44 @@ func TestTimeline_OneAccentFlatBarsAndMilestoneBand(t *testing.T) {
 		t.Fatalf("found %d flat bars, want 4 (rounded bars are not flat rectangles)", len(bars))
 	}
 	if len(barFills) != 1 {
-		t.Errorf("bars use %d fills %v, want one accent", len(barFills), barFills)
+		t.Errorf("bars use %d fills %v, want one accent tint", len(barFills), barFills)
 	}
 
-	diamonds := timelineDiamondPath.FindAllStringSubmatch(svg, -1)
-	if len(diamonds) != 2 {
-		t.Fatalf("found %d milestone diamonds, want 2", len(diamonds))
-	}
-	diamondFills := map[string]bool{}
-	for _, m := range diamonds {
-		diamondFills[m[7]] = true
-		d := box{num(t, m[6]), num(t, m[2]), num(t, m[3]), num(t, m[5])}
+	// Each marker is a background-coloured ring under an accent disc.
+	discFills := map[string]bool{}
+	discs := 0
+	for _, m := range timelineDiscPath.FindAllStringSubmatch(svg, -1) {
+		if m[4] == "#ffffff" || m[4] == "#fff" {
+			continue
+		}
+		discs++
+		discFills[m[4]] = true
+		if barFills[m[4]] {
+			t.Errorf("milestone disc shares the bars' fill %s", m[4])
+		}
+		cy, r := num(t, m[2]), num(t, m[3])
 		for _, bar := range bars {
-			if d.x0 < bar.x1 && bar.x0 < d.x1 && d.y0 < bar.y1 && bar.y0 < d.y1 {
-				t.Errorf("milestone diamond %+v intersects bar %+v", d, bar)
+			if cy >= bar.y0 || r <= 0 {
+				t.Errorf("milestone disc centre y %.1f is not above bar %+v: discs sit on the axis, bars hang below it", cy, bar)
 			}
 		}
-		for _, bar := range bars {
-			if d.y0 < bar.y1 {
-				t.Errorf("milestone diamond top %.1f is not below the bars (bar bottom %.1f): milestones belong on their own band", d.y0, bar.y1)
-			}
-		}
 	}
-	if len(diamondFills) != 1 {
-		t.Errorf("milestones use %d fills %v, want one", len(diamondFills), diamondFills)
+	if discs != 2 {
+		t.Fatalf("found %d milestone discs, want 2", discs)
+	}
+	if len(discFills) != 1 {
+		t.Errorf("milestones use %d fills %v, want one", len(discFills), discFills)
 	}
 
 	sizes := map[string][]string{}
 	for _, m := range timelineLabelSize.FindAllStringSubmatch(svg, -1) {
+		if m[2] == "Programme timeline" {
+			continue
+		}
 		sizes[m[1]] = append(sizes[m[1]], m[2])
 	}
 	if len(sizes) != 1 {
-		t.Errorf("event labels are drawn at %d sizes, want one: %v", len(sizes), sizes)
+		t.Errorf("event names are drawn at %d sizes, want one: %v", len(sizes), sizes)
 	}
 	for _, label := range []string{"Discovery and diagnostic", "Board approval", "Go-live wave 1"} {
 		if !strings.Contains(svg, ">"+label+"<") {
