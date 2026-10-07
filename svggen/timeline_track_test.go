@@ -15,7 +15,7 @@ func trackTestItems(t *testing.T, width, height float64, acts []TimelineActivity
 	assumeSlidePlacement(b, &RequestEnvelope{})
 	tc := NewTimelineChart(b, DefaultTimelineConfig(width, height))
 	body := b.StyleGuide().Typography.SizeSmall
-	tt := trackType{body: body, title: body, bodyLine: body * trackLineFactor, titleLine: body * trackLineFactor}
+	tt := newTrackType(body, body)
 	plot := Rect{X: trackEdgePad, Y: trackEdgePad, W: width - 2*trackEdgePad, H: height - 2*trackEdgePad}
 	data := TimelineData{Activities: normalizeTimelineActivities(acts)}
 	items := tc.trackItems(data, plot, tt)

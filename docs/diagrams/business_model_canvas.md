@@ -161,6 +161,10 @@ Each section has a default icon:
 | `color_scheme` | `classic` | Grayscale boxes |
 | `color_scheme` | `colorful` | Distinct colors per section |
 
+## Native Layout
+
+The nine sections are peers and share one body size. The canvas lays itself out from measured text (two columns of bullets in the wide bottom cells, then tighter padding); when a region is still too short for 12pt, every section body is set at the same smaller size, the largest half-point step at which all nine fit, and the diagram reports `TEXT_BELOW_READABLE_MIN` with how many one-line bullets each section holds at 12pt.
+
 ## Output Formats
 
 - SVG (default)

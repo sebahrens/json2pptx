@@ -174,9 +174,10 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 		}
 		for _, m := range metrics {
 			ins.panels = append(ins.panels, nativePanelData{
-				title: m.label,
-				value: m.displayValue(),
-				body:  buildKPIDeltaText(m.delta, m.trend), // delta with trend arrow prefix
+				title:     m.label,
+				value:     m.displayValue(),
+				body:      buildKPIDeltaText(m.delta, m.trend), // delta with trend arrow prefix
+				deltaTone: m.deltaTone(),
 			})
 		}
 		ins.kpiDashboardMode = true

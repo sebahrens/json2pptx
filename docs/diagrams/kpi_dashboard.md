@@ -47,7 +47,8 @@ By default the dashboard is open, like the `kpi-Nup` patterns: each value (28pt 
 | `title` | `string` | - | Dashboard title |
 | `subtitle` | `string` | - | Subtitle below title |
 | `metrics[].delta` | `string` | - | Change indicator (e.g., `"+5%"`) |
-| `metrics[].trend` | `string` | - | Trend direction: `"up"` or `"down"` |
+| `metrics[].trend` | `string` | - | Trend direction: `"up"`, `"down"` or `"flat"`. Sets the arrow before the change |
+| `metrics[].good_direction` | `string` | `"up"` | The direction in which the metric improves: `"up"` or `"down"`. Sets the colour of the change: a trend in the good direction takes the positive ink, a trend against it the negative ink. Set `"down"` for a cost, a churn rate, an escalation rate or a latency, so that `{"change": "-12%", "trend": "down", "good_direction": "down"}` reads as good news. The arrow still shows which way the metric moved |
 | `gap` | `number` | - | Spacing between cards |
 | `max_columns` | `number` | - | Cards per row |
 | `corner_radius` | `number` | - | Card corner radius |

@@ -135,7 +135,7 @@ func buildNativeDataSchemas() map[string]*nativeDataShape {
 				"primary", "primary_activities", "support", "support_activities"),
 			"show_arrows"),
 		"kpi_dashboard": topShape(
-			with(leaves(), shapeOf(leaves("label", "value", "change", "delta", "unit", "trend"), "color"), "metrics", "kpis"),
+			with(leaves(), shapeOf(leaves("label", "value", "change", "delta", "unit", "trend", "good_direction"), "color"), "metrics", "kpis"),
 			"gap", "max_columns", "corner_radius"),
 		"porters_five_forces": topShape(porterTop, "industry_name"),
 		"process_flow": topShape(with(with(leaves("direction"), pfStep, "steps"), pfConn, "connections"),

@@ -50,9 +50,12 @@ const (
 	trackBarHeight      = 1.5  // duration bar
 	trackBarGap         = 0.25 // between stacked bar lanes
 	trackLeader         = 1.4  // mark to the nearest lane's blocks
-	trackLeaderGap      = 0.3  // leader end to text
-	trackLaneGap        = 0.8  // between lanes on one side
-	trackBlockGap       = 1.0  // least space between neighbouring blocks
+	trackTightLeader    = 0.7  // the same in a box short of height
+	trackTightLaneGap   = 0.4
+	trackTightBarHeight = 1.0
+	trackLeaderGap      = 0.3 // leader end to text
+	trackLaneGap        = 0.8 // between lanes on one side
+	trackBlockGap       = 1.0 // least space between neighbouring blocks
 	trackMinBlockWidth  = 6.0
 	trackMaxBlockWidth  = 16.0
 	trackDescMeasure    = 12.0 // a description alone widens its block up to this
@@ -88,11 +91,14 @@ func (tc *TimelineChart) timelineNeedsLegacy(data TimelineData) bool {
 
 // trackItem is one timeline item resolved for the track.
 type trackItem struct {
-	index    int // into the activities
-	act      TimelineActivity
-	isBar    bool
-	x0, x1   float64 // mark extent on the axis (equal for a moment)
-	barLane  int
+	index   int // into the activities
+	act     TimelineActivity
+	isBar   bool
+	x0, x1  float64 // mark extent on the axis (equal for a moment)
+	barLane int
+	// abutted marks a bar whose successor in its lane starts where it ends:
+	// it is drawn a point short so the two read as two.
+	abutted  bool
 	dateText string
 
 	// The label block.
@@ -110,10 +116,39 @@ func (it trackItem) anchorX() float64 { return (it.x0 + it.x1) / 2 }
 func (it trackItem) blockLeft() float64  { return it.cx - it.width/2 }
 func (it trackItem) blockRight() float64 { return it.cx + it.width/2 }
 
-// trackType is the type model of a track.
+// trackType is the type model of a track, and the vertical measures that
+// are multiples of its body size.
 type trackType struct {
 	body, title         float64
 	bodyLine, titleLine float64
+
+	// leader is the distance from a mark to the nearest lane's blocks,
+	// laneGap the space between two lanes on one side and barHeight the
+	// height of a duration bar, all in body sizes. A track short of height
+	// takes the tight values (trackFitHeight).
+	leader, laneGap, barHeight float64
+	// lanes is the most label lanes a side may use: [below, above].
+	lanes [2]int
+	// mixSides lets a label take the side its kind does not normally use (a
+	// duration above the axis, a moment below it) once its own side is full.
+	mixSides bool
+}
+
+// newTrackType is the type model at a body size with the roomy measures.
+func newTrackType(body, title float64) trackType {
+	return trackType{
+		body: body, title: title, bodyLine: body * trackLineFactor, titleLine: title * trackLineFactor,
+		leader: trackLeader, laneGap: trackLaneGap, barHeight: trackBarHeight,
+		lanes: [2]int{trackMaxLanes, trackMaxLanes},
+	}
+}
+
+// barsHeight is the height of barLanes stacked duration bars.
+func (tt trackType) barsHeight(barLanes int) float64 {
+	if barLanes <= 0 {
+		return 0
+	}
+	return float64(barLanes)*tt.body*tt.barHeight + float64(barLanes-1)*tt.body*trackBarGap
 }
 
 // height is the height of an item's label block with at most descLines of
@@ -165,14 +200,8 @@ func (tc *TimelineChart) drawTrack(data TimelineData) error { //nolint:gocognit,
 		if len(data.Activities) <= trackTitleStepMaxN {
 			title = body * trackTitleStep
 		}
-		tt = trackType{body: body, title: title, bodyLine: body * trackLineFactor, titleLine: title * trackLineFactor}
-		items = tc.trackItems(data, plot, tt)
-		hasBars := false
-		for _, it := range items {
-			hasBars = hasBars || it.isBar
-		}
-		barLanes = trackAssignBarLanes(items)
-		tc.trackPlaceBlocks(items, plot, tt, hasBars)
+		tt = newTrackType(body, title)
+		items, barLanes = tc.trackLayout(data, plot, tt)
 		if zoom == 1 {
 			break
 		}
@@ -180,20 +209,20 @@ func (tc *TimelineChart) drawTrack(data TimelineData) error { //nolint:gocognit,
 		for _, it := range items {
 			calm = calm && it.lane == 0 && !it.truncated
 		}
-		barsH := float64(barLanes) * body * (trackBarHeight + trackBarGap)
-		_, above, below := trackSideHeights(items, tt, trackMaxDescLines, barsH)
+		_, above, below := trackSideHeights(items, tt, trackMaxDescLines, tt.barsHeight(barLanes))
 		if calm && above+below+trackAxisWidth <= plot.H*trackZoomMaxShare {
 			break
 		}
 	}
 	body := tt.body
 
+	// A box too short for the track even without descriptions gives up air,
+	// then lanes (trackFitHeight).
+	tt, items, barLanes = tc.trackFitHeight(data, plot, tt, items, barLanes)
+
 	// Vertical budget: descriptions give way first, a line at a time.
-	barH := body * trackBarHeight
-	barsH := 0.0
-	if barLanes > 0 {
-		barsH = float64(barLanes)*barH + float64(barLanes-1)*body*trackBarGap
-	}
+	barH := body * tt.barHeight
+	barsH := tt.barsHeight(barLanes)
 	descLines := trackMaxDescLines
 	var aboveH, belowH float64
 	var laneH map[[2]int]float64
@@ -224,9 +253,9 @@ func (tc *TimelineChart) drawTrack(data TimelineData) error { //nolint:gocognit,
 		if above {
 			side = 1
 		}
-		d := body * trackLeader
+		d := body * tt.leader
 		for l := 0; l < lane; l++ {
-			d += laneH[[2]int{side, l}] + body*trackLaneGap
+			d += laneH[[2]int{side, l}] + body*tt.laneGap
 		}
 		return d
 	}
@@ -235,6 +264,7 @@ func (tc *TimelineChart) drawTrack(data TimelineData) error { //nolint:gocognit,
 		top, bot float64 // text block extent
 	}
 	blocks := make([]placed, 0, len(items))
+	var undrawn []trackItem
 	b.Push()
 	b.SetStrokeColor(neutral)
 	b.SetStrokeWidth(trackLeaderWidth)
@@ -259,6 +289,13 @@ func (tc *TimelineChart) drawTrack(data TimelineData) error { //nolint:gocognit,
 			p.top = base + barsH + laneOffset(false, it.lane)
 			p.bot = p.top + h
 			to = p.top - body*trackLeaderGap
+		}
+		// A block that would leave the canvas is not drawn, and neither is
+		// its leader: a leader that ends at nothing is worse than no label,
+		// and the label is reported (reportTrackUndrawn).
+		if p.top < plot.Y-trackFitSlack || p.bot > plot.Y+plot.H+trackFitSlack {
+			undrawn = append(undrawn, it)
+			continue
 		}
 		lx := math.Min(math.Max(it.anchorX(), it.blockLeft()), it.blockRight())
 		b.DrawLine(lx, from, lx, to)
@@ -301,7 +338,11 @@ func (tc *TimelineChart) drawTrack(data TimelineData) error { //nolint:gocognit,
 			}
 			y := axisY + trackAxisWidth/2 + float64(it.barLane)*(barH+body*trackBarGap)
 			b.SetFillColor(bf)
-			b.DrawRect(Rect{X: it.x0, Y: y, W: math.Max(it.x1-it.x0, 2), H: barH})
+			w := it.x1 - it.x0
+			if it.abutted {
+				w--
+			}
+			b.DrawRect(Rect{X: it.x0, Y: y, W: math.Max(w, 2), H: barH})
 		} else {
 			r := body * trackDiscRadius
 			b.SetFillColor(style.Palette.Background.Opaque())
@@ -354,6 +395,7 @@ func (tc *TimelineChart) drawTrack(data TimelineData) error { //nolint:gocognit,
 
 	tc.reportInvalidDates(data)
 	tc.reportTrackLabels(items, tt)
+	tc.reportTrackUndrawn(undrawn)
 
 	if tc.config.ShowTitle && data.Title != "" {
 		titleConfig := DefaultTitleConfig()
@@ -524,16 +566,22 @@ func trackDateText(act TimelineActivity, start, end time.Time) string {
 }
 
 // trackAssignBarLanes stacks overlapping duration bars and returns the number
-// of bar lanes.
+// of bar lanes. A bar that starts where another ends (a phase that follows
+// one the day after) shares its lane: on a narrow canvas the day between them
+// is under a point wide, and a lane of its own for it cost the track the
+// height of a label (go-slide-creator-aqc39).
 func trackAssignBarLanes(items []trackItem) int {
-	var ends []float64 // right edge of the last bar in each lane
+	const abutSlack = 0.5 // points two bars may overlap and still follow one another
+	var ends []float64    // right edge of the last bar in each lane
+	var last []int        // that bar's index
 	for i := range items {
 		if !items[i].isBar {
 			continue
 		}
+		items[i].abutted = false
 		lane := -1
 		for l, end := range ends {
-			if items[i].x0 >= end+1 {
+			if items[i].x0 >= end-abutSlack {
 				lane = l
 				break
 			}
@@ -541,8 +589,11 @@ func trackAssignBarLanes(items []trackItem) int {
 		if lane < 0 {
 			lane = len(ends)
 			ends = append(ends, 0)
+			last = append(last, -1)
+		} else if items[i].x0 < ends[lane]+1 {
+			items[last[lane]].abutted = true
 		}
-		ends[lane] = items[i].x1
+		ends[lane], last[lane] = items[i].x1, i
 		items[i].barLane = lane
 	}
 	return len(ends)
@@ -573,14 +624,30 @@ func (tc *TimelineChart) trackPlaceBlocks(items []trackItem, plot Rect, tt track
 	}
 	candidates := func(it trackItem) []slot {
 		var out []slot
+		add := func(above bool, lane int) {
+			side := 0
+			if above {
+				side = 1
+			}
+			if lane < tt.lanes[side] {
+				out = append(out, slot{above, lane})
+			}
+		}
 		for lane := 0; lane < trackMaxLanes; lane++ {
 			switch {
 			case hasBars && it.isBar:
-				out = append(out, slot{false, lane})
+				add(false, lane)
 			case hasBars:
-				out = append(out, slot{true, lane})
+				add(true, lane)
 			default:
-				out = append(out, slot{true, lane}, slot{false, lane})
+				add(true, lane)
+				add(false, lane)
+			}
+		}
+		if hasBars && tt.mixSides {
+			// Its own side first, then the other.
+			for lane := 0; lane < trackMaxLanes; lane++ {
+				add(!it.isBar, lane)
 			}
 		}
 		return out
@@ -690,6 +757,88 @@ func (tc *TimelineChart) trackPlaceBlocks(items []trackItem, plot Rect, tt track
 	}
 }
 
+// trackFitSlack is how far a label block may reach past the canvas before it
+// counts as not drawn (points): rounding, not text.
+const trackFitSlack = 0.5
+
+// trackLayout resolves the items for a type model and places their blocks.
+func (tc *TimelineChart) trackLayout(data TimelineData, plot Rect, tt trackType) (items []trackItem, barLanes int) {
+	items = tc.trackItems(data, plot, tt)
+	hasBars := false
+	for _, it := range items {
+		hasBars = hasBars || it.isBar
+	}
+	barLanes = trackAssignBarLanes(items)
+	tc.trackPlaceBlocks(items, plot, tt, hasBars)
+	return items, barLanes
+}
+
+// trackFitHeight fits the track to a box too short for it
+// (go-slide-creator-aqc39). A timeline in a compose zone of 60% of the body
+// used to keep its roomy lanes: the lowest label block ran past the zone and
+// was clipped, or left the canvas altogether while its bar and leader stayed.
+// Descriptions already give way (drawTrack); when the names and dates alone
+// do not fit, the track gives up, in this order:
+//
+//  1. air: shorter leaders, closer lanes, flatter duration bars;
+//  2. lanes: the side with the most lanes loses one at a time, and a label
+//     whose own side is full may take the other side (a duration above the
+//     axis, a moment below it). Labels that then have no room are narrowed
+//     and cut, which reportTrackLabels reports.
+//
+// A track that still does not fit leaves the labels that fall outside the
+// canvas undrawn, with their leaders, and says which (reportTrackUndrawn).
+func (tc *TimelineChart) trackFitHeight(data TimelineData, plot Rect, tt trackType, items []trackItem, barLanes int) (trackType, []trackItem, int) {
+	fits := func() bool {
+		_, above, below := trackSideHeights(items, tt, 0, tt.barsHeight(barLanes))
+		return above+below+trackAxisWidth <= plot.H+trackFitSlack
+	}
+	if fits() {
+		return tt, items, barLanes
+	}
+	tt.leader, tt.laneGap, tt.barHeight = trackTightLeader, trackTightLaneGap, trackTightBarHeight
+	for !fits() {
+		used := [2]int{}
+		for _, it := range items {
+			side := 0
+			if it.above {
+				side = 1
+			}
+			used[side] = max(used[side], it.lane+1)
+		}
+		side := 0
+		if used[1] > used[0] {
+			side = 1
+		}
+		if used[side] <= 1 {
+			break
+		}
+		tt.lanes = [2]int{max(used[0], 1), max(used[1], 1)}
+		tt.lanes[side] = used[side] - 1
+		tt.mixSides = true
+		items, barLanes = tc.trackLayout(data, plot, tt)
+	}
+	return tt, items, barLanes
+}
+
+// reportTrackUndrawn raises chart.label_truncated, blocking, for every label
+// the canvas is too short to draw at all.
+func (tc *TimelineChart) reportTrackUndrawn(items []trackItem) {
+	for _, it := range items {
+		tc.builder.AddFinding(Finding{
+			Field: it.act.field,
+			Code:  FindingLabelTruncated,
+			Message: fmt.Sprintf("timeline label %q is not drawn: the diagram's box is too short for its label lanes even at the tightest spacing — give the timeline a taller box, use fewer events or shorter labels",
+				it.act.Label),
+			Severity: core.SeverityShrinkOrSplit,
+			Fix: &FixSuggestion{
+				Kind:   FixKindTruncateOrSplit,
+				Params: map[string]any{"original": it.act.Label, "truncated": "", "diagram_type": "timeline"},
+			},
+		})
+	}
+}
+
 // trackSideHeights returns the height of every lane, keyed by (side, lane)
 // with side 1 above the axis, and the total height the drawing needs above
 // and below the axis.
@@ -711,11 +860,11 @@ func trackSideHeights(items []trackItem, tt trackType, descLines int, barsH floa
 		if lanes[side] == 0 {
 			return 0
 		}
-		h := tt.body * trackLeader
+		h := tt.body * tt.leader
 		for l := 0; l < lanes[side]; l++ {
 			h += laneH[[2]int{side, l}]
 			if l > 0 {
-				h += tt.body * trackLaneGap
+				h += tt.body * tt.laneGap
 			}
 		}
 		return h

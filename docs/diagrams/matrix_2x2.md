@@ -60,6 +60,8 @@ Provide **one** of two mutually exclusive forms: `points` (explicit coordinates,
 | `points[].x` | `number` | X coordinate (0-100 by default — see Coordinate System) |
 | `points[].y` | `number` | Y coordinate (0-100 by default — see Coordinate System) |
 
+**Point labels.** A label is set beside its point: to the side away from the centre first, then the other side, above or below, then one of the four diagonals. It keeps clear of the quadrant headings, of the labels already placed and of every other point's marker, and stays inside the plot. A label with no clear place stays beside its point where it covers least — it is never moved lines away, where it would read as another point's — and is reported as `diagram.text_overlap` at `warning`; so is a label that can only be drawn across another point's marker. Crowded points in a narrow cell are the usual cause: use fewer points, a wider region or the `quadrants` form.
+
 ### `quadrants` form (coordinate-free)
 
 When you only know which quadrant an item belongs to (not exact coordinates), list items by quadrant. Each quadrant renders as its **title followed by a bulleted list**, filling its own rectangle — no markers, and nothing from one quadrant can collide with anything in another. Items that do not fit the rectangle are elided with `…`.

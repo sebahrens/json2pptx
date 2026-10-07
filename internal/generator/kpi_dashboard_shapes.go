@@ -71,6 +71,37 @@ type kpiMetric struct {
 	unit  string // Unit rendered with the value (e.g., "EUR m", "%")
 	delta string // Change indicator (e.g., "+12.4%"); JSON key "change" or "delta"
 	trend string // Direction: "up", "down", "flat"
+	// goodDirection is the direction in which the metric improves: "up"
+	// (the default) or "down" (a cost, a churn rate, a latency). JSON key
+	// "good_direction".
+	goodDirection string
+}
+
+// The tones of a delta: the colour says whether the move is good, the arrow
+// which way it went.
+const (
+	kpiDeltaGood = "good"
+	kpiDeltaBad  = "bad"
+)
+
+// deltaTone is how the metric's trend reads given its good direction: a fall
+// in a metric that should fall is good, a rise in it is bad. A flat or
+// unstated trend has no tone. A downward trend used to be red whatever it
+// measured, so "cost per task -12%" was printed as bad news
+// (go-slide-creator-atocl).
+func (m kpiMetric) deltaTone() string {
+	trend := strings.ToLower(strings.TrimSpace(m.trend))
+	if trend != "up" && trend != "down" {
+		return ""
+	}
+	good := "up"
+	if strings.EqualFold(strings.TrimSpace(m.goodDirection), "down") {
+		good = "down"
+	}
+	if trend == good {
+		return kpiDeltaGood
+	}
+	return kpiDeltaBad
 }
 
 // displayValue renders the hero value with its unit attached. The unit is the
@@ -213,10 +244,20 @@ func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint3
 			Dirty:    true,
 		}
 		// Color based on trend: body starts with ▲ for up, ▼ for down.
+		// The arrow says which way the metric moved; the colour says whether
+		// that is good. With no tone stated, up is good.
+		tone := panel.deltaTone
 		switch {
+		case tone != "":
 		case strings.HasPrefix(panel.body, "\u25B2"): // ▲ up
-			deltaRun.Color = kpiTrendFill("accent6", tint, themeColors)
+			tone = kpiDeltaGood
 		case strings.HasPrefix(panel.body, "\u25BC"): // ▼ down
+			tone = kpiDeltaBad
+		}
+		switch tone {
+		case kpiDeltaGood:
+			deltaRun.Color = kpiTrendFill("accent6", tint, themeColors)
+		case kpiDeltaBad:
 			deltaRun.Color = kpiTrendFill("accent2", tint, themeColors)
 		default:
 			deltaRun.Color = kpiTrendFill("dk1", tint, themeColors)
@@ -336,6 +377,9 @@ func parseKPIMetrics(data map[string]any) []kpiMetric {
 		}
 		if trend, ok := m["trend"].(string); ok {
 			metric.trend = trend
+		}
+		if good, ok := m["good_direction"].(string); ok {
+			metric.goodDirection = good
 		}
 
 		metrics = append(metrics, metric)

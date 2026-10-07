@@ -452,7 +452,7 @@ func DiagramCapabilities() []DiagramCapability {
 			MaxDepth:         intPtr(1),
 			OverflowBehavior: strPtr("card grid layout; font reduction for many metrics. max_nodes IS enforced: metrics past it are dropped and reported as CONTENT_DROPPED naming how many"),
 			RequiredFields:   []string{"metrics"},
-			OptionalFields:   []string{"label", "value", "unit", "change", "trend"},
+			OptionalFields:   []string{"label", "value", "unit", "change", "trend", "good_direction"},
 			Status:           "ready",
 		},
 		{

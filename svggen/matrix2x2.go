@@ -191,6 +191,11 @@ func (d Matrix2x2Data) HasQuadrantItems() bool {
 type Matrix2x2Chart struct {
 	builder *SVGBuilder
 	config  Matrix2x2Config
+
+	// markerBoxes are the boxes of the point markers of the drawing in
+	// progress: what a point label must keep clear of besides the headings
+	// and the labels placed before it.
+	markerBoxes []placedLabel
 }
 
 // NewMatrix2x2Chart creates a new matrix 2x2 chart renderer.
@@ -778,6 +783,15 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect, cap
 		}
 	}
 
+	// Markers first, labels second: a label is placed clear of every marker,
+	// not only of the labels placed before it. Labelling point by point let
+	// a label sit on the marker of a point that came later in the list
+	// (go-slide-creator-995rf).
+	type plotted struct {
+		x, y, size float64
+		label      string
+	}
+	marks := make([]plotted, 0, len(points))
 	for _, point := range points {
 		// A coordinate outside the axis range used to be plotted wherever the
 		// scale put it: outside the plot frame, over the axis titles, or off the
@@ -825,12 +839,20 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect, cap
 
 		// Draw the point
 		mc.drawPoint(x, y, size, color, shape)
+		marks = append(marks, plotted{x: x, y: y, size: size, label: point.Label})
+		mc.markerBoxes = append(mc.markerBoxes, placedLabel{x: x - size/2, y: y - size/2, w: size, h: size})
+	}
+	defer func() { mc.markerBoxes = nil }()
 
-		// Draw label with collision avoidance
-		if mc.config.ShowPointLabels && point.Label != "" {
-			lbl := mc.drawPointLabelAvoiding(x, y, size, point.Label, plotArea, placed, labelFontSize, labelOffset)
-			placed = append(placed, lbl)
+	if !mc.config.ShowPointLabels {
+		return
+	}
+	for _, m := range marks {
+		if m.label == "" {
+			continue
 		}
+		lbl := mc.drawPointLabelAvoiding(m.x, m.y, m.size, m.label, plotArea, placed, labelFontSize, labelOffset)
+		placed = append(placed, lbl)
 	}
 }
 
@@ -951,6 +973,10 @@ func (mc *Matrix2x2Chart) drawPoint(x, y, size float64, color Color, shape Marke
 	b.Pop()
 }
 
+// matrixLabelBoxSlack widens a point label's collision box past its measured
+// width.
+const matrixLabelBoxSlack = 1.08
+
 // labelDirection describes a placement direction relative to a data point.
 type labelDirection struct {
 	dx, dy float64   // offset multipliers relative to the label offset distance
@@ -989,9 +1015,12 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 	const libreOfficeTextInflation = 1.20
 	clipW := labelW * libreOfficeTextInflation
 
-	// Four candidate directions: right, left, below, above.
+	// Four candidate directions first: right, left, below, above.
 	// Each direction moves the label anchor by (dx*offset, dy*offset) from the
-	// point center, with an appropriate text alignment.
+	// point center, with an appropriate text alignment. When all four are
+	// taken the four diagonals follow (appended after the reordering below).
+	// Nothing further out is tried: a label two lines from its marker reads
+	// as another point's.
 	directions := []labelDirection{
 		{dx: 1, dy: 0, align: TextAlignLeft},    // right of point
 		{dx: -1, dy: 0, align: TextAlignRight},  // left of point
@@ -1018,7 +1047,21 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 		directions[2], directions[3] = directions[3], directions[2]
 	}
 
-	// Helper: build a candidate bounding box for a given direction.
+	// The diagonals sit a line above or below the marker, beside it. They
+	// are tried only after the four sides.
+	diag := labelH / math.Max(offset, 1)
+	directions = append(directions,
+		labelDirection{dx: 0.7, dy: -diag, align: TextAlignLeft},
+		labelDirection{dx: 0.7, dy: diag, align: TextAlignLeft},
+		labelDirection{dx: -0.7, dy: -diag, align: TextAlignRight},
+		labelDirection{dx: -0.7, dy: diag, align: TextAlignRight},
+	)
+
+	// Helper: build a candidate bounding box for a given direction. The box
+	// is a little wider than the measured text (boxW): a renderer whose face
+	// runs wider than the measure drew two labels that just cleared one
+	// another into each other.
+	boxW := labelW * matrixLabelBoxSlack
 	buildCandidate := func(dir labelDirection) (placedLabel, float64, TextAlign) {
 		lx := x + dir.dx*offset
 		ly := y + dir.dy*offset
@@ -1026,16 +1069,34 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 		bx := lx
 		switch dir.align {
 		case TextAlignRight:
-			bx = lx - labelW
+			bx = lx - boxW
 		case TextAlignCenter:
-			bx = lx - labelW/2
+			bx = lx - boxW/2
 		}
-		return placedLabel{x: bx, y: ly - labelH/2, w: labelW, h: labelH}, lx, dir.align
+		return placedLabel{x: bx, y: ly - labelH/2, w: boxW, h: labelH}, lx, dir.align
+	}
+	// A label stays inside the plot vertically as well: one placed above a
+	// point near the top edge was drawn over the diagram's title.
+	inPlotY := func(c placedLabel) bool {
+		return c.y >= plotArea.Y && c.y+c.h <= plotArea.Y+plotArea.H
 	}
 
 	collidesWith := func(c placedLabel) bool {
 		for _, p := range placed {
 			if c.overlaps(p) {
+				return true
+			}
+		}
+		return false
+	}
+	// hitsMarker reports whether c covers another point's marker (the
+	// label's own marker is the one centred on its point).
+	hitsMarker := func(c placedLabel) bool {
+		for _, m := range mc.markerBoxes {
+			if math.Abs(m.x+m.w/2-x) < 0.01 && math.Abs(m.y+m.h/2-y) < 0.01 {
+				continue
+			}
+			if c.overlaps(m) {
 				return true
 			}
 		}
@@ -1071,14 +1132,24 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 	var bestAlign TextAlign
 	found := false
 
-	// Pass 1: collision-free AND no clipping
-	for _, dir := range directions {
-		c, lx, al := buildCandidate(dir)
-		if !collidesWith(c) && !wouldClip(lx, al) {
-			bestCandidate = c
-			bestLabelX = lx
-			bestAlign = al
-			found = true
+	// Pass 1: clear of every label, heading and marker, and no clipping.
+	// Pass 1b: the same, but over another point's marker: on a canvas too
+	// small for its labels a whole name across a marker loses less than a
+	// name cut short, and it is reported below.
+	overMarker := false
+	for _, strict := range []bool{true, false} {
+		for _, dir := range directions {
+			c, lx, al := buildCandidate(dir)
+			if !collidesWith(c) && !wouldClip(lx, al) && inPlotY(c) && (!strict || !hitsMarker(c)) {
+				bestCandidate = c
+				bestLabelX = lx
+				bestAlign = al
+				found = true
+				overMarker = !strict
+				break
+			}
+		}
+		if found {
 			break
 		}
 	}
@@ -1089,7 +1160,7 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 		bestRun := 0.0
 		for _, dir := range directions {
 			c, lx, al := buildCandidate(dir)
-			if run := availableRun(lx, al); !collidesWith(c) && run > bestRun {
+			if run := availableRun(lx, al); !collidesWith(c) && inPlotY(c) && run > bestRun {
 				bestCandidate = c
 				bestLabelX = lx
 				bestAlign = al
@@ -1099,35 +1170,64 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 		}
 	}
 
-	// If no clean direction found, fall back to the preferred direction
-	// (first in list) and shift vertically until clear.
+	// No clean place: the label stays beside its point, where it covers
+	// least, and the overlap is reported below. It used to be shifted up or
+	// down until it was clear, up to six lines away: a label that far from
+	// its marker names the wrong point.
 	if !found {
-		fallback := directions[0]
-		for _, dir := range directions[1:] {
-			_, lx, al := buildCandidate(dir)
-			_, bestX, bestAl := buildCandidate(fallback)
-			if availableRun(lx, al) > availableRun(bestX, bestAl) {
-				fallback = dir
+		overlap := func(c placedLabel) float64 {
+			area := func(o placedLabel) float64 {
+				w := math.Min(c.x+c.w, o.x+o.w) - math.Max(c.x, o.x)
+				h := math.Min(c.y+c.h, o.y+o.h) - math.Max(c.y, o.y)
+				if w <= 0 || h <= 0 {
+					return 0
+				}
+				return w * h
+			}
+			total := 0.0
+			for _, o := range placed {
+				total += area(o)
+			}
+			for _, m := range mc.markerBoxes {
+				if math.Abs(m.x+m.w/2-x) < 0.01 && math.Abs(m.y+m.h/2-y) < 0.01 {
+					continue
+				}
+				total += area(m)
+			}
+			return total
+		}
+		least := math.Inf(1)
+		for _, dir := range directions {
+			c, lx, al := buildCandidate(dir)
+			if !inPlotY(c) || wouldClip(lx, al) {
+				continue
+			}
+			if o := overlap(c); o < least {
+				bestCandidate, bestLabelX, bestAlign, least = c, lx, al, o
+				found = true
 			}
 		}
-		c, lx, al := buildCandidate(fallback)
-		bestCandidate = c
-		bestLabelX = lx
-		bestAlign = al
-
-		baseY := c.y
-		step := labelH * 0.8
-		for attempt := 0; attempt < 16; attempt++ {
-			if !collidesWith(bestCandidate) {
-				break
+		if !found {
+			// Nothing fits whole inside the plot: the widest run, wrapped.
+			fallback := directions[0]
+			for _, dir := range directions[1:] {
+				_, lx, al := buildCandidate(dir)
+				_, bestX, bestAl := buildCandidate(fallback)
+				if availableRun(lx, al) > availableRun(bestX, bestAl) {
+					fallback = dir
+				}
 			}
-			off := step * float64((attempt/2)+1)
-			if attempt%2 == 0 {
-				bestCandidate.y = baseY + off
-			} else {
-				bestCandidate.y = baseY - off
-			}
+			bestCandidate, bestLabelX, bestAlign = buildCandidate(fallback)
+			bestCandidate.y = math.Min(math.Max(bestCandidate.y, plotArea.Y), math.Max(plotArea.Y, plotArea.Y+plotArea.H-labelH))
 		}
+	}
+	if overMarker {
+		b.AddFinding(Finding{
+			Code:     FindingDiagramTextOverlap,
+			Message:  fmt.Sprintf("matrix_2x2: point label %q has no free place beside its point and is drawn across another point's marker — move the point, shorten the label, or enlarge the diagram", label),
+			Severity: "warning",
+			Fix:      &FixSuggestion{Kind: FixKindShortenLabels},
+		})
 	}
 	if collidesWith(bestCandidate) {
 		b.AddFinding(Finding{
