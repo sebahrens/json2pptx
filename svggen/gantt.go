@@ -66,11 +66,13 @@ type GanttConfig struct {
 // DefaultGanttConfig returns default configuration for Gantt chart diagrams.
 func DefaultGanttConfig(width, height float64) GanttConfig {
 	return GanttConfig{
-		ChartConfig:           DefaultChartConfig(width, height),
-		RowHeight:             32,
-		RowSpacing:            6,
-		BarHeight:             20,
-		BarCornerRadius:       3,
+		ChartConfig: DefaultChartConfig(width, height),
+		RowHeight:   32,
+		RowSpacing:  6,
+		BarHeight:   20,
+		// Flat square bars: a rounded bar under a darker outline read as a UI
+		// pill (go-slide-creator-n978t).
+		BarCornerRadius:       0,
 		MilestoneSize:         24,
 		LabelWidth:            math.Max(140, width*0.25),
 		ShowGrid:              true,
@@ -209,12 +211,7 @@ func (gc *GanttChart) Draw(data GanttData) error {
 
 	// Adjust for title
 	headerHeight := 0.0
-	if gc.config.ShowTitle && data.Title != "" {
-		headerHeight = style.Typography.SizeTitle + style.Spacing.MD
-		if data.Subtitle != "" {
-			headerHeight += style.Typography.SizeSubtitle + style.Spacing.XS
-		}
-	}
+	headerHeight = chartHeaderHeight(style, gc.config.ShowTitle, data.Title, data.Subtitle)
 
 	// Adjust for footnote
 	footerHeight := 0.0
@@ -317,13 +314,7 @@ func (gc *GanttChart) Draw(data GanttData) error {
 	})
 
 	// Draw title
-	if gc.config.ShowTitle && data.Title != "" {
-		titleConfig := DefaultTitleConfig()
-		titleConfig.Text = data.Title
-		titleConfig.Subtitle = data.Subtitle
-		title := NewTitle(b, titleConfig)
-		title.Draw(Rect{X: 0, Y: 0, W: gc.config.Width, H: headerHeight + gc.config.MarginTop})
-	}
+	drawChartHeader(b, gc.config.Width, gc.config.ShowTitle, data.Title, data.Subtitle)
 
 	// Draw footnote
 	if data.Footnote != "" {
@@ -663,9 +654,13 @@ func (gc *GanttChart) drawTaskBar(task GanttTask, rowY float64, dateRange timeli
 	} else {
 		b.SetFillColor(fillColor)
 	}
-	b.SetStrokeColor(fillColor.Darken(0.15))
-	b.SetStrokeWidth(style.Strokes.WidthNormal)
-	b.DrawRoundedRect(rect, gc.config.BarCornerRadius)
+	if gc.config.BarCornerRadius > 0 {
+		b.SetStrokeColor(fillColor.Darken(0.15))
+		b.SetStrokeWidth(style.Strokes.WidthNormal)
+		b.DrawRoundedRect(rect, gc.config.BarCornerRadius)
+	} else {
+		b.FillRect(rect)
+	}
 	b.Pop()
 
 	// Draw progress overlay if enabled
@@ -674,12 +669,12 @@ func (gc *GanttChart) drawTaskBar(task GanttTask, rowY float64, dateRange timeli
 		b.Push()
 		b.SetFillColor(fillColor)
 		b.SetStrokeWidth(0)
-		b.DrawRoundedRect(Rect{
-			X: startX,
-			Y: barY,
-			W: progressWidth,
-			H: gc.config.BarHeight,
-		}, gc.config.BarCornerRadius)
+		progress := Rect{X: startX, Y: barY, W: progressWidth, H: gc.config.BarHeight}
+		if gc.config.BarCornerRadius > 0 {
+			b.DrawRoundedRect(progress, gc.config.BarCornerRadius)
+		} else {
+			b.FillRect(progress)
+		}
 		b.Pop()
 	}
 
@@ -704,9 +699,10 @@ func (gc *GanttChart) drawMilestoneMarker(task GanttTask, rowY float64, dateRang
 	y := rowY + gc.config.RowHeight/2
 	halfSize := gc.config.MilestoneSize / 2
 
-	// Use Warning (gold/orange) for milestone markers to distinguish them
-	// from regular task bars. Explicit per-task color overrides still win.
-	fillColor := style.Palette.Warning
+	// A milestone is an anchor on the time axis: the dark neutral ink, the
+	// same in every lane, where the bars carry the accent. Explicit per-task
+	// color overrides still win.
+	fillColor := style.Palette.TextPrimary
 	if task.Color != nil {
 		fillColor = *task.Color
 	}
@@ -720,8 +716,9 @@ func (gc *GanttChart) drawMilestoneMarker(task GanttTask, rowY float64, dateRang
 
 	b.Push()
 	b.SetFillColor(fillColor)
-	b.SetStrokeColor(fillColor.Darken(0.25))
-	b.SetStrokeWidth(style.Strokes.WidthThick)
+	// A page-coloured hairline separates the diamond from a bar it sits on.
+	b.SetStrokeColor(style.Palette.Background)
+	b.SetStrokeWidth(style.Strokes.WidthHairline)
 	b.DrawPolygon(points)
 	b.Pop()
 
@@ -738,7 +735,7 @@ func (gc *GanttChart) drawStandaloneMilestone(ms GanttMilestone, rowY float64, d
 	y := rowY + gc.config.RowHeight/2
 	halfSize := gc.config.MilestoneSize / 2
 
-	fillColor := style.Palette.Warning // Milestones use gold/orange for visibility
+	fillColor := style.Palette.TextPrimary // the dark anchor ink, as on task milestones
 	if ms.Color != nil {
 		fillColor = *ms.Color
 	}
@@ -752,8 +749,9 @@ func (gc *GanttChart) drawStandaloneMilestone(ms GanttMilestone, rowY float64, d
 
 	b.Push()
 	b.SetFillColor(fillColor)
-	b.SetStrokeColor(fillColor.Darken(0.25))
-	b.SetStrokeWidth(style.Strokes.WidthThick)
+	// A page-coloured hairline separates the diamond from a bar it sits on.
+	b.SetStrokeColor(style.Palette.Background)
+	b.SetStrokeWidth(style.Strokes.WidthHairline)
 	b.DrawPolygon(points)
 	b.Pop()
 

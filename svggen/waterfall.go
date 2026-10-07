@@ -216,7 +216,6 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 	// Calculate layout (shared across Cartesian chart types; fixes missing footerHeight)
 	layout := ComputeCartesianLayout(wc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, 1)
 	plotArea := layout.PlotArea
-	headerHeight := layout.HeaderHeight
 
 	// Create scales
 	xScale := NewCategoricalScale(categories)
@@ -242,13 +241,7 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 	wc.drawBarsAndConnectors(data.Points, plotArea, xScale, yScale, isNarrow, labelled)
 
 	// Draw title
-	if wc.config.ShowTitle && data.Title != "" {
-		titleConfig := DefaultTitleConfig()
-		titleConfig.Text = data.Title
-		titleConfig.Subtitle = data.Subtitle
-		title := NewTitle(b, titleConfig)
-		title.Draw(Rect{X: 0, Y: 0, W: wc.config.Width, H: headerHeight + wc.config.MarginTop})
-	}
+	drawChartHeader(b, wc.config.Width, wc.config.ShowTitle, data.Title, data.Subtitle)
 
 	// Draw footnote
 	if data.Footnote != "" {
@@ -853,12 +846,13 @@ func (d *WaterfallDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		// respect the active template's color scheme.
 		// These are applied BEFORE user custom colors so that explicit
 		// user-specified colors take priority over the theme defaults.
-		// The decreases carry the story of a bridge: they take accent1, while
-		// totals and increases stay neutral dk1 tints (go-slide-creator-sdxii).
+		// The deltas carry the story of a bridge: increases take accent1 and
+		// decreases its tint, while the totals stand back in the neutral bar
+		// grey (go-slide-creator-n978t).
 		style := builder.StyleGuide()
-		config.TotalColor = NeutralInk(style.Palette, WaterfallTotalInk)
-		config.DecreaseColor = style.Palette.Accent1
-		config.IncreaseColor = waterfallIncreaseInk(style.Palette, config.TotalColor, config.DecreaseColor)
+		config.TotalColor = waterfallTotalInk(style.Palette)
+		config.IncreaseColor = style.Palette.Accent1
+		config.DecreaseColor = waterfallDecreaseInk(style.Palette, config.TotalColor)
 		config.ConnectorColor = style.Palette.TextMuted
 
 		// Apply custom colors if specified (overrides theme defaults)

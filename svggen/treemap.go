@@ -46,6 +46,10 @@ const (
 
 	// TreemapLabelCenter places labels at the center of the cell.
 	TreemapLabelCenter TreemapLabelPosition = "center"
+
+	// TreemapLabelTopLeft sets the name bold in the tile's top-left corner
+	// with the value beneath it (the default).
+	TreemapLabelTopLeft TreemapLabelPosition = "top-left"
 )
 
 // TreemapAlgorithm determines the layout algorithm.
@@ -62,13 +66,15 @@ const (
 // DefaultTreemapChartConfig returns default treemap chart configuration.
 func DefaultTreemapChartConfig(width, height float64) TreemapChartConfig {
 	return TreemapChartConfig{
-		ChartConfig:     DefaultChartConfig(width, height),
-		Padding:         2,
-		CornerRadius:    4,
+		ChartConfig: DefaultChartConfig(width, height),
+		// Square tiles separated by gutters of the page colour, no outline:
+		// rounded outlined tiles read as web cards (go-slide-creator-n978t).
+		Padding:         4,
+		CornerRadius:    0,
 		LabelMinSize:    12,
 		ShowLabels:      true,
 		ShowValueLabels: true,
-		LabelPosition:   TreemapLabelCenter,
+		LabelPosition:   TreemapLabelTopLeft,
 		Algorithm:       TreemapSquarify,
 	}
 }
@@ -145,7 +151,7 @@ func (tc *TreemapChart) Draw(data TreemapData) error {
 
 	b := tc.builder
 	style := b.StyleGuide()
-	colors := tc.getColors(style, len(data.Nodes))
+	colors := tc.tileColors(style, data.Nodes)
 
 	tc.config.ResolveValueFormatter(treemapValues(data.Nodes), false)
 
@@ -153,13 +159,7 @@ func (tc *TreemapChart) Draw(data TreemapData) error {
 	plotArea := tc.config.PlotArea()
 
 	// Adjust for title
-	headerHeight := 0.0
-	if tc.config.ShowTitle && data.Title != "" {
-		headerHeight = style.Typography.SizeTitle + style.Spacing.MD
-		if data.Subtitle != "" {
-			headerHeight += style.Typography.SizeSubtitle + style.Spacing.XS
-		}
-	}
+	headerHeight := chartHeaderHeight(style, tc.config.ShowTitle, data.Title, data.Subtitle)
 
 	plotArea.Y += headerHeight
 	plotArea.H -= headerHeight
@@ -182,13 +182,7 @@ func (tc *TreemapChart) Draw(data TreemapData) error {
 	tc.drawNodes(data.Nodes, colors, 0)
 
 	// Draw title
-	if tc.config.ShowTitle && data.Title != "" {
-		titleConfig := DefaultTitleConfig()
-		titleConfig.Text = data.Title
-		titleConfig.Subtitle = data.Subtitle
-		title := NewTitle(b, titleConfig)
-		title.Draw(Rect{X: 0, Y: 0, W: tc.config.Width, H: headerHeight + tc.config.MarginTop})
-	}
+	drawChartHeader(b, tc.config.Width, tc.config.ShowTitle, data.Title, data.Subtitle)
 
 	// Draw footnote
 	if data.Footnote != "" {
@@ -403,14 +397,15 @@ func (tc *TreemapChart) drawNodes(nodes []*TreemapNode, colors []Color, depth in
 		// Draw cell background
 		b.Push()
 		b.SetFillColor(color)
-		b.SetStrokeColor(color.Darken(0.2))
-		b.SetStrokeWidth(1)
-
 		if tc.config.CornerRadius > 0 {
+			b.SetStrokeColor(color.Darken(0.2))
+			b.SetStrokeWidth(1)
 			b.DrawRoundedRect(bounds, tc.config.CornerRadius)
 		} else {
+			// Flat tile: the gutter separates it, not an outline.
+			b.SetStrokeColor(color)
+			b.SetStrokeWidth(0)
 			b.FillRect(bounds)
-			b.StrokeRect(bounds)
 		}
 		b.Pop()
 
@@ -465,7 +460,7 @@ func (tc *TreemapChart) drawNodes(nodes []*TreemapNode, colors []Color, depth in
 			// Layout children
 			if childTotal > 0 {
 				tc.squarifyLayout(node.Children, innerBounds, childTotal)
-				tc.drawNodes(node.Children, colors, depth+1)
+				tc.drawNodes(node.Children, tc.childColors(style, color, node.Children, colors), depth+1)
 			}
 		}
 	}
@@ -522,6 +517,28 @@ func (tc *TreemapChart) drawNodeLabel(node *TreemapNode, bounds Rect, style *Sty
 
 	var labelX, labelY float64
 	switch tc.config.LabelPosition {
+	case TreemapLabelTopLeft:
+		inset := math.Min(style.Spacing.MD, math.Min(bounds.W, bounds.H)*0.12)
+		availW := bounds.W - 2*inset
+		b.SetFontWeight(style.Typography.WeightBold)
+		name := b.TruncateToWidth(node.Label, availW)
+		valueFont := treemapValueFont(style, fontSize)
+		valueText := ""
+		if tc.config.ShowValueLabels && bounds.H >= 2*inset+fontSize*1.25+valueFont*1.2 {
+			valueText = tc.valueLabel(node, availW, valueFont)
+		}
+		if valueText == "" && bounds.H < 2*inset+fontSize*1.25 {
+			// One line in a shallow tile: centre it on the tile's height.
+			b.DrawText(name, bounds.X+inset, bounds.Y+bounds.H/2, TextAlignLeft, TextBaselineMiddle)
+			break
+		}
+		b.DrawText(name, bounds.X+inset, bounds.Y+inset+fontSize*0.6, TextAlignLeft, TextBaselineMiddle)
+		if valueText != "" {
+			b.SetFontSize(valueFont)
+			b.SetFontWeight(style.Typography.WeightNormal)
+			b.DrawText(valueText, bounds.X+inset, bounds.Y+inset+fontSize*1.25+valueFont*0.6, TextAlignLeft, TextBaselineMiddle)
+		}
+
 	case TreemapLabelTop:
 		labelX = bounds.X + bounds.W/2
 		labelY = bounds.Y + fontSize + tc.config.Padding
@@ -599,6 +616,70 @@ func (tc *TreemapChart) drawAbbreviatedLabel(node *TreemapNode, bounds Rect, sty
 	labelY := bounds.Y + bounds.H/2
 	b.DrawText(abbrev, labelX, labelY, TextAlignCenter, TextBaselineMiddle)
 	b.Pop()
+}
+
+// treemapNeutral is a grey of the page: the text ink at the given strength
+// over the background.
+func treemapNeutral(style *StyleGuide, alpha float64) Color {
+	return style.Palette.TextPrimary.WithAlpha(alpha).BlendOver(style.Palette.Background)
+}
+
+// Neutral ladder of the tiles behind the accent one, by size rank.
+const (
+	treemapNeutralDark  = 0.46
+	treemapNeutralLight = 0.14
+)
+
+// tileColors returns one fill per top-level node. Unless the caller or the
+// template fixed the colours, the largest tile takes the accent and the rest
+// a neutral ladder that lightens with size: a treemap compares sizes, and one
+// hue per tile made five unrelated categories of it (go-slide-creator-n978t).
+func (tc *TreemapChart) tileColors(style *StyleGuide, nodes []*TreemapNode) []Color {
+	if len(tc.config.Colors) > 0 {
+		return tc.getColors(style, len(nodes))
+	}
+	order := make([]int, len(nodes))
+	for i := range order {
+		order[i] = i
+	}
+	slices.SortStableFunc(order, func(a, b int) int {
+		return cmp.Compare(nodes[b].TotalValue(), nodes[a].TotalValue())
+	})
+	out := make([]Color, len(nodes))
+	for rank, idx := range order {
+		if rank == 0 {
+			out[idx] = style.Palette.AccentColors()[0]
+			continue
+		}
+		t := 0.0
+		if len(nodes) > 2 {
+			t = float64(rank-1) / float64(len(nodes)-2)
+		}
+		out[idx] = treemapNeutral(style, treemapNeutralDark-(treemapNeutralDark-treemapNeutralLight)*t)
+	}
+	return out
+}
+
+// childColors returns the fills of a parent's children: steps of the parent's
+// own colour towards the page, so a group reads as one family. Fixed colours
+// keep the earlier per-index rotation.
+func (tc *TreemapChart) childColors(style *StyleGuide, parent Color, children []*TreemapNode, fallback []Color) []Color {
+	if len(tc.config.Colors) > 0 {
+		return fallback
+	}
+	order := make([]int, len(children))
+	for i := range order {
+		order[i] = i
+	}
+	slices.SortStableFunc(order, func(a, b int) int {
+		return cmp.Compare(children[b].TotalValue(), children[a].TotalValue())
+	})
+	out := make([]Color, len(children))
+	for rank, idx := range order {
+		keep := math.Max(0.35, 0.85-0.14*float64(rank))
+		out[idx] = parent.WithAlpha(keep).BlendOver(style.Palette.Background)
+	}
+	return out
 }
 
 // getColors returns colors for the treemap nodes.

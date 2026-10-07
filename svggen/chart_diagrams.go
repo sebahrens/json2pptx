@@ -95,7 +95,13 @@ func (d *BarChartDiagram) Render(req *RequestEnvelope) (*SVGDocument, error) {
 
 // RenderWithBuilder implements DiagramWithBuilder for multi-format support.
 func (d *BarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVGDocument, error) {
-	return RenderWithHelper(req, func(builder *SVGBuilder, req *RequestEnvelope) error {
+	return RenderWithHelper(req, drawBarChartRequest)
+}
+
+// drawBarChartRequest draws a bar chart from a request. The area chart calls
+// it too, for categories that are not a sequence (see areaFallsBackToBars).
+func drawBarChartRequest(builder *SVGBuilder, req *RequestEnvelope) error {
+	{
 		chartData, err := extractChartData(req)
 		if err != nil {
 			return err
@@ -151,7 +157,28 @@ func (d *BarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 			return fmt.Errorf("bar_chart render failed: %w", err)
 		}
 		return nil
-	})
+	}
+}
+
+// areaFallsBackToBars reports whether an area chart's x axis is a set of
+// unordered categories (regions, products) rather than a sequence. An area
+// joins neighbouring values with a slope, which claims a trend between
+// "Europe" and "Asia Pacific" that does not exist; such data is drawn as bars
+// (go-slide-creator-n978t). Periods, numbers, ordinal scales and time data
+// keep the area, and data.as_area forces it.
+func areaFallsBackToBars(req *RequestEnvelope, chart ChartData) bool {
+	if forced, ok := req.Data["as_area"].(bool); ok && forced {
+		return false
+	}
+	if len(chart.Categories) < 2 {
+		return false
+	}
+	for _, s := range chart.Series {
+		if s.HasTimeData() || len(s.XValues) > 0 {
+			return false
+		}
+	}
+	return !looksLikeTimeCategories(chart.Categories) && !looksOrdinal(chart.Categories)
 }
 
 // =============================================================================
@@ -426,6 +453,9 @@ func (d *AreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		chartData, err := extractChartData(req)
 		if err != nil {
 			return err
+		}
+		if areaFallsBackToBars(req, chartData) {
+			return drawBarChartRequest(builder, req)
 		}
 
 		width, height := builder.Width(), builder.Height()

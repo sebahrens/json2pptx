@@ -6,10 +6,11 @@ import (
 	"testing"
 )
 
-// TestWaterfallIncreaseInk_LegibleOnEveryTemplate is the go-slide-creator-rmm0x
-// acceptance test: on every bundled template (and the local p-style when
-// present) a waterfall's increase bars keep 3:1 against the background and
-// the increase / decrease / total fills stay at least MinSeriesDeltaE apart.
+// TestWaterfallIncreaseInk_LegibleOnEveryTemplate keeps the waterfall's three
+// bar classes apart on every bundled template (and the local p-style when
+// present): the decrease tint stays a visible bar on the background, and the
+// increase (accent1) / decrease (its tint) / total (neutral) fills stay at
+// least MinSeriesDeltaE apart (go-slide-creator-rmm0x, go-slide-creator-n978t).
 func TestWaterfallIncreaseInk_LegibleOnEveryTemplate(t *testing.T) {
 	files, err := filepath.Glob(chartPaletteTemplatesGlob)
 	if err != nil || len(files) == 0 {
@@ -23,19 +24,22 @@ func TestWaterfallIncreaseInk_LegibleOnEveryTemplate(t *testing.T) {
 		}
 		guide := StyleGuideFromSpec(StyleSpec{ThemeColors: themeColors, DisablePaletteEnforcement: true, Background: "transparent"})
 		p := guide.Palette
-		total := NeutralInk(p, WaterfallTotalInk)
-		dec := p.Accent1
-		inc := waterfallIncreaseInk(p, total, dec)
+		total := waterfallTotalInk(p)
+		inc := p.Accent1
+		dec := waterfallDecreaseInk(p, total)
 		bg := p.Background
 		if bg.A < 1 {
 			bg = bg.BlendOver(Color{R: 255, G: 255, B: 255, A: 1})
 		}
 		name := filepath.Base(f)
-		if c := inc.ContrastWith(bg); c < waterfallIncreaseMinContrast {
-			t.Errorf("%s: increase %s has %.2f:1 against %s, want >= 3", name, inc.Hex(), c, bg.Hex())
+		if c := dec.ContrastWith(bg); c < waterfallDecreaseMinContrast {
+			t.Errorf("%s: decrease %s has %.2f:1 against %s, want >= %.1f", name, dec.Hex(), c, bg.Hex(), waterfallDecreaseMinContrast)
 		}
 		if d := deltaE76(inc, dec); d < MinSeriesDeltaE {
 			t.Errorf("%s: increase %s vs decrease %s ΔE %.1f", name, inc.Hex(), dec.Hex(), d)
+		}
+		if d := deltaE76(dec, total); d < MinSeriesDeltaE {
+			t.Errorf("%s: decrease %s vs total %s ΔE %.1f", name, dec.Hex(), total.Hex(), d)
 		}
 		if d := deltaE76(inc, total); d < MinSeriesDeltaE {
 			t.Errorf("%s: increase %s vs total %s ΔE %.1f", name, inc.Hex(), total.Hex(), d)

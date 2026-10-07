@@ -49,7 +49,21 @@ type FunnelChartConfig struct {
 	// under "proportional" the bottom half is a 2px stick with external leader
 	// lines (go-slide-creator-6i6j).
 	WidthMode string
+
+	// Style picks the drawing: "" / "steps" (default) sets each stage as a
+	// centred bar whose width follows its value, the stage name in a bold
+	// column on the left, the value inside the bar and the stage-to-stage
+	// conversion in a pale connector between two bars. "tapered" is the
+	// earlier stack of trapezoids, whose first stage flared to the full
+	// width of a wide slide body like a lampshade (go-slide-creator-cn8mn).
+	Style string
 }
+
+// Funnel styles.
+const (
+	FunnelStyleSteps   = "steps"
+	FunnelStyleTapered = "tapered"
+)
 
 // FunnelLabelPosition determines label placement for funnel charts.
 type FunnelLabelPosition string
@@ -284,12 +298,16 @@ func (fc *FunnelChart) Draw(data FunnelData) error {
 	plotArea := fc.config.PlotArea()
 
 	// Adjust for title
-	headerHeight := 0.0
-	if fc.config.ShowTitle && data.Title != "" {
-		headerHeight = style.Typography.SizeTitle + style.Spacing.MD
-		if data.Subtitle != "" {
-			headerHeight += style.Typography.SizeSubtitle + style.Spacing.XS
+	headerHeight := chartHeaderHeight(style, fc.config.ShowTitle, data.Title, data.Subtitle)
+	if fc.config.Style != FunnelStyleTapered {
+		plotArea.Y += headerHeight
+		plotArea.H -= headerHeight
+		if data.Footnote != "" {
+			plotArea.H -= math.Max(0, FootnoteReservedHeight(style)-fc.config.MarginBottom)
 		}
+		fc.drawSteps(data, plotArea, colors)
+		fc.drawHeaderAndFootnote(data)
+		return nil
 	}
 
 	// Adjust for labels if they're on the side
@@ -373,16 +391,15 @@ func (fc *FunnelChart) Draw(data FunnelData) error {
 		fc.drawLabel(point, i, centerX, y, topWidth, bottomWidth, segmentHeight, maxValue, plotArea, labelPadding, color, conversion)
 	}
 
-	// Draw title
-	if fc.config.ShowTitle && data.Title != "" {
-		titleConfig := DefaultTitleConfig()
-		titleConfig.Text = data.Title
-		titleConfig.Subtitle = data.Subtitle
-		title := NewTitle(b, titleConfig)
-		title.Draw(Rect{X: 0, Y: 0, W: fc.config.Width, H: headerHeight + fc.config.MarginTop})
-	}
+	fc.drawHeaderAndFootnote(data)
+	return nil
+}
 
-	// Draw footnote
+// drawHeaderAndFootnote draws the exhibit heading and the footnote.
+func (fc *FunnelChart) drawHeaderAndFootnote(data FunnelData) {
+	b := fc.builder
+	style := b.StyleGuide()
+	drawChartHeader(b, fc.config.Width, fc.config.ShowTitle, data.Title, data.Subtitle)
 	if data.Footnote != "" {
 		fh := FootnoteReservedHeight(style)
 		footnoteConfig := DefaultFootnoteConfig()
@@ -395,8 +412,211 @@ func (fc *FunnelChart) Draw(data FunnelData) error {
 			H: fh,
 		})
 	}
+}
 
-	return nil
+// funnelStepLabel is the text set inside a stage bar: the value, and the share
+// of the first stage when asked for.
+func (fc *FunnelChart) funnelStepLabel(point FunnelDataPoint, maxValue float64) string {
+	label := ""
+	if fc.config.ShowValues {
+		label = fc.config.ValueFmt.FormatOr(point.Value, fc.config.ValueFormat)
+	}
+	if fc.config.ShowPercentage && maxValue > 0 {
+		pct := fmt.Sprintf("%.1f%%", point.Value/maxValue*100)
+		if label == "" {
+			return pct
+		}
+		label += " (" + pct + ")"
+	}
+	return label
+}
+
+// Geometry of the default "steps" funnel, in units of the stage bar height.
+const (
+	// funnelStepGapFrac is the height of the pale connector between two bars.
+	funnelStepGapFrac = 0.35
+	// funnelStepMaxBarLines caps a bar's height in lines of its value text, so
+	// a few stages in a tall body do not become slabs.
+	funnelStepMaxBarLines = 5.0
+	// funnelStepMaxAspect caps the widest bar at this multiple of the funnel's
+	// height: on a wide, short body the funnel stays a funnel instead of
+	// stretching edge to edge.
+	funnelStepMaxAspect = 2.6
+	// funnelStepConnectorAlpha is how much of the stage colour the pale
+	// connector keeps over the background.
+	funnelStepConnectorAlpha = 0.16
+)
+
+// drawSteps draws the default funnel: one centred bar per stage, joined by pale
+// connectors; the stage names stand in a bold column on the left and the
+// stage-to-stage conversions in a column on the right, each level with the
+// connector it describes.
+func (fc *FunnelChart) drawSteps(data FunnelData, plotArea Rect, colors []Color) {
+	b := fc.builder
+	style := b.StyleGuide()
+	n := len(data.Points)
+	if plotArea.W <= 0 || plotArea.H <= 0 {
+		return
+	}
+	maxValue := 0.0
+	for _, p := range data.Points {
+		maxValue = math.Max(maxValue, p.Value)
+	}
+	if maxValue == 0 {
+		maxValue = 1
+	}
+
+	floor := math.Max(DefaultMinFontSize, style.Typography.ReadableFloor)
+	nameFont := math.Max(style.Typography.SizeBody, floor)
+	convFont := math.Max(style.Typography.SizeSmall, floor)
+
+	// Vertical rhythm: bars with connectors between them.
+	barH := plotArea.H / (float64(n) + float64(n-1)*funnelStepGapFrac)
+	barH = math.Min(barH, nameFont*funnelStepMaxBarLines)
+	connH := barH * funnelStepGapFrac
+	if barH < nameFont*1.2 {
+		nameFont = math.Max(floor*0.85, barH/1.2)
+	}
+	valueFont := nameFont
+	// A conversion line needs a row pitch that holds it.
+	showConv := fc.config.ShowConversion && n > 1 && barH+connH >= convFont*1.25
+	blockH := float64(n)*barH + float64(n-1)*connH
+	top := plotArea.Y + (plotArea.H-blockH)/2
+
+	// Stage-name column on the left, bold.
+	b.Push()
+	b.SetFontWeight(style.Typography.WeightBold)
+	b.SetFontSize(nameFont)
+	nameW := 0.0
+	for _, p := range data.Points {
+		w, _ := b.MeasureText(p.Label)
+		nameW = math.Max(nameW, w)
+	}
+	b.Pop()
+	nameW = math.Min(nameW, plotArea.W*0.3)
+	nameGap := style.Spacing.LG
+	if nameW == 0 {
+		nameGap = 0
+	}
+
+	// Conversion column on the right.
+	convs := make([]string, n)
+	convW, convGap := 0.0, 0.0
+	if showConv {
+		b.Push()
+		b.SetFontSize(convFont)
+		for i := 1; i < n; i++ {
+			convs[i] = funnelConversionLabel(data.Points, i)
+			w, _ := b.MeasureText(convs[i])
+			convW = math.Max(convW, w)
+		}
+		b.Pop()
+		convW = math.Min(convW, plotArea.W*0.3)
+		if convW > 0 {
+			convGap = style.Spacing.LG
+		}
+	}
+
+	// Bar zone: as wide as the body allows, capped so the funnel keeps a
+	// funnel's proportions, and the whole block centred.
+	zoneW := math.Min(plotArea.W-nameW-nameGap-convW-convGap, blockH*funnelStepMaxAspect)
+	if zoneW <= 0 {
+		return
+	}
+	blockX := plotArea.X + (plotArea.W-(nameW+nameGap+zoneW+convGap+convW))/2
+	zoneX := blockX + nameW + nameGap
+	centerX := zoneX + zoneW/2
+
+	// Bar widths: proportional, floored in clamped mode so the value fits.
+	pad := style.Spacing.MD
+	widths := make([]float64, n)
+	labels := make([]string, n)
+	b.Push()
+	b.SetFontWeight(style.Typography.WeightBold)
+	b.SetFontSize(valueFont)
+	for i, p := range data.Points {
+		labels[i] = fc.funnelStepLabel(p, maxValue)
+		share := p.Value / maxValue
+		switch fc.config.WidthMode {
+		case FunnelWidthEqual:
+			widths[i] = zoneW
+		case FunnelWidthProportional:
+			widths[i] = zoneW * share
+		default:
+			tw, _ := b.MeasureText(labels[i])
+			widths[i] = math.Min(zoneW, math.Max(zoneW*share, tw+2*pad))
+		}
+	}
+	b.Pop()
+
+	for i, p := range data.Points {
+		y := top + float64(i)*(barH+connH)
+		color := colors[i%len(colors)]
+		if p.Color != nil {
+			color = *p.Color
+		}
+		w := widths[i]
+
+		// Connector into the next stage.
+		if i < n-1 && connH > 0 {
+			next := widths[i+1]
+			pale := color.WithAlpha(funnelStepConnectorAlpha).BlendOver(style.Palette.Background)
+			b.Push()
+			b.SetFillColor(pale)
+			b.SetStrokeColor(pale)
+			b.SetStrokeWidth(0)
+			b.DrawPolygon([]Point{
+				{X: centerX - w/2, Y: y + barH},
+				{X: centerX + w/2, Y: y + barH},
+				{X: centerX + next/2, Y: y + barH + connH},
+				{X: centerX - next/2, Y: y + barH + connH},
+			})
+			b.Pop()
+		}
+		if convs[i] != "" && convW > 0 {
+			b.Push()
+			b.SetFontSize(convFont)
+			b.SetFontWeight(style.Typography.WeightNormal)
+			b.SetTextColor(style.Palette.TextSecondary)
+			b.DrawText(b.TruncateToWidth(convs[i], convW), zoneX+zoneW+convGap, y-connH/2, TextAlignLeft, TextBaselineMiddle)
+			b.Pop()
+		}
+
+		// Stage bar.
+		b.Push()
+		b.SetFillColor(color)
+		b.SetStrokeColor(color)
+		b.SetStrokeWidth(0)
+		b.FillRect(Rect{X: centerX - w/2, Y: y, W: w, H: barH})
+		b.Pop()
+
+		// Value inside the bar, or beside it when the bar is too narrow.
+		if labels[i] != "" {
+			b.Push()
+			b.SetFontWeight(style.Typography.WeightBold)
+			b.SetFontSize(valueFont)
+			tw, _ := b.MeasureText(labels[i])
+			if tw+pad <= w {
+				b.SetTextColor(color.TextColorFor())
+				b.DrawText(labels[i], centerX, y+barH/2, TextAlignCenter, TextBaselineMiddle)
+			} else {
+				b.SetTextColor(style.Palette.TextPrimary)
+				avail := zoneX + zoneW - (centerX + w/2) - style.Spacing.SM
+				b.DrawText(b.TruncateToWidth(labels[i], math.Max(avail, 0)), centerX+w/2+style.Spacing.SM, y+barH/2, TextAlignLeft, TextBaselineMiddle)
+			}
+			b.Pop()
+		}
+
+		// Stage name.
+		if nameW > 0 {
+			b.Push()
+			b.SetFontWeight(style.Typography.WeightBold)
+			b.SetFontSize(nameFont)
+			b.SetTextColor(style.Palette.TextPrimary)
+			b.DrawText(b.TruncateToWidth(p.Label, nameW), blockX, y+barH/2, TextAlignLeft, TextBaselineMiddle)
+			b.Pop()
+		}
+	}
 }
 
 // reserveExternalLabelSpace checks whether any inside-label segment will
@@ -780,6 +1000,16 @@ func (d *FunnelDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *S
 		if showConv, ok := req.Data["show_conversion"].(bool); ok {
 			config.ShowConversion = showConv
 		}
+		// The side-label positions and an explicit neck belong to the tapered
+		// drawing; asking for either keeps it.
+		_, hasNeck := req.Data["neck_width"]
+		_, hasLabelPos := req.Data["label_position"]
+		if hasNeck || hasLabelPos {
+			config.Style = FunnelStyleTapered
+		}
+		if st, ok := req.Data["style"].(string); ok {
+			config.Style = st
+		}
 
 		chart := NewFunnelChart(builder, config)
 		if err := chart.Draw(data); err != nil {
@@ -854,6 +1084,7 @@ func (d *FunnelDiagram) DataSchema() *DataSchema {
 		"label_position":  StringDataSchema("Label placement"),
 		"width_mode":      StringDataSchema("Stage width mode"),
 		"show_conversion": BooleanDataSchema("Show stage-to-stage conversion"),
+		"style":           StringDataSchema("steps (default: centred bars joined by conversion connectors) or tapered (stacked trapezoids)"),
 	}, nil)
 }
 
