@@ -1553,7 +1553,7 @@ Triggers when **all** of the following hold:
 
 The verb test is biased toward false negatives: a title with a verb the check does not know keeps its nudge, which is the old behaviour, while a wrong suppression silently removes the signal.
 
-It never blocks generation, but it fails `score_deck`'s quality gate (reason `N chart/matrix slide(s) missing takeaway (require_takeaway_on_charts)`) while `require_takeaway_on_charts` is true, the default. Add a one-sentence `takeaway` to the slide; it renders as the takeaway band — a dark neutral band the width of the body column carrying 14pt bold text in measured ink, no outline — in the layout-derived band above the footer placeholders, above the source note row, with 16pt of air above and 12pt below (see `chrome_band_no_fit`).
+It never blocks generation, but it fails `score_deck`'s quality gate (reason `N chart/matrix slide(s) missing takeaway (require_takeaway_on_charts)`) while `require_takeaway_on_charts` is true, the default. Add a one-sentence `takeaway` to the slide; it renders as the takeaway band — a flush 3pt accent bar beside 14pt bold `dk1` text, no fill, no outline — in the layout-derived band above the footer placeholders, above the source note row, with 16pt of air above and 12pt below (see `chrome_band_no_fit`).
 
 ```json
 {
@@ -2756,7 +2756,7 @@ Body text in adjacent grid cells of a sibling pattern (`card-grid`, `kpi-*`, `co
 
 **Severity:** `info`
 
-A slide carrying a chart or 2×2 matrix is missing a visually-distinct takeaway / "so what" line (the engine's takeaway band: a dark neutral band with bold light text near the bottom of the slide). Without this band the audience has to derive the argument from the chart, which they rarely do correctly.
+A slide carrying a chart or 2×2 matrix is missing a visually-distinct takeaway / "so what" line (the engine's takeaway band: a 3pt accent bar beside bold dark text near the bottom of the slide). Without this band the audience has to derive the argument from the chart, which they rarely do correctly.
 
 Engine has a parallel `takeaway_missing` (lowercase, action `review`) that fires when `slide.takeaway` is empty on chart/matrix slides; the visual-qa code catches cases where the takeaway text is present but the band is invisible (rendered with low contrast, off-slide, etc.).
 

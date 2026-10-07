@@ -140,9 +140,9 @@ func TestMetricList_ExpandStructure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 4 item rows + 3 rules + the spacer and the callout band.
-	if got := len(grid.Rows); got != 9 {
-		t.Fatalf("rows = %d, want 9", got)
+	// 4 item rows + 3 rules + the callout.
+	if got := len(grid.Rows); got != 8 {
+		t.Fatalf("rows = %d, want 8", got)
 	}
 	if grid.ColGap <= 0 || grid.ColGap >= 1 {
 		t.Errorf("col_gap = %v: a highlighted row tints both cells, so the gap must be a hair above zero (0 resolves to 8pt)", grid.ColGap)
@@ -167,7 +167,7 @@ func TestMetricList_ExpandStructure(t *testing.T) {
 	}
 	// Uniform item row heights, point-capped.
 	var h float64
-	for i := 0; i < len(grid.Rows)-2; i += 2 {
+	for i := 0; i < len(grid.Rows)-1; i += 2 {
 		r := grid.Rows[i]
 		if r.MinHeight != r.MaxHeight || r.MaxHeight <= 0 {
 			t.Fatalf("item row %d not point-capped: %+v", i, r)
@@ -177,13 +177,13 @@ func TestMetricList_ExpandStructure(t *testing.T) {
 		}
 		h = r.MaxHeight
 	}
-	// The callout is the shared takeaway band (go-slide-creator-3a1rm): a dark
-	// neutral band the width of the list, never a solid accent banner.
+	// The callout is the shared takeaway band, not a solid accent banner
+	// (go-slide-creator-7b5o6).
 	callout := grid.Rows[len(grid.Rows)-1].Cells[0]
-	if callout.ColSpan != 2 {
-		t.Fatalf("callout should span both columns, got %+v", callout)
+	if callout.ColSpan != 2 || callout.Grid == nil {
+		t.Fatalf("callout should be a takeaway sub-grid spanning both columns, got %+v", callout)
 	}
-	assertTakeawayFilledBand(t, fullThemeCtx(), callout, vals.Callout)
+	assertTakeawayBand(t, callout.Grid.Rows[len(callout.Grid.Rows)-1], vals.Callout)
 }
 
 func TestMetricList_Highlight(t *testing.T) {

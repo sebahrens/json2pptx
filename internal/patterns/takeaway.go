@@ -21,20 +21,23 @@ import (
 // chevron "BOTTOM LINE" flag, a solid accent banner and a grey panel — for
 // the same job.
 //
-// The default look on every one of them (go-slide-creator-3a1rm, -fmmec):
+// The default look on every one of them (the spec of 2026-09-28):
 //
-//   - one band the content width, never a full bleed, filled with the dark
-//     structural neutral (TakeawayBandTone), no stroke;
-//   - 14pt bold text in the ink measured against that fill, 12pt in from each
-//     side and 8pt from top and bottom, centred on the band's height, budgeted
-//     to two lines;
+//   - no stroke, and no fill;
+//   - a flush 3pt accent bar on the left, the full band height;
+//   - 14pt bold text in the theme's dk1 ink, 12pt from the bar, top-anchored,
+//     budgeted to two lines;
+//   - the content width, never a full bleed;
 //   - at least 16pt of air above it (and 12pt to the footer / source line,
 //     which the chrome frame owns for the slide band).
 //
-// emphasis "bar" is the look of 2026-09-28: no fill, a flush 3pt accent bar
-// on the left the full band height, bold dk1 text 12pt from it, top-anchored.
-// "subtle" adds a 5% neutral tint behind that text; "strong" makes the band a
-// solid accent with measured-contrast ink. Those are the only variants.
+// emphasis "bar" names that default. "subtle" adds a 5% neutral tint behind
+// the text; "strong" makes the band a solid accent with measured-contrast
+// ink. "band" is the opt-in of go-slide-creator-3a1rm, the default in schema
+// 4.173.0 and rejected by the owner as less polished: one band filled with
+// the dark structural neutral (TakeawayBandTone), no bar, bold text in the
+// ink measured against the fill, 12pt in from each side and 8pt from top and
+// bottom, centred. The slide takeaway has no variants.
 // ---------------------------------------------------------------------------
 
 // Takeaway geometry and type, in points. The generator's slide band reads the
@@ -50,15 +53,17 @@ const (
 	TakeawayPadPt        = 2.0  // top / bottom text inset on an unfilled band
 	TakeawayFilledPadPt  = 6.0  // top / bottom / right inset when the band is filled
 	TakeawaySubtleTint   = 5.0  // % opacity of the neutral tint behind "subtle"
-	TakeawayBandPadPt    = 8.0  // top / bottom text inset of the default band
+	TakeawayBandPadPt    = 8.0  // top / bottom text inset of the "band" variant
 	takeawaySafetyPt     = 2.0  // slack so rounding never pushes text into autofit
 	takeawayMinBandWidth = 40.0 // below this the bar column cannot be expressed
 )
 
-// Takeaway emphasis values. The empty string is the default: the band.
+// Takeaway emphasis values. The empty string is the default: the bar, which
+// "bar" names explicitly.
 const (
 	TakeawayEmphasisNone   = ""
 	TakeawayEmphasisBar    = "bar"
+	TakeawayEmphasisBand   = "band"
 	TakeawayEmphasisSubtle = "subtle"
 	TakeawayEmphasisStrong = "strong"
 )
@@ -69,7 +74,7 @@ type TakeawaySpec struct {
 	Text string
 	// Accent is the bar colour (a scheme name); empty means accent1.
 	Accent string
-	// Emphasis is "", "subtle" or "strong".
+	// Emphasis is "" / "bar" (the default), "band", "subtle" or "strong".
 	Emphasis string
 	// SizePt overrides TakeawaySizePt (a narrow column may step down a point).
 	SizePt float64
@@ -91,12 +96,12 @@ func (s TakeawaySpec) accent() string {
 	return "accent1"
 }
 
-// band reports the default look: one filled band, no bar column.
-func (s TakeawaySpec) band() bool { return s.Emphasis == TakeawayEmphasisNone }
+// band reports the "band" variant: one filled band, no bar column.
+func (s TakeawaySpec) band() bool { return s.Emphasis == TakeawayEmphasisBand }
 
 func (s TakeawaySpec) pad() float64 {
 	switch s.Emphasis {
-	case TakeawayEmphasisNone:
+	case TakeawayEmphasisBand:
 		return TakeawayBandPadPt
 	case TakeawayEmphasisSubtle, TakeawayEmphasisStrong:
 		return TakeawayFilledPadPt
@@ -169,9 +174,9 @@ func TakeawayRow(ctx ExpandContext, s TakeawaySpec, colSpan int, cellWidthPt, ho
 }
 
 // TakeawayRowHeightPt is the height the takeaway will claim in its host
-// (TakeawayRows, or TakeawayRow for a bar variant), for hosts that budget
-// their rows before building them. For the band it counts the spacer row and
-// the host gap between the spacer and the band.
+// (TakeawayRows), for hosts that budget their rows before building them. For
+// the "band" variant it counts the spacer row and the host gap between the
+// spacer and the band.
 func TakeawayRowHeightPt(ctx ExpandContext, s TakeawaySpec, cellWidthPt, hostRowGapPt float64) float64 {
 	if s.band() {
 		h := TakeawayBandHeightPt(ctx, s, cellWidthPt)
@@ -207,11 +212,12 @@ func takeawayBandSpacerPt(hostRowGapPt float64) float64 {
 }
 
 // TakeawayRows builds the rows that carry the takeaway at the foot of a host
-// grid, spanning colSpan host columns cellWidthPt wide. The default band is a
-// cell of the host grid itself — a spacer row, then the band — so it runs
-// the full width of the block, flush with the rules and tiles above it; a
-// nested grid would stand 4pt in on each side (go-slide-creator-3a1rm). The
-// bar variants are the single nested-grid row of TakeawayRow.
+// grid, spanning colSpan host columns cellWidthPt wide. The bar (the default)
+// and its variants are the single nested-grid row of TakeawayRow. The "band"
+// variant is a cell of the host grid itself — a spacer row, then the band —
+// so it runs the full width of the block, flush with the rules and tiles
+// above it; a nested grid would stand 4pt in on each side
+// (go-slide-creator-3a1rm).
 //
 // The band row is an auto row floored at its measured height, like
 // TakeawayRow's.
@@ -310,7 +316,7 @@ func TakeawayGrid(ctx ExpandContext, s TakeawaySpec, bandWidthPt, spacerPt, band
 // control on p-style.
 const takeawayBandInkPct = 85
 
-// TakeawayBandTone is the fill of the default band and the ink measured
+// TakeawayBandTone is the fill of the "band" variant and the ink measured
 // against it: dk2 where it carries the brand (a navy, a forest green), dk1
 // at 85% where dk2 is black. It is never an accent, so the band can close a
 // slide that already spends its one solid accent block.
@@ -326,23 +332,7 @@ func takeawayBandTone(ctx ExpandContext) fillTone {
 	return fillTone{Color: "dk2"}
 }
 
-// TakeawayBandScheme is TakeawayBandTone in scheme terms, for the generator's
-// slide takeaway band, which writes its shape without a shape grid: the
-// scheme colour, its lumMod / lumOff (0 = none) and the ink.
-type TakeawayBandScheme struct {
-	Color          string
-	LumMod, LumOff int
-	Ink            string
-}
-
-// TakeawayBandSchemeFor resolves the default band's fill and ink for ctx's
-// theme.
-func TakeawayBandSchemeFor(ctx ExpandContext) TakeawayBandScheme {
-	tone := takeawayBandTone(ctx)
-	return TakeawayBandScheme{Color: tone.Color, LumMod: tone.LumMod, LumOff: tone.LumOff, Ink: readableTextOn(ctx, tone, "lt1")}
-}
-
-// takeawayBandGrid is the default look (go-slide-creator-3a1rm): one band the
+// takeawayBandGrid is the "band" variant (go-slide-creator-3a1rm): one band the
 // full width of its host, filled with the dark structural neutral, the
 // statement bold in the ink measured against it, centred on the band's
 // height. No bar, no outline.
@@ -390,8 +380,8 @@ type takeawayText struct {
 
 // TakeawayEmphasisSchema is the overrides schema for a pattern's takeaway band.
 func TakeawayEmphasisSchema() *Schema {
-	return EnumSchema(TakeawayEmphasisBar, TakeawayEmphasisSubtle, TakeawayEmphasisStrong).WithDescription(
-		"Takeaway style: omit for the default (dark neutral band, bold measured-ink text); bar is a flush 3pt accent bar, no fill; subtle adds a 5% neutral tint to it; strong is a solid accent band")
+	return EnumSchema(TakeawayEmphasisBar, TakeawayEmphasisBand, TakeawayEmphasisSubtle, TakeawayEmphasisStrong).WithDescription(
+		"Takeaway style: omit for the default, which bar names (flush 3pt accent bar beside bold dk1 text, no fill, no outline); subtle adds a 5% neutral tint to it; strong is a solid accent band; band is a dark neutral band with bold measured-ink text")
 }
 
 func validateTakeawayEmphasis(patternName, e string) error {
@@ -402,14 +392,14 @@ func validateTakeawayEmphasis(patternName, e string) error {
 		Pattern: patternName,
 		Path:    "overrides.takeaway_emphasis",
 		Code:    "invalid_enum",
-		Message: fmt.Sprintf("%s: overrides.takeaway_emphasis must be bar, subtle or strong (omit for the default band); got %q", patternName, e),
+		Message: fmt.Sprintf("%s: overrides.takeaway_emphasis must be bar, band, subtle or strong (omit for the default bar); got %q", patternName, e),
 	}
 }
 
 // ValidTakeawayEmphasis reports whether e is a takeaway emphasis value.
 func ValidTakeawayEmphasis(e string) bool {
 	switch e {
-	case TakeawayEmphasisNone, TakeawayEmphasisBar, TakeawayEmphasisSubtle, TakeawayEmphasisStrong:
+	case TakeawayEmphasisNone, TakeawayEmphasisBar, TakeawayEmphasisBand, TakeawayEmphasisSubtle, TakeawayEmphasisStrong:
 		return true
 	}
 	return false

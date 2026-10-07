@@ -98,17 +98,14 @@ func TestComposeCalloutBandSpansTheWholeGrid(t *testing.T) {
 		t.Fatal(err)
 	}
 	last := grid.Rows[len(grid.Rows)-1]
-	bar, band := calloutBandCells(t, last)
-	if bar != nil {
-		t.Fatalf("the default callout is the band, not the bar: %+v", last)
+	// The default callout is the accent bar beside unfilled text.
+	bar, text := calloutBandCells(t, last)
+	if string(bar.Shape.Fill) != `"accent1"` || string(text.Shape.Fill) != `"none"` {
+		t.Errorf("callout band = bar %s / text fill %s, want accent1 bar, no fill", bar.Shape.Fill, text.Shape.Fill)
 	}
 	// The band row was appended after the count was taken, so it holds no
 	// more columns than the rows above it.
-	if cols := inferColumnCount(grid); cols < 2 || band.ColSpan != cols {
-		t.Errorf("callout band spans %d of the grid's %d columns", band.ColSpan, cols)
-	}
-	wantFill, _ := patterns.TakeawayBandTone(ctx)
-	if string(band.Shape.Fill) != string(wantFill) {
-		t.Errorf("callout band fill = %s, want the band tone %s", band.Shape.Fill, wantFill)
+	if cols := inferColumnCount(grid); cols < 2 || last.Cells[0].ColSpan != cols {
+		t.Errorf("callout band spans %d of the grid's %d columns", last.Cells[0].ColSpan, cols)
 	}
 }

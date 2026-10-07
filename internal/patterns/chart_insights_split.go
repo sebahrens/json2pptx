@@ -172,7 +172,7 @@ type ChartInsightsSplitOverrides struct {
 	ShowDivider    *bool   `json:"show_divider,omitempty"`    // When false, omit the thin vertical accent divider (default true)
 	DataLabels     *bool   `json:"data_labels,omitempty"`     // Force value labels on / off (default: on for bar/column/line/area charts with ≤16 points)
 	HeadlineSize   float64 `json:"headline_size,omitempty"`   // Headline value font size (default 32)
-	// TakeawayEmphasis styles the so-what band: "" (the dark band), "bar",
+	// TakeawayEmphasis styles the so-what band: "" (the accent bar), "bar",
 	// "subtle" (5% neutral tint) or "strong" (solid accent).
 	TakeawayEmphasis string `json:"takeaway_emphasis,omitempty"`
 }
@@ -205,7 +205,7 @@ func (cis *chartInsightsSplit) Schema() *Schema {
 				"value": StringSchema(cisHeadlineValueMax).WithDescription("Headline figure, e.g. \"+75%\""),
 				"label": StringSchema(cisHeadlineLabelMax).WithDescription("What the figure means; about 41 readable characters"),
 			}, []string{"value"}).WithAdditionalProperties(false).WithDescription("Big accent number at the top of the insights column"),
-			"so_what":     StringSchema(cisSoWhatMax).WithDescription("Implication / recommendation shown as the takeaway band under the insights (dark neutral fill, bold text); alone beside a chart it is set larger and centred, and the chart takes 75% of the width"),
+			"so_what":     StringSchema(cisSoWhatMax).WithDescription("Implication / recommendation shown as the takeaway band under the insights (flush accent bar, bold dk1 text, no box); alone beside a chart it is set larger and centred, and the chart takes 75% of the width"),
 			"chart_label": StringSchema(cisChartLabelMax).WithDescription("Caption above the chart (series + units); defaults to the single series name + unit"),
 			"unit":        StringSchema(cisUnitMax).WithDescription("Unit for the derived chart caption, e.g. \"$M\""),
 		},
@@ -966,7 +966,7 @@ func stackInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 	var soWhatRows []jsonschema.GridRowInput
 	if hasSoWhat {
 		// The so-what is the shared takeaway band (go-slide-creator-7b5o6):
-		// the dark neutral band since go-slide-creator-3a1rm. Its row is
+		// a flush accent bar and bold dk1 text, no tinted box. Its row is
 		// floored at the band's measured height in points; the compact step
 		// sets it at 12pt beside a chart.
 		spec := cisTakeaway(v, accent, ovr.TakeawayEmphasis)
