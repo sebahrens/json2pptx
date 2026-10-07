@@ -331,8 +331,20 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 	layout := bmcLayoutCells(panels, bounds, fontName)
 	cells := layout.cells
 
-	var children [][]byte
-	var extra []bmcExtraColumn
+	// The nine sections are peers: when any body needs a shrink, every body
+	// is set at the one size at which all of them fit (bmcPeerSize). Left to
+	// the writer each body stored its own autofit scale, so Key Resources and
+	// Channels — the stacked half-height cells, the first to run out — were
+	// set smaller than the sections beside them (go-slide-creator-7ee4f).
+	type bmcBody struct {
+		name string
+		rect pptx.RectEmu
+		id   uint32
+		tint *taxonomyTint
+		text pptx.TextBody
+	}
+	var headers [][]byte
+	var bodies, extra []bmcBody
 	for i, panel := range panels {
 		key := bmcSectionOrder[i]
 		cell := cells[key]
@@ -348,11 +360,10 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 		bodyID := shapeIDBase + uint32(i*2) + 2
 
 		// Header shape
-		headerXML := generateBMCCellHeaderXML(
+		headers = append(headers, []byte(generateBMCCellHeaderXML(
 			panel.title, cell.x, cell.y, cell.w, headerCY,
 			headerID, colors,
-		)
-		children = append(children, []byte(headerXML))
+		)))
 
 		// Body shape: the section's bullets, or the first column of them
 		cols := bmcBodyColumns(panel.body, layout.columns(key))
@@ -361,20 +372,31 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 			first = cols[0]
 		}
 		body := pptx.RectEmu{X: cell.x, Y: cell.y + headerCY, CX: cell.w, CY: bodyCY}
-		children = append(children, []byte(generateBMCBodyShapeXML(
-			"BMC Body", body, bodyID, &colors, bmcColumnText(first, colors.scheme, 0, len(cols), cell.w, layout.pad, fontName))))
+		bodies = append(bodies, bmcBody{"BMC Body", body, bodyID, &colors,
+			bmcColumnText(first, colors.scheme, 0, len(cols), cell.w, layout.pad, fontName)})
 		for j := 1; j < len(cols); j++ {
-			extra = append(extra, bmcExtraColumn{
-				rect: nativeColumnRect(body, j, len(cols)),
-				text: bmcColumnText(cols[j], colors.scheme, j, len(cols), cell.w, layout.pad, fontName),
-			})
+			extra = append(extra, bmcBody{name: "BMC Bullets", rect: nativeColumnRect(body, j, len(cols)),
+				text: bmcColumnText(cols[j], colors.scheme, j, len(cols), cell.w, layout.pad, fontName)})
 		}
 	}
 	// Further columns take the IDs after the nine header / body pairs, so a
 	// canvas with none keeps the IDs it always had.
-	for i, col := range extra {
-		children = append(children, []byte(generateBMCBodyShapeXML(
-			"BMC Bullets", col.rect, shapeIDBase+uint32(2*len(panels)+1+i), nil, col.text)))
+	for i := range extra {
+		extra[i].id = shapeIDBase + uint32(2*len(panels)+1+i)
+	}
+	all := append(append([]bmcBody{}, bodies...), extra...)
+	texts := make([]*pptx.TextBody, len(all))
+	rects := make([]pptx.RectEmu, len(all))
+	for i := range all {
+		texts[i], rects[i] = &all[i].text, all[i].rect
+	}
+	bmcApplyPeerSize(texts, rects, bmcPeerSize(texts, rects))
+	var children [][]byte
+	for i, b := range all[:len(bodies)] {
+		children = append(children, headers[i], []byte(generateBMCBodyShapeXML(b.name, b.rect, b.id, b.tint, b.text)))
+	}
+	for _, b := range all[len(bodies):] {
+		children = append(children, []byte(generateBMCBodyShapeXML(b.name, b.rect, b.id, nil, b.text)))
 	}
 
 	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}
@@ -389,6 +411,76 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 		return ""
 	}
 	return string(b)
+}
+
+// bmcPeerSizeStep is the step the shared body size comes down in (hundredths
+// of a point): half a point.
+const bmcPeerSizeStep = 50
+
+// bmcBodyFits reports whether tb, with every run at size, is written into
+// rect with no autofit shrink, measured as the writer measures it (after the
+// margin clamp GenerateShape applies).
+func bmcBodyFits(tb *pptx.TextBody, rect pptx.RectEmu, size int) bool {
+	if len(tb.Paragraphs) == 0 {
+		return true
+	}
+	probe := *tb
+	probe.Paragraphs = make([]pptx.Paragraph, len(tb.Paragraphs))
+	for i, p := range tb.Paragraphs {
+		p.Runs = append([]pptx.Run(nil), p.Runs...)
+		for j := range p.Runs {
+			p.Runs[j].FontSize = size
+		}
+		probe.Paragraphs[i] = p
+	}
+	probe.AutoFitFontScale, probe.AutoFitLnSpcReduction = 0, 0
+	probe.Insets = pptx.EffectiveTextInsets(&probe, rect)
+	probe.ExplicitInsets = true
+	return pptx.AutofitFitsFor(&probe, rect)
+}
+
+// bmcPeerSize is the one body size (hundredths of a point) the peer bodies
+// are set at: the authored size when every body fits its box at it, else the
+// largest half-point step below it at which they all do. It never goes under
+// one point; a canvas that dense is refused by the readability check.
+func bmcPeerSize(texts []*pptx.TextBody, rects []pptx.RectEmu) int {
+	fits := func(size int) bool {
+		for i, tb := range texts {
+			if !bmcBodyFits(tb, rects[i], size) {
+				return false
+			}
+		}
+		return true
+	}
+	size := bmcBodyFontSize
+	for size > 100 && !fits(size) {
+		size -= bmcPeerSizeStep
+	}
+	return size
+}
+
+// bmcApplyPeerSize sets every peer body at size. Below the authored size the
+// bodies are written at that size outright and marked with an autofit scale
+// of 100%: a stored scale is what PowerPoint would apply per shape and
+// LibreOffice ignores (it refits each shape itself, and only the ones that
+// overflow), so only a declared size reads the same in both; the 100% mark
+// keeps the shapes in the readability scan, which holds a body with a stored
+// scale to the 12pt floor (unreadableAutofitFindings).
+func bmcApplyPeerSize(texts []*pptx.TextBody, _ []pptx.RectEmu, size int) {
+	if size >= bmcBodyFontSize {
+		return
+	}
+	for _, tb := range texts {
+		if len(tb.Paragraphs) == 0 {
+			continue
+		}
+		for i := range tb.Paragraphs {
+			for j := range tb.Paragraphs[i].Runs {
+				tb.Paragraphs[i].Runs[j].FontSize = size
+			}
+		}
+		tb.AutoFitFontScale, tb.AutoFitLnSpcReduction = 100000, 0
+	}
 }
 
 // generateBMCCellHeaderXML produces the header shape of a BMC cell.

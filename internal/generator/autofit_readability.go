@@ -129,6 +129,9 @@ func unreadableAutofitFindings(slideXML string, mode tokens.ViewingMode, shapePa
 		context := fmt.Sprintf("autofit %d%% to fit the shape", scaleThousandths*100/int(autofitScaleDenominator))
 		if !hasStoredScale {
 			context = "declared font size before any renderer shrink"
+		} else if scaleThousandths >= int(autofitScaleDenominator) {
+			// A size set outright so that peers share it (bmcApplyPeerSize).
+			context = "set below the body size so that every section fits at one size"
 		}
 		id := ""
 		if m := renderedShapeIDRE.FindStringSubmatch(shape); len(m) == 2 {

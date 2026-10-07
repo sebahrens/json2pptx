@@ -127,6 +127,11 @@ type nativePanelData struct {
 	body  string // May contain \n and "- " bullets
 	value string // Hero value for stat_cards mode (e.g., "10%", "$1.2M")
 
+	// deltaTone says how a kpi_dashboard metric's delta reads: kpiDeltaGood,
+	// kpiDeltaBad, or "" to judge it by the arrow it starts with (up is
+	// good), which is what a metric with no good_direction does.
+	deltaTone string
+
 	// iconSVG holds resolved SVG markup for the panel icon (bundled name, inline
 	// svg_data, or external file). It is embedded as a native OOXML SVG image
 	// (asvg:svgBlip + transparent stub) — never rasterized to PNG. nil means the

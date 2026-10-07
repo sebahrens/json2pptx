@@ -1342,7 +1342,7 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		"kpi_dashboard": {
 			RequiredKeys: []string{"metrics"},
 			OptionalKeys: []string{"gap", "max_columns"},
-			Description:  "metrics: [{label, value, unit?, change?, trend?}] (alias: kpis)",
+			Description:  "metrics: [{label, value, unit?, change?, trend?: up|down|flat, good_direction?: up (default) | down}] (alias: kpis); trend sets the arrow, good_direction the colour: set \"down\" for a cost or a churn rate, whose fall is good",
 		},
 		"heatmap": {
 			RequiredKeys: []string{"values"},
