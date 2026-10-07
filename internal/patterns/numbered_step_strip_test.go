@@ -323,8 +323,20 @@ func TestNumberedStepStrip_Expand_StackedBoxTipColor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	// Tinted lane by default: the tip colour is the numeral's ink.
-	lane := grid.Rows[1].Cells[0].Shape
+	// Badge style (default): the step the author coloured carries its colour
+	// as the numeral block; the others keep the neutral dark badge.
+	if lane := grid.Rows[1].Cells[0].Shape; !strings.Contains(string(lane.Fill), "accent4") {
+		t.Errorf("expected the coloured step's numeral block in accent4, got fill %s", lane.Fill)
+	}
+	if lane := grid.Rows[0].Cells[0].Shape; strings.Contains(string(lane.Fill), "accent") {
+		t.Errorf("an uncoloured step's badge must stay neutral, got fill %s", lane.Fill)
+	}
+	// Tinted lane: the tip colour is the numeral's ink.
+	tinted, err := p.Expand(ExpandContext{}, v, &NumberedStepStripOverrides{Style: "tinted"}, nil)
+	if err != nil {
+		t.Fatalf("Expand failed: %v", err)
+	}
+	lane := tinted.Rows[1].Cells[0].Shape
 	if strings.Contains(string(lane.Fill), "accent") || !strings.Contains(string(lane.Text), "accent4") {
 		t.Errorf("expected a neutral lane with an accent4 numeral, got fill %s text %s", lane.Fill, lane.Text)
 	}
@@ -334,6 +346,89 @@ func TestNumberedStepStrip_Expand_StackedBoxTipColor(t *testing.T) {
 	}
 	if !strings.Contains(string(solid.Rows[1].Cells[0].Shape.Fill), "accent4") {
 		t.Errorf("style solid: expected per-step tip_color accent4 on number lane, got %q", string(solid.Rows[1].Cells[0].Shape.Fill))
+	}
+}
+
+// The default number treatment (go-slide-creator-f064j): a stacked-box row is
+// one pale band led by a neutral-dark numeral block; a toc row carries a big
+// accent numeral on the left edge, its detail a fixed gap beside the label,
+// and one rule between steps; chevrons are the accent's tint. The earlier
+// looks stay behind overrides.style.
+func TestNumberedStepStrip_BadgeStyleIsTheDefault(t *testing.T) {
+	p, _ := Default().Get("numbered-step-strip")
+	ctx := testThemeCtx()
+
+	stacked, err := p.Expand(ctx, validNumberedStepStripValues("stacked-box", 4), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	badgeTone, _ := tonalBadge(ctx)
+	for i, row := range stacked.Rows {
+		if len(row.Band) == 0 {
+			t.Errorf("stacked-box row %d has no band", i)
+		}
+		if got := string(row.Cells[0].Shape.Fill); got != string(badgeTone.fillJSON()) {
+			t.Errorf("stacked-box row %d: numeral block fill %s, want the neutral dark %s", i, got, badgeTone.fillJSON())
+		}
+	}
+	tinted, err := p.Expand(ctx, validNumberedStepStripValues("stacked-box", 4), &NumberedStepStripOverrides{Style: "tinted"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tinted.Rows[0].Band) != 0 || string(tinted.Rows[0].Cells[0].Shape.Fill) != string(neutralFillJSON(NeutralTint4)) || !strings.HasPrefix(string(tinted.Columns), "[1, ") {
+		t.Errorf("style tinted must keep the earlier lane: band %s fill %s columns %s", tinted.Rows[0].Band, tinted.Rows[0].Cells[0].Shape.Fill, tinted.Columns)
+	}
+
+	toc, err := p.Expand(ctx, validNumberedStepStripValues("toc", 4), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, row := range toc.Rows {
+		wantRule := "below"
+		if i == len(toc.Rows)-1 {
+			wantRule = ""
+		}
+		if row.Rule != wantRule {
+			t.Errorf("toc row %d: rule %q, want %q", i, row.Rule, wantRule)
+		}
+		num := row.Cells[0].Shape
+		if string(num.Fill) != `"none"` || !strings.Contains(string(num.Text), `"size":28`) || !strings.Contains(string(num.Text), `"align":"l"`) {
+			t.Errorf("toc row %d: want an unfilled 28pt numeral on the left edge, got fill %s text %s", i, num.Fill, num.Text)
+		}
+	}
+	// Six or seven rows keep the smaller numeral so the list fits.
+	seven := validNumberedStepStripValues("toc", 6)
+	seven.Steps = append(seven.Steps, NumberedStepStripStep{Label: "Renew"})
+	long, err := p.Expand(ctx, seven, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(long.Rows[0].Cells[0].Shape.Text), `"size":20`) {
+		t.Errorf("a seven-row toc keeps the 20pt numeral: %s", long.Rows[0].Cells[0].Shape.Text)
+	}
+	// The detail column starts a fixed gap after the longest label, not a
+	// third of the way across the slide.
+	var cols []float64
+	if err := json.Unmarshal(toc.Columns, &cols); err != nil || len(cols) != 3 {
+		t.Fatalf("toc with one-line bodies is number / label / detail, got %s", toc.Columns)
+	}
+	if share := cols[1] / (cols[1] + cols[2]); share >= numberedStepLabelShare-0.05 {
+		t.Errorf("label column takes %.0f%% of label + detail; short labels must not hold the old fixed third", share*100)
+	}
+
+	chev, err := p.Expand(ctx, validNumberedStepStripValues("chevron", 4), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := string(chev.Rows[0].Cells[0].Shape.Fill), string(tonalContent(ctx, ctx.DefaultAccent()).fillJSON()); got != want {
+		t.Errorf("chevron fill %s, want the accent's content swatch %s", got, want)
+	}
+	solid, err := p.Expand(ctx, validNumberedStepStripValues("chevron", 4), &NumberedStepStripOverrides{Style: "solid"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(solid.Rows[0].Cells[0].Shape.Fill); got != `"`+ctx.DefaultAccent()+`"` {
+		t.Errorf("style solid: chevron fill %s, want the solid accent", got)
 	}
 }
 

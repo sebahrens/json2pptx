@@ -139,9 +139,17 @@ func TestStrategyHouseLevelsFollowContent(t *testing.T) {
 		t.Errorf("one-bullet pillars are %.0fpt, three-bullet pillars %.0fpt: the row is not content-sized", s.Rows[2].MinHeight, grid.Rows[2].MinHeight)
 	}
 
-	// A pillar without bullets keeps its title on its neighbours' line.
-	if text := string(grid.Rows[2].Cells[2].Shape.Text); !strings.Contains(text, `"vertical_align":"t"`) {
-		t.Errorf("empty pillar is not top-aligned beside bulleted ones: %s", text)
+	// A pillar without bullets keeps its title on its neighbours' line: every
+	// pillar of the row carries its title in a cap of one height, over a
+	// shaft that is empty where there are no bullets.
+	empty := grid.Rows[2].Cells[2]
+	if len(empty.Shape.Text) != 0 || len(empty.Layers) != 1 || empty.Layers[0].Name != HouseCapLayerName {
+		t.Fatalf("a pillar without bullets beside bulleted ones is a cap over an empty shaft, got text %s layers %d", empty.Shape.Text, len(empty.Layers))
+	}
+	for i, c := range grid.Rows[2].Cells {
+		if len(c.Layers) != 1 || c.Layers[0].Frame != empty.Layers[0].Frame {
+			t.Errorf("pillar %d: cap frame differs from its neighbours'", i)
+		}
 	}
 }
 

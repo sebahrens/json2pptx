@@ -65,7 +65,7 @@ func TestValueChainArrowsInterlock(t *testing.T) {
 			// The written adjustment reproduces the fitted point depth, so
 			// the preset's text rectangle is the one the labels were fitted
 			// to.
-			boxW := fit.colWPt + c.BleedLeft
+			boxW := fit.colW(i) + c.BleedLeft
 			bounds := pptx.RectEmu{CX: int64(boxW * 12700), CY: int64(row.MaxHeight * 12700)}
 			rectW, _ := pptx.PresetTextRectSize(c.Shape.Geometry, c.Shape.Adjustments["adj"], bounds)
 			if got, wantW := float64(rectW)/12700, fit.textRectPt(i); got < wantW-0.5 || got > wantW+0.5 {
@@ -90,16 +90,72 @@ func TestValueChainArrowsInterlock(t *testing.T) {
 	}
 }
 
-// A word no arrow can hold is reported and written at the floor, never
-// smaller; a two-word label wraps at its space instead of being reported.
+// No word breaks (go-slide-creator-2vjjp): a label too wide for an equal
+// ten-step arrow borrows width from the shorter steps, which stay equal to
+// one another and no narrower than valueChainMinColFrac of the equal width.
+func TestValueChainLongLabelBorrowsWidth(t *testing.T) {
+	p, _ := Default().Get("value-chain")
+	warner := p.(PostExpandWarner)
+	ctx := testThemeCtx()
+
+	vals := validValueChainValues(10)
+	for i, label := range []string{"Source", "Refine", "Manufacturing", "Move", "Sell", "Serve", "Reuse", "Decommissioning", "Renew", "Close"} {
+		vals.Steps[i].Label = label
+	}
+	vals.Steps[2].Highlight = true
+	if w := warner.PostExpandWarnings(ctx, vals, nil); len(w) != 0 {
+		t.Errorf("labels that fit once they borrow width must not be reported: %v", w)
+	}
+	fit := fitValueChainArrows(ctx, vals.Steps, scaleBodyPt)
+	if len(fit.colWs) != 10 || len(fit.unfit) != 0 {
+		t.Fatalf("want ten borrowed widths and nothing unfit, got %v / %v", fit.colWs, fit.unfit)
+	}
+	font := ctx.Theme.BodyFont
+	total := 0.0
+	for i, step := range vals.Steps {
+		total += fit.colW(i)
+		if need, have := fit.labelNeedPt(step.Label, font), fit.textRectPt(i); need > have {
+			t.Errorf("step %d %q needs %.1fpt but its arrow's text rectangle is %.1fpt", i, step.Label, need, have)
+		}
+		if fit.colW(i) < fit.colWPt*valueChainMinColFrac {
+			t.Errorf("step %d gave up too much: %.1fpt of an equal %.1fpt", i, fit.colW(i), fit.colWPt)
+		}
+	}
+	if want := fit.colWPt * 10; total < want-0.5 || total > want+0.5 {
+		t.Errorf("borrowed widths sum to %.1fpt, want the row's %.1fpt", total, want)
+	}
+	if fit.colW(0) != fit.colW(3) || fit.colW(7) <= fit.colW(0) || fit.colW(2) <= fit.colW(0) {
+		t.Errorf("the lenders must stay equal and the long labels wider: %v", fit.colWs)
+	}
+	grid, err := p.Expand(ctx, vals, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	var cols []float64
+	if err := json.Unmarshal(grid.Columns, &cols); err != nil || len(cols) != 10 {
+		t.Fatalf("a chain with borrowed widths writes its columns as percentages, got %s", grid.Columns)
+	}
+	// Equal steps keep the plain column count.
+	equal, err := p.Expand(ctx, validValueChainValues(5), nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if string(equal.Columns) != "5" {
+		t.Errorf("a chain whose labels fit keeps equal columns, got %s", equal.Columns)
+	}
+}
+
+// A word no arrow can hold even with borrowed width is reported and written
+// at the floor, never smaller; a two-word label wraps at its space instead of
+// being reported.
 func TestValueChainArrowLabelFit(t *testing.T) {
 	p, _ := Default().Get("value-chain")
 	warner := p.(PostExpandWarner)
 	ctx := testThemeCtx()
 
 	vals := validValueChainValues(10)
-	for i, label := range []string{"Source", "Refine", "Make", "Move", "Sell", "Serve", "Reuse", "Decommissioning", "Renew", "Close"} {
-		vals.Steps[i].Label = label
+	for i := range vals.Steps {
+		vals.Steps[i].Label = "Decommissioning"
 	}
 	warnings := warner.PostExpandWarnings(ctx, vals, nil)
 	found := false

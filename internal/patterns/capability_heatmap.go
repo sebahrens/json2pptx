@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -66,6 +67,19 @@ const (
 	chmHeaderHomePlate = "homePlate"
 	chmHeaderRect      = "rect"
 )
+
+// Header fills.
+const (
+	// chmHeaderFillNeutral (default) fills the headers in the neutral dark of
+	// the tonal system: the headers are structure, and the accent belongs to
+	// the ratings alone (go-slide-creator-rvxvy).
+	chmHeaderFillNeutral = "neutral"
+	// chmHeaderFillAccent is the earlier look: headers in a darker step of the
+	// accent.
+	chmHeaderFillAccent = "accent"
+)
+
+var chmHeaderFills = []string{chmHeaderFillNeutral, chmHeaderFillAccent}
 
 func (p *capabilityHeatmap) Name() string { return chmName }
 func (p *capabilityHeatmap) Description() string {
@@ -163,6 +177,7 @@ type CapabilityHeatmapOverrides struct {
 	CellSize       float64 `json:"cell_size,omitempty"`
 	ShowLegend     *bool   `json:"show_legend,omitempty"`
 	HeaderShape    string  `json:"header_shape,omitempty"` // homePlate (default) | rect
+	HeaderFill     string  `json:"header_fill,omitempty"`  // neutral (default) | accent
 }
 
 // CapabilityHeatmapCellOverride is the shared per-cell override. Indices are
@@ -186,7 +201,7 @@ func (p *capabilityHeatmap) Schema() *Schema {
 
 	cellSchema := ObjectSchema(map[string]*Schema{
 		"text": StringSchema(chmCellMax).WithDescription("Activity name; keep it to 1-3 short words at 7-8 columns"),
-		"tier": IntegerSchema(0, chmMaxTiers-1).WithDescription("Index into tiers: 0 = highest (darkest accent fill), 1 = light accent tint, 2 = neutral grey, 3 = lightest grey"),
+		"tier": IntegerSchema(0, chmMaxTiers-1).WithDescription("Index into tiers: 0 = highest, the only solid accent fill; the tiers between are lighter tints of the accent and the lowest of three or four is a pale neutral (two tiers: solid, tint)"),
 	}, []string{"text", "tier"}).WithAdditionalProperties(false)
 
 	columnSchema := ObjectSchema(map[string]*Schema{
@@ -201,12 +216,13 @@ func (p *capabilityHeatmap) Schema() *Schema {
 	}, []string{"tiers", "columns"}).WithAdditionalProperties(false)
 
 	overridesSchema := ObjectSchema(map[string]*Schema{
-		"accent":          StringSchema(0).WithDescription("Accent scheme color for tier 0 and the headers (default accent1)").WithDefault("accent1"),
+		"accent":          StringSchema(0).WithDescription("Accent scheme color of the tier ladder (default accent1)").WithDefault("accent1"),
 		"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 		"header_size":     NumberSchema(12, 40).WithDescription("Header title size in points (default 14; shrinks to 12 so no word breaks)"),
 		"cell_size":       NumberSchema(12, 40).WithDescription("Activity cell text size in points (default 12)"),
 		"show_legend":     BooleanSchema().WithDescription("Tier legend under the grid (default true)"),
 		"header_shape":    EnumSchema(chmHeaderHomePlate, chmHeaderRect).WithDescription("Header geometry: homePlate (pointed, default) or rect").WithDefault(chmHeaderHomePlate),
+		"header_fill":     EnumSchema(chmHeaderFills...).WithDescription("Header fill: neutral (default; the dark neutral, so the accent is the ratings alone) or accent (a darker step of the accent, the earlier look)").WithDefault(chmHeaderFillNeutral),
 	}, nil).WithAdditionalProperties(false)
 
 	return ObjectSchema(map[string]*Schema{
@@ -226,21 +242,7 @@ func (p *capabilityHeatmap) Validate(values, overrides any, cellOverrides map[in
 	var errs []error
 
 	if ovr, ok := overrides.(*CapabilityHeatmapOverrides); ok && ovr != nil {
-		switch ovr.HeaderShape {
-		case "", chmHeaderHomePlate, chmHeaderRect:
-		default:
-			errs = append(errs, newValidationError(chmName, "overrides.header_shape", "invalid_enum",
-				fmt.Sprintf("%s: overrides.header_shape must be one of homePlate, rect; got %q", chmName, ovr.HeaderShape),
-				UseOneOfFix("overrides.header_shape", []string{chmHeaderHomePlate, chmHeaderRect})))
-		}
-		// Text below 12pt was silently raised to 12 and huge sizes blew the
-		// rows apart; reject both like the sibling patterns (go-slide-creator-csclk.110).
-		if ovr.HeaderSize != 0 && (ovr.HeaderSize < 12 || ovr.HeaderSize > 40) {
-			errs = append(errs, errOutOfRange(chmName, "overrides.header_size", 12, 40, int(ovr.HeaderSize)))
-		}
-		if ovr.CellSize != 0 && (ovr.CellSize < 12 || ovr.CellSize > 40) {
-			errs = append(errs, errOutOfRange(chmName, "overrides.cell_size", 12, 40, int(ovr.CellSize)))
-		}
+		errs = append(errs, chmValidateOverrides(ovr)...)
 	}
 
 	if len(vals.Tiers) < chmMinTiers {
@@ -284,6 +286,30 @@ func (p *capabilityHeatmap) Validate(values, overrides any, cellOverrides map[in
 		errs = append(errs, coErr)
 	}
 	return errors.Join(errs...)
+}
+
+// chmValidateOverrides checks the pattern-level overrides.
+func chmValidateOverrides(ovr *CapabilityHeatmapOverrides) []error {
+	var errs []error
+	switch ovr.HeaderShape {
+	case "", chmHeaderHomePlate, chmHeaderRect:
+	default:
+		errs = append(errs, newValidationError(chmName, "overrides.header_shape", "invalid_enum",
+			fmt.Sprintf("%s: overrides.header_shape must be one of homePlate, rect; got %q", chmName, ovr.HeaderShape),
+			UseOneOfFix("overrides.header_shape", []string{chmHeaderHomePlate, chmHeaderRect})))
+	}
+	if ovr.HeaderFill != "" && !slices.Contains(chmHeaderFills, ovr.HeaderFill) {
+		errs = append(errs, errInvalidEnum(chmName, "overrides.header_fill", ovr.HeaderFill, chmHeaderFills))
+	}
+	// Text below 12pt was silently raised to 12 and huge sizes blew the
+	// rows apart; reject both like the sibling patterns (go-slide-creator-csclk.110).
+	if ovr.HeaderSize != 0 && (ovr.HeaderSize < 12 || ovr.HeaderSize > 40) {
+		errs = append(errs, errOutOfRange(chmName, "overrides.header_size", 12, 40, int(ovr.HeaderSize)))
+	}
+	if ovr.CellSize != 0 && (ovr.CellSize < 12 || ovr.CellSize > 40) {
+		errs = append(errs, errOutOfRange(chmName, "overrides.cell_size", 12, 40, int(ovr.CellSize)))
+	}
+	return errs
 }
 
 // appendRequiredMax appends a required / max-length error for one string
@@ -487,9 +513,9 @@ func chmLegendRowPt(ctx ExpandContext, v *CapabilityHeatmapValues, contentW floa
 // Fills
 // ---------------------------------------------------------------------------
 
-// chmTierTone is the fill for a tier: the accent itself for the top tier, a
-// light tint of it for the second, then neutral greys derived from the page
-// colour so the scale reads dark-to-light on every template.
+// chmTierTone is the legacy four-step fill of a tier (accent, tint, two
+// greys). The heat map itself now draws chmLadderTone; risk-heatmap still
+// takes its mid band from here.
 func chmTierTone(accent string, tier int) fillTone {
 	switch tier {
 	case 0:
@@ -508,27 +534,60 @@ func chmTierTone(accent string, tier int) fillTone {
 	}
 }
 
+// chmLadderLighter are the "Lighter N%" swatches of the tiers between the
+// solid top tier and the neutral bottom one, by how many tiers the scale has.
+// Two tiers have no neutral: the second is a tint.
+var chmLadderLighter = map[int][]int{
+	2: {70},
+	3: {65},
+	4: {50, 78},
+}
+
+// chmLadderTone is the fill and ink of tier `tier` on a scale of n tiers
+// (go-slide-creator-rvxvy). The ratings are the slide's only strong colour,
+// and of them only the top tier is solid: tier 0 is the accent (deepened
+// where white would not read on it), the tiers between are tints of it, and
+// the lowest tier of a three- or four-level scale is the pale neutral — "not
+// much here" is the absence of the colour. On a template whose accent tint
+// collides (tonalRung) the tints fall back to neutral steps in the same order.
+func chmLadderTone(ctx ExpandContext, accent string, tier, n int) (fillTone, string) {
+	n = min(max(n, chmMinTiers), chmMaxTiers)
+	tier = min(max(tier, 0), n-1)
+	if tier == 0 {
+		return tonalEmphasis(ctx, accent)
+	}
+	mids := chmLadderLighter[n]
+	if tier-1 < len(mids) {
+		tone := tonalRung(ctx, accent, mids[tier-1])
+		return tone, tonalInk(ctx, tone)
+	}
+	// A neutral step dark enough to read as a cell on white paper without an
+	// outline (go-slide-creator-pgdkp).
+	tone := neutralTone(NeutralTint8)
+	return tone, tonalInk(ctx, tone)
+}
+
 // chmTierLine is the cell border: none on every tier. Filled cells are
 // separated by the grid gutters, never by an outline (go-slide-creator-pgdkp).
 func chmTierLine(int) json.RawMessage {
 	return noLine
 }
 
-// chmTierFallbackInk is the text colour without a theme to measure against.
-func chmTierFallbackInk(tier int) string {
-	if tier == 0 {
-		return "lt1"
+// chmHeaderTone is the header fill and ink. By default the headers are
+// structure: the neutral dark of the tonal system with page-colour type, so
+// the accent is spent on the ratings alone — on a warm accent a row of accent
+// headers over solid top-tier cells made half the slide one saturated colour
+// (go-slide-creator-rvxvy). overrides.header_fill "accent" keeps the earlier
+// look, the accent one step darker than tier 0.
+func chmHeaderTone(ctx ExpandContext, accent string, ovr *CapabilityHeatmapOverrides) (fillTone, string) {
+	if ovr.HeaderFill != chmHeaderFillAccent {
+		return tonalBadge(ctx)
 	}
-	return "dk1"
-}
-
-// chmHeaderTone is the header fill: the same accent one step darker than tier
-// 0, so the header band never merges with a top-tier cell under it.
-func chmHeaderTone(accent string) fillTone {
+	tone := peerTone(accent)
 	if isHexColor(accent) {
-		return fillTone{Color: accent}
+		tone = fillTone{Color: accent}
 	}
-	return peerTone(accent)
+	return tone, readableTextOn(ctx, tone, "lt1")
 }
 
 // ---------------------------------------------------------------------------
@@ -570,8 +629,7 @@ func (p *capabilityHeatmap) Expand(ctx ExpandContext, values, overrides any, cel
 	l := chmMeasure(ctx, vals, ovr)
 	pointed := chmPointed(ovr)
 
-	headerTone := chmHeaderTone(accent)
-	headerInk := readableTextOn(ctx, headerTone, "lt1")
+	headerTone, headerInk := chmHeaderTone(ctx, accent, ovr)
 	headerCells := make([]*jsonschema.GridCellInput, n)
 	for i, col := range vals.Columns {
 		paras := []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(col.Header), Size: l.headerPt, Bold: true, Color: headerInk, Align: "ctr"}}
@@ -609,8 +667,7 @@ func (p *capabilityHeatmap) Expand(ctx ExpandContext, values, overrides any, cel
 			}
 			cell := col.Cells[r]
 			tier := min(max(cell.Tier, 0), chmMaxTiers-1)
-			tone := chmTierTone(accent, tier)
-			ink := readableTextOn(ctx, tone, chmTierFallbackInk(tier))
+			tone, ink := chmLadderTone(ctx, accent, tier, len(vals.Tiers))
 			text := patternTextObj{
 				Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(cell.Text), Size: l.cellPt, Color: ink, Align: "ctr"}},
 				Align:         "ctr",
@@ -653,7 +710,7 @@ func chmLegendCell(ctx ExpandContext, v *CapabilityHeatmapValues, accent string,
 	var cells []*jsonschema.GridCellInput
 	var cols []float64
 	for i, t := range v.Tiers {
-		tone := chmTierTone(accent, i)
+		tone, _ := chmLadderTone(ctx, accent, i, len(v.Tiers))
 		cells = append(cells, &jsonschema.GridCellInput{
 			MaxHeight: chmLegendSwatchPt,
 			Shape: &jsonschema.ShapeSpecInput{

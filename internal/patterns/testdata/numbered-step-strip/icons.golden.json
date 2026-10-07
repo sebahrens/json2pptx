@@ -2,10 +2,10 @@
   "gap": 8,
   "row_gap": 6,
   "columns": [
-    1,
+    0.77,
     0.7,
-    2.88,
-    5.12
+    1.4,
+    6.83
   ],
   "rows": [
     {
@@ -15,11 +15,7 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "dk2",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -27,7 +23,7 @@
                   "content": "01",
                   "size": 18,
                   "bold": true,
-                  "color": "accent1",
+                  "color": "lt1",
                   "align": "ctr"
                 }
               ],
@@ -80,7 +76,12 @@
             }
           }
         }
-      ]
+      ],
+      "band": {
+        "color": "dk1",
+        "lumMod": 4000,
+        "lumOff": 96000
+      }
     },
     {
       "min_height": 50,
@@ -89,11 +90,7 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "dk2",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -101,7 +98,7 @@
                   "content": "02",
                   "size": 18,
                   "bold": true,
-                  "color": "accent1",
+                  "color": "lt1",
                   "align": "ctr"
                 }
               ],
@@ -153,7 +150,12 @@
             }
           }
         }
-      ]
+      ],
+      "band": {
+        "color": "dk1",
+        "lumMod": 4000,
+        "lumOff": 96000
+      }
     },
     {
       "min_height": 50,
@@ -162,11 +164,7 @@
         {
           "shape": {
             "geometry": "rect",
-            "fill": {
-              "color": "dk1",
-              "lumMod": 4000,
-              "lumOff": 96000
-            },
+            "fill": "dk2",
             "line": "none",
             "text": {
               "paragraphs": [
@@ -174,7 +172,7 @@
                   "content": "03",
                   "size": 18,
                   "bold": true,
-                  "color": "accent1",
+                  "color": "lt1",
                   "align": "ctr"
                 }
               ],
@@ -227,7 +225,12 @@
             }
           }
         }
-      ]
+      ],
+      "band": {
+        "color": "dk1",
+        "lumMod": 4000,
+        "lumOff": 96000
+      }
     }
   ]
 }

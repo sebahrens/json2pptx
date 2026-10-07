@@ -173,8 +173,10 @@ func TestHouseKeepsItsRoofOnAShortArea(t *testing.T) {
 	if _, _, ok := rowPadInsetOf(t, rows[len(rows)-1].Cells[0].Shape.Text); !ok {
 		t.Error("foundation band kept the uniform margin on a short area")
 	}
-	if _, _, ok := rowPadInsetOf(t, rows[1].Cells[0].Shape.Text); ok {
-		t.Error("pillar text margin was tightened")
+	// (A shaft's text starts under its cap and ends houseShaftBottomPt over
+	// the shaft's foot, on a short area as on a tall one.)
+	if _, bottom, ok := rowPadInsetOf(t, rows[1].Cells[0].Shape.Text); !ok || bottom != houseShaftBottomPt {
+		t.Errorf("pillar text margin was tightened: bottom %.1f, want %.1f", bottom, houseShaftBottomPt)
 	}
 
 	// With height to spare nothing is tightened.

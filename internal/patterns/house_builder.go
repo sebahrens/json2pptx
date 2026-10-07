@@ -22,10 +22,16 @@ import (
 //	   ____/  \____      roof: one gable pentagon in the slide's accent,
 //	  |  objective |      the objective (and any badges) in its eaves band
 //	  |____________|
-//	  [ beam        ]    band level (optional)
-//	  [P1][P2][P3][P4]   pillar level
-//	  [ enablers    ]    band level
-//	  [ A ][ B ][ C ]    band level split into cells
+//	  [ beam        ]    band level (optional): accent tint
+//	  [P1][P2][P3][P4]   pillar level: a tinted cap carrying the bold title
+//	  |  ||  ||  ||  |   over a pale shaft carrying the bullets
+//	  [ enablers    ]    band level: accent tint
+//	  [ A ][ B ][ C ]    the base — the lowest band level — in the neutral dark
+//
+// The tones give the house its hierarchy (go-slide-creator-pyeba): the roof is
+// the one solid accent, the beam, the pillar caps and the upper foundation
+// levels are its tint, the shafts are the pale panel, and the base the house
+// stands on is the neutral dark with page-colour type.
 //
 // The pattern and the native diagram used to be two builders: the pattern
 // stacked five rectangles under a flat grey strip, the diagram drew a shallow
@@ -81,11 +87,37 @@ type HouseStyle struct {
 	Accent string
 	// PillarAccent, when set, picks pillar i's accent (cell_accent_mode).
 	PillarAccent func(i int) string
-	// PillarSurface is the pillar fill; empty takes the neutral 4% step.
+	// PillarSurface is the fill of a pillar's shaft; empty takes the neutral
+	// 4% step.
 	PillarSurface json.RawMessage
-	// BandFill is the fill of a band level (beam, foundation); empty takes
-	// the accent's Lighter 80% swatch, the tonal system's content tone.
+	// CapTone returns the fill and ink of a pillar's cap in the pillar's
+	// accent; nil takes the accent's Lighter 80% swatch with dk1 type.
+	CapTone func(accent string) (fill json.RawMessage, ink string)
+	// BandFill and BandInk are the fill and type colour of a band level (beam,
+	// upper foundation levels); empty takes the accent's Lighter 80% swatch,
+	// the tonal system's content tone, with dk1 type.
 	BandFill json.RawMessage
+	BandInk  string
+	// BaseFill and BaseInk are the fill and type colour of the base, the
+	// lowest band level; empty takes dk2 with lt1 type.
+	BaseFill json.RawMessage
+	BaseInk  string
+	// RoofPt is the size of the objective in the roof (default: the header
+	// size; the roof's text is not snapped to the type scale, so at the
+	// default 16pt it stands a step over the 14pt the pillar titles render at).
+	RoofPt float64
+	// Grow lets the house step its type up the scale (titles, band labels and
+	// the objective to 18pt, bullets to 14pt) while every level, a
+	// quarter of its breathing room and a gable at the minimum pitch still
+	// fit the height and no word outgrows its cell: a house alone on a
+	// slide is set at a confident size instead of at the floor. Callers leave
+	// it off when the author chose the sizes.
+	Grow bool
+	// grown marks the stepped-up attempt: its bands and eaves take no
+	// breathing room beyond the uniform text margin, which the larger type
+	// already fills — with it a one-line band would be a block over a tenth
+	// of the slide that its text does not fill (SPARSE_FILL).
+	grown bool
 	// HeaderPt and BodyPt are the title and bullet sizes; BandPt is the band
 	// label size (default: two points under the header).
 	HeaderPt, BodyPt, BandPt float64
@@ -115,6 +147,11 @@ type HouseLayout struct {
 	// Tight reports that NeedPt exceeds the height available: the levels then
 	// share the height in proportion to their text, which is written smaller.
 	Tight bool
+	// roomy reports that the levels fit under a gable of at least the minimum
+	// pitch with houseGrowPadShare of their breathing room and the bands'
+	// uniform text margin; wordBroken that a
+	// word is wider than its cell's line.
+	roomy, wordBroken bool
 }
 
 const (
@@ -153,7 +190,28 @@ const (
 	housePillarGrow = 1.2
 	// HouseMaxLevelCells is the most cells a split band level holds.
 	HouseMaxLevelCells = 5
+	// houseRoofGrownPt is the objective's size in a house that takes the
+	// type step (HouseStyle.Grow): the lead step, level with the pillar
+	// titles. A larger objective makes the eaves band a block of solid accent
+	// over a tenth of the slide that its one line does not fill (SPARSE_FILL).
+	houseRoofGrownPt = scaleLeadPt
+	// houseGrowPadShare is the share of its breathing room a house must keep
+	// at a larger type step for the step to be taken.
+	houseGrowPadShare = 0.25
+	// houseCapPadPt is the top and bottom text margin of a pillar's cap, a
+	// band one title deep, and houseShaftGapPt the gap between the cap and
+	// the first bullet under it: together they cost a pillar a few points
+	// more than the one text margin a title over bullets in one box had.
+	houseCapPadPt   = 5.0
+	houseShaftGapPt = 8.0
+	// houseShaftBottomPt is the margin under a shaft's last bullet.
+	houseShaftBottomPt = 14.0
+	// houseShaftMinPt is the least shaft a pillar shows under its cap.
+	houseShaftMinPt = 24.0
 )
+
+// HouseCapLayerName names the cap layer of a pillar cell.
+const HouseCapLayerName = "cap"
 
 // houseColumns returns the column count every level's cells divide evenly:
 // the least common multiple of the level cell counts.
@@ -192,7 +250,27 @@ func HouseColumnsFit(counts ...int) bool {
 // pinned to their tallest column and grow a little into spare height; the
 // gable takes its pitch from the width and gives height back when the levels
 // need it.
-func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLayout, error) { //nolint:gocognit,gocyclo // one pass per level kind
+func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLayout, error) {
+	st = st.withDefaults()
+	if st.Grow && availPt > 0 {
+		// One step up the type scale: the sizes between the steps are
+		// written at the step below them, so a smaller increment would only
+		// make the levels taller.
+		grown := st
+		grown.HeaderPt = math.Max(st.HeaderPt, scaleLeadPt)
+		grown.BandPt = math.Max(st.BandPt, scaleLeadPt)
+		grown.BodyPt = math.Max(st.BodyPt, scaleSubheadPt)
+		grown.RoofPt = math.Max(st.RoofPt, houseRoofGrownPt)
+		grown.grown = true
+		if layout, err := buildHouse(m, grown, widthPt, availPt); err == nil && layout.roomy && !layout.wordBroken {
+			return layout, nil
+		}
+	}
+	return buildHouse(m, st, widthPt, availPt)
+}
+
+// withDefaults fills the sizes, gutters and tones a caller left unset.
+func (st HouseStyle) withDefaults() HouseStyle {
 	if st.ColGapPt <= 0 {
 		st.ColGapPt = houseColGapPt
 	}
@@ -208,6 +286,9 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 	if st.BandPt <= 0 {
 		st.BandPt = st.HeaderPt - 2
 	}
+	if st.RoofPt <= 0 {
+		st.RoofPt = st.HeaderPt
+	}
 	if st.Accent == "" {
 		st.Accent = "accent1"
 	}
@@ -217,6 +298,68 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 	if len(st.BandFill) == 0 {
 		st.BandFill = tonalLighter(st.Accent, TonalLighterContent).fillJSON()
 	}
+	if st.BandInk == "" {
+		st.BandInk = "dk1"
+	}
+	if len(st.BaseFill) == 0 {
+		st.BaseFill = json.RawMessage(`"dk2"`)
+		if st.BaseInk == "" {
+			st.BaseInk = "lt1"
+		}
+	}
+	if st.BaseInk == "" {
+		st.BaseInk = "lt1"
+	}
+	if st.CapTone == nil {
+		st.CapTone = func(accent string) (json.RawMessage, string) {
+			return tonalLighter(accent, TonalLighterContent).fillJSON(), "dk1"
+		}
+	}
+	return st
+}
+
+// HouseTonalStyle sets the house's tones from the template's theme
+// (go-slide-creator-pyeba): pillar shafts on the panel surface, caps and band
+// levels in the accent's content swatch, the base in the neutral dark, every
+// ink measured on its fill. Without theme colours the builder's defaults
+// stand.
+func HouseTonalStyle(ctx ExpandContext, st *HouseStyle) {
+	if st.Accent == "" {
+		st.Accent = ctx.DefaultAccent()
+	}
+	band := tonalContent(ctx, st.Accent)
+	st.BandFill, st.BandInk = band.fillJSON(), tonalInk(ctx, band)
+	base, baseInk := tonalBadge(ctx)
+	st.BaseFill, st.BaseInk = base.fillJSON(), baseInk
+	st.CapTone = func(accent string) (json.RawMessage, string) {
+		tone := tonalContent(ctx, accent)
+		return tone.fillJSON(), tonalInk(ctx, tone)
+	}
+}
+
+// houseBaseLevel is the index of the base: the lowest level, when it is a
+// band standing under at least one other level. A house of bands only, or
+// one that ends in its pillars, has none (-1).
+func houseBaseLevel(levels []HouseLevel) int {
+	last := -1
+	for i, l := range levels {
+		if len(l.Cells) > 0 {
+			last = i
+		}
+	}
+	if last < 1 || levels[last].Kind != HouseBand {
+		return -1
+	}
+	for _, l := range levels[:last] {
+		if l.Kind == HousePillars && len(l.Cells) > 0 {
+			return last
+		}
+	}
+	return -1
+}
+
+// buildHouse lays the house out at the sizes st carries.
+func buildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLayout, error) { //nolint:gocognit,gocyclo // one pass per level kind
 	cols := houseColumns(m.Levels)
 	if cols > shapegrid.MaxColumns {
 		return nil, fmt.Errorf("house: levels with %s cells cannot share one column grid; use cell counts that divide a common number of at most %d", houseCountList(m.Levels), shapegrid.MaxColumns)
@@ -238,6 +381,24 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 		pad    float64 // breathing room when the height allows it
 		margin float64 // top + bottom text margin the cells are written with
 		pillar bool
+		// caps are the pillar caps of a row of pillars with bullets, one per
+		// cell, and capPt their shared height.
+		caps  []*jsonschema.ShapeSpecInput
+		capPt float64
+		// squeeze is the share of its height a row keeps in a house short of
+		// height (1 otherwise): the cap gives way with the shaft.
+		squeeze float64
+	}
+	base := houseBaseLevel(m.Levels)
+	bodyFont := st.Fonts.Minor
+	wordBroken := false
+	// noteWords records a word of text too wide for a line lineW wide.
+	noteWords := func(text string, sizePt float64, bold bool, lineW float64) {
+		for _, word := range strings.Fields(inlineMarkupRe.ReplaceAllString(text, "")) {
+			if need, ok := pptx.WordLineNeedEMU(word, bodyFont, sizePt, bold, 0); ok && float64(need) > lineW*sizingEMUPerPt {
+				wordBroken = true
+			}
+		}
 	}
 	var (
 		roofText                 json.RawMessage
@@ -254,7 +415,7 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 		// Roof: the objective, under the badge line when there is one.
 		// A roof with nothing to say is the bare gable.
 		roofText, roofBar, roofBand, roofMargin, roofPad = nil, nil, 0, bandMargin, houseRoofPadPt
-		if len(m.Badges) > 0 {
+		if len(m.Badges) > 0 || st.grown {
 			roofPad = 0
 		}
 		if strings.TrimSpace(m.Roof) != "" || len(m.Badges) > 0 {
@@ -264,19 +425,23 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 		}
 
 		rows = make([]levelRow, 0, len(m.Levels))
-		for _, l := range m.Levels {
+		wordBroken = false
+		for li, l := range m.Levels {
 			n := len(l.Cells)
 			if n == 0 {
 				continue
 			}
 			w := cellWidth(n)
+			lineW := w - 2*defaultShapeInsetLRPt
 			span := cols / n
 			lr := levelRow{pillar: l.Kind == HousePillars, pad: houseBandPadPt, margin: bandMargin}
+			if st.grown {
+				lr.pad = 0
+			}
 			if lr.pillar {
 				// A pillar keeps the uniform margin: it is a column of the
-				// house, a plain panel under the beam or the roof, and takes
-				// an accent rule along its top edge only where cell_overrides
-				// asks for one (go-slide-creator-mot7a).
+				// house and takes an accent rule along its top edge only
+				// where cell_overrides asks for one (go-slide-creator-mot7a).
 				lr.pad, lr.margin = cardPadPt, 2*defaultShapeInsetTBPt
 			}
 			anyBody := false
@@ -286,30 +451,79 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 			for i, c := range l.Cells {
 				cell := &jsonschema.GridCellInput{ColSpan: span}
 				accent := st.Accent
-				if lr.pillar {
+				idx := -1
+				if l.OverrideIndex >= 0 {
+					idx = l.OverrideIndex + i
+				}
+				switch {
+				case lr.pillar && anyBody:
+					// A pillar with bullets is a column: a tinted cap that
+					// carries the bold title over a pale shaft that carries
+					// the bullets. The cap is a layer of the shaft's cell, so
+					// a level stays one row of one cell per pillar.
 					if st.PillarAccent != nil {
 						accent = st.PillarAccent(i)
 					}
+					capFill, capInk := st.CapTone(accent)
+					capCell := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+						Geometry: "rect", Fill: capFill, Line: noLine,
+						Text: buildHouseTitleText(c.Title, st.HeaderPt, capInk),
+					}}
+					override(idx, capCell, accent)
+					capCell.Shape.Text = houseTextPad(capCell.Shape.Text, houseCapPadPt)
+					noteWords(c.Title, st.HeaderPt, true, lineW)
+					lr.caps = append(lr.caps, capCell.Shape)
+					lr.capPt = math.Max(lr.capPt, houseNeedPt(st.Fonts, capCell.Shape.Text, w))
+					cell.Shape = &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: st.PillarSurface}
+					if len(c.Body) > 0 {
+						cell.Shape.Text = buildHouseShaftText(c, st.BodyPt)
+					}
+					override(idx, cell, accent)
+					for _, b := range c.Body {
+						noteWords(b, st.BodyPt, false, lineW-houseBulletIndentPt)
+					}
+				case lr.pillar:
+					// A row of titles alone: each pillar is one tinted block.
+					if st.PillarAccent != nil {
+						accent = st.PillarAccent(i)
+					}
+					capFill, capInk := st.CapTone(accent)
+					cell.Shape = &jsonschema.ShapeSpecInput{
+						Geometry: "rect", Fill: capFill,
+						Text: buildHouseTitleText(c.Title, st.HeaderPt, capInk),
+					}
+					override(idx, cell, accent)
+					noteWords(c.Title, st.HeaderPt, true, lineW)
+				default:
+					fill, ink := st.BandFill, st.BandInk
+					if li == base {
+						fill, ink = st.BaseFill, st.BaseInk
+					}
 					cell.Shape = &jsonschema.ShapeSpecInput{
 						Geometry: "rect",
-						Fill:     st.PillarSurface,
-						Text:     buildHousePillarText(c, st.HeaderPt, st.BodyPt, accent, anyBody),
+						Fill:     fill,
+						Text:     buildHouseBandText(c, st.BandPt, st.BodyPt, ink),
 					}
-				} else {
-					cell.Shape = &jsonschema.ShapeSpecInput{
-						Geometry: "rect",
-						Fill:     st.BandFill,
-						Text:     buildHouseBandText(c, st.BandPt, st.BodyPt),
-					}
-				}
-				if l.OverrideIndex >= 0 {
-					override(l.OverrideIndex+i, cell, accent)
-				}
-				if !lr.pillar {
+					override(idx, cell, accent)
 					cell.Shape.Text = houseTextPad(cell.Shape.Text, padPt)
+					noteWords(c.Title, st.BandPt, true, lineW)
 				}
-				lr.need = math.Max(lr.need, houseNeedPt(st.Fonts, cell.Shape.Text, w))
 				lr.cells = append(lr.cells, cell)
+			}
+			// Heights: a capped pillar needs its cap and, under it, its
+			// bullets (or a stub of shaft); any other cell its own text.
+			for _, cell := range lr.cells {
+				need := 0.0
+				switch {
+				case len(lr.caps) > 0 && len(cell.Shape.Text) > 0:
+					cell.Shape.Text = houseTextInsets(cell.Shape.Text, lr.capPt+houseShaftGapPt, houseShaftBottomPt)
+					need = houseNeedPt(st.Fonts, cell.Shape.Text, w)
+				case len(lr.caps) > 0:
+					need = lr.capPt + houseShaftMinPt
+				default:
+					need = houseNeedPt(st.Fonts, cell.Shape.Text, w)
+				}
+				lr.need = math.Max(lr.need, need)
 			}
 			rows = append(rows, lr)
 		}
@@ -340,13 +554,15 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 	floorRise := math.Max(math.Round(widthPt*houseRoofFloorPitch), houseRoofFloorPt)
 	minRise := math.Max(math.Round(widthPt*houseRoofMinPitch), floorRise)
 	rise := math.Max(math.Round(widthPt*houseRoofPitch), minRise)
+	tightened := false
 	for _, padPt := range append([]float64{0}, rowPadStepsPt...) {
 		measure(padPt)
+		tightened = padPt > 0
 		if availPt <= 0 || availPt-lean >= minRise {
 			break
 		}
 	}
-	layout := &HouseLayout{NeedPt: lean + floorRise, InkPt: ink}
+	layout := &HouseLayout{NeedPt: lean + floorRise, InkPt: ink, wordBroken: wordBroken}
 	padShare, spare := 1.0, 0.0
 	if availPt > 0 {
 		rise = math.Max(math.Min(rise, math.Round(availPt*houseRoofMaxShare)), minRise)
@@ -365,6 +581,9 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 			layout.RoofFlattened, layout.Tight = true, true
 		}
 	}
+	// Roomy enough for a type step: a gable at the minimum pitch or steeper
+	// and at least houseGrowPadShare of the breathing room.
+	layout.roomy = availPt > 0 && !layout.RoofFlattened && !tightened && padShare >= houseGrowPadShare
 	if roofBand > 0 {
 		roofBand += math.Floor(roofPad * padShare)
 	}
@@ -410,7 +629,11 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 			roofBand = shrink(roofBand, roofMargin)
 		}
 		for i := range rows {
-			rows[i].need = shrink(rows[i].need, rows[i].margin)
+			was := rows[i].need
+			rows[i].need = shrink(was, rows[i].margin)
+			if was > 0 {
+				rows[i].squeeze = rows[i].need / was
+			}
 		}
 	}
 
@@ -437,6 +660,27 @@ func BuildHouse(m HouseModel, st HouseStyle, widthPt, availPt float64) (*HouseLa
 	layout.HeightPt = roofH + gaps
 	for _, lr := range rows {
 		layout.HeightPt += lr.need
+		// The caps take their share of the row's final height; in a house
+		// short of height the cap is squeezed with its row, and the bullets
+		// start under the cap as drawn.
+		capPt := lr.capPt
+		if lr.squeeze > 0 && lr.squeeze < 1 {
+			capPt = math.Floor(lr.capPt * lr.squeeze)
+		}
+		for i, cp := range lr.caps {
+			if lr.need <= 0 || i >= len(lr.cells) {
+				continue
+			}
+			if capPt != lr.capPt && len(lr.cells[i].Shape.Text) > 0 {
+				lr.cells[i].Shape.Text = houseTextInsets(lr.cells[i].Shape.Text, capPt+houseShaftGapPt*lr.squeeze, houseShaftBottomPt*lr.squeeze)
+			}
+			frac := math.Min(math.Round(capPt/lr.need*10000)/10000, 1)
+			lr.cells[i].Layers = []jsonschema.LayerInput{{
+				Name:  HouseCapLayerName,
+				Frame: jsonschema.LayerFrameInput{X: 0, Y: 0, W: 1, H: frac},
+				Shape: cp,
+			}}
+		}
 		gridRows = append(gridRows, jsonschema.GridRowInput{MinHeight: lr.need, MaxHeight: lr.need, Cells: lr.cells})
 	}
 
@@ -551,7 +795,7 @@ func buildHouseRoofText(m HouseModel, st HouseStyle, override func(int, *jsonsch
 	var paras []json.RawMessage
 	if len(m.Badges) > 0 {
 		badges, _ := part(m.BadgeOverrideIndex, houseParagraph{
-			Content: strings.Join(m.Badges, houseBadgeSeparator), Size: scaleBodyPt, Bold: true, Color: "lt1", Align: "ctr",
+			Content: strings.Join(m.Badges, houseBadgeSeparator), Size: st.BodyPt, Bold: true, Color: "lt1", Align: "ctr",
 		})
 		paras = append(paras, badges.Paragraphs...)
 	}
@@ -559,7 +803,7 @@ func buildHouseRoofText(m HouseModel, st HouseStyle, override func(int, *jsonsch
 	// accent bar becomes a thin rule under the eaves (a bar across the top of
 	// a gable would float above the slope).
 	objective, bar := part(m.RoofOverrideIndex, houseParagraph{
-		Content: pptx.ConvertMarkdownEmphasis(m.Roof), Size: st.HeaderPt, Bold: true, Color: "lt1", Align: "ctr",
+		Content: pptx.ConvertMarkdownEmphasis(m.Roof), Size: st.RoofPt, Bold: true, Color: "lt1", Align: "ctr",
 	})
 	if bar != nil {
 		bar = &jsonschema.AccentBarInput{Position: "bottom", Color: bar.Color, Width: 2}
@@ -569,34 +813,52 @@ func buildHouseRoofText(m HouseModel, st HouseStyle, override func(int, *jsonsch
 	return data, bar
 }
 
-// buildHousePillarText is a pillar column: an accent title over dk1 bullets.
-// topAligned is set when any pillar of the row carries bullets, so a pillar
-// without them keeps its title on the same line as its neighbours instead of
-// floating in the middle of the column.
-func buildHousePillarText(c HouseCell, titlePt, bodyPt float64, accent string, topAligned bool) json.RawMessage {
-	paras := []houseParagraph{{Content: pptx.ConvertMarkdownEmphasis(c.Title), Size: titlePt, Bold: true, Color: accent, Align: "ctr"}}
+// houseBulletIndentPt is the room a bullet and its hanging indent take from
+// a line (the writer's default bullet indent), allowed for when a word is
+// checked against a shaft's line.
+const houseBulletIndentPt = 14.0
+
+// buildHouseTitleText is a pillar's title: bold and centred, in its cap or —
+// in a row of titles alone — in the pillar's one block.
+func buildHouseTitleText(title string, titlePt float64, ink string) json.RawMessage {
+	return houseText([]houseParagraph{{Content: pptx.ConvertMarkdownEmphasis(title), Size: titlePt, Bold: true, Color: ink, Align: "ctr"}}, "ctr", "ctr")
+}
+
+// buildHouseShaftText is a pillar's shaft: its bullets, set from the top
+// under the cap.
+func buildHouseShaftText(c HouseCell, bodyPt float64) json.RawMessage {
+	paras := make([]houseParagraph, 0, len(c.Body))
 	for _, b := range c.Body {
 		paras = append(paras, houseParagraph{Bullet: true, Content: pptx.ConvertMarkdownEmphasis(b), Size: bodyPt, Color: "dk1", Align: "l"})
-	}
-	if !topAligned {
-		return houseText(paras, "ctr", "ctr")
-	}
-	if len(c.Body) == 0 {
-		paras[0].Align = "l"
 	}
 	return houseText(paras, "l", "t")
 }
 
-// buildHouseBandText is a band cell: a bold dk1 label, with any items on one
-// line under it.
-func buildHouseBandText(c HouseCell, titlePt, bodyPt float64) json.RawMessage {
-	paras := []houseParagraph{{Content: pptx.ConvertMarkdownEmphasis(c.Title), Size: titlePt, Bold: true, Color: "dk1", Align: "ctr"}}
+// houseTextInsets sets a text's top and bottom margins.
+func houseTextInsets(text json.RawMessage, topPt, bottomPt float64) json.RawMessage {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(text, &obj); err != nil || obj == nil {
+		return text
+	}
+	obj["inset_top"] = marshalRaw(math.Round(topPt*10) / 10)
+	obj["inset_bottom"] = marshalRaw(bottomPt)
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return text
+	}
+	return out
+}
+
+// buildHouseBandText is a band cell: a bold label in ink, with any items on
+// one line under it.
+func buildHouseBandText(c HouseCell, titlePt, bodyPt float64, ink string) json.RawMessage {
+	paras := []houseParagraph{{Content: pptx.ConvertMarkdownEmphasis(c.Title), Size: titlePt, Bold: true, Color: ink, Align: "ctr"}}
 	if len(c.Body) > 0 {
 		items := make([]string, len(c.Body))
 		for i, b := range c.Body {
 			items[i] = pptx.ConvertMarkdownEmphasis(b)
 		}
-		paras = append(paras, houseParagraph{Content: strings.Join(items, " · "), Size: bodyPt, Color: "dk1", Align: "ctr"})
+		paras = append(paras, houseParagraph{Content: strings.Join(items, " · "), Size: bodyPt, Color: ink, Align: "ctr"})
 	}
 	return houseText(paras, "ctr", "ctr")
 }
