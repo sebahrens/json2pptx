@@ -3035,6 +3035,9 @@ func (sc *ScatterChart) drawPointLabels(labels []scatterLabel) {
 	// onMarker reports whether a label box covers another point's marker: a
 	// bubble's label must not be set across its neighbour.
 	onMarker := func(r labelRect, self int) bool {
+		if !sc.config.VariableSize {
+			return false // a dot under a label's edge is no harm
+		}
 		for i, other := range labels {
 			if i == self || other.radius <= 0 {
 				continue
@@ -3104,6 +3107,24 @@ func (sc *ScatterChart) drawPointLabels(labels []scatterLabel) {
 				align: TextAlignCenter, base: TextBaselineBottom,
 				rect: labelRect{px - labelW/2, py + pointOffset, px + labelW/2, py + pointOffset + labelH},
 			},
+		}
+		// The four diagonals, tried after the four sides: in a crowded or
+		// narrow plot they are often the only free places.
+		diag := pointOffset * 0.72
+		for _, d := range [][2]float64{{1, -1}, {1, 1}, {-1, -1}, {-1, 1}} {
+			c := candidate{x: px + d[0]*diag, align: TextAlignLeft, base: TextBaselineBottom}
+			x1 := c.x
+			if d[0] < 0 {
+				c.align = TextAlignRight
+				x1 = c.x - labelW
+			}
+			y2 := py - diag
+			if d[1] > 0 {
+				y2 = py + diag + labelH
+			}
+			c.y = y2 - labelH/4
+			c.rect = labelRect{x1, y2 - labelH, x1 + labelW, y2}
+			candidates = append(candidates, c)
 		}
 
 		placed := false
@@ -3342,6 +3363,12 @@ func (pc *PieChart) Draw(data ChartData) error {
 	// to let the pie use the full vertical space, while portrait/square
 	// layouts keep the traditional bottom legend.
 	landscapeLegend := pc.config.ShowLegend && plotArea.W > plotArea.H*1.1
+	// The side column is 30% of the width. Where that cannot hold the widest
+	// name (long names in a half-width zone) the legend goes under the pie,
+	// where its rows have the whole width, instead of cutting the names.
+	if landscapeLegend && pc.widestLegendItem(labels) > plotArea.W*pieSideLegendFrac {
+		landscapeLegend = false
+	}
 
 	// Variables for pie area and legend area
 	var pieArea Rect
@@ -3351,8 +3378,7 @@ func (pc *PieChart) Draw(data ChartData) error {
 	if landscapeLegend {
 		// Landscape mode: legend on the RIGHT side (~30% of width).
 		// The pie gets the remaining ~70% of width and the full height.
-		legendWidthFraction := 0.30
-		legendW := plotArea.W * legendWidthFraction
+		legendW := plotArea.W * pieSideLegendFrac
 		pieW := plotArea.W - legendW - style.Spacing.MD // gap between pie and legend
 
 		pieArea = Rect{
@@ -3555,6 +3581,28 @@ func (pc *PieChart) Draw(data ChartData) error {
 	}
 
 	return nil
+}
+
+// pieSideLegendFrac is the share of the plot width a pie's side legend takes.
+const pieSideLegendFrac = 0.30
+
+// widestLegendItem is the width of the widest legend row: marker, gap, name.
+func (pc *PieChart) widestLegendItem(labels []string) float64 {
+	b := pc.builder
+	cfg := PresentationPieLegendConfig(b.StyleGuide())
+	b.Push()
+	defer b.Pop()
+	if cfg.Style != nil {
+		b.SetFontSize(cfg.Style.FontSize)
+		b.SetFontWeight(cfg.Style.FontWeight)
+	}
+	widest := 0.0
+	for _, l := range labels {
+		w, _ := b.MeasureText(l)
+		widest = math.Max(widest, w)
+	}
+	// The slide's renderer may set the names a little wider than measured.
+	return cfg.MarkerSize + cfg.MarkerLabelGap + widest*1.1 + 2*cfg.Padding
 }
 
 // pieDirectLabelMinRadiusFrac is the smallest pie radius, as a share of half
