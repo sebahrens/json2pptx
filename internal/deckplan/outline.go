@@ -96,6 +96,10 @@ var (
 	outlineCycle    = outlineKind{"cycle", "cycle", "cycle-ring", "framework", cycleGuidance, 2}
 	outlineRegions  = outlineKind{"regions", "regions", "", "evidence", regionsGuidance, 4}
 	outlinePillars  = outlineKind{"framework", "pillars", "stylish-panels", "framework", namedGuidance["pillars"], 3}
+	// A list of points or findings an outline item asks for, however it words
+	// the form ("five key points as bullets"): a structured slide that fills
+	// the page, never a bullet list (go-slide-creator-s49nz).
+	outlineFindings = outlineKind{"topic", "pillars", "exec-summary", "framework", "3-5 findings, each a bold conclusion with the one line of evidence behind it: a structured slide, not a bullet list; the title is the slide's message as a sentence.", 3}
 )
 
 // outlineKindByName maps a kind the vocabulary names to its outline slide.
@@ -126,6 +130,10 @@ var outlineRules = []outlineRule{
 	{regexp.MustCompile(`(?i)\b(?:problems?|pains?|pain points?|challenges?|issues?|why now)\b`), outlineProblem},
 	{regexp.MustCompile(`(?i)\b(?:architecture|tech stack|technology stack)\b`), outlineArch},
 	{regexp.MustCompile(`(?i)\b(?:pricing|price list|budget|cost breakdown)\b`), outlineTable},
+	// Last: a count of points ("five key points", "three findings") is a
+	// points slide, not the one number the count would otherwise read as.
+	{regexp.MustCompile(`(?i)\b(?:findings|takeaways?|conclusions|lessons(?:\s+learned)?|learnings|insights|observations)\b`), outlineFindings},
+	{regexp.MustCompile(`(?i)\b(?:(?:key|main|talking)\s+points|points|bullets?|bullet\s+(?:points|list)|reasons|highlights|principles|priorities|themes)\b`), outlineTopic},
 }
 
 // outlineKindFor picks the slide an outline item names: a cue word in the item
@@ -183,6 +191,11 @@ var (
 	outlineInlineColon = regexp.MustCompile(`:\s+`)
 
 	outlineLeadingAnd = regexp.MustCompile(`(?i)^(?:and|then|finally)\s+`)
+
+	// outlineInlineEnumerator matches the number an inline list gives its
+	// item: "2) five key points", "3. revenue chart", "slide 4: risks". The
+	// space after it keeps "1.5x growth" whole.
+	outlineInlineEnumerator = regexp.MustCompile(`(?i)^(?:\(?\d{1,2}[.)]\s+|slide\s+\d{1,2}\s*[:.)–—-]\s*)`)
 )
 
 // minOutlineItems is the fewest listed items that read as an outline.
@@ -343,6 +356,9 @@ func splitOutlineItems(list string) []string {
 // cleanOutlineItem trims an item to its own words.
 func cleanOutlineItem(s string) string {
 	s = strings.TrimSpace(strings.Trim(strings.TrimSpace(s), ".;,"))
+	// The item's own number is not content: left in, it made every item of
+	// "1) title; 2) five key points; …" read as a figure and plan a stat.
+	s = outlineInlineEnumerator.ReplaceAllString(s, "")
 	return strings.TrimSpace(outlineLeadingAnd.ReplaceAllString(s, ""))
 }
 

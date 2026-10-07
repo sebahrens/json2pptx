@@ -132,6 +132,7 @@ actual output accurately when editability matters.
 
 **Layout & Overlap**
 - Elements overlapping (text through shapes, lines crossing words, stacked boxes)
+- Lines of a wrapped title touching: descenders of one line reaching the ascenders of the next (too little line spacing for the line count; report as overlap, P1)
 - Text overflowing its box or cut off at the slide edge
 - Decorative lines/dividers misaligned — designed for 1-line title but title wrapped to 2
 - Footer or citation colliding with content above it
