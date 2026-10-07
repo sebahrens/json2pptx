@@ -111,7 +111,7 @@ Native types (`swot`, `porters_five_forces`, `pestel`,
 enlarge it, use `diagram_value` or cut items. A too-wide word is
 `TEXT_EXCEEDS_SHAPE` (`fix.params.words`); text shrunk to fit,
 `TEXT_BELOW_READABLE_MIN` (`max_items_per_*`, `max_chars_per_item`). A
-`kpi_dashboard` metric that improves by falling takes
+`kpi_dashboard` metric where lower is better takes
 `good_direction: "down"`.
 Diagram/chart data keys are strict at every level: an undrawn key is
 `unknown_key`.
