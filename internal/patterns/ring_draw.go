@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -385,6 +386,23 @@ func ringNumberCell(ctx ExpandContext, number int, accent string, sizePt float64
 			Text:     ringTextJSON(numAlign, "t", &insets, ringPara{Content: fmt.Sprintf("%d", number), Size: sizePt, Bold: true, Color: ink}),
 		},
 	}
+}
+
+// ringLabelWordPt is the text width the widest word of label needs to stay
+// whole on a line at sizePt (bold, with shapegrid.RenderFaceSlack, the slack
+// a renderer's own face may take). A line measure wraps at spaces only: it counts a word wider than its
+// cell as one line, and the renderer then breaks the word in two. That is not
+// a wrapped label, it is a damaged one, so a ring's label cell is never set
+// narrower than this plus its insets (go-slide-creator-y21pc): the type steps
+// down and then the ring gives way, as they do for rows that do not fit.
+func ringLabelWordPt(ctx ExpandContext, label string, sizePt float64) float64 {
+	widest := 0.0
+	for _, word := range strings.Fields(label) {
+		widest = math.Max(widest, rhWordWidthPt(ctx, word, true, sizePt))
+	}
+	// rhWordWidthPt carries the margin a word needs inside a circle; a label
+	// cell is held to the wider one a one-line label keeps from its box.
+	return widest * shapegrid.RenderFaceSlack / rhWordSlack
 }
 
 // ringLabelNeedPt is the height a label text needs in a cell widthPt wide:

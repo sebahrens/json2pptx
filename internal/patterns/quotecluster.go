@@ -79,8 +79,8 @@ type QuoteClusterValues struct {
 type QuoteClusterOverrides struct {
 	Accent         string  `json:"accent,omitempty"`
 	SemanticAccent string  `json:"semantic_accent,omitempty"`
-	QuoteSize      float64 `json:"quote_size,omitempty"` // Default 10
-	NameSize       float64 `json:"name_size,omitempty"`  // Default 9
+	QuoteSize      float64 `json:"quote_size,omitempty"` // Default: open 14 (12 when dense), bubble / tile 10
+	NameSize       float64 `json:"name_size,omitempty"`  // Default: open 12, bubble / tile 9
 	TitleSize      float64 `json:"title_size,omitempty"` // Default 8
 	// Style is "open" (default: unfilled quotes under a quote mark, the
 	// attribution beneath), "bubble" (speech-bubble shapes with the
@@ -121,8 +121,8 @@ func (q *quoteCluster) PostExpandWarnings(ctx ExpandContext, values, overrides a
 	if !ok || v == nil || len(v.Quotes) <= 3 {
 		return nil
 	}
-	grid, err := q.Expand(ctx, values, overrides, nil)
-	if err != nil {
+	height, ok := q.budgetHeight(ctx, v, overrides)
+	if !ok {
 		return nil
 	}
 	// Reference payloads measured against the written size on every shipped
@@ -144,16 +144,37 @@ func (q *quoteCluster) PostExpandWarnings(ctx ExpandContext, values, overrides a
 		for i := range reference.Quotes {
 			reference.Quotes[i] = target
 		}
-		referenceGrid, err := q.Expand(ctx, reference, overrides, nil)
-		if err != nil {
+		referenceHeight, ok := q.budgetHeight(ctx, reference, overrides)
+		if !ok {
 			return nil
 		}
-		limit = max(limit, quoteClusterHeight(referenceGrid))
+		limit = max(limit, referenceHeight)
 	}
-	if quoteClusterHeight(grid) <= limit {
+	if height <= limit {
 		return nil
 	}
 	return []string{fmt.Sprintf("%s: quote-cluster quotes.text/name/title exceed the measured three-row copy budget; with 4–6 quotes keep quote text near 161 characters beside maximal attributions; with 7–8, near 81 beside a name of about 20 and a title of about 27 characters — shorten copy or split the quotes across slides", ErrCodeBodyTooLong)}
+}
+
+// budgetHeight is the height the copy budget is measured in: the cluster's
+// rows at its densest setting. The open style sets short copy larger, so its
+// height at the setting it chose says nothing about the copy it could hold.
+func (q *quoteCluster) budgetHeight(ctx ExpandContext, v *QuoteClusterValues, overrides any) (float64, bool) {
+	ovr, _ := overrides.(*QuoteClusterOverrides)
+	if ovr == nil {
+		ovr = &QuoteClusterOverrides{}
+	}
+	if ovr.Style == "" || ovr.Style == "open" {
+		sc := quoteClusterOpenNoMark
+		sc.quote = ResolveSize(ovr.QuoteSize, sc.quote)
+		sc.attribution = ResolveSize(ovr.NameSize, sc.attribution)
+		return quoteClusterHeight(q.expandOpenAt(ctx, v, nil, "accent1", false, sc)), true
+	}
+	grid, err := q.Expand(ctx, v, overrides, nil)
+	if err != nil {
+		return 0, false
+	}
+	return quoteClusterHeight(grid), true
 }
 
 func quoteClusterBudgetCopy(length int) string {
@@ -171,7 +192,7 @@ func quoteClusterHeight(grid *jsonschema.ShapeGridInput) float64 {
 func (q *quoteCluster) Schema() *Schema {
 	quoteSchema := ObjectSchema(
 		map[string]*Schema{
-			"text":      StringSchema(quoteClusterTextMax).WithDescription("Quote text (italic, ~10pt); with 4-6 quotes about 161 characters beside maximal names/titles; with 7-8 quotes about 81 beside a name of about 20 and a title of about 27 characters"),
+			"text":      StringSchema(quoteClusterTextMax).WithDescription("Quote text (italic; 14pt in the open style, 12pt when the cluster is dense); with 4-6 quotes about 161 characters beside maximal names/titles; with 7-8 quotes about 81 beside a name of about 20 and a title of about 27 characters"),
 			"name":      StringSchema(quoteClusterNameMax).WithDescription("Speaker name (bold)"),
 			"title":     StringSchema(quoteClusterTitleMax).WithDescription("Optional role or title rendered next to the name"),
 			"highlight": BooleanSchema().WithDescription("Emphasise this quote (at most one); it is then the only accent-coloured element"),
@@ -191,8 +212,8 @@ func (q *quoteCluster) Schema() *Schema {
 			"accent":          StringSchema(0).WithDescription("Accent scheme color for the quote marks and the highlighted quote (default accent1)").WithDefault("accent1"),
 			"style":           EnumSchema(quoteClusterStyles...).WithDescription("open (default: unfilled quotes under a quote mark, attribution beneath), bubble (speech-bubble shapes, attribution under the tail) or tile (tinted tiles with accent names)").WithDefault("open"),
 			"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"quote_size":      NumberSchema(6, 40).WithDescription("Font size for quote text in points (default 10)"),
-			"name_size":       NumberSchema(6, 40).WithDescription("Font size for speaker name in points (default 9)"),
+			"quote_size":      NumberSchema(6, 40).WithDescription("Font size for quote text in points (default: open 14, stepping to 12 when the quotes need the height; bubble / tile 10)"),
+			"name_size":       NumberSchema(6, 40).WithDescription("Font size for the attribution in points (default: open 12; bubble / tile 9)"),
 			"title_size":      NumberSchema(6, 40).WithDescription("Font size for speaker title in points (default 8)"),
 		},
 		nil,
@@ -288,10 +309,8 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 		anyHighlight = anyHighlight || qt.Highlight
 	}
 	sizes := quoteClusterSizes{quote: quoteSize, name: nameSize, title: titleSize}
-	// markSize stays zero (no mark line) outside the open style.
-	var markSize float64
 	if style == "open" {
-		markSize = quoteClusterOpenMarkSize(ctx, v.Quotes, sizes)
+		return q.expandOpen(ctx, v, ovr, cellOverrides, accent, anyHighlight), nil
 	}
 
 	// Lay out quotes left-to-right into 3-column rows. Short final rows stay
@@ -319,15 +338,12 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 			qt := v.Quotes[idx]
 			quotes = append(quotes, qt)
 			var cell *jsonschema.GridCellInput
-			switch style {
-			case "tile":
+			if style == "tile" {
 				cell = quoteClusterTileCell(ctx, qt, r, sizes, accent)
-			case "bubble":
+			} else {
 				// The bubble and its attribution are placed once the row
 				// height is known; the override target is the bubble text.
 				cell = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Text: buildQuoteClusterBubbleQuote(qt, quoteSize, "dk1")}}
-			default:
-				cell = quoteClusterOpenCell(ctx, qt, sizes, markSize, accent, anyHighlight)
 			}
 			if co, coOk := cellOverrides[idx]; coOk {
 				if cellOvr, ok2 := co.(*QuoteClusterCellOverride); ok2 {
@@ -350,10 +366,8 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 			// tall as the longest one in its row, so "It just works." sat in the
 			// top fifth of a tall tinted box (go-slide-creator-pr3g).
 			rows = append(rows, contentSizedRow(ctx, cells, quoteClusterColumns))
-		case "bubble":
-			rows = append(rows, quoteClusterBubbleRow(ctx, cells, quotes, r, columns, sizes, accent))
 		default:
-			rows = append(rows, quoteClusterOpenRow(ctx, cells))
+			rows = append(rows, quoteClusterBubbleRow(ctx, cells, quotes, r, columns, sizes, accent))
 		}
 	}
 
@@ -404,98 +418,198 @@ func quoteClusterTileCell(ctx ExpandContext, qt QuoteClusterItem, row int, sizes
 	return cell
 }
 
-// Open style (go-slide-creator-5cie9): a quote is text on the slide under an
-// opening quote mark, with its attribution directly beneath — no tile.
+// Open style (go-slide-creator-5cie9, -rxdkf): a quote is text on the slide
+// under a large opening quote mark, and its attribution stands on its own
+// line under a short rule — no tile. A row of quotes is two grid rows (the
+// quote, then the rule and the attribution), so the marks of a row share a
+// line at the top and its attributions a line at the bottom however long
+// each quote runs.
 const (
 	// quoteClusterMark is the opening mark set above each open quote.
-	quoteClusterMark = "\u201C"
+	quoteClusterMark = "“"
+	// quoteClusterMarkFont is the theme's major (heading) font: the mark is
+	// display type, a serif on a serif-headed template.
+	quoteClusterMarkFont = "+mj-lt"
 	// quoteClusterMutedMarkAlpha dims the marks of the quotes that are not
 	// highlighted, so the highlighted quote keeps the only accent.
 	quoteClusterMutedMarkAlpha = 35.0
+	// quoteClusterOpenRule is the short rule an attribution stands under: a
+	// line of its own holding four underscores, the one stroke every face
+	// joins into a line. It is type, not a drawn shape, so it starts exactly
+	// where the attribution under it does in every column (the engine moves
+	// unfilled first-column text onto the title's text line, and only text)
+	// and grows with it.
+	quoteClusterOpenRule = "____"
+	// The text margins of an open quote: above the mark, between the quote
+	// and the rule, and under the attribution. They are also the padding of
+	// the highlighted quote's tint panel.
+	quoteClusterOpenTopPt        = 6.0
+	quoteClusterOpenQuoteGapPt   = 4.0
+	quoteClusterOpenAttrBottomPt = 6.0
+	// quoteClusterOpenBandGapPt is the whitespace between two rows of quotes.
+	quoteClusterOpenBandGapPt = 14.0
+	// The densest setting (no mark line) gives the height back to the
+	// quotes: no rule line, the margins and the band at these values.
+	quoteClusterDenseMarginPt  = 3.0
+	quoteClusterDenseBandGapPt = 6.0
+	// quoteClusterOpenRowGapPt joins a quote and its attribution, and
+	// quoteClusterOpenPanelLapPt is how far the highlighted attribution's
+	// tint laps over its quote's: the panel is two cells and must read as
+	// one, without a seam where they meet.
+	quoteClusterOpenRowGapPt   = 0.01
+	quoteClusterOpenPanelLapPt = 0.5
 )
 
-// quoteClusterMarkSteps are the opening mark's sizes, largest first: display
-// type, then the lead step. Past both, the mark gives its line back and the
-// quote is set in quotation marks instead (quoteClusterOpenMarkSize returns 0).
-var quoteClusterMarkSteps = []float64{scaleDisplayPt, scaleLeadPt}
+// quoteClusterOpenScale is one type setting of the open cluster.
+type quoteClusterOpenScale struct{ mark, quote, attribution float64 }
 
-// quoteClusterOpenMarkSize picks the largest mark the cluster has room for:
-// the mark is the first thing to give way when the quotes need the height, so
-// an open cluster never holds less copy than the tiles it replaced.
-func quoteClusterOpenMarkSize(ctx ExpandContext, quotes []QuoteClusterItem, sizes quoteClusterSizes) float64 {
-	_, areaH := sizingAreaPt(ctx)
-	rows := (len(quotes) + quoteClusterColumns - 1) / quoteClusterColumns
-	avail := areaH - float64(rows-1)*ctx.Gap(10)
-	for _, size := range quoteClusterMarkSteps {
-		total := 0.0
-		for r := 0; r < rows; r++ {
-			var cells []*jsonschema.GridCellInput
-			for i := r * quoteClusterColumns; i < min((r+1)*quoteClusterColumns, len(quotes)); i++ {
-				cells = append(cells, quoteClusterOpenCell(ctx, quotes[i], sizes, size, "accent1", false))
-			}
-			total += quoteClusterOpenRow(ctx, cells).MaxHeight
-		}
-		if total <= avail {
-			return size
-		}
-	}
-	return 0
+// quoteClusterOpenScales are the settings an open cluster is tried at,
+// largest first: a 36pt mark over 14pt quotes, then the mark and the quote
+// give way a step at a time. The first the content area holds is taken. Past
+// the last the mark gives its line back and the quote is set in quotation
+// marks instead (quoteClusterOpenNoMark), so an open cluster never holds less
+// copy than the tiles it replaced.
+var quoteClusterOpenScales = []quoteClusterOpenScale{
+	{sizeQuotePt, scaleSubheadPt, scaleBodyPt},
+	{scaleDisplayPt, scaleSubheadPt, scaleBodyPt},
+	{scaleDisplayPt, scaleBodyPt, scaleBodyPt},
+	{scaleLeadPt, scaleBodyPt, scaleBodyPt},
 }
 
-// quoteClusterOpenCell is one open quote. Every mark takes the accent unless
-// one quote is highlighted: then only that quote keeps it (on an accent tint
-// band) and the other marks go neutral.
-func quoteClusterOpenCell(ctx ExpandContext, qt QuoteClusterItem, sizes quoteClusterSizes, markSize float64, accent string, anyHighlight bool) *jsonschema.GridCellInput {
-	fill := json.RawMessage(`"none"`)
-	surface := fillTone{Color: "lt1"}
-	if qt.Highlight {
-		surface = inactiveTintTone(accent)
-		fill = surface.fillJSON()
+// quoteClusterOpenNoMark is the densest open setting: no mark line.
+var quoteClusterOpenNoMark = quoteClusterOpenScale{quote: scaleBodyPt, attribution: scaleBodyPt}
+
+// expandOpen lays the cluster out in the open style at the largest of
+// quoteClusterOpenScales its content area holds; authored sizes stand.
+func (q *quoteCluster) expandOpen(ctx ExpandContext, v *QuoteClusterValues, ovr *QuoteClusterOverrides, cellOverrides map[int]any, accent string, anyHighlight bool) *jsonschema.ShapeGridInput {
+	_, areaH := sizingAreaPt(ctx)
+	for _, sc := range append(append([]quoteClusterOpenScale{}, quoteClusterOpenScales...), quoteClusterOpenNoMark) {
+		sc.quote = ResolveSize(ovr.QuoteSize, sc.quote)
+		sc.attribution = ResolveSize(ovr.NameSize, sc.attribution)
+		grid := q.expandOpenAt(ctx, v, cellOverrides, accent, anyHighlight, sc)
+		if sc.mark <= 0 || quoteClusterHeight(grid) <= areaH {
+			return grid
+		}
 	}
-	mark := quoteClusterParagraph{Content: quoteClusterMark, Size: markSize, Bold: true, Align: "l"}
-	if anyHighlight && !qt.Highlight {
-		mark.Color, mark.Alpha = "dk1", readableDimAlpha(ctx, "dk1", quoteClusterMutedMarkAlpha, 4.5)
-	} else {
-		mark.Color = inkOnFill(ctx, accent, surface, 3.0)
+	return nil
+}
+
+// expandOpenAt lays the open cluster out at one type setting.
+func (q *quoteCluster) expandOpenAt(ctx ExpandContext, v *QuoteClusterValues, cellOverrides map[int]any, accent string, anyHighlight bool, sc quoteClusterOpenScale) *jsonschema.ShapeGridInput {
+	columns := quoteClusterColumns
+	colW := quoteClusterColWidthPt(ctx, columns)
+	fonts := ctx.themeFonts()
+	none := json.RawMessage(`"none"`)
+	totalRows := (len(v.Quotes) + columns - 1) / columns
+	var rows []jsonschema.GridRowInput
+	for r := 0; r < totalRows; r++ {
+		quotes := make([]*jsonschema.GridCellInput, columns)
+		attrs := make([]*jsonschema.GridCellInput, columns)
+		quoteH, attrH := 0.0, 0.0
+		for c := 0; c < columns; c++ {
+			idx := r*columns + c
+			if idx >= len(v.Quotes) {
+				quotes[c], attrs[c] = buildQuoteClusterEmptyCell(), buildQuoteClusterEmptyCell()
+				continue
+			}
+			qt := v.Quotes[idx]
+			fill, surface, ink := none, fillTone{Color: "lt1"}, "dk1"
+			if qt.Highlight {
+				surface = inactiveTintTone(accent)
+				fill = surface.fillJSON()
+				ink = readableTextOn(ctx, surface, "dk1")
+			}
+			quote := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "rect", Fill: fill, Line: noLine,
+				Text: quoteClusterOpenQuoteText(ctx, qt, sc, accent, surface, ink, anyHighlight),
+			}}
+			attr := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "rect", Fill: fill, Line: noLine,
+				Text: quoteClusterOpenAttributionText(qt, sc, ink),
+			}}
+			if qt.Highlight {
+				attr.BleedTop = quoteClusterOpenPanelLapPt
+			}
+			if co, ok := cellOverrides[idx].(*QuoteClusterCellOverride); ok {
+				applyCellTextOverride(quote, co)
+				if co.AccentBar {
+					quote.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 3}
+				}
+			}
+			quoteH = math.Max(quoteH, rowTextNeedPt(fonts, quote.Shape.Text, colW))
+			attrH = math.Max(attrH, rowTextNeedPt(fonts, attr.Shape.Text, colW))
+			quotes[c], attrs[c] = quote, attr
+		}
+
+		if r > 0 {
+			band := ctx.Gap(quoteClusterOpenBandGapPt)
+			if sc.mark <= 0 {
+				band = ctx.Gap(quoteClusterDenseBandGapPt)
+			}
+			rows = append(rows, jsonschema.GridRowInput{
+				Cells:     []*jsonschema.GridCellInput{{ColSpan: columns}},
+				MinHeight: band, MaxHeight: band,
+			})
+		}
+		rows = append(rows,
+			jsonschema.GridRowInput{Cells: quotes, MaxHeight: math.Ceil(quoteH)},
+			jsonschema.GridRowInput{Cells: attrs, MaxHeight: math.Ceil(attrH)},
+		)
 	}
+	return &jsonschema.ShapeGridInput{
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, columns)),
+		ColGap:        ctx.Gap(contentSizedRowGapPt),
+		RowGap:        quoteClusterOpenRowGapPt,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
+	}
+}
+
+// quoteClusterOpenQuoteText is the mark and the quote of one open quote,
+// top-anchored so the marks of a row share a line. Every mark takes the
+// accent unless one quote is highlighted: then only that quote keeps it (on
+// its accent tint panel) and the other marks go neutral.
+func quoteClusterOpenQuoteText(ctx ExpandContext, qt QuoteClusterItem, sc quoteClusterOpenScale, accent string, surface fillTone, ink string, anyHighlight bool) json.RawMessage {
 	quote := qt.Text
-	if markSize <= 0 {
+	if sc.mark <= 0 {
 		// No room for the mark's own line: the quotation marks move into
 		// the text.
 		quote = "“" + qt.Text + "”"
 	}
-	ink := "dk1"
-	if qt.Highlight {
-		ink = readableTextOn(ctx, surface, "dk1")
+	paras := []quoteClusterParagraph{{Content: quote, Size: sc.quote, Italic: true, Color: ink, Align: "l"}}
+	if sc.mark > 0 {
+		mark := quoteClusterParagraph{Content: quoteClusterMark, Size: sc.mark, Bold: true, Align: "l", Font: quoteClusterMarkFont, Figure: true}
+		if anyHighlight && !qt.Highlight {
+			mark.Color, mark.Alpha = "dk1", readableDimAlpha(ctx, "dk1", quoteClusterMutedMarkAlpha, 4.5)
+		} else {
+			mark.Color = inkOnFill(ctx, accent, surface, 3.0)
+		}
+		paras = append([]quoteClusterParagraph{mark}, paras...)
 	}
-	// The attribution is one line — bold name, then the title — so an open
-	// quote is no taller than the tile it replaces.
+	data, _ := json.Marshal(quoteClusterTextObj{Paragraphs: paras, Align: "l", VerticalAlign: "t"})
+	if sc.mark <= 0 {
+		return withTextInsetSides(withTextInsetSides(data, quoteClusterDenseMarginPt, "inset_top"), 0.01, "inset_bottom")
+	}
+	return withTextInsetSides(withTextInsetSides(data, quoteClusterOpenTopPt, "inset_top"), quoteClusterOpenQuoteGapPt, "inset_bottom")
+}
+
+// quoteClusterOpenAttributionText is the rule and the attribution under it:
+// the bold name, then the title, on one line where they fit. The densest
+// setting has no rule line.
+func quoteClusterOpenAttributionText(qt QuoteClusterItem, sc quoteClusterOpenScale, ink string) json.RawMessage {
+	size := sc.attribution
 	attribution := "<b>" + qt.Name + "</b>"
 	if title := strings.TrimSpace(qt.Title); title != "" {
 		attribution += ", " + title
 	}
-	paras := []quoteClusterParagraph{
-		{Content: quote, Size: sizes.quote, Italic: true, Color: ink, Align: "l"},
-		{Content: attribution, Size: sizes.name, Color: ink, Align: "l"},
-	}
-	if markSize > 0 {
-		paras = append([]quoteClusterParagraph{mark}, paras...)
+	paras := []quoteClusterParagraph{{Content: attribution, Size: size, Color: ink, Align: "l"}}
+	bottom := quoteClusterDenseMarginPt
+	if sc.mark > 0 {
+		paras = append([]quoteClusterParagraph{{Content: quoteClusterOpenRule, Size: size, Color: ink, Align: "l"}}, paras...)
+		bottom = quoteClusterOpenAttrBottomPt
 	}
 	data, _ := json.Marshal(quoteClusterTextObj{Paragraphs: paras, Align: "l", VerticalAlign: "t"})
-	return &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: fill, Line: noLine, Text: data}}
-}
-
-// quoteClusterOpenRow sizes an open row to the written fit of its tallest
-// quote: no card padding, since there is no card.
-func quoteClusterOpenRow(ctx ExpandContext, cells []*jsonschema.GridCellInput) jsonschema.GridRowInput {
-	colW := quoteClusterColWidthPt(ctx, quoteClusterColumns)
-	need := 0.0
-	for _, c := range cells {
-		if c != nil && c.Shape != nil && len(c.Shape.Text) > 0 {
-			need = math.Max(need, rowTextNeedPt(ctx.themeFonts(), c.Shape.Text, colW))
-		}
-	}
-	return jsonschema.GridRowInput{Cells: cells, MaxHeight: math.Ceil(need)}
+	return withTextInsetSides(withTextInsetSides(data, 0.01, "inset_top"), bottom, "inset_bottom")
 }
 
 // Bubble style: a speech bubble holds the quote and its tail points at the
@@ -583,6 +697,11 @@ type quoteClusterParagraph struct {
 	// Alpha is the text opacity in percent (0 = opaque).
 	Alpha      float64 `json:"alpha,omitempty"`
 	SpaceAfter float64 `json:"space_after,omitempty"`
+	// Font is a typeface or theme-font reference ("+mj-lt"); empty is the
+	// template's body font.
+	Font string `json:"font,omitempty"`
+	// Figure marks display type that keeps its size off the word steps.
+	Figure bool `json:"figure,omitempty"`
 }
 
 type quoteClusterTextObj struct {

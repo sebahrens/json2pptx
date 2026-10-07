@@ -482,6 +482,20 @@ func rhRingItems(n int, satDia float64) (ringSpec, []ringItem, error) {
 	return spec, items, err
 }
 
+// rhSideWordPt is the widest word of the labels set in the two label columns
+// (ringLabelWordPt). A column is never narrower than it: the ring gives the
+// columns that width, down to its own smallest side, before a word breaks
+// across two lines (go-slide-creator-y21pc).
+func rhSideWordPt(ctx ExpandContext, v *RadialHubValues, items []ringItem, labelPt float64) float64 {
+	wordPt := 0.0
+	for i, it := range items {
+		if it.Side == ringSideLeft || it.Side == ringSideRight {
+			wordPt = math.Max(wordPt, ringLabelWordPt(ctx, v.Spokes[i].Label, labelPt))
+		}
+	}
+	return wordPt
+}
+
 // rhPlaceOutside lays the ring square between two label columns. It reports
 // false when the area is too narrow for them (or the count is not a ring's).
 func rhPlaceOutside(ctx ExpandContext, v *RadialHubValues, lay *rhLayout) bool {
@@ -493,6 +507,9 @@ func rhPlaceOutside(ctx ExpandContext, v *RadialHubValues, lay *rhLayout) bool {
 	maxSide := w - 2*(rhMinLabelPt+colGap)
 	if math.Min(maxSide, h) < ringMinSidePt {
 		return false
+	}
+	if wordPt := rhSideWordPt(ctx, v, items, lay.labelSize); wordPt > rhMinLabelPt {
+		maxSide = math.Max(w-2*(math.Ceil(wordPt)+colGap), ringMinSidePt)
 	}
 	// An item at a pole is labelled above / below the ring, in a cell as wide
 	// as the square: the square gives up the height that label needs, and the

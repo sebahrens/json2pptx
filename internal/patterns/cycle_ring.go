@@ -346,6 +346,7 @@ type cycleRingLayout struct {
 	descPt       float64
 	labelW       float64 // room for a label cell (without its numeral) between the content edge and the figure's bounding box
 	showDesc     bool    // false: the legend had no room for descriptions
+	rowsFit      bool    // outside layout: every row has the height its text needs (a word of a label may still break)
 	rows         []cycleRingRow
 	centrePt     float64
 	centreFits   bool
@@ -412,6 +413,7 @@ func cycleRingMeasure(ctx ExpandContext, v *CycleRingValues, ovr *CycleRingOverr
 	// beside it even at the 12pt floor, it gives up to cycleRingMaxShrink of
 	// its side to the label columns before any row is cut short.
 	var first cycleRingLayout
+	var held *cycleRingLayout
 	for step := 0; step <= cycleRingShrinkSteps; step++ {
 		side := full * (1 - cycleRingMaxShrink*float64(step)/cycleRingShrinkSteps)
 		if step > 0 && side < cycleRingOutsideSidePt {
@@ -429,6 +431,13 @@ func cycleRingMeasure(ctx ExpandContext, v *CycleRingValues, ovr *CycleRingOverr
 		if step == 0 {
 			first = lay
 		}
+		if lay.rowsFit && held == nil {
+			held = &lay
+		}
+	}
+	// A word no column can hold: the largest ring whose rows fit.
+	if held != nil {
+		return *held, nil
 	}
 	// Nothing fits: keep the full ring; PostExpandWarnings names the phases
 	// whose rows were cut.
@@ -529,8 +538,41 @@ func (l *cycleRingLayout) outsideRow(r ringRow, gapPt float64) cycleRingRow {
 // rows as near their badges as the spacing allows. When a side cannot hold
 // its rows at any label size they are cut to equal shares of the height (the
 // writer then shrinks the text, and PostExpandWarnings names the phases).
-// It reports whether every row got the height its text needs.
+// It reports whether every row got the height its text needs with every word
+// of its label whole: a label size at which a word would break across two
+// lines is passed over like one whose rows do not fit, and when no size holds
+// both the caller lets the ring give way to the label columns.
 func cycleRingOutsideRows(ctx ExpandContext, v *CycleRingValues, lay *cycleRingLayout, sizes []float64) bool {
+	for i := range sizes {
+		if cycleRingOutsideRowsAt(ctx, v, lay, sizes[i:i+1]) && lay.wordsWhole(ctx, v) {
+			return true
+		}
+	}
+	// No size holds: lay the rows out at the first size they fit at, as a
+	// ring too small to give way any further still draws them.
+	lay.rowsFit = cycleRingOutsideRowsAt(ctx, v, lay, sizes)
+	return false
+}
+
+// wordsWhole reports whether every placed label cell is wide enough for the
+// widest word of its label at the layout's label size (ringLabelWordPt).
+func (l *cycleRingLayout) wordsWhole(ctx ExpandContext, v *CycleRingValues) bool {
+	for i, row := range l.rows {
+		if i >= len(v.Phases) {
+			break
+		}
+		need := ringLabelWordPt(ctx, strings.TrimSpace(v.Phases[i].Label), l.labelPt) + ringLabelNearPt + ringLabelFarPt
+		if row.labelX1-row.labelX0 < need-0.5 {
+			return false
+		}
+	}
+	return true
+}
+
+// cycleRingOutsideRowsAt is cycleRingOutsideRows without the word rule: the
+// rows at the first of sizes they fit at, cut to equal shares at the last
+// when they fit at none. It reports whether every row got its height.
+func cycleRingOutsideRowsAt(ctx ExpandContext, v *CycleRingValues, lay *cycleRingLayout, sizes []float64) bool {
 	rowsSpec := ringRowsSpec{
 		CentreY:  lay.y0 + lay.side/2,
 		RadiusPt: lay.spec.Radius * lay.side,

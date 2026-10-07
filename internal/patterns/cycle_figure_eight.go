@@ -466,6 +466,7 @@ func cfeMeasure(ctx ExpandContext, v *CycleFigureEightValues, ovr *CycleFigureEi
 	// the lobes give up to cycleRingMaxShrink of their side to the columns.
 	crv := &CycleRingValues{Phases: v.Phases}
 	var first cfeLayout
+	var held *cfeLayout
 	for step := 0; step <= cycleRingShrinkSteps; step++ {
 		side := full * (1 - cycleRingMaxShrink*float64(step)/cycleRingShrinkSteps)
 		if step > 0 && side < cfeMinSidePt {
@@ -481,6 +482,13 @@ func cfeMeasure(ctx ExpandContext, v *CycleFigureEightValues, ovr *CycleFigureEi
 		if step == 0 {
 			first = lay
 		}
+		if lay.rowsFit && held == nil {
+			held = &lay
+		}
+	}
+	// A word no column can hold: the largest lobes whose rows fit.
+	if held != nil {
+		return *held, nil
 	}
 	return first, nil
 }

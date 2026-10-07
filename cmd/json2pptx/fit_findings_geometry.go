@@ -599,6 +599,10 @@ var openColumnPatterns = map[string]bool{
 	// Numbered rows between hairline rules: the row is the unit, as in the
 	// tile list it replaced (go-slide-creator-r3gsw).
 	"agenda": true,
+	// The same rows beside dashed image slots: a slot is a wireframe (a tint
+	// under the filled threshold), so the row is the unit here too
+	// (go-slide-creator-ja6oy).
+	"agenda-with-images": true,
 	// overrides.style "tiles": lanes are bands between full-width hairline
 	// rules; the actor label stands in its band where a filled lane tile
 	// used to be (the default look paints the band itself, a row band)

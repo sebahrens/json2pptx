@@ -611,7 +611,7 @@ func buildDriverTreeNodeText(label, unit string, size float64, color string) jso
 	if strings.TrimSpace(unit) != "" {
 		paras = append(paras, driverTreeParagraph{
 			Content: pptx.ConvertMarkdownEmphasis(unit),
-			Size:    size - 2,
+			Size:    driverTreeUnitSize(size),
 			Color:   color,
 			Align:   "ctr",
 		})
@@ -623,6 +623,16 @@ func buildDriverTreeNodeText(label, unit string, size float64, color string) jso
 	}
 	data, _ := json.Marshal(textObj)
 	return data
+}
+
+// driverTreeUnitSize is the size of the unit under a node label of size: one
+// type step down, and never under the 12pt body floor — "($m USD)" two points
+// under a 12pt branch label was written at 10pt and read as fine print.
+func driverTreeUnitSize(size float64) float64 {
+	if size >= scaleLeadPt {
+		return scaleSubheadPt
+	}
+	return scaleBodyPt
 }
 
 func buildDriverTreeLeafText(content string, size float64) json.RawMessage {

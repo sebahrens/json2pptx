@@ -117,12 +117,13 @@ func TestAgendaWithImages_Expand_FiveItems_ProducesRows(t *testing.T) {
 	if len(grid.Rows[0].Cells) != 3 {
 		t.Errorf("content row should have 3 cells when image_label present, got %d", len(grid.Rows[0].Cells))
 	}
-	// Second row should be a divider (1 cell with col_span 3)
-	if len(grid.Rows[1].Cells) != 1 {
-		t.Errorf("divider row should have 1 cell, got %d", len(grid.Rows[1].Cells))
+	// Second row is the rule: it spans the number and title columns and stops
+	// at the image column, whose cell stays empty (go-slide-creator-ja6oy).
+	if len(grid.Rows[1].Cells) != 2 {
+		t.Fatalf("rule row should have the rule and an empty image-column cell, got %d cells", len(grid.Rows[1].Cells))
 	}
-	if grid.Rows[1].Cells[0].ColSpan != 3 {
-		t.Errorf("divider cell should span 3 columns, got col_span=%d", grid.Rows[1].Cells[0].ColSpan)
+	if grid.Rows[1].Cells[0].ColSpan != 2 || grid.Rows[1].Cells[1].Shape != nil {
+		t.Errorf("rule should span 2 columns beside an empty cell, got col_span=%d and %+v", grid.Rows[1].Cells[0].ColSpan, grid.Rows[1].Cells[1])
 	}
 }
 
@@ -136,13 +137,10 @@ func TestAgendaWithImagesRowsFillContentHeight(t *testing.T) {
 		_, areaH := sizingAreaPt(ExpandContext{})
 		occupied := float64(2*count-2) * grid.RowGap
 		for _, row := range grid.Rows {
-			if row.AutoHeight {
-				occupied += row.MinHeight
-			} else {
-				occupied += areaH * row.Height / 100
-			}
+			// Item rows are floored at MinHeight; a rule row is its hairline.
+			occupied += row.MinHeight
 		}
-		if occupied < areaH*0.70 {
+		if occupied < areaH*0.70-0.01 {
 			t.Errorf("%d rows occupy %.1f%% of content height, want at least 70%%", count, occupied/areaH*100)
 		}
 	}
@@ -173,8 +171,10 @@ func TestAgendaWithImages_Expand_MixedImageLabelsKeepEveryPlaceholder(t *testing
 		if row.Cells[1].ColSpan != 0 {
 			t.Errorf("row %d: title cell must not span the image column, got col_span=%d", rowIdx, row.Cells[1].ColSpan)
 		}
-		if row.Cells[2].Shape == nil || string(row.Cells[2].Shape.Fill) != `"lt2"` {
-			t.Errorf("row %d: placeholder fill = %s, want lt2 on every row", rowIdx, row.Cells[2].Shape.Fill)
+		// A slot is a dashed outline over a faint tint, never a solid slab.
+		if slot := row.Cells[2].Shape; slot == nil || !strings.Contains(string(slot.Line), `"dash":"dash"`) ||
+			!strings.Contains(string(slot.Fill), `"lt2"`) || !strings.Contains(string(slot.Fill), `"alpha":15`) {
+			t.Errorf("row %d: placeholder = %+v, want a dashed outline over a 15%% lt2 tint on every row", rowIdx, slot)
 		}
 	}
 	// Only the labelled row carries a caption; the others are empty boxes.
@@ -293,19 +293,69 @@ func TestAgendaWithImages_Expand_DividerRowsHaveFill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
-	// Dividers at rows 1, 3, 5
+	// Rules at rows 1, 3, 5: one weight, the plain agenda's hairline in a
+	// neutral ink (go-slide-creator-ja6oy; they were 1%-of-the-area lt2 bands).
 	for _, dividerIdx := range []int{1, 3, 5} {
 		row := grid.Rows[dividerIdx]
-		if len(row.Cells) != 1 || row.Cells[0].Shape == nil {
-			t.Fatalf("divider row %d malformed: %+v", dividerIdx, row)
+		if len(row.Cells) == 0 || row.Cells[0].Shape == nil {
+			t.Fatalf("rule row %d malformed: %+v", dividerIdx, row)
 		}
-		var fill string
+		if row.MinHeight != agendaRulePt || row.MaxHeight != agendaRulePt || row.Height != 0 {
+			t.Errorf("rule row %d is %v..%vpt (height %v%%), want a %vpt hairline", dividerIdx, row.MinHeight, row.MaxHeight, row.Height, agendaRulePt)
+		}
+		var fill struct {
+			Color string  `json:"color"`
+			Alpha float64 `json:"alpha"`
+		}
 		if err := json.Unmarshal(row.Cells[0].Shape.Fill, &fill); err != nil {
-			t.Fatalf("unmarshal divider fill: %v", err)
+			t.Fatalf("unmarshal rule fill: %v", err)
 		}
-		if fill != "lt2" {
-			t.Errorf("divider fill = %q, want %q", fill, "lt2")
+		if fill.Color != "dk1" || fill.Alpha != agendaWithImagesRuleAlpha {
+			t.Errorf("rule fill = %+v, want dk1 at %v%%", fill, agendaWithImagesRuleAlpha)
 		}
+	}
+}
+
+// Without an image column the rule runs the full width.
+func TestAgendaWithImages_RuleSpansTheGridWithoutImages(t *testing.T) {
+	p, _ := Default().Get("agenda-with-images")
+	v := &AgendaWithImagesValues{Items: []AgendaWithImagesItem{{Title: "First"}, {Title: "Second"}, {Title: "Third"}}}
+	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if row := grid.Rows[1]; len(row.Cells) != 1 || row.Cells[0].ColSpan != 3 {
+		t.Errorf("rule row = %+v, want one cell spanning 3 columns", row)
+	}
+}
+
+// The numeral is the plain agenda's: 28pt in the heading face, left-aligned,
+// over titles a step above the subhead when the rows hold them.
+func TestAgendaWithImages_TypeScale(t *testing.T) {
+	p, _ := Default().Get("agenda-with-images")
+	grid, err := p.Expand(testThemeCtx(), validAgendaWithImagesValues(4), nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	var text struct {
+		Paragraphs []struct {
+			Size  float64 `json:"size"`
+			Font  string  `json:"font"`
+			Align string  `json:"align"`
+			Bold  bool    `json:"bold"`
+		} `json:"paragraphs"`
+	}
+	if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Text, &text); err != nil {
+		t.Fatal(err)
+	}
+	if n := text.Paragraphs[0]; n.Size != agendaNumberSize || n.Font != agendaNumberFont || n.Align != "l" {
+		t.Errorf("numeral = %+v, want %vpt in %s, left-aligned", n, agendaNumberSize, agendaNumberFont)
+	}
+	if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Text, &text); err != nil {
+		t.Fatal(err)
+	}
+	if title := text.Paragraphs[0]; title.Size != scaleLeadPt || !title.Bold {
+		t.Errorf("title = %+v, want bold %vpt", title, scaleLeadPt)
 	}
 }
 
@@ -381,7 +431,7 @@ func TestAgendaBadgeIsNarrowedTowardSquare(t *testing.T) {
 				t.Fatalf("badge still fills its cell at %d items", n)
 			}
 			// The badge's rendered aspect should be close to square.
-			dividers := float64(n-1) * h * agendaDividerHeightPct / 100
+			dividers := float64(n-1) * agendaRulePt
 			gaps := float64(2*n-2) * agendaRowGapPt
 			rowHeight := (h - dividers - gaps) / float64(n)
 			badgeWidth := colWidth * pct / 100
