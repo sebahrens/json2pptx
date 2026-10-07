@@ -506,6 +506,10 @@ func dryRenderRequest(
 	sized.Width, sized.Height, _ = generator.ResolveDiagramRenderDimensions(spec, bounds)
 	req := generator.DiagramRenderRequest(&sized, themeColors, strictFit)
 	req.Output.Width, req.Output.Height = sized.Width, sized.Height
+	// Generate asks for the PNG fallback too; a dry render only reads findings,
+	// which are measured on the drawing and not on its encoding, so it must not
+	// pay for rasterising and compressing a picture nobody keeps.
+	req.Output.Format = "svg"
 	mode := tokens.ViewingModePresentation
 	if len(viewingModes) > 0 {
 		mode = viewingModes[0]

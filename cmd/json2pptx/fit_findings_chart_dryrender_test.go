@@ -618,6 +618,12 @@ func TestPlaceholderChartDryRenderRequestMatchesGenerate(t *testing.T) {
 	if req.Title != "" {
 		t.Errorf("title the slide carries is still measured: %q", req.Title)
 	}
+	// Generate's request asks for the PNG fallback; a dry render that kept
+	// that format rasterised and compressed a picture per chart per validate
+	// call, which tripled the cost of every chart-bearing validation.
+	if req.Output.Format != "svg" {
+		t.Errorf("dry render output format = %q, want svg: findings do not need a raster", req.Output.Format)
+	}
 	if req.Style.ViewingMode != string(tokens.ViewingModePresentation) {
 		t.Errorf("placeholder chart viewing mode = %q, want %q", req.Style.ViewingMode, tokens.ViewingModePresentation)
 	}

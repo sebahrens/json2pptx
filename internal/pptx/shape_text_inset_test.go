@@ -148,3 +148,25 @@ func TestPresetTextRectSize(t *testing.T) {
 func insetSides(insets [4]int64) (left, top, right, bottom int64) {
 	return insets[0], insets[1], insets[2], insets[3]
 }
+
+// LibreOffice 24.2 shrinks rotated text that fits when the insets at the ends
+// of its line are large (CI's render-truth check on the matrix-2x2 y-axis
+// bar), so rotated text keeps at most 3pt there. The margins across the bar
+// and the insets of upright text are untouched.
+func TestRotatedTextKeepsSmallLineEndInsets(t *testing.T) {
+	bar := RectEmu{CX: 317476, CY: 2823527} // the 25pt x 222pt axis bar
+	rotated := insetBody("Market Growth", 1400, [4]int64{38100, 180000, 38100, 180000})
+	rotated.Vert = "vert270"
+	if got, want := EffectiveTextInsets(rotated, bar), ([4]int64{38100, 38100, 38100, 38100}); got != want {
+		t.Errorf("rotated text insets = %v, want %v", got, want)
+	}
+	small := insetBody("Market Growth", 1400, [4]int64{38100, 12700, 38100, 0})
+	small.Vert = "vert270"
+	if got, want := EffectiveTextInsets(small, bar), ([4]int64{38100, 12700, 38100, 0}); got != want {
+		t.Errorf("line-end insets under the cap = %v, want %v unchanged", got, want)
+	}
+	upright := insetBody("Market Share", 1400, ShapeTextInsets())
+	if got := EffectiveTextInsets(upright, RectEmu{CX: 6224362, CY: 914400}); got != ShapeTextInsets() {
+		t.Errorf("upright text insets = %v, want the shape margin %v", got, ShapeTextInsets())
+	}
+}

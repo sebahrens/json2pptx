@@ -101,6 +101,17 @@ func writtenTextInsets(tb *TextBody, bounds RectEmu) [4]int64 {
 	return clampedTextInsets(tb, bounds, writtenOneLineFactor)
 }
 
+// vertLineEndInsetCapEMU is the most margin rotated text (vert / vert270)
+// keeps at the two ends of its line, 3pt. LibreOffice 24.2, the release
+// Ubuntu 24.04 ships, re-fits rotated text wrongly when those insets are
+// large: with the shape margin's 14.17pt at each end it wrote "Market Growth"
+// at 93% in a 222pt bar that holds the line twice over, and a three-word rail
+// label at 75%, while a one-word label and the same labels at 3pt were left
+// alone (go-slide-creator render-truth check, LibreOffice 26 and PowerPoint
+// do not do this). Rotated labels are centred along a bar, so the margin
+// they give up is not seen.
+const vertLineEndInsetCapEMU = 38100
+
 func clampedTextInsets(tb *TextBody, bounds RectEmu, lineFactor float64) [4]int64 {
 	if tb == nil {
 		return [4]int64{}
@@ -124,6 +135,7 @@ func clampedTextInsets(tb *TextBody, bounds RectEmu, lineFactor float64) [4]int6
 		return int64(math.Ceil(float64(widestWordEMU(tb)) * wordFitSlackFor(tb)))
 	}
 	if tb.Vert != "" && tb.Vert != "horz" {
+		in[1], in[3] = min(in[1], vertLineEndInsetCapEMU), min(in[3], vertLineEndInsetCapEMU)
 		in[1], in[3] = clampInsetPair(in[1], in[3], bounds.CY, wordW(bounds.CY-in[1]-in[3]))
 		in[0], in[2] = clampInsetPair(in[0], in[2], bounds.CX, lineH)
 	} else {
