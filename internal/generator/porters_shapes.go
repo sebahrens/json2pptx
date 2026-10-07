@@ -109,8 +109,8 @@ const (
 	// porterTipMaxDepthEMU caps the depth of a force's point (0.5"), and
 	// porterTipMaxAspect its depth against the side it sits on: a point is
 	// a blunt arrowhead, not a spike.
-	porterTipMaxDepthEMU int64 = 457200
-	porterTipMaxAspect         = 0.35
+	porterTipMaxDepthEMU int64   = 457200
+	porterTipMaxAspect   float64 = 0.35
 
 	// porterTipOverlapEMU is how far a point's shape reaches under its force
 	// box, so no renderer shows a seam between the two same-coloured shapes.

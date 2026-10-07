@@ -270,7 +270,9 @@ func swotHeaderHeight(panels []nativePanelData, quadW, quadH int64) int64 {
 		probe.AutoFit = "normAutofit"
 		headerCY = max(headerCY, nativeTextNeedEMU(probe, quadW, quadH))
 	}
-	return min(headerCY, quadH)
+	// Never more than half the quadrant: a body squeezed to nothing stores no
+	// shrink for the readability check to see (go-slide-creator-w107j).
+	return min(headerCY, quadH/2)
 }
 
 // swotGridHeight is the 2x2 grid height at which no quadrant body shrinks,

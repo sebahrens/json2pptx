@@ -64,9 +64,6 @@ const (
 	// 50%, which reads as a line on every template's page.
 	pfConnectorInkPct = 50
 
-	// pfAccent is the scheme colour of decision outlines and connectors.
-	pfAccent = "accent1"
-
 	// pfMinDescStepWidth is the narrowest step that carries a description
 	// (EMU, 1.75"): about eighteen characters of 14pt text per line. Narrower
 	// and a one-sentence description becomes a five-line column.
@@ -887,13 +884,10 @@ func pfLayoutMultiRow(layouts []pfStepLayout, steps []processFlowStep, bounds ty
 // Group XML Generation
 // =============================================================================
 
-// generateProcessFlowGroupXML produces the complete <p:grpSp> XML for a process flow diagram.
-func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, meta processFlowMeta) string {
-	if len(panels) == 0 {
-		return ""
-	}
-
-	// Decode steps and connections back from panel encoding.
+// pfDecodePanels decodes steps and connections back from the panel encoding:
+// a step rides as "stepType:id" in value, a connection as
+// "conn:fromID:toID:style".
+func pfDecodePanels(panels []nativePanelData) ([]processFlowStep, []processFlowConnection) {
 	var steps []processFlowStep
 	var connections []processFlowConnection
 
@@ -923,6 +917,16 @@ func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.Bounding
 		}
 	}
 
+	return steps, connections
+}
+
+// generateProcessFlowGroupXML produces the complete <p:grpSp> XML for a process flow diagram.
+func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, meta processFlowMeta) string {
+	if len(panels) == 0 {
+		return ""
+	}
+
+	steps, connections := pfDecodePanels(panels)
 	if len(steps) == 0 {
 		return ""
 	}

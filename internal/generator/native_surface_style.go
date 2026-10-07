@@ -214,12 +214,6 @@ func (t nativeTone) fill() pptx.Fill {
 // inkFill is the tone's body ink as a text fill.
 func (t nativeTone) inkFill() pptx.Fill { return pptx.SchemeFill(t.ink) }
 
-// panel is the tone of a backdrop that groups content: the lightest neutral.
-func (s nativeSurface) panel() nativeTone {
-	f := patterns.TonalPanelFill()
-	return nativeTone{tone: f, ink: patterns.TonalInkOn(s.colors, f)}
-}
-
 // neutral is the neutral surface at pct% ink coverage.
 func (s nativeSurface) neutral(pct int) nativeTone {
 	f := patterns.TonalNeutralFill(pct)
@@ -240,29 +234,9 @@ func (s nativeSurface) emphasis() nativeTone {
 	return nativeTone{tone: f, ink: ink}
 }
 
-// badge is the tone of a numbered anchor: the neutral dark.
-func (s nativeSurface) badge() nativeTone {
-	f, ink := patterns.TonalBadgeFill(s.colors)
-	return nativeTone{tone: f, ink: ink}
-}
-
 // accentInk names the colour of large display text (a numeral, a heading of
 // 14pt bold or more) on tone: the accent where it reads there, else the
 // tone's own ink.
 func (s nativeSurface) accentInk(t nativeTone) string {
 	return patterns.TonalAccentInkOn(s.colors, t.tone, s.accent(), patterns.TonalLargeTextContrast)
-}
-
-// authoredTone is the i-th style.colors entry as a tone, and whether the
-// diagram authored colours at all.
-func (s nativeSurface) authoredTone(i int) (nativeTone, bool) {
-	if len(s.authored) == 0 {
-		return nativeTone{}, false
-	}
-	a := s.authored[i%len(s.authored)]
-	f := patterns.TonalFill{Color: a.scheme}
-	if pptx.IsSchemeColor(a.scheme) && a.lumOff != 0 {
-		f.LumMod, f.LumOff = a.lumMod, a.lumOff
-	}
-	return nativeTone{tone: f, ink: patterns.TonalInkOn(s.colors, f)}, true
 }
