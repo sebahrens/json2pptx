@@ -573,10 +573,10 @@ func TestWaterfallDiagram_RenderWithCustomColors(t *testing.T) {
 }
 
 func TestWaterfallDiagram_UsesSemanticThemeAccents(t *testing.T) {
-	// go-slide-creator-sdxii: a bridge tells its story through the decreases,
-	// so they take the chart's first accent, totals stay a neutral dk1 tint
-	// (60%) and increases a legible 55% accent1 tint (go-slide-creator-rmm0x),
-	// whatever semantic accents the template declares.
+	// go-slide-creator-n978t: a bridge tells its story through the deltas:
+	// increases take the chart's first accent and decreases its 50% tint,
+	// totals stay the neutral bar grey (dk1 at 38%), whatever semantic
+	// accents the template declares.
 	req := &RequestEnvelope{
 		Type: "waterfall",
 		Data: map[string]any{"points": []any{
@@ -601,7 +601,7 @@ func TestWaterfallDiagram_UsesSemanticThemeAccents(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := strings.ToLower(svg.String())
-	for _, color := range []string{"#b54c27", "#666", "#cb8268"} {
+	for _, color := range []string{"#b54c27", "#9e9e9e", "#d08c75"} {
 		if !strings.Contains(out, `fill="`+color+`"`) {
 			t.Errorf("waterfall fill %s was not rendered; fills %v", color, regexp.MustCompile(`fill="#[0-9a-f]+"`).FindAllString(out, -1))
 		}

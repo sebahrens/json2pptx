@@ -21,9 +21,10 @@ func TestComputeCartesianLayout_Basic(t *testing.T) {
 
 	layout := ComputeCartesianLayout(config, style, "Title", "Subtitle", "Footnote", 3)
 
-	// headerHeight = SizeTitle(18) + Spacing.MD(8) + SizeSubtitle(14) + Spacing.XS(4) = 44
-	if math.Abs(layout.HeaderHeight-44) > 0.001 {
-		t.Errorf("HeaderHeight = %v, want 44", layout.HeaderHeight)
+	// The exhibit heading: SizeTitle(18) + Spacing.XS(4) + SizeSubtitle(14),
+	// Spacing.MD(8) down to the rule and Spacing.LG(12) under it = 56.
+	if math.Abs(layout.HeaderHeight-56) > 0.001 {
+		t.Errorf("HeaderHeight = %v, want 56", layout.HeaderHeight)
 	}
 
 	// footerHeight = FootnoteReservedHeight = SizeCaption(10) + Padding(3)*2 = 16
@@ -38,18 +39,18 @@ func TestComputeCartesianLayout_Basic(t *testing.T) {
 
 	// PlotArea should be adjusted from the base PlotArea.
 	// Base: X=60, Y=40, W=720, H=500
-	// Adjusted: Y += 44 => 84, H -= (44+16+22) => 418  (legend bottom)
+	// Adjusted: Y += 56 => 96, H -= (56+16+22) => 406  (legend bottom)
 	if math.Abs(layout.PlotArea.X-60) > 0.001 {
 		t.Errorf("PlotArea.X = %v, want 60", layout.PlotArea.X)
 	}
-	if math.Abs(layout.PlotArea.Y-84) > 0.001 {
-		t.Errorf("PlotArea.Y = %v, want 84", layout.PlotArea.Y)
+	if math.Abs(layout.PlotArea.Y-96) > 0.001 {
+		t.Errorf("PlotArea.Y = %v, want 96", layout.PlotArea.Y)
 	}
 	if math.Abs(layout.PlotArea.W-720) > 0.001 {
 		t.Errorf("PlotArea.W = %v, want 720", layout.PlotArea.W)
 	}
-	if math.Abs(layout.PlotArea.H-418) > 0.001 {
-		t.Errorf("PlotArea.H = %v, want 418", layout.PlotArea.H)
+	if math.Abs(layout.PlotArea.H-406) > 0.001 {
+		t.Errorf("PlotArea.H = %v, want 406", layout.PlotArea.H)
 	}
 }
 
@@ -57,10 +58,17 @@ func TestComputeCartesianLayout_NoTitle(t *testing.T) {
 	config, style := defaultTestLayoutInputs()
 	config.ShowTitle = false
 
-	layout := ComputeCartesianLayout(config, style, "Title", "Subtitle", "Footnote", 3)
+	layout := ComputeCartesianLayout(config, style, "Title", "", "Footnote", 3)
 
 	if layout.HeaderHeight != 0 {
 		t.Errorf("HeaderHeight = %v, want 0 when ShowTitle=false", layout.HeaderHeight)
+	}
+
+	// The unit line still heads the chart when the title is not shown (the
+	// slide title carries it): SizeSubtitle(14) + Spacing.MD(8) + Spacing.LG(12).
+	layout = ComputeCartesianLayout(config, style, "Title", "Subtitle", "Footnote", 3)
+	if math.Abs(layout.HeaderHeight-34) > 0.001 {
+		t.Errorf("HeaderHeight = %v, want 34 for a subtitle alone", layout.HeaderHeight)
 	}
 }
 
@@ -69,9 +77,9 @@ func TestComputeCartesianLayout_NoSubtitle(t *testing.T) {
 
 	layout := ComputeCartesianLayout(config, style, "Title", "", "Footnote", 3)
 
-	// headerHeight = SizeTitle(18) + Spacing.MD(8) = 26
-	if math.Abs(layout.HeaderHeight-26) > 0.001 {
-		t.Errorf("HeaderHeight = %v, want 26 (title only, no subtitle)", layout.HeaderHeight)
+	// headerHeight = SizeTitle(18) + Spacing.MD(8) + Spacing.LG(12) = 38
+	if math.Abs(layout.HeaderHeight-38) > 0.001 {
+		t.Errorf("HeaderHeight = %v, want 38 (title only, no subtitle)", layout.HeaderHeight)
 	}
 }
 

@@ -48,7 +48,20 @@ type GaugeChartConfig struct {
 
 	// CenterLabel is the label shown at the center (e.g., current value).
 	ShowCenterLabel bool
+
+	// Style picks the drawing: "" / "bullet" (default) sets a large value over
+	// a horizontal bar — a neutral track from min to max, the value in the
+	// accent, threshold bands as a neutral ladder with their bounds labelled.
+	// "dial" is the earlier speedometer arc with needle and tick marks, which
+	// is dashboard chrome on a consulting slide (go-slide-creator-cn8mn).
+	Style string
 }
+
+// Gauge styles.
+const (
+	GaugeStyleBullet = "bullet"
+	GaugeStyleDial   = "dial"
+)
 
 // GaugeThreshold defines a colored zone on the gauge.
 type GaugeThreshold struct {
@@ -157,6 +170,13 @@ func (gc *GaugeChart) Draw(data GaugeData) error {
 	b := gc.builder
 	style := b.StyleGuide()
 
+	// Thresholds without a colour of their own: the dial paints them in the
+	// semantic roles, the bullet bar in a neutral ladder.
+	unsetThresholds := make([]bool, len(gc.config.Thresholds))
+	for i, t := range gc.config.Thresholds {
+		unsetThresholds[i] = t.Color == (Color{})
+	}
+
 	// Apply theme colors if needle still has default hardcoded color.
 	gc.applyThemeColors()
 
@@ -164,14 +184,14 @@ func (gc *GaugeChart) Draw(data GaugeData) error {
 	// the same format (go-slide-creator-e2ck9).
 	gc.config.ResolveValueFormatter([]float64{data.Value, gc.config.MinValue, gc.config.MaxValue}, false)
 
-	// The needle and value arc are clamped to the dial; say so, because the
-	// printed value and the needle then disagree (value 500 on a 0-100 dial
+	// The value bar (the dial's needle and arc) is clamped to the range; say
+	// so, because the printed value and the mark then disagree (value 500 on a 0-100 dial
 	// pinned the needle at 100 with nothing reported — go-slide-creator-7w2ed).
 	if data.Value < gc.config.MinValue || data.Value > gc.config.MaxValue {
 		b.AddFinding(Finding{
 			Field:    "value",
 			Code:     FindingPointOutOfRange,
-			Message:  fmt.Sprintf("gauge: value %g is outside the dial range %g–%g; the needle is pinned at the nearest end while the label shows %g", data.Value, gc.config.MinValue, gc.config.MaxValue, data.Value),
+			Message:  fmt.Sprintf("gauge: value %g is outside the range %g–%g; the value bar is pinned at the nearest end while the label shows %g", data.Value, gc.config.MinValue, gc.config.MaxValue, data.Value),
 			Severity: "warning",
 			Fix: &FixSuggestion{
 				Kind:   FixKindExplicitScale,
@@ -184,12 +204,16 @@ func (gc *GaugeChart) Draw(data GaugeData) error {
 	plotArea := gc.config.PlotArea()
 
 	// Adjust for title
-	headerHeight := 0.0
-	if gc.config.ShowTitle && data.Title != "" {
-		headerHeight = style.Typography.SizeTitle + style.Spacing.MD
-		if data.Subtitle != "" {
-			headerHeight += style.Typography.SizeSubtitle + style.Spacing.XS
+	headerHeight := chartHeaderHeight(style, gc.config.ShowTitle, data.Title, data.Subtitle)
+	if gc.config.Style != GaugeStyleDial {
+		plotArea.Y += headerHeight
+		plotArea.H -= headerHeight
+		if data.Footnote != "" {
+			plotArea.H -= math.Max(0, FootnoteReservedHeight(style)-gc.config.MarginBottom)
 		}
+		gc.drawBullet(data, plotArea, unsetThresholds)
+		gc.drawHeaderAndFootnote(data)
+		return nil
 	}
 
 	plotArea.Y += headerHeight
@@ -290,16 +314,15 @@ func (gc *GaugeChart) Draw(data GaugeData) error {
 		gc.drawCenterLabel(centerX, centerY, innerRadius, data)
 	}
 
-	// Draw title
-	if gc.config.ShowTitle && data.Title != "" {
-		titleConfig := DefaultTitleConfig()
-		titleConfig.Text = data.Title
-		titleConfig.Subtitle = data.Subtitle
-		title := NewTitle(b, titleConfig)
-		title.Draw(Rect{X: 0, Y: 0, W: gc.config.Width, H: headerHeight + gc.config.MarginTop})
-	}
+	gc.drawHeaderAndFootnote(data)
+	return nil
+}
 
-	// Draw footnote
+// drawHeaderAndFootnote draws the exhibit heading and the footnote.
+func (gc *GaugeChart) drawHeaderAndFootnote(data GaugeData) {
+	b := gc.builder
+	style := b.StyleGuide()
+	drawChartHeader(b, gc.config.Width, gc.config.ShowTitle, data.Title, data.Subtitle)
 	if data.Footnote != "" {
 		fh := FootnoteReservedHeight(style)
 		footnoteConfig := DefaultFootnoteConfig()
@@ -312,8 +335,208 @@ func (gc *GaugeChart) Draw(data GaugeData) error {
 			H: fh,
 		})
 	}
+}
 
-	return nil
+// Geometry of the default "bullet" gauge.
+const (
+	// gaugeBulletMaxAspect caps the bar's length at this multiple of the plot
+	// height, so a wide body does not stretch it edge to edge.
+	gaugeBulletMaxAspect = 3.2
+	// gaugeBulletValueLines is the big value's size in lines of the chart
+	// title, and gaugeBulletValueMaxFrac its cap as a share of the plot height.
+	gaugeBulletValueLines   = 3.6
+	gaugeBulletValueMaxFrac = 0.4
+	// gaugeBulletValueRise is the height the value's digits take above their
+	// baseline, in ems.
+	gaugeBulletValueRise = 0.78
+	// gaugeBulletTrackLines is the track height in lines of body text.
+	gaugeBulletTrackLines = 3.0
+	// gaugeBulletBarFrac is the value bar's share of the track height when
+	// threshold bands sit behind it.
+	gaugeBulletBarFrac = 0.42
+)
+
+// gaugeBand is one stretch of the bullet track.
+type gaugeBand struct {
+	from, to float64
+	fill     Color
+	label    string
+}
+
+// bulletBands splits the range into the track's bands. Thresholds without a
+// colour take a neutral ladder, darkest at the low end, so the accent value
+// bar stays the one coloured mark; the stretch above the last threshold is
+// the bare track.
+func (gc *GaugeChart) bulletBands(unset []bool) []gaugeBand {
+	style := gc.builder.StyleGuide()
+	lo, hi := gc.config.MinValue, gc.config.MaxValue
+	neutral := func(alpha float64) Color {
+		return style.Palette.TextPrimary.WithAlpha(alpha).BlendOver(style.Palette.Background)
+	}
+	const trackAlpha, darkAlpha = 0.08, 0.30
+	ths := gc.config.Thresholds
+	var bands []gaugeBand
+	prev := lo
+	for i, t := range ths {
+		to := math.Max(lo, math.Min(hi, t.Value))
+		if to <= prev {
+			continue
+		}
+		fill := t.Color
+		if i < len(unset) && unset[i] {
+			alpha := trackAlpha
+			if len(ths) > 1 {
+				alpha = darkAlpha - (darkAlpha-trackAlpha)*float64(i)/float64(len(ths)-1)
+			} else if to < hi {
+				alpha = darkAlpha
+			}
+			fill = neutral(alpha)
+		}
+		bands = append(bands, gaugeBand{from: prev, to: to, fill: fill, label: t.Label})
+		prev = to
+	}
+	if prev < hi {
+		bands = append(bands, gaugeBand{from: prev, to: hi, fill: neutral(trackAlpha)})
+	}
+	return bands
+}
+
+// drawBullet draws the default gauge: the value set large over a horizontal
+// bar that runs from min to max.
+func (gc *GaugeChart) drawBullet(data GaugeData, plotArea Rect, unset []bool) {
+	b := gc.builder
+	style := b.StyleGuide()
+	if plotArea.W <= 0 || plotArea.H <= 0 {
+		return
+	}
+	lo, hi := gc.config.MinValue, gc.config.MaxValue
+	bands := gc.bulletBands(unset)
+	hasBands := len(gc.config.Thresholds) > 0
+	hasBandLabels := false
+	for _, bd := range bands {
+		hasBandLabels = hasBandLabels || bd.label != ""
+	}
+
+	floor := math.Max(DefaultMinFontSize, style.Typography.ReadableFloor)
+	tickFont := math.Max(style.Typography.SizeSmall, floor)
+	bodyFont := math.Max(style.Typography.SizeBody, floor)
+	valueFont := math.Min(style.Typography.SizeTitle*gaugeBulletValueLines, plotArea.H*gaugeBulletValueMaxFrac)
+	valueFont = math.Max(valueFont, style.Typography.SizeTitle)
+	trackH := bodyFont * gaugeBulletTrackLines
+	gap := style.Spacing.MD
+	labelsH := tickFont * 1.4
+	if hasBandLabels {
+		labelsH += tickFont * 1.4
+	}
+	// The value stands on its baseline, gaugeBulletValueRise of its size
+	// under the block's top, with a gap and a half down to the track.
+	valueGap := gap * 1.5
+	blockH := valueFont*gaugeBulletValueRise + valueGap + trackH + gap + labelsH
+	if blockH > plotArea.H {
+		// Short cell: give the fixed text its room and the track the rest.
+		trackH = math.Max(bodyFont*0.8, plotArea.H-(valueFont*gaugeBulletValueRise+valueGap+gap+labelsH))
+		blockH = valueFont*gaugeBulletValueRise + valueGap + trackH + gap + labelsH
+	}
+	trackW := math.Min(plotArea.W, plotArea.H*gaugeBulletMaxAspect)
+	trackX := plotArea.X + (plotArea.W-trackW)/2
+	y := plotArea.Y + math.Max(0, (plotArea.H-blockH)/2)
+	xOf := func(v float64) float64 {
+		v = math.Max(lo, math.Min(hi, v))
+		return trackX + trackW*(v-lo)/(hi-lo)
+	}
+
+	// The value, large, with its label beside it.
+	valueText := gc.config.ValueFmt.FormatOr(data.Value, gc.config.ValueFormat)
+	if data.Unit != "" {
+		valueText += data.Unit
+	}
+	b.Push()
+	b.SetFontWeight(style.Typography.WeightBold)
+	baseline := y + valueFont*gaugeBulletValueRise
+	valueFont = b.ClampFontSize(valueText, trackW, valueFont, style.Typography.SizeTitle)
+	b.SetFontSize(valueFont)
+	b.SetTextColor(style.Palette.TextPrimary)
+	valueW, _ := b.MeasureText(valueText)
+	b.DrawText(valueText, trackX, baseline, TextAlignLeft, TextBaselineAlphabetic)
+	if data.Label != "" {
+		// The slide's own renderer may set the bold value a little wider
+		// than it measures here: keep the label clear of it.
+		labelX := trackX + valueW*1.06 + valueFont*0.2
+		b.SetFontWeight(style.Typography.WeightNormal)
+		b.SetFontSize(bodyFont)
+		b.SetTextColor(style.Palette.TextSecondary)
+		b.DrawText(b.TruncateToWidth(data.Label, trackX+trackW-labelX), labelX, baseline, TextAlignLeft, TextBaselineAlphabetic)
+	}
+	b.Pop()
+
+	// Track bands.
+	trackY := baseline + valueGap
+	b.Push()
+	b.SetStrokeWidth(0)
+	for _, bd := range bands {
+		x0, x1 := xOf(bd.from), xOf(bd.to)
+		b.SetFillColor(bd.fill)
+		b.SetStrokeColor(bd.fill)
+		b.FillRect(Rect{X: x0, Y: trackY, W: x1 - x0, H: trackH})
+	}
+	// Value bar: the accent, the one coloured mark.
+	// The role-mapped primary fill, as the dial's value arc uses: when the
+	// template's accent1 is too pale to carry a mark, the first safe accent.
+	accent := style.Palette.Accent1
+	if (style.Palette.Roles.PrimaryFill != Color{}) {
+		accent = style.Palette.Roles.PrimaryFill
+	}
+	barH, barY := trackH, trackY
+	if hasBands {
+		barH = trackH * gaugeBulletBarFrac
+		barY = trackY + (trackH-barH)/2
+	}
+	if w := xOf(data.Value) - trackX; w > 0 {
+		b.SetFillColor(accent)
+		b.SetStrokeColor(accent)
+		b.FillRect(Rect{X: trackX, Y: barY, W: w, H: barH})
+	}
+	b.Pop()
+
+	// Range labels under the track: min, max and each band bound between.
+	labelY := trackY + trackH + gap + tickFont/2
+	b.Push()
+	b.SetFontSize(tickFont)
+	b.SetFontWeight(style.Typography.WeightNormal)
+	b.SetTextColor(style.Palette.TextSecondary)
+	tick := func(v float64) string { return gc.config.ValueFmt.FormatOr(v, "%.0f") }
+	minText, maxText := tick(lo), tick(hi)
+	minW, _ := b.MeasureText(minText)
+	maxW, _ := b.MeasureText(maxText)
+	b.DrawText(minText, trackX, labelY, TextAlignLeft, TextBaselineMiddle)
+	b.DrawText(maxText, trackX+trackW, labelY, TextAlignRight, TextBaselineMiddle)
+	leftEdge, rightEdge := trackX+minW+style.Spacing.SM, trackX+trackW-maxW-style.Spacing.SM
+	for i, bd := range bands {
+		if i == len(bands)-1 || bd.to >= hi {
+			continue
+		}
+		text := tick(bd.to)
+		w, _ := b.MeasureText(text)
+		x := xOf(bd.to)
+		if x-w/2 < leftEdge || x+w/2 > rightEdge {
+			continue
+		}
+		b.DrawText(text, x, labelY, TextAlignCenter, TextBaselineMiddle)
+		leftEdge = x + w/2 + style.Spacing.SM
+	}
+	if hasBandLabels {
+		bandY := labelY + tickFont*1.4
+		for _, bd := range bands {
+			if bd.label == "" {
+				continue
+			}
+			x0, x1 := xOf(bd.from), xOf(bd.to)
+			if text := b.TruncateToWidth(bd.label, x1-x0-style.Spacing.XS); text != "" {
+				b.DrawText(text, (x0+x1)/2, bandY, TextAlignCenter, TextBaselineMiddle)
+			}
+		}
+	}
+	b.Pop()
 }
 
 // applyThemeColors sets needle and pivot colors from the theme palette.
@@ -821,6 +1044,15 @@ func (d *GaugeDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SV
 		if endAngle, ok := req.Data["end_angle"].(float64); ok {
 			config.EndAngle = endAngle
 		}
+		// Arc angles describe the dial; asking for either keeps it.
+		_, hasStart := req.Data["start_angle"]
+		_, hasEnd := req.Data["end_angle"]
+		if hasStart || hasEnd {
+			config.Style = GaugeStyleDial
+		}
+		if st, ok := req.Data["style"].(string); ok {
+			config.Style = st
+		}
 
 		// Parse thresholds
 		if thresholdsRaw, ok := req.Data["thresholds"].([]any); ok {
@@ -876,6 +1108,7 @@ func (d *GaugeDiagram) DataSchema() *DataSchema {
 		"footnote":    StringDataSchema("Footnote text"),
 		"start_angle": NumberDataSchema("Arc start angle"),
 		"end_angle":   NumberDataSchema("Arc end angle"),
+		"style":       StringDataSchema("bullet (default: large value over a horizontal bar) or dial (speedometer arc)"),
 		"thresholds": ArrayDataSchema("Colored range bands", ObjectDataSchema("A threshold", map[string]*DataSchema{
 			"value": NumberDataSchema("Band upper bound"),
 			"color": StringDataSchema("Band color"),

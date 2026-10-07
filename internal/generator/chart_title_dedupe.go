@@ -23,6 +23,20 @@ func withoutDuplicateChartTitleItem(item ContentItem, slide SlideSpec) ContentIt
 	return item
 }
 
+// WithoutDuplicateChartTitle returns spec marked TitleOnSlide when slideTitle
+// already carries its title, and spec itself otherwise. It is the rule the
+// placeholder render applies (withoutDuplicateChartTitleItem), exported so the
+// validate dry-render measures the chart generate will draw
+// (go-slide-creator-no0bx).
+func WithoutDuplicateChartTitle(spec *types.DiagramSpec, slideTitle string) *types.DiagramSpec {
+	if spec == nil || spec.TitleOnSlide || !chartTitleRepeatsSlideTitle(spec.Title, strings.TrimSpace(slideTitle)) {
+		return spec
+	}
+	cp := *spec
+	cp.TitleOnSlide = true
+	return &cp
+}
+
 // chartTitleRepeatsSlideTitle reports whether every word of the chart title
 // appears, in order and adjacent, in the slide title: the two are equal, or
 // the slide title is the chart title with a lead-in or a conclusion around it

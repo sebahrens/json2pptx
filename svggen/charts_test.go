@@ -668,8 +668,8 @@ func TestAreaChartDraw(t *testing.T) {
 func TestDefaultScatterChartConfig(t *testing.T) {
 	config := DefaultScatterChartConfig(400, 300)
 
-	if config.PointSize != 8 {
-		t.Errorf("Expected PointSize 8, got %v", config.PointSize)
+	if config.PointSize != scatterPointSize {
+		t.Errorf("Expected PointSize %v, got %v", scatterPointSize, config.PointSize)
 	}
 	if config.PointShape != MarkerCircle {
 		t.Errorf("Expected PointShape MarkerCircle, got %v", config.PointShape)

@@ -11,19 +11,23 @@ import (
 // A chart should show the point its slide title makes, so a single-series bar
 // chart paints every bar in a neutral tint and only the bar(s) the title is
 // about in accent1 (go-slide-creator-sdxii). The waterfall uses the same
-// inks: totals neutral 60%, decreases accent1, increases a legible accent1
-// tint or shade (waterfallIncreaseInk).
+// inks: totals the neutral bar grey, increases accent1 and decreases a tint
+// of accent1 (go-slide-creator-n978t).
 const (
 	// BarNeutralInk is the dk1 share of a neutral (non-highlighted) bar.
 	BarNeutralInk = 0.38
-	// WaterfallTotalInk is the dk1 share of a waterfall total / subtotal bar.
-	WaterfallTotalInk = 0.60
-	// WaterfallIncreaseShare is the accent1 share (over the background) a
-	// waterfall increase bar is painted in when that tint is legible.
-	WaterfallIncreaseShare = 0.55
-	// waterfallIncreaseMinContrast is the least contrast an increase bar
-	// keeps against the chart background (WCAG non-text 3:1).
-	waterfallIncreaseMinContrast = 3.0
+	// WaterfallTotalInk is the dk1 share of a waterfall total / subtotal bar:
+	// the neutral bar grey. At 60% the two totals were the heaviest marks on
+	// the chart and the deltas, which are the story, receded.
+	WaterfallTotalInk = BarNeutralInk
+	// WaterfallDecreaseShare is the accent1 share (over the background) a
+	// waterfall decrease bar is painted in: increases take accent1 solid and
+	// decreases its tint, so the two directions are one family and neither
+	// reads as an alarm colour.
+	WaterfallDecreaseShare = 0.50
+	// waterfallDecreaseMinContrast is the least contrast a decrease bar keeps
+	// against the chart background, so the tint stays a visible bar.
+	waterfallDecreaseMinContrast = 1.4
 
 	// labelledBarSlotShare is a bar's width as a share of its category slot
 	// (band plus gap) when every bar carries its value label.
@@ -58,12 +62,23 @@ func NeutralInk(p *Palette, share float64) Color {
 	return ink.BlendOver(bg)
 }
 
-// waterfallIncreaseInk is the fill of a waterfall increase bar: a tint of
-// accent1 when it keeps 3:1 against the background, otherwise a shade of it,
-// and in either case at least MinSeriesDeltaE away from the decrease (accent1)
-// and total (neutral) fills, so the three classes stay distinct. The old
-// neutral 35% grey nearly vanished on white (go-slide-creator-rmm0x).
-func waterfallIncreaseInk(p *Palette, total, decrease Color) Color {
+// waterfallTotalInk is the fill of a waterfall total / subtotal bar: the
+// neutral bar grey, or a darker grey (a lighter one last) when accent1 is
+// itself that grey.
+func waterfallTotalInk(p *Palette) Color {
+	for _, share := range []float64{WaterfallTotalInk, 0.60, 0.80, 0.22} {
+		if c := NeutralInk(p, share); deltaE76(c, p.Accent1) >= MinSeriesDeltaE {
+			return c
+		}
+	}
+	return NeutralInk(p, WaterfallTotalInk)
+}
+
+// waterfallDecreaseInk is the fill of a waterfall decrease bar: a tint of
+// accent1 that stays visible on the background and at least MinSeriesDeltaE
+// away from the increase (accent1) fill, and from the total (neutral) fill
+// where a tint can be. A light accent1 whose tints vanish takes a shade.
+func waterfallDecreaseInk(p *Palette, total Color) Color {
 	bg := p.Background
 	if bg.A < 1 {
 		bg = bg.BlendOver(Color{R: 255, G: 255, B: 255, A: 1})
@@ -73,25 +88,30 @@ func waterfallIncreaseInk(p *Palette, total, decrease Color) Color {
 		c.A = share
 		return c.BlendOver(bg)
 	}
-	candidates := []Color{
-		tint(WaterfallIncreaseShare),
-		tint(0.7),
-		p.Accent1.Darken(0.35),
-		p.Accent1.Darken(0.55),
-		NeutralInk(p, 0.85),
+	visible := func(c Color) bool {
+		return c.ContrastWith(bg) >= waterfallDecreaseMinContrast && deltaE76(c, p.Accent1) >= MinSeriesDeltaE
 	}
-	for _, c := range candidates {
-		if c.ContrastWith(bg) >= waterfallIncreaseMinContrast &&
-			deltaE76(c, decrease) >= MinSeriesDeltaE && deltaE76(c, total) >= MinSeriesDeltaE {
+	tints := []Color{tint(WaterfallDecreaseShare), tint(0.38), tint(0.64)}
+	// A tint that is also clear of the total grey ...
+	for _, c := range tints {
+		if visible(c) && deltaE76(c, total) >= MinSeriesDeltaE {
 			return c
 		}
 	}
-	for _, c := range candidates {
-		if c.ContrastWith(bg) >= waterfallIncreaseMinContrast {
+	// ... else any visible tint: a floating delta is not mistaken for a
+	// total standing on the baseline, and a shade of accent1 would weigh
+	// more than the increase it is paired with.
+	for _, c := range tints {
+		if visible(c) {
 			return c
 		}
 	}
-	return candidates[0]
+	for _, c := range []Color{p.Accent1.Darken(0.35), p.Accent1.Darken(0.55)} {
+		if visible(c) {
+			return c
+		}
+	}
+	return tints[0]
 }
 
 // TrueMinus replaces the ASCII hyphen that marks a negative number with the

@@ -233,9 +233,11 @@ func (d *DonutChartDiagram) DataSchema() *DataSchema {
 
 // DataSchema returns the JSON Schema for area_chart data.
 func (d *AreaChartDiagram) DataSchema() *DataSchema {
+	fields := withSeriesHighlight(axisBoundsFieldSchemas(commonChartFields()))
+	fields["as_area"] = BooleanDataSchema("Keep the area for unordered categories (regions, products), which are drawn as bars by default")
 	return ObjectDataSchema(
-		"Area chart data with categories and series.",
-		withSeriesHighlight(axisBoundsFieldSchemas(commonChartFields())),
+		"Area chart data with categories and series. Categories that are not a sequence (periods, numbers, a scale) are drawn as bars.",
+		fields,
 		[]string{"categories", "series"},
 	)
 }

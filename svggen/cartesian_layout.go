@@ -62,13 +62,7 @@ func ComputeCartesianLayout(config ChartConfig, style *StyleGuide, title, subtit
 	plotArea := config.PlotArea()
 
 	// Header: title + optional subtitle
-	headerHeight := 0.0
-	if config.ShowTitle && title != "" {
-		headerHeight = style.Typography.SizeTitle + style.Spacing.MD
-		if subtitle != "" {
-			headerHeight += style.Typography.SizeSubtitle + style.Spacing.XS
-		}
-	}
+	headerHeight := chartHeaderHeight(style, config.ShowTitle, title, subtitle)
 
 	// Footer: footnote — reserve enough space for SizeCaption + padding.
 	footerHeight := 0.0

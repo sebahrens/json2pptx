@@ -40,8 +40,10 @@ Compare multiple variables on a radial grid, useful for profiling and benchmarki
 |-------|------|-------------|
 | `categories` | `string[]` | Axis labels (min 3). Aliases: `labels`, `axes` |
 | `series` | `object[]` | Data series with name and values |
-| `series[].name` | `string` | Series label for legend |
+| `series[].name` | `string` | Series label. A series named as a yardstick (`Target`, `Goal`, `Benchmark`, `Baseline`, `Plan`, `Budget`, `Average`, `Peer`, `Industry`) is drawn as a dashed neutral outline over the filled webs |
 | `series[].values` | `number[]` | Values per axis (min 3, must match categories length) |
+
+With two or more series, a landscape chart names them in a key beside the web (a line swatch in the series' own stroke) so the web keeps the full height; otherwise the legend row sits under it.
 
 ## Optional Fields
 
