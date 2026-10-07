@@ -3,6 +3,7 @@ package svggen
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // =============================================================================
@@ -13,7 +14,8 @@ import (
 type FishboneConfig struct {
 	ChartConfig
 
-	// BranchAngle is the angle of branches from the spine in degrees.
+	// BranchAngle is the lean of a category bone from the vertical, in
+	// degrees. A bone never leans further than its column allows.
 	BranchAngle float64
 
 	// SpineWidth is the stroke width of the main spine.
@@ -22,7 +24,8 @@ type FishboneConfig struct {
 	// BranchWidth is the stroke width of branches.
 	BranchWidth float64
 
-	// CornerRadius is the radius for rounded category boxes.
+	// CornerRadius is kept for callers that set it; category heads and the
+	// effect are square-cornered shapes and ignore it.
 	CornerRadius float64
 
 	// MaxVisibleCategories is the maximum number of categories rendered
@@ -31,43 +34,14 @@ type FishboneConfig struct {
 	MaxVisibleCategories int
 }
 
-// fishboneBranchLayout holds precomputed layout information for a single
-// category branch, used in the two-pass collision detection algorithm.
-type fishboneBranchLayout struct {
-	catIndex   int     // index into FishboneData.Categories
-	isTop      bool    // true = top branch, false = bottom
-	branchX    float64 // X where branch meets the spine
-	endX       float64 // branch endpoint X
-	endY       float64 // branch endpoint Y
-	catName    string  // category name (full text, may be wrapped)
-	fontSize   float64 // category label font size
-	boxRect    Rect    // bounding box of the category label
-	catWrapped bool    // true if label should be drawn with text wrapping
-}
-
-// categoryConnectorEnd stops the branch at the edge facing the spine, using
-// the resolved box position rather than the pre-collision branch endpoint.
-func (lay fishboneBranchLayout) categoryConnectorEnd() Point {
-	y := lay.boxRect.Y
-	if lay.isTop {
-		y += lay.boxRect.H
-	}
-	return Point{X: lay.boxRect.X + lay.boxRect.W/2, Y: y}
-}
-
 // DefaultFishboneConfig returns default fishbone configuration.
-// causeLabelMinWidthPt is the narrowest strip beside a bone worth hanging a
-// cause label in. Below it the label falls back to the old centred placement,
-// which at least shows the words.
-const causeLabelMinWidthPt = 40.0
-
 func DefaultFishboneConfig(width, height float64) FishboneConfig {
 	return FishboneConfig{
 		ChartConfig:          DefaultChartConfig(width, height),
 		BranchAngle:          30,
 		SpineWidth:           4,
-		BranchWidth:          3,
-		CornerRadius:         6,
+		BranchWidth:          2,
+		CornerRadius:         0,
 		MaxVisibleCategories: 10,
 	}
 }
@@ -104,9 +78,75 @@ func NewFishboneChart(builder *SVGBuilder, config FishboneConfig) *FishboneChart
 	}
 }
 
+// The fishbone's proportions, in multiples of the cause type size unless
+// noted. The drawing is sized from the canvas it is handed: the bones run
+// from the spine to category heads on the top and bottom edges, so the causes
+// have the whole half-height to stand in (go-slide-creator-o8cqh).
+const (
+	fishboneLineFactor      = 1.3  // line pitch of cause and head text
+	fishboneTabPadX         = 0.75 // head padding left and right
+	fishboneTabPadY         = 0.4  // head padding above and below
+	fishboneTickLen         = 0.9  // the small bone a cause hangs from
+	fishboneLabelGap        = 0.35 // tick end to cause text
+	fishboneMinLabelChars   = 4.0  // narrowest cause column worth drawing
+	fishboneMaxCauseLines   = 3
+	fishboneMaxBoneLeanFrac = 0.30 // of the column width
+	fishboneEffectMinFrac   = 0.14 // effect pentagon width, share of the plot
+	fishboneEffectMaxFrac   = 0.30
+	fishboneEdgePad         = 0.25 // canvas edge to the drawing
+	fishboneLoneJoinFrac    = 0.62 // where a single column's bones meet the spine
+)
+
+// fishboneBone is the resolved geometry of one category: its head on the top
+// or bottom edge, the bone from the spine to the head, and the rows its
+// causes stand in.
+type fishboneBone struct {
+	catIndex int
+	isTop    bool
+	// joinX is where the bone meets the spine; headX, headY where it meets
+	// the head's edge facing the spine.
+	joinX, headX, headY float64
+	// tab is the category head; tabLines its label, already wrapped.
+	tab      Rect
+	tabLines []string
+	// slotLeft is the left limit of the bone's cause labels.
+	slotLeft float64
+	// causes are the rows drawn; hidden counts the causes that did not fit.
+	causes []fishboneCauseRow
+	hidden int
+	// countOnly is set when the column is too narrow for any cause label:
+	// the head then carries the count.
+	countOnly bool
+}
+
+// fishboneCauseRow is one cause label: lines right-aligned at labelRight and
+// centred on y, with its tick running from tickX to the bone at boneX.
+type fishboneCauseRow struct {
+	lines      []string
+	y          float64
+	boneX      float64
+	tickX      float64
+	labelRight float64
+	overflow   bool // the "+N more" line, drawn muted and without a tick
+}
+
+// boneXAt is the bone's x at height y, on the line from the spine join to
+// the head.
+func (bn fishboneBone) boneXAt(y, spineY float64) float64 {
+	span := bn.headY - spineY
+	if span == 0 {
+		return bn.joinX
+	}
+	return bn.joinX + (bn.headX-bn.joinX)*(y-spineY)/span
+}
+
+// fishboneFit is the type size and line pitch shared by every bone.
+type fishboneFit struct {
+	font  float64 // cause and head text
+	lineH float64
+}
+
 // Draw renders the fishbone diagram.
-//
-//nolint:gocognit,gocyclo // complex chart rendering logic
 func (fc *FishboneChart) Draw(data FishboneData) error {
 	if data.Effect == "" {
 		return fmt.Errorf("fishbone diagram requires an 'effect'")
@@ -114,667 +154,72 @@ func (fc *FishboneChart) Draw(data FishboneData) error {
 
 	b := fc.builder
 	style := b.StyleGuide()
-	accentColors := style.Palette.AccentColors()
+	typ := style.Typography
 
-	// Width-proportional scaling factor. Reference width is 900 (the default
-	// golden test fishbone size). At narrow widths (e.g., 500 or 760), fonts
-	// and boxes scale down proportionally so everything fits in the viewBox.
-	const refWidth = 900.0
-	widthScale := fc.config.Width / refWidth
-	if widthScale > 1.0 {
-		widthScale = 1.0 // never scale UP beyond reference
-	}
-	isNarrow := fc.config.Width < 600
-	isVeryNarrow := fc.config.Width < 500
+	font := math.Max(typ.SizeSmall, b.MinFontSize())
+	fit := fishboneFit{font: font, lineH: font * fishboneLineFactor}
 
-	// Density-based font scaling: reduce font sizes when many categories
-	// AND many items are present to prevent text overlap along the spine.
-	numCats := len(data.Categories)
-	totalCausesAll := 0
-	maxCausesInCat := 0
-	for _, cat := range data.Categories {
-		totalCausesAll += len(cat.Causes)
-		if len(cat.Causes) > maxCausesInCat {
-			maxCausesInCat = len(cat.Causes)
-		}
-	}
-
-	densityScale := 1.0
-	switch {
-	case numCats >= 7:
-		densityScale = 0.75
-	case numCats >= 5:
-		densityScale = 0.85
-	}
-
-	// Additional scaling when total item count is very high (many categories
-	// each with many causes). This prevents cause text from overlapping
-	// within and across branches.
-	itemDensityScale := 1.0
-	switch {
-	case totalCausesAll > 30:
-		itemDensityScale = 0.70
-	case totalCausesAll > 20:
-		itemDensityScale = 0.80
-	case totalCausesAll > 14 && numCats >= 5:
-		itemDensityScale = 0.85
-	}
-	// When a single category has many causes, the branch gets crowded.
-	if maxCausesInCat >= 6 && itemDensityScale > 0.80 {
-		itemDensityScale = 0.80
-	}
-	if itemDensityScale < densityScale {
-		densityScale = itemDensityScale
-	}
-
-	// Scale font sizes proportionally to width and density
-	bodyFontSize := style.Typography.SizeBody * widthScale * densityScale
-	smallFontSize := style.Typography.SizeSmall * widthScale * densityScale
-	captionFontSize := style.Typography.SizeCaption * widthScale * densityScale
-
-	// Enforce minimum readable sizes. Fishbone uses a 9pt floor for base
-	// font sizes to maintain stable layout geometry; cause labels use their
-	// own lower floor (7pt) via LabelFitStrategy at draw time.
-	// At very narrow widths, allow smaller fonts to prevent severe truncation.
-	floorBase := 9.0
-	if isVeryNarrow {
-		floorBase = 7.0
-	}
-	floor := math.Max(floorBase, b.MinFontSize())
-	if bodyFontSize < floor {
-		bodyFontSize = floor
-	}
-	if smallFontSize < floor {
-		smallFontSize = floor
-	}
-	if captionFontSize < floor {
-		captionFontSize = floor
-	}
-
-	// Calculate plot area
-	plotArea := fc.config.PlotArea()
-
-	// Adjust for title
+	// The drawing runs to the edges of its canvas: the page margin is the
+	// placeholder's, and a second one inside it left the fish adrift.
+	edge := font * fishboneEdgePad
+	plot := Rect{X: edge, Y: edge, W: math.Max(0, fc.config.Width-2*edge), H: math.Max(0, fc.config.Height-2*edge)}
 	headerHeight := 0.0
 	if fc.config.ShowTitle && data.Title != "" {
-		headerHeight = style.Typography.SizeTitle + style.Spacing.MD
+		headerHeight = typ.SizeTitle + style.Spacing.MD
 		if data.Subtitle != "" {
-			headerHeight += style.Typography.SizeSubtitle + style.Spacing.XS
+			headerHeight += typ.SizeSubtitle + style.Spacing.XS
 		}
 	}
-	plotArea.Y += headerHeight
-	plotArea.H -= headerHeight
-
-	// Layout: spine runs horizontally, effect box on right.
-	// Effect box is sized dynamically to fit the effect text, constrained
-	// within 18%-35% of plot width and 15%-40% of plot height.
-	// The width adapts: start at 18%, widen if text would be truncated.
-	minEffectW := plotArea.W * 0.18
-	maxEffectW := plotArea.W * 0.35
-	if minEffectW > maxEffectW {
-		minEffectW = maxEffectW
+	if headerHeight > 0 {
+		top := fc.config.MarginTop + headerHeight
+		plot.H = math.Max(0, plot.H-(top-plot.Y))
+		plot.Y = top
 	}
-	// At narrow widths, give effect box a minimum size based on text
-	if isNarrow {
-		minEffectWNarrow := bodyFontSize * 6 // room for ~6 characters
-		if minEffectW < minEffectWNarrow {
-			minEffectW = minEffectWNarrow
-		}
-	}
+	spineY := plot.Y + plot.H/2
 
-	// Measure effect text to determine needed box dimensions.
-	// Adaptively widen the effect box (up to maxEffectW) if the text
-	// would overflow the height cap at the initial width.
-	effectPadding := style.Spacing.SM * widthScale
-	maxEffectH := plotArea.H * 0.40
+	// The effect: a solid accent pentagon whose point closes the fish.
+	effect := fc.layoutEffect(data.Effect, plot, spineY, fit)
 
-	effectBoxW := minEffectW
-	effectFontSize := bodyFontSize
-
+	spineWidth := math.Max(fc.config.SpineWidth, font*0.22)
+	neutral := NeutralInk(style.Palette, tonalRuleShare)
 	b.Push()
-	b.SetFontSize(effectFontSize)
-	b.SetFontWeight(style.Typography.WeightBold)
-	effectBlock := b.WrapText(data.Effect, effectBoxW-effectPadding*2)
-	b.Pop()
-
-	effectBoxH := plotArea.H * 0.15 // minimum
-	if effectBlock.TotalHeight+effectPadding*2 > effectBoxH {
-		effectBoxH = effectBlock.TotalHeight + effectPadding*2
-	}
-
-	// If text overflows height cap, widen the box progressively
-	if effectBoxH > maxEffectH && effectBoxW < maxEffectW {
-		for effectBoxW < maxEffectW {
-			effectBoxW += plotArea.W * 0.03
-			if effectBoxW > maxEffectW {
-				effectBoxW = maxEffectW
-			}
-			b.Push()
-			b.SetFontSize(effectFontSize)
-			b.SetFontWeight(style.Typography.WeightBold)
-			effectBlock = b.WrapText(data.Effect, effectBoxW-effectPadding*2)
-			b.Pop()
-			effectBoxH = effectBlock.TotalHeight + effectPadding*2
-			if effectBoxH < plotArea.H*0.15 {
-				effectBoxH = plotArea.H * 0.15
-			}
-			if effectBoxH <= maxEffectH {
-				break
-			}
-		}
-	}
-
-	// If still overflows after max width, reduce font size
-	if effectBoxH > maxEffectH {
-		minFont := b.MinFontSize()
-		for effectFontSize > minFont && effectBoxH > maxEffectH {
-			effectFontSize *= 0.9
-			if effectFontSize < minFont {
-				effectFontSize = minFont
-			}
-			b.Push()
-			b.SetFontSize(effectFontSize)
-			b.SetFontWeight(style.Typography.WeightBold)
-			effectBlock = b.WrapText(data.Effect, effectBoxW-effectPadding*2)
-			b.Pop()
-			effectBoxH = effectBlock.TotalHeight + effectPadding*2
-			if effectBoxH < plotArea.H*0.15 {
-				effectBoxH = plotArea.H * 0.15
-			}
-		}
-	}
-
-	// Final height cap
-	if effectBoxH > maxEffectH {
-		effectBoxH = maxEffectH
-	}
-
-	spineStartX := plotArea.X + style.Spacing.LG*widthScale
-	spineEndX := plotArea.X + plotArea.W - effectBoxW
-	spineY := plotArea.Y + plotArea.H/2
-
-	// Scale spine and branch widths for narrow charts
-	spineWidth := fc.config.SpineWidth * math.Max(0.6, widthScale)
-	branchWidth := fc.config.BranchWidth * math.Max(0.6, widthScale)
-
-	// Draw spine (main horizontal line)
-	b.Push()
-	b.SetStrokeColor(style.Palette.TextPrimary)
+	b.SetStrokeColor(NeutralInk(style.Palette, tonalSpineShare))
 	b.SetStrokeWidth(spineWidth)
-	b.DrawLine(spineStartX, spineY, spineEndX, spineY)
+	b.DrawLine(plot.X, spineY, effect.rect.X, spineY)
 	b.Pop()
+	fc.drawEffect(effect)
 
-	// Draw arrowhead at spine end
-	arrowSize := 10.0 * math.Max(0.6, widthScale)
-	b.Push()
-	b.SetFillColor(style.Palette.TextPrimary)
-	arrowPoints := []Point{
-		{X: spineEndX, Y: spineY},
-		{X: spineEndX - arrowSize, Y: spineY - arrowSize/2},
-		{X: spineEndX - arrowSize, Y: spineY + arrowSize/2},
-	}
-	b.DrawPolygon(arrowPoints)
-	b.Pop()
-
-	// Draw effect box
-	b.Push()
-	effectColor := accentColors[0]
-	b.SetFillColor(effectColor.WithAlpha(0.15))
-	b.SetStrokeColor(effectColor)
-	b.SetStrokeWidth(2)
-	effectRect := Rect{
-		X: spineEndX,
-		Y: spineY - effectBoxH/2,
-		W: effectBoxW,
-		H: effectBoxH,
-	}
-	b.DrawRoundedRect(effectRect, fc.config.CornerRadius)
-	b.Pop()
-
-	// Draw effect text using the pre-computed effectBlock. We avoid
-	// DrawWrappedText here because it re-wraps from scratch, and floating-
-	// point differences between the sizing pass and the rendering pass can
-	// cause the re-wrapped TotalHeight to exceed contentRect.H by a
-	// sub-pixel amount, triggering unwanted truncation.
-	b.Push()
-	b.SetFontSize(effectFontSize)
-	b.SetFontWeight(style.Typography.WeightBold)
-	contentRect := effectRect.Inset(effectPadding, effectPadding, effectPadding, effectPadding)
-	x, y := b.AlignBlockInRect(effectBlock, contentRect, AlignCenter)
-	b.DrawTextBlock(effectBlock, x, y, HorizontalAlignCenter)
-	b.Pop()
-
-	// Draw categories as branches
-	if numCats == 0 {
-		// Draw title and return
-		if fc.config.ShowTitle && data.Title != "" {
-			titleConfig := DefaultTitleConfig()
-			titleConfig.Text = data.Title
-			titleConfig.Subtitle = data.Subtitle
-			title := NewTitle(b, titleConfig)
-			title.Draw(Rect{X: 0, Y: 0, W: fc.config.Width, H: headerHeight + fc.config.MarginTop})
-		}
-		return nil
+	visible := data.Categories
+	overflow := 0
+	if limit := fc.config.MaxVisibleCategories; limit > 0 && len(visible) > limit {
+		overflow = len(visible) - limit
+		visible = visible[:limit]
 	}
 
-	// Determine the effective max visible categories. Collapse excess into
-	// an overflow indicator drawn near the spine.
-	maxVisible := fc.config.MaxVisibleCategories
-	if maxVisible <= 0 {
-		maxVisible = 10
+	bones := fc.layoutBones(visible, plot, spineY, effect.rect.X, fit)
+	for _, bn := range bones {
+		fc.drawBone(bn, visible[bn.catIndex], spineY, neutral, fit)
 	}
-	visibleCats := data.Categories
-	overflowCount := 0
-	if numCats > maxVisible {
-		overflowCount = numCats - maxVisible
-		visibleCats = data.Categories[:maxVisible]
-	}
-	numVisible := len(visibleCats)
+	fc.reportHiddenCauses(bones, visible)
 
-	spineLength := spineEndX - spineStartX - arrowSize
-	branchAngle := fc.config.BranchAngle * math.Pi / 180
-
-	// At narrow widths, reduce branch angle to keep branches more vertical,
-	// which uses less horizontal space and prevents overlap.
-	if isNarrow {
-		branchAngle = 20 * math.Pi / 180
-	}
-
-	// Distribute categories along the spine, alternating top and bottom
-	numTop := (numVisible + 1) / 2
-	numBottom := numVisible / 2
-
-	topSpacing := spineLength / float64(numTop+1)
-	bottomSpacing := spineLength / float64(numBottom+1)
-
-	// Branch length scales with height but is also constrained by width
-	// to prevent branches from extending beyond the viewBox at narrow sizes.
-	branchLen := plotArea.H * 0.35
-	maxBranchLen := plotArea.W * 0.25 // prevent horizontal overflow
-	if branchLen*math.Sin(branchAngle) > maxBranchLen {
-		branchLen = maxBranchLen / math.Sin(branchAngle)
-	}
-
-	// Density-aware cause capping: count total causes across all categories
-	// and reduce the per-category limit when the diagram is too dense.
-	totalCauses := 0
-	for _, cat := range visibleCats {
-		totalCauses += len(cat.Causes)
-	}
-
-	maxCausesPerCat := 10 // default generous limit
-	switch {
-	case isNarrow:
-		maxCausesPerCat = 2
-	case totalCauses > 24:
-		maxCausesPerCat = 2
-	case totalCauses > 18:
-		maxCausesPerCat = 3
-	case numVisible >= 6:
-		maxCausesPerCat = 4
-	}
-
-	// ─── Pass 1: compute branch layouts and category label bounding boxes ──
-	layouts := make([]fishboneBranchLayout, numVisible)
-	topIdx := 0
-	bottomIdx := 0
-
-	for i, cat := range visibleCats {
-		isTop := i%2 == 0
-		var branchX float64
-		if isTop {
-			topIdx++
-			branchX = spineStartX + float64(topIdx)*topSpacing
-		} else {
-			bottomIdx++
-			branchX = spineStartX + float64(bottomIdx)*bottomSpacing
-		}
-
-		direction := -1.0
-		if !isTop {
-			direction = 1.0
-		}
-
-		branchEndX := branchX - branchLen*math.Sin(branchAngle)
-		branchEndY := spineY + direction*branchLen*math.Cos(branchAngle)
-
-		// Clamp branch endpoints to viewBox bounds
-		if branchEndX < plotArea.X {
-			branchEndX = plotArea.X
-		}
-		if branchEndY < plotArea.Y {
-			branchEndY = plotArea.Y + smallFontSize
-		}
-		if branchEndY > plotArea.Y+plotArea.H {
-			branchEndY = plotArea.Y + plotArea.H - smallFontSize
-		}
-
-		// Measure category label bounding box
-		catName := cat.Name
-		catFontSize := smallFontSize
-
-		// Category labels alternate top/bottom, so the effective horizontal
-		// density is per-side count, not total count. Use the larger of the
-		// two sides (numTop) as the divisor.
-		perSideCount := float64(numTop)
-		if perSideCount < 1 {
-			perSideCount = 1
-		}
-		maxCatBoxW := spineLength / perSideCount * 0.90
-
-		// Use LabelFitStrategy for consistent shrink → wrap → truncate cascade.
-		innerPad := style.Spacing.MD * 2 * widthScale
-		innerW := maxCatBoxW - innerPad
-		if innerW < 0 {
-			innerW = 0
-		}
-		catMaxH := catFontSize*3*1.4 + style.Spacing.SM*2*widthScale // room for 3 wrapped lines
-		// Use a 9pt floor for category labels to maintain stable box sizes;
-		// smaller boxes cascade into unstable branch/cause positioning.
-		// At very narrow widths, allow 7pt to prevent severe truncation.
-		catFloor := 9.0
-		if isVeryNarrow {
-			catFloor = 7.0
-		}
-		catMinFont := math.Max(catFloor, b.MinFontSize())
-		catLabelFit := LabelFitStrategy{
-			PreferredSize: catFontSize,
-			MinSize:       catMinFont,
-			AllowWrap:     true,
-			MaxLines:      3,
-			MinCharWidth:  4.0,
-		}
-		catResult := catLabelFit.Fit(b, catName, innerW, catMaxH)
-		catFontSize = catResult.FontSize
-		catWrapped := catResult.Wrapped
-
-		var catBoxW, catBoxH float64
-		if catWrapped {
-			b.Push()
-			b.SetFontSize(catFontSize)
-			block := b.WrapText(catName, innerW)
-			b.Pop()
-			catBoxW = maxCatBoxW
-			catBoxH = block.TotalHeight + style.Spacing.SM*2*widthScale
-		} else {
-			b.Push()
-			b.SetFontSize(catFontSize)
-			catNameW, _ := b.MeasureText(catResult.DisplayText)
-			b.Pop()
-			catBoxW = catNameW + innerPad
-			catBoxH = catFontSize + style.Spacing.SM*2*widthScale
-			if catBoxW > maxCatBoxW {
-				catBoxW = maxCatBoxW
-			}
-		}
-
-		catBoxX := branchEndX - catBoxW/2
-		catBoxY := branchEndY - catBoxH/2
-
-		if catBoxX < plotArea.X {
-			catBoxX = plotArea.X
-		}
-		if catBoxX+catBoxW > plotArea.X+plotArea.W {
-			catBoxX = plotArea.X + plotArea.W - catBoxW
-		}
-
-		layouts[i] = fishboneBranchLayout{
-			catIndex:   i,
-			isTop:      isTop,
-			branchX:    branchX,
-			endX:       branchEndX,
-			endY:       branchEndY,
-			catName:    catName,
-			fontSize:   catFontSize,
-			boxRect:    Rect{X: catBoxX, Y: catBoxY, W: catBoxW, H: catBoxH},
-			catWrapped: catWrapped,
-		}
-	}
-
-	// ─── Pass 2: collision detection and resolution ─────────────────────────
-	fc.resolveCollisions(layouts, b, plotArea, spineStartX, spineEndX, arrowSize, spineY, branchAngle, branchLen, smallFontSize, widthScale, style)
-
-	// ─── Pass 3: draw branches and labels using resolved positions ──────────
-	for _, lay := range layouts {
-		cat := visibleCats[lay.catIndex]
-		color := accentColors[lay.catIndex%len(accentColors)]
-
-		// Stop at the category chip; a line through its label is distracting.
+	if overflow > 0 {
 		b.Push()
-		b.SetStrokeColor(color)
-		b.SetStrokeWidth(branchWidth)
-		connectorEnd := lay.categoryConnectorEnd()
-		b.DrawLine(lay.branchX, spineY, connectorEnd.X, connectorEnd.Y)
+		b.SetFontSize(font)
+		b.SetFillColor(diagramMutedInk(style))
+		b.DrawText(fmt.Sprintf("+%d more categories", overflow), plot.X, spineY+spineWidth+font*0.4, TextAlignLeft, TextBaselineTop)
 		b.Pop()
-
-		// Composite the tint before drawing, so no stroke shows through the chip.
-		b.Push()
-		b.SetFillColor(blendOver(color.WithAlpha(0.2), style.Palette.Background))
-		b.SetStrokeColor(color)
-		b.SetStrokeWidth(1.5)
-		b.DrawRoundedRect(lay.boxRect, fc.config.CornerRadius)
-		b.Pop()
-
-		b.Push()
-		b.SetFontSize(lay.fontSize)
-		b.SetFontWeight(style.Typography.WeightBold)
-		if lay.catWrapped {
-			innerRect := lay.boxRect.Inset(style.Spacing.XS*widthScale, style.Spacing.XS*widthScale, style.Spacing.XS*widthScale, style.Spacing.XS*widthScale)
-			b.DrawWrappedText(lay.catName, innerRect, AlignCenter)
-		} else {
-			b.DrawText(lay.catName, lay.boxRect.X+lay.boxRect.W/2, lay.boxRect.Y+lay.boxRect.H/2, TextAlignCenter, TextBaselineMiddle)
-		}
-		b.Pop()
-
-		// At very narrow widths, skip individual cause labels entirely and
-		// show a compact "(N causes)" badge below the category box. This
-		// prevents unreadable truncated text that makes categories appear
-		// missing.
-		if isVeryNarrow && len(cat.Causes) > 0 {
-			badgeText := fmt.Sprintf("(%d causes)", len(cat.Causes))
-			badgeFontSize := math.Max(captionFontSize*0.85, b.MinFontSize())
-			badgeY := lay.boxRect.Y + lay.boxRect.H + badgeFontSize*1.2
-			if !lay.isTop {
-				// Bottom branches: badge goes above the box
-				badgeY = lay.boxRect.Y - badgeFontSize*0.5
-			}
-			b.Push()
-			b.SetFontSize(badgeFontSize)
-			b.SetFillColor(style.Palette.TextSecondary)
-			b.DrawText(badgeText, lay.boxRect.X+lay.boxRect.W/2, badgeY, TextAlignCenter, TextBaselineMiddle)
-			b.Pop()
-			continue
-		}
-
-		// Draw individual causes as horizontal sub-branches off the bone.
-		subFontSize := captionFontSize
-		subTickLen := math.Max(style.Spacing.MD, branchLen*math.Sin(branchAngle)*0.45*widthScale)
-
-		causes := cat.Causes
-		hiddenCount := 0
-		if len(causes) > maxCausesPerCat {
-			hiddenCount = len(causes) - maxCausesPerCat
-			causes = causes[:maxCausesPerCat]
-		}
-
-		type causeEntry struct {
-			text    string
-			isExtra bool
-		}
-		displayCauses := make([]causeEntry, 0, len(causes)+1)
-		for _, c := range causes {
-			displayCauses = append(displayCauses, causeEntry{text: c})
-		}
-		if hiddenCount > 0 {
-			displayCauses = append(displayCauses, causeEntry{
-				text:    fmt.Sprintf("… +%d more", hiddenCount),
-				isExtra: true,
-			})
-		}
-
-		// Compute minimum vertical gap required between cause labels.
-		// Use 2.8x the font size so that labels can wrap to 2 lines when
-		// the horizontal space is too narrow for the full text. At the 9pt
-		// font floor, 2 wrapped lines at 7pt causeMinFont need ~22.8pt
-		// (WrapText line height ≈ 1.565 × fontSize × 2 lines ≈ 21.9pt,
-		// plus inter-line spacing). 2.8× gives causeMaxH = 9 × 2.8 × 0.95
-		// = 23.94pt, enough for 2 wrapped lines with comfortable margin.
-		minVerticalGap := subFontSize * 2.8
-		branchVerticalSpan := math.Abs(lay.endY - spineY)
-
-		// Maximum items that can fit without vertical overlap along this branch.
-		// We use the branch vertical span (excluding the category box area at the
-		// end), divided by the minimum gap per item. Reserve 15% of the branch
-		// for the category box region.
-		usableBranchSpan := branchVerticalSpan * 0.85
-		maxFittable := int(usableBranchSpan / minVerticalGap)
-		if maxFittable < 1 {
-			maxFittable = 1
-		}
-
-		// If we can't fit all display causes, cap to what fits and add overflow.
-		if len(displayCauses) > maxFittable {
-			// Keep the first (maxFittable - 1) causes and add overflow indicator
-			extraHidden := len(displayCauses) - maxFittable
-			if maxFittable > 1 {
-				displayCauses = displayCauses[:maxFittable-1]
-			} else {
-				displayCauses = displayCauses[:1]
-				extraHidden = len(causes) - 1 + hiddenCount
-			}
-			if extraHidden > 0 {
-				displayCauses = append(displayCauses, causeEntry{
-					text:    fmt.Sprintf("… +%d more", extraHidden),
-					isExtra: true,
-				})
-			}
-		}
-
-		// Compute the maximum horizontal extent for cause labels. Limit labels
-		// so they don't extend into the territory of adjacent branches on the
-		// same side. The available width is bounded by the horizontal distance
-		// to the nearest adjacent branch's sub-tick endpoint.
-		//
-		// The inter-branch factor is 0.95 (not lower) because cause labels on
-		// adjacent branches sit at different Y positions along angled branches,
-		// so slight horizontal overlap in bounding boxes doesn't produce visual
-		// collision. The previous 0.80 factor was too conservative and forced
-		// truncation of moderate-length labels (e.g., "Complex escalation
-		// procedures" at 600–760pt widths with 6 categories).
-		maxCauseLabelW := subTickLen*4.5 + style.Spacing.LG*widthScale
-		for _, other := range layouts {
-			if other.isTop != lay.isTop || other.catIndex == lay.catIndex {
-				continue
-			}
-			hDist := math.Abs(lay.branchX - other.branchX)
-			if hDist > 0 && hDist < maxCauseLabelW*1.5 {
-				maxCauseLabelW = math.Min(maxCauseLabelW, hDist*0.95)
-			}
-		}
-
-		for j, entry := range displayCauses {
-			t := float64(j+1) / float64(len(displayCauses)+1)
-			subX := lay.branchX + t*(lay.endX-lay.branchX)
-			subY := spineY + t*(lay.endY-spineY)
-
-			subEndX := subX - subTickLen
-			subEndY := subY
-
-			if subEndX < plotArea.X {
-				subEndX = plotArea.X
-			}
-
-			if !entry.isExtra {
-				b.Push()
-				b.SetStrokeColor(color.WithAlpha(0.6))
-				b.SetStrokeWidth(1.5 * math.Max(0.6, widthScale))
-				b.DrawLine(subX, subY, subEndX, subEndY)
-				b.Pop()
-			}
-
-			// The label hangs off the OUTER end of the sub-tick, which points
-			// left, so it sits entirely on the far side of the category bone.
-			// Centring it on the tick midpoint put the text box across both the
-			// tick and the diagonal bone it hangs from, and the bone was drawn
-			// straight through the words (go-slide-creator-kosq).
-			causeMinFont := math.Min(DefaultMinFontSize, 7.0)
-			causeMaxH := minVerticalGap * 0.95
-			labelRightX := subEndX - style.Spacing.XS
-			availableW := maxCauseLabelW
-			outside := false
-
-			causeFit := LabelFitStrategy{PreferredSize: subFontSize, MinSize: causeMinFont, MinCharWidth: 5.5, AllowWrap: true, MaxLines: 3}
-
-			origMin := b.MinFontSize()
-			b.SetMinFontSize(causeMinFont)
-			causeResult := causeFit.Fit(b, entry.text, availableW, causeMaxH)
-
-			// Prefer hanging the label off the tick end when the strip beside
-			// the bone holds the same text at the same size. Never at the cost
-			// of shrinking or truncating: a label crossed by a bone is bad, a
-			// label cut short is worse.
-			if strip := labelRightX - plotArea.X; strip >= causeLabelMinWidthPt {
-				if r := causeFit.Fit(b, entry.text, strip, causeMaxH); r.DisplayText == causeResult.DisplayText && r.FontSize >= causeResult.FontSize {
-					causeResult, availableW, outside = r, strip, true
-				}
-			}
-			b.SetMinFontSize(origMin)
-
-			// Position the label box: right-aligned against the tick end when
-			// there is room beside the bone, else centred on the tick midpoint.
-			labelBoxX := labelRightX - availableW
-			if !outside {
-				labelBoxX = (subX+subEndX)/2 - availableW/2
-			}
-			if labelBoxX < plotArea.X {
-				labelBoxX = plotArea.X
-			}
-			if labelBoxX+availableW > plotArea.X+plotArea.W {
-				labelBoxX = plotArea.X + plotArea.W - availableW
-			}
-
-			b.Push()
-			b.SetFontSize(causeResult.FontSize)
-			if entry.isExtra {
-				b.SetFillColor(style.Palette.TextSecondary)
-			} else {
-				b.SetFillColor(style.Palette.TextPrimary)
-			}
-			align, textX, textAlign := AlignCenter, labelBoxX+availableW/2, TextAlignCenter
-			if outside {
-				// Hug the tick: the words run away from the bone, not across it.
-				align, textX, textAlign = AlignMiddleRight, labelBoxX+availableW, TextAlignRight
-			}
-			if causeResult.Wrapped {
-				wrapRect := Rect{
-					X: labelBoxX,
-					Y: subEndY - causeMaxH/2,
-					W: availableW,
-					H: causeMaxH,
-				}
-				b.DrawWrappedText(causeResult.DisplayText, wrapRect, align)
-			} else {
-				b.DrawText(causeResult.DisplayText, textX, subEndY, textAlign, TextBaselineMiddle)
-			}
-			b.Pop()
-		}
+		b.AddFinding(Finding{
+			Field:    "categories",
+			Code:     FindingDiagramItemsDropped,
+			Severity: "warning",
+			Message: fmt.Sprintf("fishbone: %d of %d categories are not drawn — a fishbone holds %d; merge categories or split the analysis over two slides",
+				overflow, len(data.Categories), len(visible)),
+			Fix: &FixSuggestion{Kind: FixKindReduceItems, Params: map[string]any{
+				"dropped_count": overflow, "total_count": len(data.Categories), "rendered": len(visible), "diagram_type": "fishbone",
+			}},
+		})
 	}
 
-	// Draw overflow indicator if categories were collapsed
-	if overflowCount > 0 {
-		overflowText := fmt.Sprintf("+%d more categories", overflowCount)
-		overflowFontSize := captionFontSize
-		overflowY := spineY + smallFontSize*1.5
-		overflowX := spineStartX + spineLength*0.05
-
-		b.Push()
-		b.SetFontSize(overflowFontSize)
-		b.SetFillColor(style.Palette.TextSecondary)
-		b.DrawText(overflowText, overflowX, overflowY, TextAlignLeft, TextBaselineMiddle)
-		b.Pop()
-	}
-
-	// Draw title
 	if fc.config.ShowTitle && data.Title != "" {
 		titleConfig := DefaultTitleConfig()
 		titleConfig.Text = data.Title
@@ -782,148 +227,370 @@ func (fc *FishboneChart) Draw(data FishboneData) error {
 		title := NewTitle(b, titleConfig)
 		title.Draw(Rect{X: 0, Y: 0, W: fc.config.Width, H: headerHeight + fc.config.MarginTop})
 	}
-
 	return nil
 }
 
-// resolveCollisions detects and fixes overlapping category label bounding boxes.
-// It operates on same-side (top or bottom) labels independently because labels
-// on opposite sides of the spine cannot collide with each other.
-//
-// Resolution strategy (applied in order):
-//  1. Spread X positions further apart along the spine.
-//  2. If still overlapping, reduce label font size (down to a floor).
-//  3. Re-measure and re-position after each adjustment.
-//
-//nolint:gocognit,gocyclo // complex chart rendering logic
-func (fc *FishboneChart) resolveCollisions(
-	layouts []fishboneBranchLayout,
-	b *SVGBuilder,
-	plotArea Rect,
-	spineStartX, spineEndX, arrowSize, spineY, branchAngle, branchLen, smallFontSize, widthScale float64,
-	style *StyleGuide,
-) {
-	// Separate into top and bottom groups
-	var topIdxs, bottomIdxs []int
-	for i := range layouts {
-		if layouts[i].isTop {
-			topIdxs = append(topIdxs, i)
+// fishboneEffect is the laid-out head of the fish.
+type fishboneEffect struct {
+	rect  Rect    // the pentagon's bounding box
+	point float64 // depth of its point
+	lines []string
+	font  float64
+}
+
+// layoutEffect sizes the effect pentagon to its text: as narrow as the words
+// allow between fishboneEffectMinFrac and fishboneEffectMaxFrac of the plot,
+// wrapped, bold, at the cause size or one step above it.
+func (fc *FishboneChart) layoutEffect(text string, plot Rect, spineY float64, fit fishboneFit) fishboneEffect {
+	b := fc.builder
+	style := b.StyleGuide()
+	font := math.Max(fit.font, math.Min(style.Typography.SizeBody, fit.font*1.2))
+	lineH := font * fishboneLineFactor
+	pad := font * fishboneTabPadX
+	minW, maxW := plot.W*fishboneEffectMinFrac, plot.W*fishboneEffectMaxFrac
+
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(font)
+	b.SetFontWeight(style.Typography.WeightBold)
+
+	var out fishboneEffect
+	for w := minW; ; w += plot.W * 0.02 {
+		w = math.Min(w, maxW)
+		h := 0.0
+		var lines []string
+		// The point takes a share of the box; iterate once so the text
+		// column is measured beside the point it leaves.
+		point := font
+		for range 2 {
+			lines = fishboneWrap(b, text, w-point-2*pad)
+			h = math.Max(float64(len(lines))*lineH+2*pad, 2.6*font)
+			point = math.Min(h*0.35, w*0.3)
+		}
+		out = fishboneEffect{
+			rect:  Rect{X: plot.X + plot.W - w, Y: spineY - h/2, W: w, H: h},
+			point: point, lines: lines, font: font,
+		}
+		widest := 0.0
+		for _, line := range lines {
+			lw, _ := b.MeasureText(line)
+			widest = math.Max(widest, lw)
+		}
+		if (widest <= w-point-2*pad && h <= plot.H*0.5) || w >= maxW {
+			break
+		}
+	}
+	textW := out.rect.W - out.point - 2*pad
+	if maxLines := int((plot.H*0.8 - 2*pad) / lineH); len(out.lines) > maxLines && maxLines >= 1 {
+		out.lines = out.lines[:maxLines]
+		out.lines[maxLines-1] += "…"
+		out.rect.H = float64(maxLines)*lineH + 2*pad
+		out.rect.Y = spineY - out.rect.H/2
+	}
+	for i, line := range out.lines {
+		if lw, _ := b.MeasureText(line); lw > textW {
+			out.lines[i] = b.TruncateToWidth(line, textW)
+		}
+	}
+	return out
+}
+
+// drawEffect paints the effect pentagon and its label.
+func (fc *FishboneChart) drawEffect(e fishboneEffect) {
+	b := fc.builder
+	style := b.StyleGuide()
+	fill := diagramAccent(style)
+	r := e.rect
+	b.Push()
+	b.SetFillColor(fill)
+	b.SetStrokeWidth(0)
+	b.DrawPolygon([]Point{
+		{X: r.X, Y: r.Y},
+		{X: r.X + r.W - e.point, Y: r.Y},
+		{X: r.X + r.W, Y: r.Y + r.H/2},
+		{X: r.X + r.W - e.point, Y: r.Y + r.H},
+		{X: r.X, Y: r.Y + r.H},
+	})
+	b.Pop()
+
+	b.Push()
+	b.SetFontSize(e.font)
+	b.SetFontWeight(style.Typography.WeightBold)
+	b.SetFillColor(diagramInkOn(style, fill))
+	lineH := e.font * fishboneLineFactor
+	cx := r.X + (r.W-e.point/2)/2
+	top := r.Y + r.H/2 - float64(len(e.lines))*lineH/2
+	for i, line := range e.lines {
+		b.DrawText(line, cx, top+(float64(i)+0.5)*lineH, TextAlignCenter, TextBaselineMiddle)
+	}
+	b.Pop()
+}
+
+// layoutBones places the categories in columns of two (one bone above the
+// spine, one below, meeting it at one point) and fits each bone's causes.
+func (fc *FishboneChart) layoutBones(cats []FishboneCategory, plot Rect, spineY, effectX float64, fit fishboneFit) []fishboneBone {
+	n := len(cats)
+	if n == 0 {
+		return nil
+	}
+	b := fc.builder
+	cols := (n + 1) / 2
+	// The last bone meets the spine a little before the effect.
+	usable := effectX - fit.font - plot.X
+	slotW := usable / float64(cols)
+	angle := fc.config.BranchAngle * math.Pi / 180
+	padX := fit.font * fishboneTabPadX
+
+	bones := make([]fishboneBone, n)
+	for i, cat := range cats {
+		col := i / 2
+		bn := fishboneBone{catIndex: i, isTop: i%2 == 0}
+		slotX := plot.X + float64(col)*slotW
+		bn.slotLeft = slotX
+		bn.joinX = slotX + slotW
+		if cols == 1 {
+			// One or two categories: the bones sit over the middle of the
+			// spine, not against the effect.
+			bn.joinX = slotX + slotW*fishboneLoneJoinFrac
+		}
+		if col > 0 {
+			// Clear of the previous column's bones and their join.
+			bn.slotLeft += fit.font * 0.6
+		}
+
+		// Head: the category name, bold, on a small filled tab at the edge.
+		b.Push()
+		b.SetFontSize(fit.font)
+		b.SetFontWeight(b.StyleGuide().Typography.WeightBold)
+		maxTextW := slotW*0.92 - 2*padX
+		lines := fishboneWrap(b, cat.Name, maxTextW)
+		if len(lines) > 2 {
+			lines = lines[:2]
+			lines[1] += "…"
+		}
+		textW := 0.0
+		for li, line := range lines {
+			if lw, _ := b.MeasureText(line); lw > maxTextW {
+				lines[li] = b.TruncateToWidth(line, maxTextW)
+			}
+			lw, _ := b.MeasureText(lines[li])
+			textW = math.Max(textW, lw)
+		}
+		b.Pop()
+		tabW := textW + 2*padX
+		tabH := float64(max(len(lines), 1))*fit.lineH + 2*fit.font*fishboneTabPadY
+
+		// The bone leans back from the join by its angle, but never out of
+		// its column.
+		var span float64
+		if bn.isTop {
+			bn.headY = plot.Y + tabH
+			span = spineY - bn.headY
 		} else {
-			bottomIdxs = append(bottomIdxs, i)
+			bn.headY = plot.Y + plot.H - tabH
+			span = bn.headY - spineY
 		}
+		lean := math.Min(math.Max(span, 0)*math.Tan(angle), slotW*fishboneMaxBoneLeanFrac)
+		bn.headX = bn.joinX - lean
+
+		tabX := math.Min(math.Max(bn.headX-tabW/2, slotX), bn.joinX-tabW)
+		tabY := plot.Y
+		if !bn.isTop {
+			tabY = plot.Y + plot.H - tabH
+		}
+		bn.tab = Rect{X: tabX, Y: tabY, W: tabW, H: tabH}
+		bn.tabLines = lines
+
+		fc.fitCauses(&bn, cat.Causes, spineY, fit)
+		bones[i] = bn
+	}
+	return bones
+}
+
+// fitCauses places a bone's causes in equal rows between its head and the
+// spine, in reading order from the top. Every cause that has a line of room
+// is drawn, wrapped to the lines its row holds; only when the rows run out
+// does the last row become "+N more" (which then stands for at least two
+// causes: one hidden cause is never traded for an indicator of the same
+// height).
+func (fc *FishboneChart) fitCauses(bn *fishboneBone, causes []string, spineY float64, fit fishboneFit) {
+	if len(causes) == 0 {
+		return
+	}
+	b := fc.builder
+	gap := fit.font * 0.5
+	top, bottom := bn.headY+gap, spineY-gap
+	if !bn.isTop {
+		top, bottom = spineY+gap, bn.headY-gap
+	}
+	region := bottom - top
+	capacity := int(region / fit.lineH)
+
+	tick := fit.font * fishboneTickLen
+	labelGap := fit.font * fishboneLabelGap
+	// The narrowest row is the one nearest the head.
+	narrowest := math.Min(bn.headX, bn.joinX) - tick - labelGap - bn.slotLeft
+	if capacity < 1 || narrowest < fit.font*fishboneMinLabelChars {
+		bn.countOnly = true
+		bn.hidden = len(causes)
+		return
 	}
 
-	resolveSide := func(idxs []int) {
-		if len(idxs) < 2 {
-			return
+	shown := len(causes)
+	if shown > capacity {
+		shown = capacity - 1
+		bn.hidden = len(causes) - shown
+	}
+	rows := shown
+	if bn.hidden > 0 {
+		rows++
+	}
+	rowH := region / float64(rows)
+	maxLines := min(max(int(rowH/fit.lineH), 1), fishboneMaxCauseLines)
+
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(fit.font)
+	b.SetFontWeight(b.StyleGuide().Typography.WeightNormal)
+	for r := 0; r < rows; r++ {
+		y := top + (float64(r)+0.5)*rowH
+		row := fishboneCauseRow{y: y, boneX: bn.boneXAt(y, spineY)}
+		row.tickX = row.boneX - tick
+		row.labelRight = row.tickX - labelGap
+		width := row.labelRight - bn.slotLeft
+		var text string
+		if r < shown {
+			text = causes[r]
+		} else {
+			text = fmt.Sprintf("+%d more", bn.hidden)
+			row.overflow = true
 		}
-
-		const maxPasses = 3
-		for pass := 0; pass < maxPasses; pass++ {
-			hasOverlap := false
-			for a := 0; a < len(idxs)-1; a++ {
-				for c := a + 1; c < len(idxs); c++ {
-					if layouts[idxs[a]].boxRect.Intersects(layouts[idxs[c]].boxRect) {
-						hasOverlap = true
-						break
-					}
-				}
-				if hasOverlap {
-					break
-				}
+		lines := fishboneWrap(b, text, width)
+		if len(lines) > maxLines {
+			lines = lines[:maxLines]
+			lines[maxLines-1] += "…"
+		}
+		for li, line := range lines {
+			if lw, _ := b.MeasureText(line); lw > width {
+				lines[li] = b.TruncateToWidth(line, width)
 			}
+		}
+		if !row.overflow && strings.Join(lines, " ") != strings.Join(strings.Fields(text), " ") {
+			b.AddFinding(Finding{
+				Field:    "categories",
+				Code:     FindingLabelTruncated,
+				Severity: "info",
+				Message:  fmt.Sprintf("fishbone: cause %q is cut to fit its bone — shorten it or use fewer categories", text),
+				Fix: &FixSuggestion{Kind: FixKindTruncateOrSplit, Params: map[string]any{
+					"original": text, "truncated": strings.Join(lines, " "), "font_size": fit.font,
+				}},
+			})
+		}
+		row.lines = lines
+		bn.causes = append(bn.causes, row)
+	}
+}
 
-			if !hasOverlap {
-				return
-			}
+// drawBone paints one category: bone, head, cause ticks and labels.
+func (fc *FishboneChart) drawBone(bn fishboneBone, cat FishboneCategory, spineY float64, neutral Color, fit fishboneFit) {
+	b := fc.builder
+	style := b.StyleGuide()
 
-			if pass == 0 {
-				// Strategy 1: Spread X positions further apart.
-				// Re-distribute using more of the available spine length.
-				spineLength := spineEndX - spineStartX - arrowSize
-				n := len(idxs)
-				newSpacing := spineLength / float64(n+1)
-
-				for rank, idx := range idxs {
-					lay := &layouts[idx]
-					lay.branchX = spineStartX + float64(rank+1)*newSpacing
-
-					direction := -1.0
-					if !lay.isTop {
-						direction = 1.0
-					}
-					lay.endX = lay.branchX - branchLen*math.Sin(branchAngle)
-					lay.endY = spineY + direction*branchLen*math.Cos(branchAngle)
-
-					if lay.endX < plotArea.X {
-						lay.endX = plotArea.X
-					}
-					if lay.endY < plotArea.Y {
-						lay.endY = plotArea.Y + smallFontSize
-					}
-					if lay.endY > plotArea.Y+plotArea.H {
-						lay.endY = plotArea.Y + plotArea.H - smallFontSize
-					}
-
-					// Recompute box position
-					lay.boxRect.X = lay.endX - lay.boxRect.W/2
-					lay.boxRect.Y = lay.endY - lay.boxRect.H/2
-
-					if lay.boxRect.X < plotArea.X {
-						lay.boxRect.X = plotArea.X
-					}
-					if lay.boxRect.X+lay.boxRect.W > plotArea.X+plotArea.W {
-						lay.boxRect.X = plotArea.X + plotArea.W - lay.boxRect.W
-					}
-				}
-			} else {
-				// Strategy 2: Reduce font size and re-measure labels.
-				for _, idx := range idxs {
-					lay := &layouts[idx]
-					newSize := lay.fontSize * 0.85
-					// At very narrow widths, allow smaller fonts to prevent
-					// severe truncation that makes categories appear missing.
-					collisionFloor := 9.0
-					if plotArea.W < 500 {
-						collisionFloor = 7.0
-					}
-					minSize := math.Max(collisionFloor, b.MinFontSize()) // stable category box sizes
-					if newSize < minSize {
-						newSize = minSize
-					}
-					if newSize >= lay.fontSize {
-						continue // already at floor
-					}
-					lay.fontSize = newSize
-
-					// Re-measure text width at new font size
-					b.Push()
-					b.SetFontSize(lay.fontSize)
-					catNameW, _ := b.MeasureText(lay.catName)
-					b.Pop()
-					catNameW *= 1.3
-
-					catBoxW := catNameW + style.Spacing.MD*2*widthScale
-					catBoxH := lay.fontSize + style.Spacing.SM*2*widthScale
-
-					lay.boxRect.W = catBoxW
-					lay.boxRect.H = catBoxH
-					lay.boxRect.X = lay.endX - catBoxW/2
-					lay.boxRect.Y = lay.endY - catBoxH/2
-
-					if lay.boxRect.X < plotArea.X {
-						lay.boxRect.X = plotArea.X
-					}
-					if lay.boxRect.X+lay.boxRect.W > plotArea.X+plotArea.W {
-						lay.boxRect.X = plotArea.X + plotArea.W - lay.boxRect.W
-					}
-				}
-			}
+	b.Push()
+	b.SetStrokeColor(neutral)
+	b.SetStrokeWidth(fc.config.BranchWidth)
+	b.DrawLine(bn.joinX, spineY, bn.headX, bn.headY)
+	b.SetStrokeWidth(math.Max(1, fc.config.BranchWidth/2))
+	for _, row := range bn.causes {
+		if !row.overflow {
+			b.DrawLine(row.boneX, row.y, row.tickX, row.y)
 		}
 	}
+	b.Pop()
 
-	resolveSide(topIdxs)
-	resolveSide(bottomIdxs)
+	fill := diagramContentFill(style)
+	b.Push()
+	b.SetFillColor(fill)
+	b.SetStrokeWidth(0)
+	b.DrawRect(bn.tab)
+	b.Pop()
+
+	b.Push()
+	b.SetFontSize(fit.font)
+	b.SetFontWeight(style.Typography.WeightBold)
+	b.SetFillColor(diagramInkOn(style, fill))
+	top := bn.tab.Y + bn.tab.H/2 - float64(len(bn.tabLines))*fit.lineH/2
+	for i, line := range bn.tabLines {
+		b.DrawText(line, bn.tab.X+bn.tab.W/2, top+(float64(i)+0.5)*fit.lineH, TextAlignCenter, TextBaselineMiddle)
+	}
+	b.Pop()
+
+	b.Push()
+	b.SetFontSize(fit.font)
+	b.SetFontWeight(style.Typography.WeightNormal)
+	for _, row := range bn.causes {
+		if row.overflow {
+			b.SetFillColor(diagramMutedInk(style))
+		} else {
+			b.SetFillColor(style.Palette.TextPrimary)
+		}
+		rowTop := row.y - float64(len(row.lines))*fit.lineH/2
+		for i, line := range row.lines {
+			b.DrawText(line, row.labelRight, rowTop+(float64(i)+0.5)*fit.lineH, TextAlignRight, TextBaselineMiddle)
+		}
+	}
+	if bn.countOnly && len(cat.Causes) > 0 {
+		// Too narrow for any cause: the head says how many there are.
+		y := bn.tab.Y + bn.tab.H + fit.lineH*0.6
+		if !bn.isTop {
+			y = bn.tab.Y - fit.lineH*0.6
+		}
+		b.SetFillColor(diagramMutedInk(style))
+		b.DrawText(fmt.Sprintf("(%d causes)", len(cat.Causes)), bn.tab.X+bn.tab.W/2, y, TextAlignCenter, TextBaselineMiddle)
+	}
+	b.Pop()
+}
+
+// reportHiddenCauses says which bones could not hold all their causes: the
+// picture shows "+N more", and the finding is what an author can act on.
+func (fc *FishboneChart) reportHiddenCauses(bones []fishboneBone, cats []FishboneCategory) {
+	for _, bn := range bones {
+		if bn.hidden == 0 {
+			continue
+		}
+		cat := cats[bn.catIndex]
+		fc.builder.AddFinding(Finding{
+			Field:    "categories",
+			Code:     FindingDiagramItemsDropped,
+			Severity: "warning",
+			Message: fmt.Sprintf("fishbone: %d of %d causes of %q did not fit its bone and are not drawn — list fewer causes, use fewer categories, or give the diagram a taller box",
+				bn.hidden, len(cat.Causes), cat.Name),
+			Fix: &FixSuggestion{Kind: FixKindReduceItems, Params: map[string]any{
+				"dropped_count": bn.hidden, "total_count": len(cat.Causes), "rendered": len(cat.Causes) - bn.hidden,
+				"category": cat.Name, "diagram_type": "fishbone",
+			}},
+		})
+	}
+}
+
+// fishboneWrap breaks text into lines no wider than width at the builder's
+// current font, at spaces only; a single word wider than width stays whole
+// for the caller to cut.
+func fishboneWrap(b *SVGBuilder, text string, width float64) []string {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return nil
+	}
+	lines := []string{words[0]}
+	for _, word := range words[1:] {
+		candidate := lines[len(lines)-1] + " " + word
+		if w, _ := b.MeasureText(candidate); w <= width {
+			lines[len(lines)-1] = candidate
+		} else {
+			lines = append(lines, word)
+		}
+	}
+	return lines
 }
 
 // =============================================================================
@@ -962,6 +629,7 @@ func (d *FishboneDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 			return err
 		}
 
+		assumeSlidePlacement(builder, req)
 		width, height := builder.Width(), builder.Height()
 		config := DefaultFishboneConfig(width, height)
 		config.ShowTitle = req.Title != ""

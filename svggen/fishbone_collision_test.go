@@ -45,26 +45,92 @@ func makeFishboneCategories(n, causesPerCat int) []any {
 	return cats
 }
 
-func TestFishboneCategoryConnectorStopsAtResolvedChipEdge(t *testing.T) {
-	// Collision resolution may shift the chip independently of the original
-	// branch endpoint. Both orientations must follow its actual rectangle.
-	for _, tc := range []struct {
-		name string
-		top  bool
-		want Point
-	}{
-		{name: "above spine", top: true, want: Point{X: 145, Y: 72}},
-		{name: "below spine", top: false, want: Point{X: 145, Y: 40}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			lay := fishboneBranchLayout{
-				isTop: tc.top, endX: 999, endY: 999,
-				boxRect: Rect{X: 100, Y: 40, W: 90, H: 32},
+// fishboneTestBones lays out cats on a width x height canvas the way Draw
+// does, at the slide scale a body placeholder gets.
+func fishboneTestBones(t *testing.T, width, height float64, cats []FishboneCategory) ([]fishboneBone, Rect) {
+	t.Helper()
+	b := NewSVGBuilder(width, height)
+	assumeSlidePlacement(b, &RequestEnvelope{})
+	fc := NewFishboneChart(b, DefaultFishboneConfig(width, height))
+	font := b.StyleGuide().Typography.SizeSmall
+	fit := fishboneFit{font: font, lineH: font * fishboneLineFactor}
+	edge := font * fishboneEdgePad
+	plot := Rect{X: edge, Y: edge, W: width - 2*edge, H: height - 2*edge}
+	spineY := plot.Y + plot.H/2
+	effect := fc.layoutEffect("Low productivity", plot, spineY, fit)
+	return fc.layoutBones(cats, plot, spineY, effect.rect.X, fit), plot
+}
+
+// A bone runs from the spine to the edge of its category head that faces the
+// spine, inside the head's width, and the heads stand on the plot's top and
+// bottom edges: the drawing uses the height it is given.
+func TestFishboneBonesRunToHeadsOnThePlotEdges(t *testing.T) {
+	cats := []FishboneCategory{
+		{Name: "People", Causes: []string{"Skill gaps"}}, {Name: "Process", Causes: []string{"Rework"}},
+		{Name: "Technology", Causes: []string{"Downtime"}}, {Name: "Environment", Causes: []string{"Noise"}},
+	}
+	bones, plot := fishboneTestBones(t, 1199, 420, cats)
+	for _, bn := range bones {
+		wantY, edgeY := bn.tab.Y+bn.tab.H, plot.Y
+		if !bn.isTop {
+			wantY, edgeY = bn.tab.Y, plot.Y+plot.H-bn.tab.H
+		}
+		if bn.headY != wantY {
+			t.Errorf("%s: bone ends at y=%.1f, want the head's spine-facing edge %.1f", cats[bn.catIndex].Name, bn.headY, wantY)
+		}
+		if bn.tab.Y != edgeY {
+			t.Errorf("%s: head at y=%.1f, want it on the plot edge %.1f", cats[bn.catIndex].Name, bn.tab.Y, edgeY)
+		}
+		if bn.headX < bn.tab.X || bn.headX > bn.tab.X+bn.tab.W {
+			t.Errorf("%s: bone ends at x=%.1f outside its head [%.1f, %.1f]", cats[bn.catIndex].Name, bn.headX, bn.tab.X, bn.tab.X+bn.tab.W)
+		}
+	}
+}
+
+// Regression for go-slide-creator-o8cqh: two causes per bone on a body-sized
+// canvas printed one cause and "… +1 more". The row budget assumed every
+// cause wraps to two lines, used 35% of the height for a bone, and then spent
+// a cause's row on the indicator that replaced it.
+func TestFishboneShowsEveryCauseThatFits(t *testing.T) {
+	cats := []FishboneCategory{
+		{Name: "People", Causes: []string{"Skill gaps", "Low morale"}},
+		{Name: "Process", Causes: []string{"Bottlenecks", "Rework"}},
+		{Name: "Technology", Causes: []string{"Outdated tools", "Downtime"}},
+		{Name: "Environment", Causes: []string{"Noise", "Poor layout"}},
+	}
+	for _, size := range [][2]float64{{1199, 420}, {716, 479}, {900, 500}} {
+		bones, _ := fishboneTestBones(t, size[0], size[1], cats)
+		for _, bn := range bones {
+			if bn.hidden != 0 || len(bn.causes) != 2 {
+				t.Errorf("%vx%v %s: %d causes drawn, %d hidden; want 2 drawn, none hidden",
+					size[0], size[1], cats[bn.catIndex].Name, len(bn.causes), bn.hidden)
 			}
-			if got := lay.categoryConnectorEnd(); got != tc.want {
-				t.Errorf("connector end = %+v, want chip edge %+v", got, tc.want)
+		}
+	}
+}
+
+// When a bone does run out of rows, the indicator stands for at least two
+// causes and every row above it holds a real cause.
+func TestFishboneOverflowIndicatorNeverReplacesOneCause(t *testing.T) {
+	many := make([]string, 14)
+	for i := range many {
+		many[i] = fmt.Sprintf("Cause %d", i+1)
+	}
+	for n := 1; n <= len(many); n++ {
+		bones, _ := fishboneTestBones(t, 1199, 420, []FishboneCategory{{Name: "People", Causes: many[:n]}})
+		bn := bones[0]
+		if bn.hidden == 1 {
+			t.Errorf("%d causes: one cause hidden behind an indicator of the same height", n)
+		}
+		drawn := 0
+		for _, row := range bn.causes {
+			if !row.overflow {
+				drawn++
 			}
-		})
+		}
+		if drawn+bn.hidden != n {
+			t.Errorf("%d causes: %d drawn + %d hidden", n, drawn, bn.hidden)
+		}
 	}
 }
 

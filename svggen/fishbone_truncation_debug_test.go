@@ -264,11 +264,15 @@ func TestFishbone_VeryNarrow_AllCategoriesVisible(t *testing.T) {
 				}
 			}
 
-			// At very narrow widths, cause badges should appear instead of
-			// individual cause labels
-			causesBadgeCount := strings.Count(svg, "causes)")
-			if causesBadgeCount < 4 {
-				t.Errorf("expected cause count badges at very narrow width, found %d", causesBadgeCount)
+			// The bones run the full half-height, so even at these widths
+			// every cause has a row: wrapped, never replaced by a count.
+			if strings.Contains(svg, "causes)") || strings.Contains(svg, "more") {
+				t.Errorf("causes replaced by a count at %dx%d", sz.w, sz.h)
+			}
+			for _, word := range []string{"Training", "turnover", "escalation", "downtime", "refund", "Regulatory", "Budget"} {
+				if !strings.Contains(svg, word) {
+					t.Errorf("cause word %q missing at %dx%d", word, sz.w, sz.h)
+				}
 			}
 
 			// Should NOT have truncated category names
