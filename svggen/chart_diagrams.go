@@ -845,6 +845,9 @@ func (d *StackedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		config := DefaultBarChartConfig(width, height)
 		config.Horizontal = horizontal
 		config.ShowTitle = req.Title != ""
+		// A stack of a few series names its segments beside the last column;
+		// an explicit ShowLegend=true keeps the legend.
+		config.PreferDirectLabels = !req.Style.ShowLegend
 		config.ShowValues = resolveDefaultShowValues(req, "stacked_bar_chart", chartData)
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 		config.Stacked = true // Enable stacking
@@ -2066,6 +2069,9 @@ func (d *StackedAreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGB
 		config := DefaultAreaChartConfig(width, height)
 		config.ShowTitle = req.Title != ""
 		// ShowLegend kept at default true; Draw only renders for multi-series.
+		// A few bands are named at their right end instead; an explicit
+		// ShowLegend=true keeps the legend.
+		config.PreferDirectLabels = !req.Style.ShowLegend
 		config.ShowValues = req.Style.ShowValues
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 		config.Stacked = true

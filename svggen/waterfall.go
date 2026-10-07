@@ -853,6 +853,11 @@ func (d *WaterfallDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		config.TotalColor = waterfallTotalInk(style.Palette)
 		config.IncreaseColor = style.Palette.Accent1
 		config.DecreaseColor = waterfallDecreaseInk(style.Palette, config.TotalColor)
+		// A bridge that only steps down has nothing to tell its decreases
+		// apart from: they are the whole story and take the accent itself.
+		if !waterfallHasIncrease(data.Points) {
+			config.DecreaseColor = style.Palette.Accent1
+		}
 		config.ConnectorColor = style.Palette.TextMuted
 
 		// Apply custom colors if specified (overrides theme defaults)
@@ -880,6 +885,17 @@ func (d *WaterfallDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		}
 		return nil
 	})
+}
+
+// waterfallHasIncrease reports whether any bar of the bridge is painted as an
+// increase: a positive point that is not a total or subtotal.
+func waterfallHasIncrease(points []WaterfallDataPoint) bool {
+	for _, p := range points {
+		if p.Type != WaterfallTypeTotal && p.Type != WaterfallTypeSubtotal && p.Value > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // parseWaterfallData parses the request data into WaterfallData.

@@ -76,8 +76,8 @@ func waterfallTotalInk(p *Palette) Color {
 
 // waterfallDecreaseInk is the fill of a waterfall decrease bar: a tint of
 // accent1 that stays visible on the background and at least MinSeriesDeltaE
-// away from the increase (accent1) and total (neutral) fills, so the three
-// classes stay distinct. A light accent1 whose tints vanish takes a shade.
+// away from the increase (accent1) fill, and from the total (neutral) fill
+// where a tint can be. A light accent1 whose tints vanish takes a shade.
 func waterfallDecreaseInk(p *Palette, total Color) Color {
 	bg := p.Background
 	if bg.A < 1 {
@@ -88,25 +88,30 @@ func waterfallDecreaseInk(p *Palette, total Color) Color {
 		c.A = share
 		return c.BlendOver(bg)
 	}
-	candidates := []Color{
-		tint(WaterfallDecreaseShare),
-		tint(0.38),
-		tint(0.64),
-		p.Accent1.Darken(0.35),
-		p.Accent1.Darken(0.55),
+	visible := func(c Color) bool {
+		return c.ContrastWith(bg) >= waterfallDecreaseMinContrast && deltaE76(c, p.Accent1) >= MinSeriesDeltaE
 	}
-	for _, c := range candidates {
-		if c.ContrastWith(bg) >= waterfallDecreaseMinContrast &&
-			deltaE76(c, p.Accent1) >= MinSeriesDeltaE && deltaE76(c, total) >= MinSeriesDeltaE {
+	tints := []Color{tint(WaterfallDecreaseShare), tint(0.38), tint(0.64)}
+	// A tint that is also clear of the total grey ...
+	for _, c := range tints {
+		if visible(c) && deltaE76(c, total) >= MinSeriesDeltaE {
 			return c
 		}
 	}
-	for _, c := range candidates {
-		if c.ContrastWith(bg) >= waterfallDecreaseMinContrast && deltaE76(c, p.Accent1) >= MinSeriesDeltaE {
+	// ... else any visible tint: a floating delta is not mistaken for a
+	// total standing on the baseline, and a shade of accent1 would weigh
+	// more than the increase it is paired with.
+	for _, c := range tints {
+		if visible(c) {
 			return c
 		}
 	}
-	return candidates[0]
+	for _, c := range []Color{p.Accent1.Darken(0.35), p.Accent1.Darken(0.55)} {
+		if visible(c) {
+			return c
+		}
+	}
+	return tints[0]
 }
 
 // TrueMinus replaces the ASCII hyphen that marks a negative number with the

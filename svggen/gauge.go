@@ -346,6 +346,9 @@ const (
 	// title, and gaugeBulletValueMaxFrac its cap as a share of the plot height.
 	gaugeBulletValueLines   = 3.6
 	gaugeBulletValueMaxFrac = 0.4
+	// gaugeBulletValueRise is the height the value's digits take above their
+	// baseline, in ems.
+	gaugeBulletValueRise = 0.78
 	// gaugeBulletTrackLines is the track height in lines of body text.
 	gaugeBulletTrackLines = 3.0
 	// gaugeBulletBarFrac is the value bar's share of the track height when
@@ -425,11 +428,14 @@ func (gc *GaugeChart) drawBullet(data GaugeData, plotArea Rect, unset []bool) {
 	if hasBandLabels {
 		labelsH += tickFont * 1.4
 	}
-	blockH := valueFont*1.25 + gap + trackH + gap + labelsH
+	// The value stands on its baseline, gaugeBulletValueRise of its size
+	// under the block's top, with a gap and a half down to the track.
+	valueGap := gap * 1.5
+	blockH := valueFont*gaugeBulletValueRise + valueGap + trackH + gap + labelsH
 	if blockH > plotArea.H {
 		// Short cell: give the fixed text its room and the track the rest.
-		trackH = math.Max(bodyFont*0.8, plotArea.H-(valueFont*1.25+2*gap+labelsH))
-		blockH = valueFont*1.25 + gap + trackH + gap + labelsH
+		trackH = math.Max(bodyFont*0.8, plotArea.H-(valueFont*gaugeBulletValueRise+valueGap+gap+labelsH))
+		blockH = valueFont*gaugeBulletValueRise + valueGap + trackH + gap + labelsH
 	}
 	trackW := math.Min(plotArea.W, plotArea.H*gaugeBulletMaxAspect)
 	trackX := plotArea.X + (plotArea.W-trackW)/2
@@ -446,24 +452,25 @@ func (gc *GaugeChart) drawBullet(data GaugeData, plotArea Rect, unset []bool) {
 	}
 	b.Push()
 	b.SetFontWeight(style.Typography.WeightBold)
+	baseline := y + valueFont*gaugeBulletValueRise
 	valueFont = b.ClampFontSize(valueText, trackW, valueFont, style.Typography.SizeTitle)
 	b.SetFontSize(valueFont)
 	b.SetTextColor(style.Palette.TextPrimary)
 	valueW, _ := b.MeasureText(valueText)
-	valueMid := y + valueFont*1.25/2
-	b.DrawText(valueText, trackX, valueMid, TextAlignLeft, TextBaselineMiddle)
+	b.DrawText(valueText, trackX, baseline, TextAlignLeft, TextBaselineAlphabetic)
 	if data.Label != "" {
-		labelX := trackX + valueW + style.Spacing.MD
+		// The slide's own renderer may set the bold value a little wider
+		// than it measures here: keep the label clear of it.
+		labelX := trackX + valueW*1.06 + valueFont*0.2
 		b.SetFontWeight(style.Typography.WeightNormal)
 		b.SetFontSize(bodyFont)
 		b.SetTextColor(style.Palette.TextSecondary)
-		// Sit the label on the value's baseline rather than its middle.
-		b.DrawText(b.TruncateToWidth(data.Label, trackX+trackW-labelX), labelX, valueMid+valueFont*0.36-bodyFont*0.36, TextAlignLeft, TextBaselineMiddle)
+		b.DrawText(b.TruncateToWidth(data.Label, trackX+trackW-labelX), labelX, baseline, TextAlignLeft, TextBaselineAlphabetic)
 	}
 	b.Pop()
 
 	// Track bands.
-	trackY := y + valueFont*1.25 + gap
+	trackY := baseline + valueGap
 	b.Push()
 	b.SetStrokeWidth(0)
 	for _, bd := range bands {

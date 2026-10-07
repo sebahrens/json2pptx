@@ -9,8 +9,8 @@ import (
 // TestWaterfallIncreaseInk_LegibleOnEveryTemplate keeps the waterfall's three
 // bar classes apart on every bundled template (and the local p-style when
 // present): the decrease tint stays a visible bar on the background, and the
-// increase (accent1) / decrease (its tint) / total (neutral) fills stay at
-// least MinSeriesDeltaE apart (go-slide-creator-rmm0x, go-slide-creator-n978t).
+// increase (accent1) stays at least MinSeriesDeltaE from the decrease (its
+// tint) and the total (neutral) (go-slide-creator-rmm0x, go-slide-creator-n978t).
 func TestWaterfallIncreaseInk_LegibleOnEveryTemplate(t *testing.T) {
 	files, err := filepath.Glob(chartPaletteTemplatesGlob)
 	if err != nil || len(files) == 0 {
@@ -37,9 +37,6 @@ func TestWaterfallIncreaseInk_LegibleOnEveryTemplate(t *testing.T) {
 		}
 		if d := deltaE76(inc, dec); d < MinSeriesDeltaE {
 			t.Errorf("%s: increase %s vs decrease %s ΔE %.1f", name, inc.Hex(), dec.Hex(), d)
-		}
-		if d := deltaE76(dec, total); d < MinSeriesDeltaE {
-			t.Errorf("%s: decrease %s vs total %s ΔE %.1f", name, dec.Hex(), total.Hex(), d)
 		}
 		if d := deltaE76(inc, total); d < MinSeriesDeltaE {
 			t.Errorf("%s: increase %s vs total %s ΔE %.1f", name, inc.Hex(), total.Hex(), d)

@@ -349,6 +349,10 @@ type BarChart struct {
 	// labelledMode is set for one Draw when every bar carries its value label:
 	// no value axis or gridlines, a thin baseline, 60%-of-slot bars.
 	labelledMode bool
+
+	// yScaleForLabels is the linear value scale of the current Draw, kept for
+	// the stacked direct labels (nil on a log axis).
+	yScaleForLabels *LinearScale
 }
 
 // applyLabelledMode switches the chart to its labelled layout when every bar
@@ -453,14 +457,21 @@ func (bc *BarChart) Draw(data ChartData) error {
 	// this render. Do not leak either override into a later Draw on the same
 	// chart instance (for example, a wide-range chart followed by a narrow one).
 	showValues, marginLeft, groupPadding := bc.config.ShowValues, bc.config.MarginLeft, bc.config.GroupPadding
+	marginRight := bc.config.MarginRight
 	defer func() {
 		bc.config.ShowValues = showValues
 		bc.config.MarginLeft = marginLeft
+		bc.config.MarginRight = marginRight
 		bc.config.GroupPadding = groupPadding
 		bc.labelledMode = false
 	}()
 	if err := bc.prepareValueScale(data); err != nil {
 		return err
+	}
+	// A stack that cannot name its segments beside the last column keeps the
+	// legend, and the layout must reserve its band.
+	if bc.config.Stacked && !bc.stackedDirectLabels(data) {
+		bc.config.PreferDirectLabels = false
 	}
 	if bc.config.Horizontal {
 		return bc.drawHorizontal(data)
@@ -472,6 +483,14 @@ func (bc *BarChart) Draw(data ChartData) error {
 	colors := seriesHighlightColors(style.Palette, bc.getColors(style, len(data.Series)), data)
 
 	b.CheckChartCapacity(len(data.Series), len(data.Categories))
+
+	// A stack of a few series names its segments beside the last column
+	// instead of in a legend row: reserve the room for the names
+	// (go-slide-creator-9nk6a).
+	stackedDirect := bc.stackedDirectLabels(data)
+	if stackedDirect {
+		bc.config.MarginRight += measureDirectLabelMargin(b, style, data.Series)
+	}
 
 	// Compute adaptive x-axis labels without thinning named categories.
 	isNarrow := bc.config.Width < 500
@@ -545,6 +564,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 	// obscure small bars, so label the actual values and surface the tradeoff.
 	// A logarithmic axis must be requested explicitly.
 	bc.logScale = nil
+	bc.yScaleForLabels = nil
 	if bc.config.Scale == "log" {
 		minPositive, maxPositive := bc.positiveDomainBounds(data)
 		if minPositive <= 0 || maxPositive <= 0 {
@@ -584,6 +604,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 		// Annotations not supported on log-scale charts (no linear yScale)
 	} else {
 		yScale := barLinearYScale(yMin, yMax, plotArea.H, barNegativeLabelClearance(b, style, bc.config, yMin))
+		bc.yScaleForLabels = yScale
 
 		bc.drawLinearGridAndAxes(plotArea, xScale, yScale, axisFontSize, xLabelRotation, labelStep)
 
@@ -607,7 +628,9 @@ func (bc *BarChart) Draw(data ChartData) error {
 	// keep the legend path because each "series" is a stacked segment or
 	// the log positions break the "above last bar" geometry.
 	directLabels := useDirectLabels(bc.config.ChartConfig, len(data.Series)) && !bc.config.Stacked && bc.logScale == nil
-	bc.drawLegendOrDirectLabels(directLabels, style, displayData, plotArea, legendHeight, colors)
+	if !stackedDirect || !bc.drawStackedDirectLabels(style, displayData, plotArea, colors) {
+		bc.drawLegendOrDirectLabels(directLabels, style, displayData, plotArea, legendHeight, colors)
+	}
 
 	// Draw footnote
 	if data.Footnote != "" {
@@ -713,6 +736,74 @@ func (bc *BarChart) drawLegendOrDirectLabels(directLabels bool, style *StyleGuid
 		H: legendHeight,
 	}
 	legend.Draw(legendBounds)
+}
+
+// stackedDirectLabels reports whether a vertical stacked bar chart names its
+// series beside the last column rather than in a legend: a linear stack of a
+// few series whose last column has only positive segments.
+func (bc *BarChart) stackedDirectLabels(data ChartData) bool {
+	if !bc.config.Stacked || bc.config.Horizontal || bc.config.Scale == "log" ||
+		!useDirectLabels(bc.config.ChartConfig, len(data.Series)) || len(data.Categories) == 0 {
+		return false
+	}
+	last := len(data.Categories) - 1
+	for _, s := range data.Series {
+		if last >= len(s.Values) || s.Values[last] <= 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// drawStackedDirectLabels names each series to the right of the last column,
+// level with its segment there, in the series' own (text-legible) colour. It
+// reports false, drawing nothing, when the names cannot be stacked inside the
+// plot height; the caller then draws the legend.
+func (bc *BarChart) drawStackedDirectLabels(style *StyleGuide, data ChartData, plotArea Rect, colors []Color) bool {
+	b := bc.builder
+	if bc.yScaleForLabels == nil {
+		return false
+	}
+	xs := NewCategoricalScale(data.Categories)
+	xs.SetRangeCategorical(plotArea.X, plotArea.X+plotArea.W)
+	xs.PaddingOuter(bc.config.GroupPadding)
+	xs.PaddingInner(bc.config.GroupPadding)
+	ys := NewLinearScale(bc.yScaleForLabels.domainMin, bc.yScaleForLabels.domainMax)
+	ys.SetRangeLinear(plotArea.Y+plotArea.H, plotArea.Y)
+
+	last := len(data.Categories) - 1
+	edge := xs.Scale(data.Categories[last]) + xs.Bandwidth()*(1-bc.config.BarPadding)/2
+	labels := make([]*lineEndLabel, 0, len(data.Series))
+	running := 0.0
+	for i, s := range data.Series {
+		v := s.Values[last]
+		mid := ys.Scale(running + v/2)
+		running += v
+		color := colors[i%len(colors)]
+		if s.Color != nil {
+			color = *s.Color
+		}
+		labels = append(labels, &lineEndLabel{name: s.Name, color: color, x: edge, y: mid, labelY: mid})
+	}
+	lineH := style.Typography.SizeSmall * lineLabelLineHeight
+	if !stackLineEndLabels(labels, plotArea, lineH) {
+		return false
+	}
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(style.Typography.SizeSmall)
+	b.SetFontWeight(style.Typography.WeightMedium)
+	labelX := edge + style.Spacing.SM
+	for _, l := range labels {
+		if math.Abs(l.labelY-l.y) > lineLabelLeaderMinShift {
+			b.SetStrokeColor(l.color.WithAlpha(lineLabelLeaderAlpha))
+			b.SetStrokeWidth(style.Strokes.WidthThin)
+			b.DrawLine(l.x, l.y, labelX-style.Spacing.XS/2, l.labelY)
+		}
+		b.SetTextColor(directLabelInk(style.Palette, l.color))
+		b.DrawText(l.name, labelX, l.labelY, TextAlignLeft, TextBaselineMiddle)
+	}
+	return true
 }
 
 // barDirectLabel is one inline series label with its measured bounding box.
@@ -1851,6 +1942,11 @@ func lineEndLabels(data ChartData, plotArea Rect, xScale Scale, yScale *LinearSc
 			x, ok := lineLabelPointX(series, data, idx, plotArea, xScale)
 			if !ok {
 				continue
+			}
+			// A stacked band is named at its own middle, not on its upper
+			// boundary where the next band begins.
+			if idx < len(series.labelValues) {
+				v -= series.labelValues[idx] / 2
 			}
 			lastX, lastY = x, plotArea.Y+yScale.Scale(v)
 			found = true
@@ -3166,7 +3262,7 @@ func (pc *PieChart) Draw(data ChartData) error {
 		legendConfig.Layout = LegendLayoutVertical
 		legendConfig.HorizontalAlign = "left"
 		legend := NewLegend(b, legendConfig)
-		legend.SetItems(pieLegendItems(values, labels, style.Palette.AccentColors()))
+		legend.SetItems(pieLegendItems(values, labels, pc.getColors(style, len(values))))
 		measuredLegendH := legend.Height(legendW)
 
 		// Centre the legend in the plot area, but never above it: the plot
@@ -3441,7 +3537,7 @@ func (pc *PieChart) measureLegendHeight(values []float64, labels []string, avail
 
 	legendConfig := PresentationPieLegendConfig(style)
 	legend := NewLegend(b, legendConfig)
-	legend.SetItems(pieLegendItems(values, labels, style.Palette.AccentColors()))
+	legend.SetItems(pieLegendItems(values, labels, pc.getColors(style, len(values))))
 
 	return legend.Height(availableWidth) + style.Spacing.MD
 }

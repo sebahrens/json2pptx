@@ -33,11 +33,11 @@ import (
 //   Column types:
 //     "total"    — bar runs from 0 to value (e.g. opening revenue, EBITDA).
 //     "delta"    — floating bar from prev_running to prev_running + value;
-//                  a decrease is the story and takes accent1; an increase is
-//                  neutral dk1 at 35%.
+//                  an increase takes the accent solid and a decrease its
+//                  Lighter 50% tint: the deltas are the story.
 //     "subtotal" — bar runs from 0 to running total; value auto-computed when
-//                  omitted. Totals and subtotals are neutral dk1 at 60%
-//                  (go-slide-creator-sdxii).
+//                  omitted. Totals and subtotals stand back in the neutral
+//                  bar grey, dk1 at 38% (go-slide-creator-n978t).
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -127,8 +127,8 @@ type WaterfallBridgeValues struct {
 // accent for downward delta bars.
 type WaterfallBridgeOverrides struct {
 	TextOverrides
-	NegativeAccent string  `json:"negative_accent,omitempty"` // decrease fill; default: the accent (accent1)
-	SubtotalAccent string  `json:"subtotal_accent,omitempty"` // subtotal fill; default: neutral dk1 at 60%
+	NegativeAccent string  `json:"negative_accent,omitempty"` // decrease fill, solid; default: the accent's Lighter 50% tint
+	SubtotalAccent string  `json:"subtotal_accent,omitempty"` // subtotal fill; default: neutral dk1 at 38%
 	ValueSize      float64 `json:"value_size,omitempty"`      // default 10
 	LabelSize      float64 `json:"label_size,omitempty"`      // default 9
 }
@@ -199,13 +199,13 @@ func (w *waterfallBridge) Schema() *Schema {
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":           StringSchema(0).WithDescription("Accent scheme color for the decrease bars, which carry the bridge's story (default accent1); totals, subtotals and increases are neutral dk1 tints").WithDefault("accent1"),
+			"accent":           StringSchema(0).WithDescription("Accent scheme color for the delta bars (default accent1): increases solid, decreases its lighter tint; totals and subtotals are neutral grey").WithDefault("accent1"),
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 			"header_size":      NumberSchema(6, 40).WithDescription("Column label font size (default 9)"),
 			"body_size":        NumberSchema(6, 40).WithDescription("Value label font size (default 10)"),
-			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent rotation for increase bars (default: neutral dk1 at 35%)"),
-			"negative_accent":  StringSchema(0).WithDescription("Scheme color for decrease bars; wins over accent (default: the accent, accent1)"),
-			"subtotal_accent":  StringSchema(0).WithDescription("Scheme color for subtotal bars (default: neutral dk1 at 60%, like totals)"),
+			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent rotation for increase bars (default: the accent)"),
+			"negative_accent":  StringSchema(0).WithDescription("Scheme color for decrease bars, solid (default: a tint of the accent)"),
+			"subtotal_accent":  StringSchema(0).WithDescription("Scheme color for subtotal bars (default: neutral dk1 at 38%, like totals)"),
 			"label_size":       NumberSchema(6, 40).WithDescription("Column label font size (default 9) — overrides header_size for this pattern"),
 			"value_size":       NumberSchema(6, 40).WithDescription("Value label font size (default 10) — overrides body_size for this pattern"),
 		},
@@ -349,13 +349,24 @@ func chartRange(cols []resolvedColumn) (yMin, yMax float64) {
 	return yMin, yMax
 }
 
-// Waterfall fills (go-slide-creator-sdxii): the decreases carry the story
-// and take the accent; totals / subtotals and increases are neutral dk1 tints
-// (60% and 35%), so the eye goes to the accent bars.
-var (
-	waterfallTotalTone    = fillTone{Color: "dk1", LumMod: 60000, LumOff: 40000}
-	waterfallIncreaseTone = fillTone{Color: "dk1", LumMod: 35000, LumOff: 65000}
-)
+// Waterfall fills (go-slide-creator-n978t): the deltas carry the story, the
+// increases in the accent and the decreases in its Lighter 50% tint, so the
+// two directions are one family; totals / subtotals stand back in the neutral
+// bar grey. Totals at dk1 60% were the heaviest marks on the slide.
+var waterfallTotalTone = barNeutralTone
+
+// waterfallDecreaseLighter is the "Lighter N%" swatch of a decrease bar.
+const waterfallDecreaseLighter = 50
+
+// waterfallHasIncrease reports whether any delta column of the bridge rises.
+func waterfallHasIncrease(cols []resolvedColumn) bool {
+	for _, c := range cols {
+		if c.typ == wbTypeDelta && !c.isNegDelta {
+			return true
+		}
+	}
+	return false
+}
 
 // waterfallColumnTone picks a column's fill and whether it is an accent
 // (highlighted) bar.
@@ -369,12 +380,16 @@ func waterfallColumnTone(ctx ExpandContext, col resolvedColumn, i int, decreaseA
 		}
 		return waterfallTotalTone, false
 	case col.isNegDelta:
-		return fillTone{Color: decreaseAccent}, true
+		if decreaseAccent != "" {
+			// An explicit negative_accent is drawn as authored.
+			return fillTone{Color: decreaseAccent}, true
+		}
+		return tonalLighter(baseAccent, waterfallDecreaseLighter), true
 	case cellAccentMode != "":
 		// An explicit per-cell rotation is the author's choice for increases.
 		return fillTone{Color: ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)}, false
 	default:
-		return waterfallIncreaseTone, false
+		return fillTone{Color: baseAccent}, true
 	}
 }
 
@@ -419,13 +434,15 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 
 	baseAccent := highlightAccent(ctx, ovr.Accent, ovr.SemanticAccent)
 	decreaseAccent := ovr.NegativeAccent
-	if decreaseAccent == "" {
-		decreaseAccent = baseAccent
-	}
 	labelSize := ResolveSize(ovr.LabelSize, ResolveSize(ovr.HeaderSize, sizeDenseCaptionPt))
 	valueSize := ResolveSize(ovr.ValueSize, ResolveSize(ovr.BodySize, scaleCaptionPt))
 
 	resolved := resolveColumns(vals.Columns)
+	// A bridge that only steps down has nothing to tell its decreases apart
+	// from: they are the whole story and take the accent itself.
+	if decreaseAccent == "" && !waterfallHasIncrease(resolved) {
+		decreaseAccent = baseAccent
+	}
 	yMin, yMax := chartRange(resolved)
 	scale := yMax - yMin
 	if scale <= 0 {

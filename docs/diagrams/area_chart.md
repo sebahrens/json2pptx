@@ -2,6 +2,8 @@
 
 Display trends over time with filled areas beneath the line.
 
+An area joins neighbouring values with a slope, so it is drawn only over a sequence: periods (`Q1`, `Jan`, `2024`), numbers, or an ordinal scale. Categories that are not a sequence (regions, products) are drawn as a bar chart instead; `as_area: true` keeps the area.
+
 ## Type Identifier
 
 `area_chart`
@@ -53,6 +55,7 @@ Display trends over time with filled areas beneath the line.
 | `x_label` | `string` | - | X-axis title (alias: `x_axis_title`) |
 | `y_label` | `string` | - | Y-axis title (alias: `y_axis_title`) |
 | `colors` | `string[]` | - | Hex colors or template scheme names (e.g. `accent1`) |
+| `as_area` | `bool` | `false` | Keep the area for categories that are not a sequence (drawn as bars by default) |
 
 ## Style Options
 

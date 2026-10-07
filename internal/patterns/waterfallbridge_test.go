@@ -385,8 +385,9 @@ func TestWaterfallBridge_Expand_SubtotalAutoComputed(t *testing.T) {
 	}
 }
 
-// TestWaterfallBridge_Expand_NegativeDeltaFill verifies the sdxii fills: a
-// decrease carries the story in accent1, an increase is neutral dk1 at 35%.
+// TestWaterfallBridge_Expand_NegativeDeltaFill verifies the delta fills
+// (go-slide-creator-n978t): an increase takes accent1 solid, a decrease its
+// Lighter 50% tint.
 func TestWaterfallBridge_Expand_NegativeDeltaFill(t *testing.T) {
 	p, _ := Default().Get("waterfall-bridge")
 	v := &WaterfallBridgeValues{
@@ -408,16 +409,16 @@ func TestWaterfallBridge_Expand_NegativeDeltaFill(t *testing.T) {
 	}
 	dropFill := barFill(1)
 	gainFill := barFill(2)
-	if dropFill != `"accent1"` {
-		t.Errorf("expected the decrease to fill with accent1, got %q", dropFill)
+	if dropFill != `{"color":"accent1","lumMod":50000,"lumOff":50000}` {
+		t.Errorf("expected the decrease to fill with the accent1 tint, got %q", dropFill)
 	}
-	if gainFill != `{"color":"dk1","lumMod":35000,"lumOff":65000}` {
-		t.Errorf("expected the increase to fill with neutral dk1 at 35%%, got %q", gainFill)
+	if gainFill != `"accent1"` {
+		t.Errorf("expected the increase to fill with accent1, got %q", gainFill)
 	}
 }
 
-// TestWaterfallBridge_Expand_SubtotalFill verifies subtotal columns are
-// neutral dk1 at 60%, like totals, unless subtotal_accent is set.
+// TestWaterfallBridge_Expand_SubtotalFill verifies subtotal columns are the
+// neutral bar grey (dk1 at 38%), like totals, unless subtotal_accent is set.
 func TestWaterfallBridge_Expand_SubtotalFill(t *testing.T) {
 	p, _ := Default().Get("waterfall-bridge")
 	grid, err := p.Expand(ExpandContext{}, validWaterfallBridgeValues(), nil, nil)
@@ -426,8 +427,8 @@ func TestWaterfallBridge_Expand_SubtotalFill(t *testing.T) {
 	}
 	c := grid.Rows[0].Cells[2] // Gross Profit subtotal
 	fill := wbBarFill(c.Grid)
-	if fill != `{"color":"dk1","lumMod":60000,"lumOff":40000}` {
-		t.Errorf("expected subtotal bar to fill with neutral dk1 at 60%%, got %q", fill)
+	if fill != `{"color":"dk1","lumMod":38000,"lumOff":62000}` {
+		t.Errorf("expected subtotal bar to fill with neutral dk1 at 38%%, got %q", fill)
 	}
 }
 
@@ -583,9 +584,9 @@ func TestWaterfallBridge_Recommend(t *testing.T) {
 	}
 }
 
-// go-slide-creator-sdxii: the bridge's story is its decreases, so they take
-// accent1 whatever semantic accents the template declares; totals and
-// increases stay neutral dk1 tints (supersedes go-slide-creator-noa7).
+// go-slide-creator-n978t: the bridge's story is its deltas, so increases take
+// accent1 and decreases its tint whatever semantic accents the template
+// declares; totals stay neutral (supersedes go-slide-creator-sdxii).
 func TestWaterfallBridge_SemanticAccentsDriveFills(t *testing.T) {
 	pat, ok := Default().Get("waterfall-bridge")
 	if !ok {
@@ -615,11 +616,11 @@ func TestWaterfallBridge_SemanticAccentsDriveFills(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expand: %v", err)
 		}
-		if got := waterfallBarFillForLabel(t, grid, "−31"); got != "accent1" {
-			t.Errorf("%v: decrease fill = %q, want accent1", semantic, got)
+		if got := waterfallBarFillForLabel(t, grid, "−31"); got != `{"color":"accent1","lumMod":50000,"lumOff":50000}` {
+			t.Errorf("%v: decrease fill = %q, want the accent1 tint", semantic, got)
 		}
-		if got := waterfallBarFillForLabel(t, grid, "+31"); got != `{"color":"dk1","lumMod":35000,"lumOff":65000}` {
-			t.Errorf("%v: increase fill = %q, want neutral dk1 at 35%%", semantic, got)
+		if got := waterfallBarFillForLabel(t, grid, "+31"); got != "accent1" {
+			t.Errorf("%v: increase fill = %q, want accent1", semantic, got)
 		}
 	}
 }
