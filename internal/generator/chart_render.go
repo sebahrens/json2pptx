@@ -160,6 +160,19 @@ func renderDiagramSpecFull(spec *types.DiagramSpec, themeColors []types.ThemeCol
 // diagramSpecToSVGGen converts a types.DiagramSpec to an svggen.RequestEnvelope.
 // maxPNGWidth caps the PNG output width (0 = no cap).
 // strictFit is threaded to OutputSpec.StrictFit for future severity promotion.
+// DiagramRenderRequest is the svggen request generation renders spec with on
+// a template whose theme is themeColors: the theme-derived palette (text,
+// background and surface inks, the tonal chart series ladder or the spec's
+// own colours), the transparent chart canvas, value format, chart-style
+// overrides and the title drop for a title the slide carries. It is exported
+// so the validate dry render measures that request instead of a second,
+// thinner one that fell back to svggen's default palette
+// (go-slide-creator-akleu). The caller sets the placement (size, viewing
+// mode, readable floor) as its render path does.
+func DiagramRenderRequest(spec *types.DiagramSpec, themeColors []types.ThemeColor, strictFit string) *svggen.RequestEnvelope {
+	return diagramSpecToSVGGen(spec, themeColors, 0, strictFit)
+}
+
 func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, strictFit string) *svggen.RequestEnvelope { //nolint:gocognit,gocyclo
 	// Build style spec
 	style := svggen.StyleSpec{}
