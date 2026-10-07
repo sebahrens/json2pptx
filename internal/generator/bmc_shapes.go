@@ -413,6 +413,24 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 	return string(b)
 }
 
+// bmcMeasuredBody is a section body as it must be measured: with the
+// bullets' hanging indent taken off the line. The writer's autofit measure
+// wraps every paragraph at the full text width and ignores the left margin a
+// bulleted paragraph's lines start at, so "Run the runtime" (85pt) was held
+// to fit a 90pt column whose lines are 76pt wide. The cell was then sized for
+// one line less than every renderer sets, LibreOffice shrank that one cell a
+// notch or two, and the nine sections were at two sizes
+// (go-slide-creator-7ee4f). Measured with the indent in the left inset, the
+// wraps are the renderer's.
+func bmcMeasuredBody(tb pptx.TextBody) pptx.TextBody {
+	var indent int64
+	for _, p := range tb.Paragraphs {
+		indent = max(indent, p.MarginL)
+	}
+	tb.Insets[0] += indent
+	return tb
+}
+
 // bmcPeerSizeStep is the step the shared body size comes down in (hundredths
 // of a point): half a point.
 const bmcPeerSizeStep = 50
@@ -436,6 +454,7 @@ func bmcBodyFits(tb *pptx.TextBody, rect pptx.RectEmu, size int) bool {
 	probe.AutoFitFontScale, probe.AutoFitLnSpcReduction = 0, 0
 	probe.Insets = pptx.EffectiveTextInsets(&probe, rect)
 	probe.ExplicitInsets = true
+	probe = bmcMeasuredBody(probe)
 	return pptx.AutofitFitsFor(&probe, rect)
 }
 
@@ -742,7 +761,7 @@ func bmcCellRectsAt(panels []nativePanelData, bounds types.BoundingBox, pad int6
 		cols := bmcBodyColumns(body[key], columns(key))
 		var need int64
 		for j, col := range cols {
-			text := bmcColumnText(col, "", j, len(cols), cellW(key), pad, fontName)
+			text := bmcMeasuredBody(bmcColumnText(col, "", j, len(cols), cellW(key), pad, fontName))
 			w := nativeColumnRect(pptx.RectEmu{CX: cellW(key)}, j, len(cols)).CX
 			need = max(need, nativeTextNeedAtMarginEMU(text, w, totalH))
 		}
