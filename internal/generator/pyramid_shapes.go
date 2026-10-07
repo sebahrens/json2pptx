@@ -145,7 +145,7 @@ func parsePyramidDiagramData(data map[string]any) ([]pyramidLevel, error) {
 // =============================================================================
 
 // generatePyramidGroupXML produces the complete <p:grpSp> XML for a pyramid diagram.
-func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, fontName string) string {
+func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, fontName string, themeColors ...types.ThemeColor) string {
 	numLevels := len(panels)
 	if numLevels == 0 {
 		return ""
@@ -189,7 +189,7 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 		fill := pyramidLevelFill(i, numLevels)
 
 		// Build text paragraphs.
-		textColor := pyramidLevelTextColor(i, numLevels)
+		textColor := pyramidLevelTextColor(i, numLevels, themeColors)
 		var paras []pptx.Paragraph
 
 		paras = append(paras, pptx.Paragraph{
@@ -528,9 +528,32 @@ func pyramidLevelFill(levelIndex, numLevels int) pptx.Fill {
 	return diagramTintFill("accent1", lumMod, lumOff)
 }
 
-// pyramidLevelTextColor returns the text fill for a pyramid level.
-// Dark levels (apex) get light text, light levels (base) get dark text.
-func pyramidLevelTextColor(levelIndex, numLevels int) pptx.Fill {
+// pyramidLevelTone is a level's fill as scheme colour and lumMod / lumOff:
+// what pyramidLevelFill renders and what the ink is measured against.
+func pyramidLevelTone(levelIndex, numLevels int) heatmapTone {
+	if numLevels <= 1 {
+		return heatmapTone{scheme: "accent1"}
+	}
+	t := float64(levelIndex) / float64(numLevels-1)
+	lumMod := 100000 - int(t*80000)
+	if lumMod >= 100000 {
+		return heatmapTone{scheme: "accent1"}
+	}
+	return heatmapTone{scheme: "accent1", lumMod: lumMod, lumOff: 100000 - lumMod}
+}
+
+// pyramidLevelTextColor returns the text fill for a pyramid level: the text
+// role (lt1 or dk1) with the higher measured contrast on the tier's own fill.
+//
+// The ink used to follow the level index: lt1 on the upper half of the tiers,
+// dk1 below. On a bright accent the second tier of five is already a light
+// tint (p-style FD5108 at lumMod 80 / lumOff 20) and white on it measured
+// about 2.6:1 (go-slide-creator-3fct0). Without theme colours there is
+// nothing to measure and the index rule stands.
+func pyramidLevelTextColor(levelIndex, numLevels int, themeColors []types.ThemeColor) pptx.Fill {
+	if len(themeColors) > 0 {
+		return pptx.SchemeFill(heatmapValueColor(pyramidLevelTone(levelIndex, numLevels), themeColors))
+	}
 	if numLevels <= 1 {
 		return pptx.SchemeFill("lt1")
 	}

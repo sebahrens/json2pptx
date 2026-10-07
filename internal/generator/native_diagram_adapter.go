@@ -229,6 +229,7 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 		}
 		ins.processFlowMode = true
 		ins.processFlowMeta = processFlowMeta{
+			themeColors:     env.themeColors,
 			fontName:        env.fontName,
 			stepCount:       len(steps),
 			connectionCount: len(connections),
@@ -398,7 +399,7 @@ func renderNativeInsert(ins *panelShapeInsert, base uint32, env nativeDiagramEnv
 	case ins.heatmapMode:
 		return generateHeatmapGroupXML(ins.panels, ins.bounds, base, ins.heatmapMeta, env.themeColors)
 	case ins.pyramidMode:
-		return generatePyramidGroupXML(ins.panels, ins.bounds, base, env.fontName)
+		return generatePyramidGroupXML(ins.panels, ins.bounds, base, env.fontName, env.themeColors...)
 	case ins.houseDiagramMode:
 		return generateHouseDiagramGroupXML(ins.panels, ins.bounds, base, ins.houseDiagramMeta, env)
 	case ins.stylishPanelsMode:

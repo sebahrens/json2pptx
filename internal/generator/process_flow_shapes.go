@@ -57,9 +57,12 @@ const (
 	// shape text margin.
 	pfTextInset = pptx.ShapeTextInsetEMU
 
-	// pfConnectorWidth is the connector line width in EMU: the process-flow
-	// pattern's 2pt.
-	pfConnectorWidth = int64(patterns.ProcessFlowConnectorLinePt * 12700)
+	// pfConnectorWidth is the connector line width in EMU: 1.5pt.
+	pfConnectorWidth int64 = 19050
+
+	// pfConnectorInkPct is the neutral ink coverage of a connector: dk1 at
+	// 50%, which reads as a line on every template's page.
+	pfConnectorInkPct = 50
 
 	// pfAccent is the scheme colour of decision outlines and connectors.
 	pfAccent = "accent1"
@@ -131,6 +134,9 @@ type processFlowConnection struct {
 
 // processFlowMeta holds metadata for process flow layout.
 type processFlowMeta struct {
+	// themeColors resolve the tonal roles (content tint, emphasis, inks)
+	// against the template; empty draws the template-independent defaults.
+	themeColors     []types.ThemeColor
 	fontName        string
 	stepCount       int
 	connectionCount int
@@ -261,6 +267,9 @@ type pfStepLayout struct {
 type pfLayoutResult struct {
 	steps     []pfStepLayout
 	direction string
+	// band is set when the flow is drawn as interlocking arrows
+	// (process_flow_band.go); nil is the flowchart of boxes and connectors.
+	band *pfBand
 }
 
 // computeProcessFlowLayout calculates EMU positions for all steps within bounds.
@@ -274,6 +283,10 @@ func computeProcessFlowLayout(steps []processFlowStep, connections []processFlow
 	font := defaultFontFamily
 	if len(fonts) > 0 && fonts[0] != "" {
 		font = fonts[0]
+	}
+	// A plain sequence is a band of interlocking arrows.
+	if band, ok := computeProcessFlowBand(steps, connections, bounds, direction, font); ok {
+		return band
 	}
 	// A horizontal flow holds as many steps in a row as stay readable; the
 	// rest wrap. More rows than pfMaxRows read better as a vertical flow.
@@ -924,6 +937,14 @@ func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.Bounding
 	stepShapes := make(map[string]pptx.ShapeOptions)
 	stepIDs := make(map[string]uint32)
 
+	surface := nativeSurface{colors: meta.themeColors}
+	var bandTones pfBandTones
+	if layout.band != nil {
+		bandTones = pfBandTonesFor(steps, surface)
+		// The interlocking arrows are the sequence: no connectors.
+		connections = nil
+	}
+
 	// Generate step shapes.
 	for i, step := range steps {
 		if i >= len(layout.steps) {
@@ -934,7 +955,13 @@ func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.Bounding
 		stepIDs[step.id] = shapeID
 		nextID++
 
-		opts := pfGenerateStepShape(step, sl, shapeID, len(steps), meta.fontName)
+		var opts pptx.ShapeOptions
+		if layout.band != nil {
+			opts = pfBandStepShape(steps, i, sl, layout.band, bandTones, shapeID, meta.fontName)
+		} else {
+			opts = pfGenerateStepShape(step, sl, shapeID, len(steps), meta.fontName)
+			pfApplyFlowchartTone(&opts, step.stepType, surface)
+		}
 		stepShapes[step.id] = opts
 
 		b, err := pptx.GenerateShape(opts)
@@ -1216,19 +1243,22 @@ func pfGeometryForStepType(st processFlowStepType) pptx.PresetGeometry {
 	}
 }
 
-// pfColorsForStepType returns fill and line for each step type: the
-// process-flow pattern's tinted look. Every step sits on the same neutral
-// tint; the preset shape says what kind of step it is. A decision is
-// outlined in the accent, a subprocess keeps a hairline so its side bars
-// draw, and plain steps and terminators have no outline. The steps used to
-// be four accent tints with matching outlines — a different diagram from the
-// pattern of the same name (go-slide-creator-6shxx).
-func pfColorsForStepType(st processFlowStepType) (fill pptx.Fill, line pptx.Line) {
-	tint := patterns.ProcessFlowStepTintPct * 1000
-	fill = pptx.SchemeFill("dk1", pptx.LumMod(tint), pptx.LumOff(100000-tint))
+// pfColorsForStepType returns fill and line for each step type of the
+// flowchart look: every step sits on the accent's content tint (the tonal
+// system's fill of a shape that IS the content) and the preset shape says
+// what kind of step it is. A decision is outlined in the accent, a subprocess
+// keeps a hairline so its side bars draw, and plain steps and terminators
+// have no outline. The steps used to be equal neutral-grey boxes
+// (go-slide-creator-6shxx, go-slide-creator-av25u).
+func pfColorsForStepType(st processFlowStepType, surfaces ...nativeSurface) (fill pptx.Fill, line pptx.Line) {
+	var surface nativeSurface
+	if len(surfaces) > 0 {
+		surface = surfaces[0]
+	}
+	fill = surface.content(patterns.TonalLighterContent).fill()
 	switch st {
 	case pfDecisionType:
-		return fill, pptx.Line{Width: int64(patterns.ProcessFlowDecisionLinePt * 12700), Fill: pptx.SchemeFill(pfAccent)}
+		return fill, pptx.Line{Width: int64(patterns.ProcessFlowDecisionLinePt * 12700), Fill: pptx.SchemeFill(surface.accent())}
 	case pfSubprocessType:
 		return fill, pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill("dk1", pptx.LumMod(50000), pptx.LumOff(50000))}
 	default:
@@ -1236,14 +1266,35 @@ func pfColorsForStepType(st processFlowStepType) (fill pptx.Fill, line pptx.Line
 	}
 }
 
+// pfApplyFlowchartTone resolves a flowchart step's fill, outline and ink
+// against the template: the content tint and the ink measured on it.
+func pfApplyFlowchartTone(opts *pptx.ShapeOptions, st processFlowStepType, surface nativeSurface) {
+	opts.Fill, opts.Line = pfColorsForStepType(st, surface)
+	ink := surface.content(patterns.TonalLighterContent).inkFill()
+	if opts.Text == nil {
+		return
+	}
+	for p := range opts.Text.Paragraphs {
+		for r := range opts.Text.Paragraphs[p].Runs {
+			opts.Text.Paragraphs[p].Runs[r].Color = ink
+		}
+	}
+}
+
+// pfConnectorFill is the neutral ink of a connector.
+func pfConnectorFill() pptx.Fill {
+	return pptx.SchemeFill("dk1", pptx.LumMod(pfConnectorInkPct*1000), pptx.LumOff(100000-pfConnectorInkPct*1000))
+}
+
 // pfGenerateConnector produces a connector between two step shapes.
 func pfGenerateConnector(connID uint32, src, tgt pptx.ShapeOptions, srcShapeID, tgtShapeID uint32, conn processFlowConnection, direction string) []byte {
 	connBounds, startSite, endSite := pptx.RouteBetween(src, tgt)
 
-	// The pattern's connector: accent, 2pt, large arrowhead.
+	// A neutral 1.5pt line: a connector links two steps, it is not the
+	// content, so it never takes the accent (go-slide-creator-av25u).
 	lineOpts := pptx.Line{
 		Width: pfConnectorWidth,
-		Fill:  pptx.SchemeFill(pfAccent),
+		Fill:  pfConnectorFill(),
 	}
 	if conn.style == "dashed" {
 		lineOpts.Dash = "dash"
