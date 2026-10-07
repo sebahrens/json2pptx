@@ -851,7 +851,7 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 			ctx.warnings = append(ctx.warnings, fmt.Sprintf("slide %d: takeaway/source band does not fit layout %q; band skipped (chrome_band_no_fit)", slideNum, ctx.slideContentMap[slideNum].LayoutID))
 		} else {
 			if hasTakeaway {
-				style := takeawayStyle{FontName: ctx.themeFontName, InkHex: ctx.takeawayInkForLayout(ctx.slideContentMap[slideNum].LayoutID)}
+				style := takeawayStyle{FontName: ctx.themeFontName, ThemeColors: ctx.themeColors}
 				slideData, err = insertStyledTakeaway(slideData, takeawayText, frame.Takeaway.Rect(), style)
 				if err != nil {
 					return fmt.Errorf("failed to insert takeaway for slide %d: %w", slideNum, err)

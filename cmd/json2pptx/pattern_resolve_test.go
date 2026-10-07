@@ -474,14 +474,16 @@ func TestExpandPattern_CalloutCardGrid(t *testing.T) {
 		t.Fatalf("expandPattern with callout failed: %v", err)
 	}
 
-	// card-grid 1×2 = 1 row + 1 callout row = 2 rows
-	if len(grid.Rows) != 2 {
-		t.Fatalf("expected 2 rows (1 content + 1 callout), got %d", len(grid.Rows))
+	// card-grid 1×2 = 1 row, then the callout band (and a spacer row above it
+	// where the host's row gap is under 8pt).
+	if len(grid.Rows) < 2 {
+		t.Fatalf("expected the content row and the callout band, got %d rows", len(grid.Rows))
 	}
 
-	// The callout is the shared takeaway band: a fixed-height row with one
-	// cell spanning both columns (go-slide-creator-7b5o6).
-	calloutRow := grid.Rows[1]
+	// The callout is the shared takeaway band (go-slide-creator-7b5o6) in its
+	// default look (go-slide-creator-fmmec): a cell of the host grid spanning
+	// both columns, filled with the dark neutral, no bar and no stroke.
+	calloutRow := grid.Rows[len(grid.Rows)-1]
 	if !calloutRow.AutoHeight || calloutRow.MinHeight <= 0 {
 		t.Errorf("callout row should be an auto row floored at its measured height, got %+v", calloutRow)
 	}
@@ -492,8 +494,9 @@ func TestExpandPattern_CalloutCardGrid(t *testing.T) {
 		t.Errorf("callout cell ColSpan = %d, want 2", calloutRow.Cells[0].ColSpan)
 	}
 	bar, text := calloutBandCells(t, calloutRow)
-	if string(bar.Shape.Fill) != `"accent1"` || string(text.Shape.Fill) != `"none"` || string(text.Shape.Line) != `"none"` {
-		t.Errorf("callout band = bar %s / text fill %s line %s, want accent1 bar, no fill, no stroke", bar.Shape.Fill, text.Shape.Fill, text.Shape.Line)
+	wantFill, _ := patterns.TakeawayBandTone(ctx)
+	if bar != nil || string(text.Shape.Fill) != string(wantFill) || string(text.Shape.Line) != `"none"` {
+		t.Errorf("callout band = bar %v / fill %s line %s, want no bar, the band tone %s, no stroke", bar, text.Shape.Fill, text.Shape.Line, wantFill)
 	}
 }
 
@@ -508,8 +511,9 @@ func TestExpandPattern_CalloutComparison2col(t *testing.T) {
 			]
 		}`),
 		Callout: &patterns.PatternCallout{
-			Text:   "Overall: choose wisely",
-			Accent: "accent3",
+			Text:     "Overall: choose wisely",
+			Emphasis: "bar",
+			Accent:   "accent3",
 		},
 	}
 
@@ -526,7 +530,8 @@ func TestExpandPattern_CalloutComparison2col(t *testing.T) {
 		t.Fatalf("expected 4 rows, got %d", len(grid.Rows))
 	}
 
-	// The accent colours the band's bar, not a filled strip.
+	// Under emphasis "bar" the accent colours the band's bar, not a filled
+	// strip.
 	bar, _ := calloutBandCells(t, grid.Rows[3])
 	var fill string
 	if err := json.Unmarshal(bar.Shape.Fill, &fill); err != nil {
@@ -913,10 +918,18 @@ func TestComputeQualityScore_TrulyEmptyStillPenalized(t *testing.T) {
 }
 
 // calloutBandCells returns the bar and text cells of a takeaway callout row.
+// The default band is one filled cell of the host grid and has no bar; the
+// bar variants are a nested [bar, text] grid.
 func calloutBandCells(t *testing.T, row jsonschema.GridRowInput) (bar, text *jsonschema.GridCellInput) {
 	t.Helper()
-	if len(row.Cells) != 1 || row.Cells[0] == nil || row.Cells[0].Grid == nil {
-		t.Fatalf("callout row should hold one takeaway sub-grid, got %+v", row)
+	if len(row.Cells) != 1 || row.Cells[0] == nil {
+		t.Fatalf("callout row should hold one takeaway cell, got %+v", row)
+	}
+	if row.Cells[0].Grid == nil {
+		if row.Cells[0].Shape == nil {
+			t.Fatalf("callout band cell carries no shape: %+v", row.Cells[0])
+		}
+		return nil, row.Cells[0]
 	}
 	rows := row.Cells[0].Grid.Rows
 	band := rows[len(rows)-1]
@@ -928,10 +941,11 @@ func calloutBandCells(t *testing.T, row jsonschema.GridRowInput) (bar, text *jso
 
 func TestCalloutTakeawaySpec_Emphasis(t *testing.T) {
 	cases := map[string]patterns.TakeawaySpec{
-		"":            {Text: "x", Emphasis: "bar"},
-		"bold":        {Text: "x", Emphasis: "bar"},
-		"italic":      {Text: "x", Emphasis: "bar", Italic: true},
-		"bold-italic": {Text: "x", Emphasis: "bar", Italic: true},
+		"":            {Text: "x"},
+		"bold":        {Text: "x"},
+		"italic":      {Text: "x", Italic: true},
+		"bold-italic": {Text: "x", Italic: true},
+		"bar":         {Text: "x", Emphasis: "bar"},
 		"subtle":      {Text: "x", Emphasis: "subtle"},
 		"strong":      {Text: "x", Emphasis: "strong"},
 	}

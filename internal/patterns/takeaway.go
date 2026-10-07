@@ -15,23 +15,26 @@ import (
 //
 // One editorial device carries every "so what" in the engine: the slide
 // takeaway band (internal/generator/takeaway_note.go), chart-insights-split's
-// so_what, exec-summary's bottom_line, metric-list's callout and the pattern /
-// compose envelope callout. Four surfaces used to draw four different boxes —
-// a peach band with a saturated outline, a chevron "BOTTOM LINE" flag, a solid
-// accent banner and a grey panel — for the same job.
+// so_what, exec-summary's bottom_line, metric-list's callout, the next-steps
+// decisions and the pattern / compose envelope callout. Four surfaces used to
+// draw four different boxes — a peach band with a saturated outline, a
+// chevron "BOTTOM LINE" flag, a solid accent banner and a grey panel — for
+// the same job.
 //
-// The spec is the consultant + designer convergence of 2026-09-28:
+// The default look on every one of them (go-slide-creator-3a1rm, -fmmec):
 //
-//   - no stroke, and no fill by default;
-//   - a flush 3pt accent bar on the left, the full band height;
-//   - 14pt bold text in the theme's dk1 ink, 12pt from the bar, top-anchored,
-//     budgeted to two lines;
-//   - the content width, never a full bleed;
+//   - one band the content width, never a full bleed, filled with the dark
+//     structural neutral (TakeawayBandTone), no stroke;
+//   - 14pt bold text in the ink measured against that fill, 12pt in from each
+//     side and 8pt from top and bottom, centred on the band's height, budgeted
+//     to two lines;
 //   - at least 16pt of air above it (and 12pt to the footer / source line,
 //     which the chrome frame owns for the slide band).
 //
-// emphasis "subtle" adds a 5% neutral tint behind the text; "strong" makes the
-// band a solid accent with measured-contrast ink. Those are the only variants.
+// emphasis "bar" is the look of 2026-09-28: no fill, a flush 3pt accent bar
+// on the left the full band height, bold dk1 text 12pt from it, top-anchored.
+// "subtle" adds a 5% neutral tint behind that text; "strong" makes the band a
+// solid accent with measured-contrast ink. Those are the only variants.
 // ---------------------------------------------------------------------------
 
 // Takeaway geometry and type, in points. The generator's slide band reads the
@@ -312,11 +315,31 @@ const takeawayBandInkPct = 85
 // at 85% where dk2 is black. It is never an accent, so the band can close a
 // slide that already spends its one solid accent block.
 func TakeawayBandTone(ctx ExpandContext) (fill json.RawMessage, ink string) {
-	tone := fillTone{Color: "dk2"}
-	if isNearBlack(ctx, "dk2") {
-		tone = neutralTone(takeawayBandInkPct)
-	}
+	tone := takeawayBandTone(ctx)
 	return tone.fillJSON(), readableTextOn(ctx, tone, "lt1")
+}
+
+func takeawayBandTone(ctx ExpandContext) fillTone {
+	if isNearBlack(ctx, "dk2") {
+		return neutralTone(takeawayBandInkPct)
+	}
+	return fillTone{Color: "dk2"}
+}
+
+// TakeawayBandScheme is TakeawayBandTone in scheme terms, for the generator's
+// slide takeaway band, which writes its shape without a shape grid: the
+// scheme colour, its lumMod / lumOff (0 = none) and the ink.
+type TakeawayBandScheme struct {
+	Color          string
+	LumMod, LumOff int
+	Ink            string
+}
+
+// TakeawayBandSchemeFor resolves the default band's fill and ink for ctx's
+// theme.
+func TakeawayBandSchemeFor(ctx ExpandContext) TakeawayBandScheme {
+	tone := takeawayBandTone(ctx)
+	return TakeawayBandScheme{Color: tone.Color, LumMod: tone.LumMod, LumOff: tone.LumOff, Ink: readableTextOn(ctx, tone, "lt1")}
 }
 
 // takeawayBandGrid is the default look (go-slide-creator-3a1rm): one band the

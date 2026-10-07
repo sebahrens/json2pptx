@@ -234,16 +234,19 @@ func patternExpansionBounds(ctx patterns.ExpandContext, pct *GridBoundsInput, re
 }
 
 // appendCalloutRow appends the callout as the shared takeaway band
-// (patterns.TakeawayRow): a flush 3pt accent bar beside 14pt bold dk1 text,
-// no fill and no stroke by default, with 16pt of air above it. It used to be
-// a solid accent1 strip with white centred text — one of four different boxes
+// (patterns.TakeawayRows): the full-width dark neutral band with 14pt bold
+// text in the ink measured against it, 16pt of air above — the look of every
+// pattern-owned so-what (go-slide-creator-3a1rm, -fmmec). emphasis "bar" /
+// "subtle" / "strong" pick the flush 3pt accent bar variants. It used to be a
+// solid accent1 strip with white centred text — one of four different boxes
 // the engine drew for the same job (go-slide-creator-7b5o6).
 // Callout cells are NOT addressable via cell_overrides (D18).
 func appendCalloutRow(grid *jsonschema.ShapeGridInput, callout *patterns.PatternCallout, ctx patterns.ExpandContext) *jsonschema.ShapeGridInput {
-	numCols := 1
-	if len(grid.Rows) > 0 {
-		numCols = len(grid.Rows[0].Cells)
-	}
+	// The band spans every column of the host grid. Counting the first row's
+	// cells stopped it short wherever that row spans columns (a compose
+	// envelope, driver-tree): the bar's text wrapped early there and a filled
+	// band would end mid-slide.
+	numCols := inferColumnCount(grid)
 	rowGap := grid.RowGap
 	if rowGap == 0 {
 		rowGap = grid.Gap
@@ -251,7 +254,7 @@ func appendCalloutRow(grid *jsonschema.ShapeGridInput, callout *patterns.Pattern
 	if rowGap == 0 {
 		rowGap = 8 // shapegrid default
 	}
-	grid.Rows = append(grid.Rows, patterns.TakeawayRow(ctx, calloutTakeawaySpec(callout), numCols, calloutBandWidthPt(ctx), rowGap))
+	grid.Rows = append(grid.Rows, patterns.TakeawayRows(ctx, calloutTakeawaySpec(callout), numCols, calloutBandWidthPt(ctx), rowGap)...)
 	return grid
 }
 
@@ -270,17 +273,17 @@ func reserveCalloutBand(ctx patterns.ExpandContext, callout *patterns.PatternCal
 	return ctx
 }
 
-// calloutTakeawaySpec maps the callout DTO onto the takeaway band. The band is
-// always bold; "italic" / "bold-italic" set it italic, and "subtle" / "strong"
-// pick the tinted or solid-accent variant.
+// calloutTakeawaySpec maps the callout DTO onto the takeaway band: the dark
+// neutral band by default, like the pattern-owned takeaways
+// (go-slide-creator-fmmec). The band is always bold; "italic" / "bold-italic"
+// set it italic, and "bar" / "subtle" / "strong" pick the accent bar, its
+// tinted variant or the solid-accent band.
 func calloutTakeawaySpec(callout *patterns.PatternCallout) patterns.TakeawaySpec {
-	// The envelope callout keeps the bar look (the skill documents it); the
-	// pattern-owned takeaways are the filled band (go-slide-creator-3a1rm).
-	spec := patterns.TakeawaySpec{Text: callout.Text, Accent: callout.Accent, Emphasis: patterns.TakeawayEmphasisBar}
+	spec := patterns.TakeawaySpec{Text: callout.Text, Accent: callout.Accent}
 	switch callout.Emphasis {
 	case "italic", "bold-italic":
 		spec.Italic = true
-	case patterns.TakeawayEmphasisSubtle, patterns.TakeawayEmphasisStrong:
+	case patterns.TakeawayEmphasisBar, patterns.TakeawayEmphasisSubtle, patterns.TakeawayEmphasisStrong:
 		spec.Emphasis = callout.Emphasis
 	}
 	return spec

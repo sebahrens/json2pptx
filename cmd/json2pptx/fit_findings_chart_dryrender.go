@@ -244,7 +244,7 @@ func collectGridDryRenderFindingsResolved(
 					if inset.CX <= 0 || inset.CY <= 0 {
 						inset = pptx.RectEmu{X: parent.X, Y: parent.Y, CX: parent.Width, CY: parent.Height}
 					}
-					nested = resolveGridForStructural(cell.Grid, &inset, nil, slideWidth, slideHeight)
+					nested = resolveGridForStructural(cell.Grid, &inset, nil, slideWidth, slideHeight, result.SubGridPeers)
 				}
 				findings = append(findings, collectGridDryRenderFindingsResolved(
 					cell.Grid, cellPath+"/grid", themeColors, bodyFont, strictFit,
