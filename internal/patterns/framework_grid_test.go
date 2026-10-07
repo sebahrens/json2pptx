@@ -198,14 +198,14 @@ func TestFrameworkGrid_TitleInkIsMeasured(t *testing.T) {
 			}
 			for _, row := range grid.Rows {
 				for _, cell := range row.Cells[1:] {
-					if cell.Shape == nil {
+					if cell.Shape == nil || len(cell.Shape.Text) == 0 {
 						continue
 					}
 					var text patternTextObj
 					if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
 						t.Fatal(err)
 					}
-					ratio, ok := schemeContrastOnTone(ctx, text.Paragraphs[0].Color, fgCardTone("accent1"))
+					ratio, ok := schemeContrastOnTone(ctx, text.Paragraphs[0].Color, tonalPanel(ctx, "accent1"))
 					if !ok || ratio < 4.5 {
 						t.Errorf("%q title ink %s reads %.2f:1", text.Paragraphs[0].Content, text.Paragraphs[0].Color, ratio)
 					}

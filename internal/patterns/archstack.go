@@ -23,7 +23,7 @@ type archStack struct{}
 
 func (a *archStack) Name() string { return "arch-stack" }
 func (a *archStack) Description() string {
-	return "Architecture stack diagram: 3-6 tier bands, each with one block per component (or a line of detail), and optional cross-cutting side rails"
+	return "Architecture stack diagram: 3-6 tier lanes, each a pentagon tab before one block per component (or a line of detail), and optional cross-cutting side rails as dark bars"
 }
 func (a *archStack) UseWhen() string {
 	return "Architecture layers or technology stack with vertical ordering; prefer pyramid when the hierarchy narrows visually, process-flow when layers have sequential flow"
@@ -61,7 +61,8 @@ func (a *archStack) ExemplarValues() any {
 // Types
 // ---------------------------------------------------------------------------
 
-// archStackTierBarPt is the accent bar on each tier's left edge.
+// archStackTierBarPt is the accent bar on each tier's left edge in the
+// description layout.
 const archStackTierBarPt = 3
 
 // ArchStackTier represents one horizontal layer in the architecture stack.
@@ -160,7 +161,7 @@ func (a *archStack) Schema() *Schema {
 		map[string]*Schema{
 			"label":       StringSchema(60).WithDescription("Tier/layer name"),
 			"description": StringSchema(120).WithDescription("Technologies or details for this tier as one line of text; about 120 readable characters with 3-4 tiers, 40 with 5 tiers; 6 tiers hold no readable description (label only). Use components instead when the tier is a set of named parts"),
-			"components":  ArraySchema(StringSchema(archStackComponentMaxLen), 1, archStackMaxComponents).WithDescription("The tier's parts, drawn as one block each inside the tier band beside its label (1-12; 7 or more wrap to two rows of blocks). Not together with description. When any tier has components the whole stack takes the band layout: labels on the left, a description-only tier shows its text in place of blocks"),
+			"components":  ArraySchema(StringSchema(archStackComponentMaxLen), 1, archStackMaxComponents).WithDescription("The tier's parts, drawn as one block each beside the tier's label tab (1-12; 7 or more wrap to two rows of blocks). Not together with description. When any tier has components the whole stack takes the lane layout: labels on tabs at the left, a description-only tier shows its text in place of blocks"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -343,15 +344,8 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		for j := 0; j < numRails; j++ {
 			if i == 0 {
 				// First row: render the side rail label
-				railText := buildArchStackRailContent(vals.SideRails[j])
-				cells[j+1] = &jsonschema.GridCellInput{
-					RowSpan: len(vals.Tiers),
-					Shape: &jsonschema.ShapeSpecInput{
-						Geometry: "rect",
-						Fill:     tonalRung(ctx, baseAccent, TonalLighterDeep).fillJSON(),
-						Text:     railText,
-					},
-				}
+				cells[j+1] = archStackRailCell(ctx, vals.SideRails[j], archStackRailLabelSize)
+				cells[j+1].RowSpan = len(vals.Tiers)
 				applyArchStackOverride(cells[j+1], cellOverrides, len(vals.Tiers)+j, accent)
 			} else {
 				// Subsequent rows: nil cell (covered by rowspan)
@@ -435,13 +429,15 @@ func buildArchStackTierContent(label string, labelSize float64, desc string, des
 // consulting convention and gives the width back to the tiers.
 const archStackRailWidthPct = 4.0
 
-// archStackRailLabelSize is the rail label size. It is the smallest text on the
-// slide by design: the rail names a concern, the tiers carry the content.
+// archStackRailLabelSize is the rail label size of the description layout
+// (the component layout sets a rail's name at its blocks' size). It is the
+// smallest text on the slide by design: the rail names a concern, the tiers
+// carry the content.
 const archStackRailLabelSize = scaleCaptionPt
 
 // buildArchStackRailContent renders a cross-cutting rail label rotated to read
 // bottom-to-top, so the band only needs to be as wide as one line of text.
-func buildArchStackRailContent(label string) json.RawMessage {
+func buildArchStackRailContent(label string, size float64, ink string) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -456,7 +452,7 @@ func buildArchStackRailContent(label string) json.RawMessage {
 		Vert          string      `json:"vert"`
 	}{
 		Paragraphs: []paragraph{
-			{Content: label, Size: archStackRailLabelSize, Bold: true, Color: "dk1", Align: "ctr"},
+			{Content: label, Size: size, Bold: true, Color: ink, Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",
