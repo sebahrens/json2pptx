@@ -257,17 +257,20 @@ func TestGenerateKPIDashboardGroupXML_Basic(t *testing.T) {
 		}
 	}
 
-	// Should contain uppercase labels
-	for _, label := range []string{"REVENUE", "CUSTOMERS", "NPS", "CHURN"} {
-		if !strings.Contains(result, label) {
-			t.Errorf("should contain uppercase label %q", label)
+	// Labels are set as authored, not in capitals (go-slide-creator-w107j).
+	for _, label := range []string{"Revenue", "Customers", "NPS", "Churn"} {
+		if !strings.Contains(result, "<a:t>"+label+"</a:t>") {
+			t.Errorf("should contain label %q as authored", label)
 		}
 	}
 
-	// Should use scheme colors (accent1 for values, accent6 for up, accent2 for
-	// down) on the neutral card.
-	if !strings.Contains(result, `schemeClr val="dk1"><a:lumMod val="4000"/><a:lumOff val="96000"/>`) {
-		t.Error("cards should sit on the neutral 4% surface (go-slide-creator-amtkg)")
+	// Open by default: the numbers sit on the page between hairline
+	// dividers, with no tile behind them (go-slide-creator-w107j).
+	if strings.Contains(result, `schemeClr val="dk1"><a:lumMod val="4000"/><a:lumOff val="96000"/>`) {
+		t.Error("the default dashboard draws no tile")
+	}
+	if got := strings.Count(result, `name="KPI Divider"`); got != 3 {
+		t.Errorf("four metrics in a row take 3 dividers, got %d", got)
 	}
 	for _, color := range []string{"accent1", "accent2", "accent6"} {
 		if !strings.Contains(result, color) {
@@ -331,8 +334,8 @@ func TestGenerateKPIDashboardGroupXML_NoDeltas(t *testing.T) {
 	if !strings.Contains(result, "$21M") {
 		t.Error("should contain value '$21M'")
 	}
-	if !strings.Contains(result, "REVENUE") {
-		t.Error("should contain label 'REVENUE'")
+	if !strings.Contains(result, "Revenue") {
+		t.Error("should contain label 'Revenue'")
 	}
 }
 

@@ -31,6 +31,10 @@ type taxonomyTint struct {
 	// ink names the scheme colour of the cell's title; empty takes the text
 	// role that reads on the fill (see taxonomyTint.titleFill).
 	ink string
+	// open marks a cell drawn without a surface: its heading stands on one
+	// rule and its text sits on the page (go-slide-creator-w107j). scheme
+	// then names the colour behind the text — the page.
+	open bool
 }
 
 var (

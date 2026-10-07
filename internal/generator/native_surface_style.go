@@ -94,6 +94,50 @@ func (s nativeSurface) contentTint(i, pct int) taxonomyTint {
 	return taxonomyTint{scheme: s.accent(), lumMod: (100 - pct) * 1000, lumOff: pct * 1000}
 }
 
+// openTint is a cell with no surface: text on the page under a heading that
+// stands on one rule, as the card-grid pattern's open cards. The title is
+// set in the text ink at titleHundredths; accentTitle sets it in the accent
+// where that reads on the page (a KPI value).
+func (s nativeSurface) openTint(titleHundredths int, accentTitle bool) taxonomyTint {
+	t := taxonomyTint{scheme: "lt1", ink: "dk1", open: true}
+	if accentTitle {
+		t.ink = s.titleInk(0, titleHundredths)
+	}
+	return t
+}
+
+// tonalTint is tone as a cell tint whose title takes the tone's own ink.
+func tonalTint(tone nativeTone) taxonomyTint {
+	return taxonomyTint{scheme: tone.tone.Color, lumMod: tone.tone.LumMod, lumOff: tone.tone.LumOff, ink: tone.ink}
+}
+
+// nativeRuleInkPct and nativeRuleWidthEMU are the rule an open heading
+// stands on and the divider between open columns: the card-grid pattern's
+// 1pt rule at dk1 60%, and a 0.75pt hairline at dk1 30% for a divider.
+const (
+	nativeRuleInkPct            = patterns.NeutralTint60
+	nativeRuleWidthEMU    int64 = 12700
+	nativeDividerInkPct         = 30
+	nativeDividerWidthEMU int64 = 9525
+)
+
+// nativeRuleXML is a horizontal rule (or, taller than wide, a vertical
+// divider) as a filled, unlined rectangle.
+func nativeRuleXML(name string, rect pptx.RectEmu, shapeID uint32, inkPct int) string {
+	b, err := pptx.GenerateShape(pptx.ShapeOptions{
+		ID:       shapeID,
+		Name:     name,
+		Bounds:   rect,
+		Geometry: pptx.GeomRect,
+		Fill:     nativeNeutralFill(inkPct),
+		Line:     pptx.Line{Width: 0, Fill: pptx.NoFill()},
+	})
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
 // nativeNeutralTint is the neutral surface at pct% coverage as a cell tint.
 func nativeNeutralTint(pct int) taxonomyTint {
 	lumMod, lumOff := patterns.NeutralSurfaceMods(pct)
@@ -110,6 +154,9 @@ func nativeNeutralFill(pct int) pptx.Fill {
 // (lumMod / lumOff), exactly as the patterns write it, and so is an accent
 // tint (diagramTintFill): one tint family across both engines.
 func (t taxonomyTint) fill() pptx.Fill {
+	if t.open {
+		return pptx.NoFill()
+	}
 	if t.scheme == patterns.NeutralSurfaceColor && t.lumOff != 0 {
 		return pptx.SchemeFill(t.scheme, pptx.LumMod(t.lumMod), pptx.LumOff(t.lumOff))
 	}

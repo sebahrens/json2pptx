@@ -41,8 +41,8 @@ const (
 	pestelGap int64 = 73152
 
 	// pestelHeaderFontSize is the segment header font size (hundredths of a point).
-	// 1400 = 14pt
-	pestelHeaderFontSize int = 1400
+	// 1600 = 16pt
+	pestelHeaderFontSize int = 1600
 
 	// pestelBodyFontSize is the bullet text size: the 12pt body step, the
 	// smallest size a projected slide carries. It was 11pt
@@ -209,9 +209,15 @@ func pestelBulletSpaceAfterAt(pad int64) int {
 func pestelHeaderText(title string, tint taxonomyTint, pad int64, fontName string) pptx.TextBody {
 	insets := nativeCardHeaderInsets()
 	insets[1] = pad
+	anchor := "ctr"
+	if tint.open {
+		// An open heading stands on its rule, flush with its left end.
+		anchor = "b"
+		insets[0] = 0
+	}
 	return pptx.TextBody{
 		Wrap:    "square",
-		Anchor:  "ctr",
+		Anchor:  anchor,
 		Insets:  insets,
 		AutoFit: "normAutofit",
 		Paragraphs: []pptx.Paragraph{{
@@ -246,6 +252,10 @@ func pestelColumnText(body string, j, n int, bodyW, pad int64, tint taxonomyTint
 	}
 	// Use the same accent color for bullets but with full strength
 	bulletColor := pptx.ResolveColorString(tint.scheme)
+	if tint.open {
+		// An open segment's bullets sit on the page: the text ink.
+		bulletColor = pptx.SchemeFill("dk1")
+	}
 	for i := range paras {
 		if paras[i].Bullet != nil {
 			paras[i].Bullet.Color = bulletColor
@@ -254,6 +264,11 @@ func pestelColumnText(body string, j, n int, bodyW, pad int64, tint taxonomyTint
 	diagramPanelBodyColors(paras, tint.scheme)
 	insets := nativeCardBodyInsets()
 	insets[3] = pad
+	if tint.open && j == 0 {
+		// No surface, no margin from its edge: the bullets start on the
+		// heading's rule, which starts on the slide's text edge.
+		insets[0] = 0
+	}
 	return pptx.TextBody{
 		Wrap:       "square",
 		Anchor:     "t",
@@ -419,6 +434,24 @@ func generatePESTELGroupXML(panels []nativePanelData, bounds types.BoundingBox, 
 	for i, col := range extra {
 		children = append(children, []byte(generatePESTELShapeXML(
 			"PESTEL Bullets", col.rect, shapeIDBase+uint32(2*n+1+i), nil, col.text)))
+	}
+	// An open segment's heading stands on one rule, as wide as its text.
+	ruleID := shapeIDBase + uint32(2*n+1+len(extra))
+	for i := range panels {
+		sc := uniformTaxonomyTint(i)
+		if i < len(tints) {
+			sc = tints[i]
+		}
+		if !sc.open {
+			continue
+		}
+		cellX := bounds.X + int64(i%l.numCols)*(l.cellW+pestelGap)
+		cellY := bounds.Y + int64(i/l.numCols)*(l.cellH+pestelGap)
+		children = append(children, []byte(nativeRuleXML("PESTEL Rule", pptx.RectEmu{
+			X: cellX, Y: cellY + l.headerCY - nativeRuleWidthEMU/2,
+			CX: l.cellW - pestelBodyInset, CY: nativeRuleWidthEMU,
+		}, ruleID, nativeRuleInkPct)))
+		ruleID++
 	}
 
 	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}

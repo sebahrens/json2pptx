@@ -45,11 +45,11 @@ const (
 
 	// kpiLabelFontSize is the metric label font size (hundredths of a point).
 	// 1100 = 11pt
-	kpiLabelFontSize int = 1100
+	kpiLabelFontSize int = 1400
 
 	// kpiDeltaFontSize is the delta/trend indicator font size (hundredths of a point).
 	// 1000 = 10pt
-	kpiDeltaFontSize int = 1000
+	kpiDeltaFontSize int = 1200
 
 	// kpiInset is the text inset for card shapes (EMU).
 	kpiInset = pptx.ShapeTextInsetEMU // uniform 0.5 cm shape text margin
@@ -113,6 +113,7 @@ func generateKPIDashboardGroupXML(panels []nativePanelData, bounds types.Boundin
 	cardH := (totalHeight - vGapTotal) / int64(rows)
 
 	var children [][]byte
+	var dividers []pptx.RectEmu
 	idx := 0
 	for row := range rows {
 		for col := range cols {
@@ -127,11 +128,28 @@ func generateKPIDashboardGroupXML(panels []nativePanelData, bounds types.Boundin
 			// Each KPI card uses 1 shape ID.
 			shapeID := shapeIDBase + uint32(idx) + 1
 
-			cardXML := generateKPICardXML(panel, cardX, cardY, cardW, cardH, shapeID, surface.tint(idx, panelBodyTint, kpiValueFontSize), surface.colors)
+			// The default is open: the number on the page, columns told
+			// apart by a divider, as the kpi-Nup patterns
+			// (go-slide-creator-w107j). style.colors brings the cards back.
+			tint := surface.openTint(kpiValueFontSize, true)
+			if len(surface.authored) > 0 {
+				tint = surface.tint(idx, panelBodyTint, kpiValueFontSize)
+			}
+			cardXML := generateKPICardXML(panel, cardX, cardY, cardW, cardH, shapeID, tint, surface.colors)
 			children = append(children, []byte(cardXML))
+			if tint.open && col > 0 {
+				dividers = append(dividers, pptx.RectEmu{
+					X: cardX - kpiGap/2 - nativeDividerWidthEMU/2, Y: cardY + cardH/10,
+					CX: nativeDividerWidthEMU, CY: cardH - cardH/5,
+				})
+			}
 
 			idx++
 		}
+	}
+
+	for i, rect := range dividers {
+		children = append(children, []byte(nativeRuleXML("KPI Divider", rect, shapeIDBase+uint32(n+1+i), nativeDividerInkPct)))
 	}
 
 	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}
@@ -177,10 +195,9 @@ func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint3
 			NoBullet:   true,
 			SpaceAfter: kpiSpaceAfterLabel,
 			Runs: []pptx.Run{{
-				Text:     strings.ToUpper(panel.title),
+				Text:     panel.title,
 				Lang:     "en-US",
 				FontSize: kpiLabelFontSize,
-				Bold:     true,
 				Dirty:    true,
 				Color:    pptx.SchemeFill("dk1"),
 			}},

@@ -111,7 +111,7 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 	case isSWOTDiagram(spec):
 		ins.panels = swotPanels(spec)
 		ins.swotMode = true
-		ins.taxonomyTints = taxonomyPalette(spec, 4, card(swotHeaderFontSize))
+		ins.taxonomyTints = taxonomyPalette(spec, 4, swotTonalTints(surface))
 		fit("swot", ins.panels, houseDiagramMeta{})
 
 	case isPESTELDiagram(spec):
@@ -122,7 +122,8 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 			return out, fmt.Errorf("pestel: no segments parsed")
 		}
 		ins.pestelMode = true
-		ins.taxonomyTints = taxonomyPalette(spec, len(pestelSegmentColors), card(pestelHeaderFontSize))
+		open := surface.openTint(pestelHeaderFontSize, false)
+		ins.taxonomyTints = taxonomyPalette(spec, len(pestelSegmentColors), func(int) taxonomyTint { return open })
 		fit("pestel", ins.panels, houseDiagramMeta{})
 		// A grid that cannot hold its bullets at 12pt says what a segment holds.
 		if !layoutPESTEL(ins.panels, ins.bounds, env.fontName).fits {
@@ -451,12 +452,15 @@ func nativeInsertShapeIDs(ins *panelShapeInsert) uint32 {
 	case ins.stylishPanelsMode:
 		// N accents + N bodies + 1 ribbon + N headers + 1 group
 		return stylishPanelsEstimateShapeCount(ins.panels)
-	case ins.statCardsMode, ins.kpiDashboardMode:
+	case ins.statCardsMode:
 		// 1 (group) + N×1 (single rect per card)
 		return uint32(len(ins.panels) + 1)
+	case ins.kpiDashboardMode:
+		// 1 (group) + N metrics + up to N-1 dividers
+		return uint32(2 * len(ins.panels))
 	case ins.pestelMode:
-		// 1 (group) + N×(header + body + one further bullet column)
-		return uint32(len(ins.panels)*3 + 1)
+		// 1 (group) + N×(header + body + one further bullet column + rule)
+		return uint32(len(ins.panels)*4 + 1)
 	default:
 		// 1 (group) + N×2 (header + body), which covers SWOT too.
 		return uint32(len(ins.panels)*2 + 1)
