@@ -28,8 +28,33 @@ func quoteCellParas(t *testing.T, cell *jsonschema.GridCellInput) quoteParas {
 	return obj
 }
 
-// go-slide-creator-5cie9: the default quote is open text under an accent
-// quote mark with its attribution directly beneath, and no tile.
+// quoteOpenRow is one row of open quotes: the quote cells and the rule and
+// attribution cells under them.
+type quoteOpenRow struct{ quotes, attributions []*jsonschema.GridCellInput }
+
+// quoteOpenRows returns the open cluster's rows of quotes, skipping the
+// whitespace band between two of them.
+func quoteOpenRows(t *testing.T, grid *jsonschema.ShapeGridInput) []quoteOpenRow {
+	t.Helper()
+	var rows []quoteOpenRow
+	var content []jsonschema.GridRowInput
+	for _, row := range grid.Rows {
+		if len(row.Cells) == quoteClusterColumns {
+			content = append(content, row)
+		}
+	}
+	if len(content)%2 != 0 {
+		t.Fatalf("open cluster has %d content rows; want quote and attribution rows in pairs", len(content))
+	}
+	for i := 0; i < len(content); i += 2 {
+		rows = append(rows, quoteOpenRow{quotes: content[i].Cells, attributions: content[i+1].Cells})
+	}
+	return rows
+}
+
+// go-slide-creator-5cie9, -rxdkf: the default quote is open text under a
+// large accent quote mark, with its attribution on its own line under a short
+// rule, and no tile.
 func TestQuoteClusterOpenDefault(t *testing.T) {
 	p := &quoteCluster{}
 	for _, n := range []int{3, 6, 8} {
@@ -37,31 +62,46 @@ func TestQuoteClusterOpenDefault(t *testing.T) {
 		if err != nil {
 			t.Fatalf("n=%d: %v", n, err)
 		}
-		seen := 0
 		for ri, row := range grid.Rows {
 			if row.MaxHeight <= 0 {
 				t.Errorf("n=%d row %d is not content-sized", n, ri)
 			}
-			for ci, cell := range row.Cells {
+		}
+		seen := 0
+		for ri, row := range quoteOpenRows(t, grid) {
+			for ci, cell := range row.quotes {
 				if len(cell.Shape.Text) == 0 {
 					continue
 				}
 				seen++
-				if string(cell.Shape.Fill) != `"none"` || string(cell.Shape.Line) != `"none"` || cell.Shape.Geometry != "rect" {
-					t.Errorf("n=%d row %d col %d: an open quote has no container, got fill %s line %s", n, ri, ci, cell.Shape.Fill, cell.Shape.Line)
+				attribution := row.attributions[ci]
+				for _, c := range []*jsonschema.GridCellInput{cell, attribution} {
+					if string(c.Shape.Fill) != `"none"` || string(c.Shape.Line) != `"none"` || c.Shape.Geometry != "rect" {
+						t.Errorf("n=%d row %d col %d: an open quote has no container, got fill %s line %s", n, ri, ci, c.Shape.Fill, c.Shape.Line)
+					}
 				}
 				obj := quoteCellParas(t, cell)
-				if len(obj.Paragraphs) != 3 || obj.Paragraphs[0].Content != quoteClusterMark || !obj.Paragraphs[1].Italic {
-					t.Fatalf("n=%d: want mark, italic quote, attribution; got %+v", n, obj.Paragraphs)
+				if len(obj.Paragraphs) != 2 || obj.Paragraphs[0].Content != quoteClusterMark || !obj.Paragraphs[1].Italic {
+					t.Fatalf("n=%d: want mark and italic quote; got %+v", n, obj.Paragraphs)
 				}
-				if obj.Paragraphs[0].Color != "accent1" || obj.Paragraphs[1].Color != "dk1" || obj.Paragraphs[2].Color != "dk1" {
+				if obj.Paragraphs[0].Color != "accent1" || obj.Paragraphs[1].Color != "dk1" {
 					t.Errorf("n=%d: the mark alone carries the accent, got %+v", n, obj.Paragraphs)
 				}
-				if !strings.HasPrefix(obj.Paragraphs[2].Content, "<b>") || !strings.Contains(obj.Paragraphs[2].Content, "</b>, ") {
-					t.Errorf("n=%d: attribution should be the bold name then the title, got %q", n, obj.Paragraphs[2].Content)
+				if obj.Paragraphs[0].Size <= obj.Paragraphs[1].Size {
+					t.Errorf("n=%d: the mark is display type over the quote, got %vpt over %vpt", n, obj.Paragraphs[0].Size, obj.Paragraphs[1].Size)
 				}
 				if obj.VerticalAlign != "t" {
 					t.Errorf("n=%d: open quotes are top-anchored so the marks line up", n)
+				}
+				attr := quoteCellParas(t, attribution)
+				if len(attr.Paragraphs) != 2 || attr.Paragraphs[0].Content != quoteClusterOpenRule {
+					t.Fatalf("n=%d: want a rule and the attribution under it; got %+v", n, attr.Paragraphs)
+				}
+				if !strings.HasPrefix(attr.Paragraphs[1].Content, "<b>") || !strings.Contains(attr.Paragraphs[1].Content, "</b>, ") {
+					t.Errorf("n=%d: attribution should be the bold name then the title, got %q", n, attr.Paragraphs[1].Content)
+				}
+				if attr.Paragraphs[1].Color != "dk1" || attr.Paragraphs[1].Size < scaleBodyPt {
+					t.Errorf("n=%d: attribution is neutral ink at the body size or more, got %+v", n, attr.Paragraphs[1])
 				}
 			}
 		}
@@ -69,10 +109,20 @@ func TestQuoteClusterOpenDefault(t *testing.T) {
 			t.Errorf("n=%d: %d quotes rendered", n, seen)
 		}
 	}
+	// With room to spare the quotes are set a step above the body size under
+	// a 36pt mark.
+	grid, err := p.Expand(testThemeCtx(), validQuoteClusterValues(6), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if obj := quoteCellParas(t, quoteOpenRows(t, grid)[0].quotes[0]); obj.Paragraphs[0].Size != sizeQuotePt || obj.Paragraphs[1].Size != scaleSubheadPt {
+		t.Errorf("six short quotes: want a %vpt mark over %vpt quotes, got %+v", sizeQuotePt, scaleSubheadPt, obj.Paragraphs)
+	}
 }
 
-// One highlighted quote takes an accent tint and keeps the only accent mark;
-// the other marks go neutral.
+// One highlighted quote takes the cluster's one tint panel (its quote and
+// attribution cells, lapped so they read as one) and keeps the only accent
+// mark; the other marks go neutral.
 func TestQuoteClusterHighlightIsTheOnlyAccent(t *testing.T) {
 	p := &quoteCluster{}
 	v := validQuoteClusterValues(6)
@@ -84,13 +134,17 @@ func TestQuoteClusterHighlightIsTheOnlyAccent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for ri, row := range grid.Rows {
-		for ci, cell := range row.Cells {
+	for ri, row := range quoteOpenRows(t, grid) {
+		for ci, cell := range row.quotes {
 			idx := ri*quoteClusterColumns + ci
+			attribution := row.attributions[ci]
 			obj := quoteCellParas(t, cell)
 			filled := string(cell.Shape.Fill) != `"none"`
-			if filled != (idx == 4) {
-				t.Errorf("quote %d filled = %t", idx, filled)
+			if filled != (idx == 4) || string(attribution.Shape.Fill) != string(cell.Shape.Fill) {
+				t.Errorf("quote %d filled = %t (attribution fill %s)", idx, filled, attribution.Shape.Fill)
+			}
+			if lapped := attribution.BleedTop > 0; lapped != (idx == 4) {
+				t.Errorf("quote %d: attribution laps its quote = %t", idx, lapped)
 			}
 			mark := obj.Paragraphs[0]
 			if idx == 4 && mark.Alpha != 0 {
@@ -99,7 +153,7 @@ func TestQuoteClusterHighlightIsTheOnlyAccent(t *testing.T) {
 			if idx != 4 && (mark.Color != "dk1" || mark.Alpha == 0) {
 				t.Errorf("quote %d mark should be a dimmed neutral, got %+v", idx, mark)
 			}
-			if strings.Contains(string(cell.Shape.Text), `"accent`) && idx != 4 {
+			if (strings.Contains(string(cell.Shape.Text), `"accent`) || strings.Contains(string(attribution.Shape.Text), `"accent`)) && idx != 4 {
 				t.Errorf("quote %d carries an accent although quote 4 is highlighted", idx)
 			}
 		}

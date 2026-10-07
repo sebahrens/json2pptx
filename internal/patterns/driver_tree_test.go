@@ -401,20 +401,35 @@ func TestDriverTree_NodesAreLabelSized(t *testing.T) {
 		t.Fatalf("links = %d, want 3 root->branch + 6 branch->leaf", got)
 	}
 	for i, l := range grid.Links {
-		if l.To[1] != l.From[1]+1 || l.Connector == nil || l.Connector.Color != "accent1" {
-			t.Errorf("link %d = %+v, want an accent link to the next level", i, l)
+		// Neutral dark, never the accent: the accent stays on the nodes
+		// (go-slide-creator-rxdkf).
+		if l.To[1] != l.From[1]+1 || l.Connector == nil || l.Connector.Color != driverTreeLineColor(ctx) || strings.HasPrefix(l.Connector.Color, "accent") || l.Connector.Width != driverTreeLinePt {
+			t.Errorf("link %d = %+v, want a %vpt neutral dark link to the next level", i, l, driverTreeLinePt)
 		}
 	}
-	// The annotation stays in its branch's rows, behind a rule the height of
-	// the group, and is not a connector anchor.
+	// The annotation stays in its branch's rows, behind a bracket the height
+	// of the group drawn close against the leaves, and is not a connector
+	// anchor.
 	var annot *jsonschema.GridCellInput
 	for _, c := range grid.Rows[3].Cells {
 		if c != nil && c.Shape != nil && strings.Contains(string(c.Shape.Text), "Note on the second branch") {
 			annot = c
 		}
 	}
-	if annot == nil || annot.RowSpan != 2 || annot.AccentBar == nil || string(annot.Shape.Fill) != `"none"` {
-		t.Errorf("annotation cell = %+v, want an unfilled 2-row cell with a rule in the second branch's first row", annot)
+	if annot == nil || annot.RowSpan != 2 || annot.AccentBar != nil || string(annot.Shape.Fill) != `"none"` {
+		t.Fatalf("annotation cell = %+v, want an unfilled 2-row cell without a free rule in the second branch's first row", annot)
+	}
+	if len(annot.Layers) != 1 || annot.Layers[0].Shape.Geometry != "rightBracket" || annot.Layers[0].Frame.H != 1 || annot.Layers[0].Frame.X != 0 {
+		t.Fatalf("annotation layers = %+v, want one bracket the height of the group on the cell's left edge", annot.Layers)
+	}
+	if line := string(annot.Layers[0].Shape.Line); !strings.Contains(line, `"`+driverTreeLineColor(ctx)+`"`) || strings.Contains(line, "accent") {
+		t.Errorf("bracket line = %s, want the connectors' neutral dark", line)
+	}
+	if annot.BleedLeft <= 0 || grid.ColGap-annot.BleedLeft > driverTreeBracketGapPt+0.01 {
+		t.Errorf("annotation reaches %.1fpt back over a %.1fpt gap; the bracket should stand %vpt off the leaves", annot.BleedLeft, grid.ColGap, driverTreeBracketGapPt)
+	}
+	if !strings.Contains(string(annot.Shape.Text), `"inset_left":18`) {
+		t.Errorf("annotation text = %s, want it set %vpt clear of its bracket", annot.Shape.Text, driverTreeBracketTextGapPt)
 	}
 }
 

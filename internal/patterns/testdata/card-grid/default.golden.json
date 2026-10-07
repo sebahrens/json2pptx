@@ -115,7 +115,7 @@
       ]
     },
     {
-      "max_height": 32,
+      "max_height": 34,
       "cells": [
         {
           "shape": {
@@ -183,8 +183,8 @@
       ]
     },
     {
-      "min_height": 26,
-      "max_height": 26,
+      "min_height": 28,
+      "max_height": 28,
       "cells": [
         {
           "col_span": 3
@@ -303,7 +303,7 @@
       ]
     },
     {
-      "max_height": 32,
+      "max_height": 34,
       "cells": [
         {
           "shape": {

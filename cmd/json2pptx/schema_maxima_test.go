@@ -509,7 +509,7 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 // generated output of these payloads did not change.
 var schemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8, // Rule-based agenda (go-slide-creator-r3gsw): wider item column; nested cells measured (bzh34).
-	"agenda-with-images":           4.3,
+	"agenda-with-images":           5.8,
 	"arch-stack":                   4.1,  // twelve 40-character component blocks per tier (go-slide-creator-6h1fy)
 	"before-after":                 5.5,  // rows floored at written fit (n1muf)
 	"before-after-compact":         11.0, // rows floored at written fit (n1muf); real bullets (zieyk); no 60% bounds box, the pinned rows share the whole area (yhzxt)
@@ -589,7 +589,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 // s1uvj.12. They record extreme-schema fit debt, not visual quality approval.
 var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8,
-	"agenda-with-images":           4.8,
+	"agenda-with-images":           6.7,
 	"arch-stack":                   4.6, // component blocks (go-slide-creator-6h1fy)
 	"before-after":                 5.5,
 	"before-after-compact":         0, // real bullets (zieyk)

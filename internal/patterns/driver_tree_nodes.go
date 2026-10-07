@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"strings"
 
@@ -32,11 +33,13 @@ import (
 // connectors run; what is still left stays empty to the right of the tree.
 // Only the root is a solid accent box. A blank row separates the branches'
 // leaf groups, and a branch's annotation sits beside its leaves behind a
-// thin rule the height of the group.
+// bracket the height of the group, drawn close against the leaves it gathers.
 //
 // The connectors are explicit grid links: a row connector chains the cells
 // occupying a row, and a height-capped parent no longer occupies all the rows
-// it spans.
+// it spans. Connectors and brackets are one neutral dark weight
+// (go-slide-creator-rxdkf): the accent stays on the nodes, where it carries
+// the hierarchy, and off the hairlines.
 
 const (
 	// driverTreeRowGapPt separates two leaves of one branch, and
@@ -52,10 +55,20 @@ const (
 	// driverTreeWidthSlack widens a column measured to its label: the
 	// renderer's face may draw wider than the one the label was measured in.
 	driverTreeWidthSlack = 1.15
-	// driverTreeAnnotationRulePt is the rule that ties an annotation to its
-	// branch's leaves.
-	driverTreeAnnotationRulePt = 1.0
+	// driverTreeLinePt is the weight of the connectors and of the bracket
+	// that ties an annotation to its branch's leaves.
+	driverTreeLinePt = 1.0
+	// driverTreeBracketWidthPt is the bracket's depth, driverTreeBracketGapPt
+	// its distance from the leaves it gathers and driverTreeBracketTextGapPt
+	// the distance from the bracket to the annotation it points at.
+	driverTreeBracketWidthPt   = 8.0
+	driverTreeBracketGapPt     = 8.0
+	driverTreeBracketTextGapPt = 10.0
 )
+
+// driverTreeLineColor is the neutral dark of the connectors and brackets: the
+// template's dk2 where it carries the brand, its ink otherwise.
+func driverTreeLineColor(ctx ExpandContext) string { return swimlaneConnectorColor(ctx) }
 
 // Narrowest columns, as a share of the content width: a one-word tree is not
 // drawn as three chips.
@@ -210,13 +223,16 @@ func (dt *driverTree) expandNodesAt(ctx ExpandContext, vals *DriverTreeValues, o
 			g.leaves = append(g.leaves, cell)
 		}
 		if note := strings.TrimSpace(branch.Annotation); note != "" {
+			// The bracket is a layer of the note's cell, placed once the
+			// columns are known.
 			g.annot = &jsonschema.GridCellInput{
 				Shape: &jsonschema.ShapeSpecInput{
 					Geometry: "rect",
 					Fill:     json.RawMessage(`"none"`), // unboxed note: not a connector anchor
-					Text:     buildDriverTreeAnnotationText(pptx.ConvertMarkdownEmphasis(note), leafSize),
+					Line:     noLine,
+					Text: withTextInsetSides(buildDriverTreeAnnotationText(pptx.ConvertMarkdownEmphasis(note), leafSize),
+						driverTreeBracketWidthPt+driverTreeBracketTextGapPt, "inset_left"),
 				},
-				AccentBar: &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: driverTreeAnnotationRulePt},
 			}
 			applyDriverTreeOverride(g.annot, cellOverrides, annotIdx0+annotCounter, accent)
 			annotCounter++
@@ -266,6 +282,28 @@ func (dt *driverTree) expandNodesAt(ctx ExpandContext, vals *DriverTreeValues, o
 		cols = append(cols, rest)
 	}
 	colsJSON, _ := json.Marshal(cols)
+	// A bracket stands driverTreeBracketGapPt off the leaves it gathers: the
+	// note's cell reaches back over the gap between the levels, and the
+	// bracket is drawn on that cell's left edge.
+	lineColor := driverTreeLineColor(ctx)
+	if hasAnnotation {
+		bleed := math.Max(colGap-driverTreeBracketGapPt, 0)
+		for _, g := range groups {
+			if g.annot == nil {
+				continue
+			}
+			g.annot.BleedLeft = bleed
+			g.annot.Layers = []jsonschema.LayerInput{{
+				Name:  "annotation-bracket",
+				Frame: jsonschema.LayerFrameInput{W: driverTreeBracketWidthPt / (widths[3] + bleed), H: 1},
+				Shape: &jsonschema.ShapeSpecInput{
+					Geometry: "rightBracket",
+					Fill:     json.RawMessage(`"none"`),
+					Line:     json.RawMessage(fmt.Sprintf(`{"color":%q,"width":%g}`, lineColor, driverTreeLinePt)),
+				},
+			}}
+		}
+	}
 
 	// --- Rows ------------------------------------------------------------
 	// A leaf row is as tall as its text needs, and a branch whose own label
@@ -338,7 +376,7 @@ func (dt *driverTree) expandNodesAt(ctx ExpandContext, vals *DriverTreeValues, o
 		links = append(links, jsonschema.GridLinkInput{
 			From:      [2]int{fromRow, fromCol},
 			To:        [2]int{toRow, toCol},
-			Connector: &jsonschema.ConnectorSpecInput{Style: "line", Color: baseAccent, Width: 1.0},
+			Connector: &jsonschema.ConnectorSpecInput{Style: "line", Color: lineColor, Width: driverTreeLinePt},
 		})
 	}
 	spacers := nBranches - 1

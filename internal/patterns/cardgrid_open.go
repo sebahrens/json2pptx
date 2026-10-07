@@ -44,7 +44,7 @@ const (
 	cardGridOpenBodyBottomPt = 2.0
 	// cardGridOpenAirMaxPt is the most air a sparse grid adds under each
 	// body and between two rows of cards.
-	cardGridOpenAirMaxPt = 8.0
+	cardGridOpenAirMaxPt = 10.0
 	// cardGridOpenIconPt is the icon zone above a heading that carries one.
 	cardGridOpenIconPt = 36.0
 )

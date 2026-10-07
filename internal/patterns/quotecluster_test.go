@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -166,14 +167,12 @@ func TestQuoteCluster_Expand_SixQuotes_TwoFullRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
-	if len(grid.Rows) != 2 {
-		t.Fatalf("expected 2 rows for 6 quotes, got %d", len(grid.Rows))
+	rows := quoteOpenRows(t, grid)
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows for 6 quotes, got %d", len(rows))
 	}
-	for i, row := range grid.Rows {
-		if len(row.Cells) != 3 {
-			t.Errorf("row %d: expected 3 cells, got %d", i, len(row.Cells))
-		}
-		for j, cell := range row.Cells {
+	for i, row := range rows {
+		for j, cell := range append(append([]*jsonschema.GridCellInput{}, row.quotes...), row.attributions...) {
 			if cell.Shape == nil {
 				t.Errorf("row %d col %d: missing shape", i, j)
 				continue
@@ -192,19 +191,18 @@ func TestQuoteCluster_Expand_EightQuotes_ThreeRowsLeftAligned(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
-	if len(grid.Rows) != 3 {
-		t.Fatalf("expected 3 rows for 8 quotes, got %d", len(grid.Rows))
+	rows := quoteOpenRows(t, grid)
+	if len(rows) != 3 {
+		t.Fatalf("expected 3 rows for 8 quotes, got %d", len(rows))
 	}
 	// Last row: cells 0 and 1 hold quotes, cell 2 is filler with no text.
-	last := grid.Rows[2]
-	if len(last.Cells) != 3 {
-		t.Fatalf("last row: expected 3 cells, got %d", len(last.Cells))
-	}
-	if len(last.Cells[0].Shape.Text) == 0 || len(last.Cells[1].Shape.Text) == 0 {
-		t.Errorf("last row cells 0/1 should hold quotes")
-	}
-	if len(last.Cells[2].Shape.Text) != 0 {
-		t.Errorf("last row cell 2 should be a filler, got text: %s", string(last.Cells[2].Shape.Text))
+	for _, last := range [][]*jsonschema.GridCellInput{rows[2].quotes, rows[2].attributions} {
+		if len(last[0].Shape.Text) == 0 || len(last[1].Shape.Text) == 0 {
+			t.Errorf("last row cells 0/1 should hold quotes")
+		}
+		if len(last[2].Shape.Text) != 0 {
+			t.Errorf("last row cell 2 should be a filler, got text: %s", string(last[2].Shape.Text))
+		}
 	}
 }
 
@@ -215,18 +213,16 @@ func TestQuoteCluster_Expand_FourQuotes_SecondRowSingleQuote(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
-	if len(grid.Rows) != 2 {
-		t.Fatalf("expected 2 rows for 4 quotes, got %d", len(grid.Rows))
+	rows := quoteOpenRows(t, grid)
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows for 4 quotes, got %d", len(rows))
 	}
-	second := grid.Rows[1]
-	if len(second.Cells) != 3 {
-		t.Fatalf("second row: expected 3 cells (1 quote + 2 fillers), got %d", len(second.Cells))
-	}
-	if len(second.Cells[0].Shape.Text) == 0 {
+	second := rows[1].quotes
+	if len(second[0].Shape.Text) == 0 {
 		t.Errorf("second row cell 0 should hold the 4th quote")
 	}
 	for i := 1; i < 3; i++ {
-		if len(second.Cells[i].Shape.Text) != 0 {
+		if len(second[i].Shape.Text) != 0 {
 			t.Errorf("second row cell %d should be filler, got text", i)
 		}
 	}

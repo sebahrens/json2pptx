@@ -23,7 +23,7 @@ type agendaWithImages struct{}
 
 func (a *agendaWithImages) Name() string { return "agenda-with-images" }
 func (a *agendaWithImages) Description() string {
-	return "Numbered accent numerals + title/subtitle + image (or quote) placeholder per agenda row"
+	return "Numbered agenda rows: 28pt serif accent numerals, bold titles with optional subtitles, one hairline rule between rows and a dashed image (or quote) placeholder per row"
 }
 func (a *agendaWithImages) UseWhen() string {
 	return "Agenda or table-of-contents slide where each section needs a visual preview (image placeholder or pull quote) alongside the numbered title; prefer plain `agenda` when items are bare titles, card-grid when items need multi-line body text"
@@ -78,12 +78,13 @@ type AgendaWithImagesValues struct {
 type AgendaWithImagesOverrides struct {
 	Accent         string  `json:"accent,omitempty"`
 	SemanticAccent string  `json:"semantic_accent,omitempty"`
-	NumberSize     float64 `json:"number_size,omitempty"`      // Font size for number badge (default 18)
-	TitleSize      float64 `json:"title_size,omitempty"`       // Font size for row title (default 14)
+	NumberSize     float64 `json:"number_size,omitempty"`      // Font size for the numeral (default 28; 18 in a solid badge)
+	TitleSize      float64 `json:"title_size,omitempty"`       // Font size for row title (default 18, stepping to 14 and 12 when the rows need the height)
 	SubtitleSize   float64 `json:"subtitle_size,omitempty"`    // Font size for subtitle (default 10)
 	ImageLabelSize float64 `json:"image_label_size,omitempty"` // Font size for image placeholder caption (default 10)
-	// Style is "numeral" (default: unfilled bold accent numerals) or "solid"
-	// (accent-filled number squares with white numerals; legacy look).
+	// Style is "numeral" (default: unfilled serif accent numerals standing on
+	// the title's text line) or "solid" (accent-filled number squares with
+	// white numerals; legacy look).
 	Style string `json:"style,omitempty"`
 }
 
@@ -215,11 +216,11 @@ func (a *agendaWithImages) Schema() *Schema {
 		map[string]*Schema{
 			"accent":           StringSchema(0).WithDescription("Accent scheme color for the numerals (default: the template's color_roles.primary_fill)").WithDefault("accent1"),
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"number_size":      NumberSchema(6, 60).WithDescription("Font size for number badge in points (default 18)"),
-			"title_size":       NumberSchema(6, 60).WithDescription("Font size for row title in points (default 14)"),
+			"number_size":      NumberSchema(6, 60).WithDescription("Font size for the numeral in points (default 28; 18 in a solid badge)"),
+			"title_size":       NumberSchema(6, 60).WithDescription("Font size for row title in points (default 18, stepping to 14 and 12 when the rows need the height)"),
 			"subtitle_size":    NumberSchema(6, 40).WithDescription("Font size for subtitle in points (default 10)"),
 			"image_label_size": NumberSchema(6, 40).WithDescription("Font size for image placeholder caption in points (default 10)"),
-			"style":            EnumSchema(agendaWithImagesStyles...).WithDescription("numeral (default): unfilled bold accent numerals, so a column of agenda numbers does not read as a row of accent blocks. solid: accent-filled number squares with white numerals (legacy look)").WithDefault("numeral"),
+			"style":            EnumSchema(agendaWithImagesStyles...).WithDescription("numeral (default): unfilled 28pt accent numerals in the heading font, so a column of agenda numbers does not read as a row of accent blocks. solid: accent-filled number squares with white numerals (legacy look)").WithDefault("numeral"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -233,7 +234,7 @@ func (a *agendaWithImages) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Numbered agenda rows with accent numerals (or solid number badges via overrides.style), titles, optional subtitles, and optional image placeholders or pull-quotes")
+	}).WithDescription("Numbered agenda rows with accent numerals (or solid number badges via overrides.style), bold titles, optional subtitles, hairline rules between rows and optional dashed image placeholders")
 }
 
 func (a *agendaWithImages) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -306,7 +307,11 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	// An unfilled numeral is bold large text on the slide background: it
 	// needs 3:1 against lt1, else it steps to dk2 / dk1.
 	numeralInk := accentInkOnLight(ctx, accent, 3.0)
-	numberSize := ResolveSize(ovr.NumberSize, scaleLeadPt)
+	solid := ovr.Style == "solid"
+	numberSize := ResolveSize(ovr.NumberSize, agendaWithImagesNumberSize)
+	if solid {
+		numberSize = ResolveSize(ovr.NumberSize, scaleLeadPt)
+	}
 	subtitleSize := ResolveSize(ovr.SubtitleSize, scaleCaptionPt)
 	imageLabelSize := ResolveSize(ovr.ImageLabelSize, scaleCaptionPt)
 
@@ -325,7 +330,7 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	// 389pt content zone. Give the rows a substantial shared footprint while
 	// retaining the 48pt readability floor for denser six-row agendas.
 	rowCount := float64(len(v.Items))
-	minRowPt := (areaH*0.70 - (rowCount-1)*agendaDividerHeightPct*areaH/100 - (2*rowCount-2)*ctx.Gap(agendaRowGapPt)) / rowCount
+	minRowPt := (areaH*agendaWithImagesMinFillFrac - (rowCount-1)*agendaRulePt - (2*rowCount-2)*ctx.Gap(agendaRowGapPt)) / rowCount
 	minRowPt = max(minRowPt, 48)
 	// Each row is floored at the written height of its own title cell; when
 	// the rows would not fit at the default title size, the titles step to
@@ -336,6 +341,7 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	// Build content rows interleaved with thin divider rows (one divider between
 	// each pair of items, none above the first or below the last).
 	rows := make([]jsonschema.GridRowInput, 0, len(v.Items)*2-1)
+	ruleFill := fillTone{Color: "dk1", Alpha: agendaWithImagesRuleAlpha}.fillJSON()
 
 	for i, item := range v.Items {
 		num := item.Number
@@ -348,7 +354,7 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 		// (go-slide-creator-fl11f). overrides.style "solid" restores the
 		// accent-filled rounded square with a white numeral.
 		var numberCell *jsonschema.GridCellInput
-		if ovr.Style == "solid" {
+		if solid {
 			numberCell = buildAgendaBadgeCell(
 				fmt.Sprintf("%02d", num), accent, numberSize, badgeWidthPct)
 		} else {
@@ -390,9 +396,13 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 			// one where there is a label, an empty one where there is not. A row
 			// that simply skipped its box punched a hole in the column and made
 			// the whole grid read as ragged (go-slide-creator-jodu).
+			// The slot is a dashed outline over a faint tint, the placeholder
+			// vocabulary of image-text-split: a solid grey slab read as a
+			// designed tile, four to a slide (go-slide-creator-ja6oy).
 			imageShape := &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(`"lt2"`),
+				Fill:     fillTone{Color: "lt2", Alpha: agendaWithImagesSlotTintAlpha}.fillJSON(),
+				Line:     json.RawMessage(agendaWithImagesSlotLine),
 			}
 			if label := strings.TrimSpace(item.ImageLabel); label != "" {
 				imageShape.Text = buildAgendaWithImagesImageLabelText(item.ImageLabel, imageLabelSize)
@@ -406,26 +416,33 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 			Cells:      cells,
 		})
 
-		// Divider row between content rows (not after the last item).
+		// One hairline rule between two rows (none after the last item), the
+		// weight and ink of the plain agenda's. It stops at the text column:
+		// run under the placeholders it doubled their edges
+		// (go-slide-creator-ja6oy).
 		if i < len(v.Items)-1 {
-			rows = append(rows, jsonschema.GridRowInput{
-				Height: 1,
-				Cells: []*jsonschema.GridCellInput{
-					{
-						ColSpan: 3,
-						Shape: &jsonschema.ShapeSpecInput{
-							Geometry: "rect",
-							Fill:     json.RawMessage(`"lt2"`),
-						},
-					},
-				},
-			})
+			rule := &jsonschema.GridCellInput{
+				ColSpan: 3,
+				Shape:   &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: ruleFill, Line: noLine},
+			}
+			cells := []*jsonschema.GridCellInput{rule}
+			if withImages {
+				rule.ColSpan = 2
+				cells = append(cells, &jsonschema.GridCellInput{})
+			}
+			rows = append(rows, jsonschema.GridRowInput{MinHeight: agendaRulePt, MaxHeight: agendaRulePt, Cells: cells})
 		}
 	}
 
+	// 18% / 48% / 32% from the layout spec, expressed as fractional units. A
+	// numeral needs no badge column: it stands on the title's text line in a
+	// column its own width, and the title takes the rest.
+	columns := agendaWithImagesBadgeColumns
+	if !solid {
+		columns = agendaWithImagesNumeralColumns
+	}
 	grid := &jsonschema.ShapeGridInput{
-		// 18% / 48% / 32% from the layout spec, expressed as fractional units.
-		Columns: json.RawMessage(`[1.8, 4.8, 3.2]`),
+		Columns: json.RawMessage(columns),
 		Gap:     ctx.Gap(8),
 		RowGap:  ctx.Gap(4),
 		Rows:    rows,
@@ -487,10 +504,11 @@ func buildAgendaWithImagesTitleText(title, subtitle string, titleSize, subtitleS
 	return data
 }
 
-// agendaWithImagesFit picks the title size (the default 14pt, stepping to the
-// 12pt floor when the rows would not otherwise fit the content area; an
-// authored title_size is kept) and returns each row's written-fit height at
-// that size and the height all rows need together with dividers and gaps.
+// agendaWithImagesFit picks the title size (the default 18pt, stepping to
+// 14pt and the 12pt floor when the rows would not otherwise fit the content
+// area or a title that sat on one line would wrap; an authored title_size is
+// kept) and returns each row's written-fit height at that size and the height
+// all rows need together with dividers and gaps.
 func agendaWithImagesFit(ctx ExpandContext, v *AgendaWithImagesValues, ovr *AgendaWithImagesOverrides) (float64, []float64, float64) {
 	areaW, areaH := sizingAreaPt(ctx)
 	const units = 1.8 + 4.8 + 3.2
@@ -501,22 +519,28 @@ func agendaWithImagesFit(ctx ExpandContext, v *AgendaWithImagesValues, ovr *Agen
 		titleW = 8*unitW + gridGapPt // the title spans the image column
 	}
 	n := float64(len(v.Items))
-	fixed := (n-1)*agendaDividerHeightPct*areaH/100 + (2*n-2)*ctx.Gap(agendaRowGapPt)
+	fixed := (n-1)*agendaRulePt + (2*n-2)*ctx.Gap(agendaRowGapPt)
 	subtitleSize := ResolveSize(ovr.SubtitleSize, scaleCaptionPt)
-	sizes := []float64{ResolveSize(ovr.TitleSize, scaleSubheadPt)}
+	sizes := []float64{ovr.TitleSize}
 	if ovr.TitleSize == 0 {
-		sizes = append(sizes, agendaMinTitlePt)
+		sizes = agendaWithImagesTitleSizes
 	}
+	textW := titleW - 2*defaultShapeInsetLRPt
 	var needs []float64
 	total := 0.0
-	for _, size := range sizes {
+	for si, size := range sizes {
 		needs = make([]float64, len(v.Items))
 		total = fixed
+		wraps := false
 		for i, item := range v.Items {
 			needs[i] = writtenFitHeightPt(ctx.themeFonts(), buildAgendaWithImagesTitleText(item.Title, item.Subtitle, size, subtitleSize), titleW, 0)
 			total += needs[i]
+			// A larger step is not taken at the price of a second title
+			// line: the title wraps only where it would at the floor too.
+			wraps = wraps || (measuredLines(item.Title, ctx.Theme.BodyFont, true, size, textW*(1-cardGridOpenWrapSlack)) > 1 &&
+				measuredLines(item.Title, ctx.Theme.BodyFont, true, agendaMinTitlePt, textW*(1-cardGridOpenWrapSlack)) == 1)
 		}
-		if total <= areaH {
+		if total <= areaH && (!wraps || si == len(sizes)-1) {
 			return size, needs, total
 		}
 	}
@@ -524,7 +548,34 @@ func agendaWithImagesFit(ctx ExpandContext, v *AgendaWithImagesValues, ovr *Agen
 }
 
 // agendaMinTitlePt is the title floor the default size steps down to.
-const agendaMinTitlePt = 12.0
+const agendaMinTitlePt = scaleBodyPt
+
+// agendaWithImagesTitleSizes are the default title steps, largest first.
+var agendaWithImagesTitleSizes = []float64{scaleLeadPt, scaleSubheadPt, agendaMinTitlePt}
+
+const (
+	// agendaWithImagesMinFillFrac is the share of the content height the
+	// rows take at least: the image slots need the height, and an agenda is
+	// the slide's whole content.
+	agendaWithImagesMinFillFrac = 0.85
+	// agendaWithImagesNumberSize is the default numeral: the 28pt display
+	// step of the plain agenda, in the same heading face.
+	agendaWithImagesNumberSize = agendaNumberSize
+	// agendaWithImagesRuleAlpha is the dk1 opacity of the rule between rows,
+	// the plain agenda's.
+	agendaWithImagesRuleAlpha = 30.0
+	// agendaWithImagesSlotTintAlpha / agendaWithImagesSlotLine draw an image
+	// slot: a faint tint under the 20% "filled" threshold inside a dashed
+	// border, which reads as a wireframe slot and not as a content block. The
+	// border is a mid neutral (dk1, "Lighter 50%"): up to six slots stack in
+	// the column, and six full-ink dashed boxes outweighed the agenda.
+	agendaWithImagesSlotTintAlpha = 15.0
+	agendaWithImagesSlotLine      = `{"color":"dk1","lumMod":50000,"lumOff":50000,"width":1,"dash":"dash"}`
+	// agendaWithImagesBadgeColumns / agendaWithImagesNumeralColumns are the
+	// column weights with a solid badge and with a numeral.
+	agendaWithImagesBadgeColumns   = `[1.8, 4.8, 3.2]`
+	agendaWithImagesNumeralColumns = `[0.9, 5.7, 3.2]`
+)
 
 // anyAgendaImageLabel reports whether at least one item carries an image label,
 // which is what earns the deck an image column at all.
@@ -564,8 +615,8 @@ const agendaBadgeColumnFrac = 1.8 / (1.8 + 4.8 + 3.2)
 // branch would be unreachable.
 //
 // The row height is estimated the way the grid divides it — n content rows plus
-// n-1 hairline divider rows at agendaDividerHeightPct each, with RowGap between
-// every pair — so the estimate and the layout cannot drift apart silently.
+// n-1 hairline rule rows at agendaRulePt each, with RowGap between every pair —
+// so the estimate and the layout cannot drift apart silently.
 //
 // ACCURACY IS CAPPED BY go-slide-creator-byr2b: on the generate path
 // ExpandContext carries no LayoutBounds, so contentAreaPt reports the full-slide
@@ -582,7 +633,7 @@ func agendaBadgeWidthPct(ctx ExpandContext, n int) float64 {
 	if colWidth <= 0 || h <= 0 {
 		return 100
 	}
-	dividers := float64(n-1) * h * agendaDividerHeightPct / 100
+	dividers := float64(n-1) * agendaRulePt
 	gaps := float64(2*n-2) * ctx.Gap(agendaRowGapPt)
 	rowHeight := (h - dividers - gaps) / float64(n)
 	if rowHeight <= 0 || rowHeight >= colWidth {
@@ -596,12 +647,8 @@ func agendaBadgeWidthPct(ctx ExpandContext, n int) float64 {
 	return rowHeight / colWidth * 100
 }
 
-const (
-	// agendaDividerHeightPct / agendaRowGapPt mirror the grid the expansion
-	// builds.
-	agendaDividerHeightPct = 1.0
-	agendaRowGapPt         = 4.0
-)
+// agendaRowGapPt mirrors the row gap of the grid the expansion builds.
+const agendaRowGapPt = 4.0
 
 // buildAgendaBadgeCell centres the badge in its cell at the given share of the
 // cell's width, so it renders square rather than filling a cell whose
@@ -629,12 +676,13 @@ func buildAgendaBadgeCell(label, accent string, size, widthPct float64) *jsonsch
 }
 
 // buildAgendaNumeralCell is the restrained default number cell: an unfilled,
-// unoutlined bold numeral in the accent ink, centred in its column.
+// unoutlined numeral in the accent ink and the heading face, left-aligned so
+// it stands on the title's text line as the plain agenda's does.
 func buildAgendaNumeralCell(label, ink string, size float64) *jsonschema.GridCellInput {
 	return &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 		Geometry: "rect",
 		Fill:     json.RawMessage(`"none"`),
 		Line:     noLine,
-		Text:     buildAgendaWithImagesNumberText(label, size, ink),
+		Text:     agendaText(agendaParagraph{Content: label, Size: size, Color: ink, Font: agendaNumberFont}),
 	}}
 }
