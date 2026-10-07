@@ -483,10 +483,21 @@ func generatePanelHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, ti
 	return string(b)
 }
 
+// panelBodyText is the text body of a columns panel: the one the body box is
+// written with and the one its height is measured from.
+func panelBodyText(body string, fontSizeHundredths int) *pptx.TextBody {
+	return &pptx.TextBody{
+		Wrap:       "square",
+		Anchor:     "t",
+		Insets:     [4]int64{panelBodyMarginLeft, panelBodyMarginTop, panelBodyMarginRight, panelBodyMarginBottom},
+		AutoFit:    "normAutofit",
+		Paragraphs: panelBulletsParagraphs(body, fontSizeHundredths),
+	}
+}
+
 // generatePanelBodyXML produces a p:sp element for a panel body rectangle:
 // the neutral card surface, no outline, and bulleted text content.
 func generatePanelBodyXML(body string, x, y, cx, cy int64, shapeID uint32, fontSizeHundredths int) string {
-	paras := panelBulletsParagraphs(body, fontSizeHundredths)
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "Panel Body",
@@ -494,13 +505,7 @@ func generatePanelBodyXML(body string, x, y, cx, cy int64, shapeID uint32, fontS
 		Geometry: nativeSurfaceGeometry,
 		Fill:     nativeNeutralFill(panelBodyTint),
 		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
-		Text: &pptx.TextBody{
-			Wrap:       "square",
-			Anchor:     "t",
-			Insets:     [4]int64{panelBodyMarginLeft, panelBodyMarginTop, panelBodyMarginRight, panelBodyMarginBottom},
-			AutoFit:    "normAutofit",
-			Paragraphs: paras,
-		},
+		Text:     panelBodyText(body, fontSizeHundredths),
 	})
 	if err != nil {
 		slog.Warn("generatePanelBodyXML failed", "error", err)

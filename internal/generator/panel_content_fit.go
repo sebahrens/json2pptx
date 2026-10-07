@@ -148,7 +148,17 @@ func panelBodyBoxHeight(body, fontName string, panelWidth int64) int64 {
 	if floor := int64(panelBodyMinLines * float64(panelLineHeightEMU(panelBodyFontSize))); textH < floor {
 		textH = floor
 	}
-	return textH + panelBodyMarginTop + panelBodyMarginBottom
+	need := textH + panelBodyMarginTop + panelBodyMarginBottom
+	// The estimate above wraps every paragraph at the full text width; a
+	// bullet's lines start at its hanging indent, so a list near the column
+	// width takes a line more than it counts. The box is never shorter than
+	// the written body's own measure: three two-line bullets in a 213pt
+	// column were set in a box sized for less and stored a 96% shrink with
+	// half the slide free under them (go-slide-creator-vn35f).
+	if written := nativeTextNeedAtMarginEMU(*panelBodyText(body, panelBodyFontSize), panelWidth, int64(types.EMUPerInch)*100); written > need {
+		need = written
+	}
+	return need
 }
 
 // panelColumnsLayout returns the vertical bands of a columns panel group and
