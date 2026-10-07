@@ -330,7 +330,7 @@ Many equal mid-grey rectangles read as generated: nothing is grouped and nothing
 | Panel | A backdrop that groups content: a tier band, a pillar shaft, a row-label tile, a lane | The lightest neutral, `dk1` at 4% — or the template's declared `subtle` surface when it is at least 0.05 of relative luminance lighter than the accent's content swatch | measured (`dk1` / `dk2`) | `tonalPanel(ctx, accent)` |
 | Content | A shape that IS the content: a step, a tier, a ring segment, a node, a tab, a band of a house | The accent's "Lighter 80%" swatch (`lumMod` 20000 / `lumOff` 80000); a shape that heads or crosses others one rung deeper (Lighter 60%), one that recedes one lighter (Lighter 90%); a ladder runs 90 / 80 / 68 / 56 / 44 | measured on the rung | `tonalContent`, `tonalRung(ctx, accent, pct)`, `tonalInk` |
 | Emphasis | The one item the slide is about | The solid accent, deepened where white would not read | `lt1`, else measured | `tonalEmphasis(ctx, accent)` |
-| Anchor | A numbered badge that ties a label to a shape | The neutral dark: `dk2` when it carries the brand, `dk1` at 80% when `dk2` is black | page colour | `tonalBadge(ctx)` |
+| Anchor | A numbered badge that ties a label to a shape | The neutral dark: `dk2` when it carries the brand, `dk1` at 65% (a dark grey, PowerPoint's "Lighter 35%") when `dk2` is black | page colour | `tonalBadge(ctx)` |
 
 Rules that follow from it:
 

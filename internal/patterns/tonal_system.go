@@ -137,11 +137,15 @@ func tonalEmphasis(ctx ExpandContext, accent string) (fillTone, string) {
 	return accentFillAndInk(ctx, fillTone{Color: accent}, svggen.WCAGAANormal)
 }
 
-// tonalBadgeInkPct is the neutral dark of a badge when dk2 is black.
-const tonalBadgeInkPct = 80
+// tonalBadgeInkPct is the neutral dark of a badge when dk2 is black: dk1 at
+// 65%, PowerPoint's "Black, Text 1, Lighter 35%" swatch (#595959 on black).
+// It was 80% (#333333), which reads as black beside an accent palette: the
+// owner asked for a dark grey, not black, on the house base and wherever the
+// anchor tone fills a bar (2026-10-07). White ink keeps 7:1 on it.
+const tonalBadgeInkPct = 65
 
 // tonalBadge is the fill and ink of a numbered badge: the neutral dark with
-// the page colour as ink (the brand's own dark, or dk1 at 80% when dk2 is
+// the page colour as ink (the brand's own dark, or dk1 at 65% when dk2 is
 // black). A badge is an anchor, not an emphasis, so it never takes the accent.
 func tonalBadge(ctx ExpandContext) (fillTone, string) {
 	tone := fillTone{Color: "dk2"}

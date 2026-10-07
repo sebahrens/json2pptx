@@ -351,7 +351,7 @@ func (mc *Matrix2x2Chart) quadrantInk(i int, preferred Color) Color {
 const (
 	// matrixAxisBarInk is the share of the text ink an axis bar is filled
 	// with (the pattern engine's badge tone).
-	matrixAxisBarInk = 0.8
+	matrixAxisBarInk = 0.65
 	// matrixAxisLow and matrixAxisHigh are the end labels of an axis bar.
 	matrixAxisLow  = "Low"
 	matrixAxisHigh = "High"
