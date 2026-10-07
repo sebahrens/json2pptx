@@ -1620,7 +1620,18 @@ func (lc *LineChart) Draw(data ChartData) error {
 	directLabelMargin := 0.0
 	if directLabels {
 		directLabelMargin = measureDirectLabelMargin(b, style, data.Series)
-		lc.config.MarginRight += directLabelMargin
+		// Long series names at the line ends can take more of a narrow chart
+		// than the plot keeps: in a half-width zone two 22-character names
+		// left the plot 45% of the width and its x labels ran together. Past
+		// lineDirectLabelMaxShare the names go to a legend instead
+		// (go-slide-creator-dd817).
+		if directLabelMargin > lc.config.Width*lineDirectLabelMaxShare {
+			directLabels, directLabelMargin = false, 0
+			lc.config.PreferDirectLabels = false
+			lc.config.ShowLegend = true
+		} else {
+			lc.config.MarginRight += directLabelMargin
+		}
 	}
 
 	// Calculate y-axis domain early so we can probe label widths and grow
@@ -1747,6 +1758,10 @@ func (lc *LineChart) Draw(data ChartData) error {
 
 	return nil
 }
+
+// lineDirectLabelMaxShare is the largest share of the chart width the direct
+// series labels of a line / area chart may reserve at the right edge.
+const lineDirectLabelMaxShare = 0.28
 
 // highlightDirectLabels turns direct labels on (and the legend off) for a
 // series highlight, which names its series at the line ends whatever their
@@ -2564,7 +2579,19 @@ type ScatterChart struct {
 	// xAxisCfg is the x-axis configuration drawAxes actually drew with; the
 	// legend is placed below it (go-slide-creator-jp5d).
 	xAxisCfg AxisConfig
+
+	// labelArea is the region a point label may occupy, set per Draw. A zero
+	// area (a chart drawn through drawPointLabels alone) constrains nothing.
+	labelArea Rect
 }
+
+// scatterLabelEdgePad keeps a point label off the canvas's right edge, and
+// scatterLabelMinEm is the least width, in ems, a shortened label is worth
+// drawing at.
+const (
+	scatterLabelEdgePad = 4.0
+	scatterLabelMinEm   = 3.0
+)
 
 // NewScatterChart creates a new scatter chart renderer.
 func NewScatterChart(builder *SVGBuilder, config ScatterChartConfig) *ScatterChart {
@@ -2631,6 +2658,9 @@ func (sc *ScatterChart) Draw(data ChartData) error {
 	}
 
 	// Draw points
+	// Point labels stay inside the plot's height and between the value axis
+	// and the canvas's right edge.
+	sc.labelArea = Rect{X: plotArea.X, Y: plotArea.Y, W: sc.config.Width - scatterLabelEdgePad - plotArea.X, H: plotArea.H}
 	sc.drawPoints(data, xScale, yScale, colors)
 
 	// Draw title
@@ -2991,8 +3021,35 @@ func (sc *ScatterChart) drawPointLabels(labels []scatterLabel) {
 		return false
 	}
 
+	// inArea reports whether a label box lies in the label area. A label
+	// placed right of a point near the plot's right edge ran off the canvas
+	// ("Vendor onboardi"): it now goes to the left, above or below instead
+	// (go-slide-creator-fchaq).
+	area := sc.labelArea
+	inArea := func(r labelRect) bool {
+		if area.W <= 0 || area.H <= 0 {
+			return true
+		}
+		return r.x1 >= area.X-0.5 && r.x2 <= area.X+area.W+0.5 && r.y1 >= area.Y-labelH*0.5 && r.y2 <= area.Y+area.H+0.5
+	}
+	// onMarker reports whether a label box covers another point's marker: a
+	// bubble's label must not be set across its neighbour.
+	onMarker := func(r labelRect, self int) bool {
+		for i, other := range labels {
+			if i == self || other.radius <= 0 {
+				continue
+			}
+			nx := math.Max(r.x1, math.Min(other.x, r.x2))
+			ny := math.Max(r.y1, math.Min(other.y, r.y2))
+			if math.Hypot(nx-other.x, ny-other.y) < other.radius-1 {
+				return true
+			}
+		}
+		return false
+	}
+
 	skipped := 0
-	for _, lab := range labels {
+	for li, lab := range labels {
 		px, py := lab.x, lab.y
 		lbl := lab.text
 		if len([]rune(lbl)) > maxLabelChars {
@@ -3051,11 +3108,35 @@ func (sc *ScatterChart) drawPointLabels(labels []scatterLabel) {
 
 		placed := false
 		for _, c := range candidates {
-			if !overlaps(c.rect) {
+			if inArea(c.rect) && !overlaps(c.rect) && !onMarker(c.rect, li) {
 				b.DrawText(lbl, c.x, c.y, c.align, c.base)
 				placedLabels = append(placedLabels, c.rect)
 				placed = true
 				break
+			}
+		}
+		// No side holds the whole label: shorten it into the roomier of the
+		// two horizontal sides rather than drop it.
+		if !placed && area.W > 0 {
+			right, left := candidates[0], candidates[2]
+			availRight := area.X + area.W - right.rect.x1
+			availLeft := left.rect.x2 - area.X
+			side, avail := right, availRight
+			if availLeft > availRight {
+				side, avail = left, availLeft
+			}
+			if short := b.TruncateToWidth(lbl, avail/1.1); avail >= labelFontSize*scatterLabelMinEm && short != "" && short != lbl {
+				w, _ := b.MeasureText(short)
+				w *= 1.1
+				r := labelRect{side.rect.x1, side.rect.y1, side.rect.x1 + w, side.rect.y2}
+				if side.align == TextAlignRight {
+					r = labelRect{side.rect.x2 - w, side.rect.y1, side.rect.x2, side.rect.y2}
+				}
+				if inArea(r) && !overlaps(r) && !onMarker(r, li) {
+					b.DrawText(short, side.x, side.y, side.align, side.base)
+					placedLabels = append(placedLabels, r)
+					placed = true
+				}
 			}
 		}
 		if !placed {
@@ -3069,7 +3150,7 @@ func (sc *ScatterChart) drawPointLabels(labels []scatterLabel) {
 		b.AddFinding(Finding{
 			Field:    "series[].labels",
 			Code:     FindingScatterLabelSkipped,
-			Message:  fmt.Sprintf("%d of %d point labels skipped — every position around the point overlapped a label already placed", skipped, len(labels)),
+			Message:  fmt.Sprintf("%d of %d point labels skipped — every position around the point overlapped a label or a marker, or left the plot", skipped, len(labels)),
 			Severity: "info",
 			Fix: &FixSuggestion{
 				// A collision is a room problem: a wider canvas fits the same
@@ -3244,6 +3325,18 @@ func (pc *PieChart) Draw(data ChartData) error {
 
 	plotArea.Y += headerHeight
 	plotArea.H -= headerHeight + footerHeight
+
+	// Direct "Name NN%" labels need their width beside the pie. Where the
+	// frame cannot give it without shrinking the pie under
+	// pieDirectLabelMinRadiusFrac — long names in a half-width zone — the
+	// labels were drawn across the slices; the names go to the legend and the
+	// slices keep their values (go-slide-creator-phenw).
+	if pc.config.NameInLabel && pc.config.ShowLabels && pc.config.LabelPosition == ArcLabelOutside &&
+		!pc.directLabelsFit(plotArea, values, labels, labelConfig, total) {
+		nameInLabel, showLegend := pc.config.NameInLabel, pc.config.ShowLegend
+		defer func() { pc.config.NameInLabel, pc.config.ShowLegend = nameInLabel, showLegend }()
+		pc.config.NameInLabel, pc.config.ShowLegend = false, true
+	}
 
 	// Determine legend placement: landscape layouts use a right-side legend
 	// to let the pie use the full vertical space, while portrait/square
@@ -3462,6 +3555,38 @@ func (pc *PieChart) Draw(data ChartData) error {
 	}
 
 	return nil
+}
+
+// pieDirectLabelMinRadiusFrac is the smallest pie radius, as a share of half
+// the frame's shorter side, that direct name labels may squeeze the pie to
+// before the names move to a legend.
+const pieDirectLabelMinRadiusFrac = 0.6
+
+// directLabelsFit reports whether the widest direct label ("Name NN%") fits
+// beside a pie of at least pieDirectLabelMinRadiusFrac in this frame. It
+// measures the way the radius budget in Draw does, safety margin included.
+func (pc *PieChart) directLabelsFit(plotArea Rect, values []float64, labels []string, labelConfig ArcSeriesConfig, total float64) bool {
+	if total <= 0 || plotArea.W <= 0 || plotArea.H <= 0 {
+		return true
+	}
+	b := pc.builder
+	style := b.StyleGuide()
+	b.Push()
+	b.SetFontSize(style.Typography.SizeBody)
+	b.SetFontWeight(style.Typography.WeightNormal)
+	maxLabelW := 0.0
+	for i, v := range values {
+		text := labelConfig.formatSliceValue(v, total)
+		if i < len(labels) && labels[i] != "" {
+			text = labels[i] + "  " + text
+		}
+		w, _ := b.MeasureText(text)
+		maxLabelW = math.Max(maxLabelW, w)
+	}
+	b.Pop()
+	reach := style.Spacing.MD + style.Spacing.XS + maxLabelW*1.4
+	halfSize := math.Min(plotArea.W, plotArea.H) / 2
+	return plotArea.W/2-reach >= halfSize*pieDirectLabelMinRadiusFrac
 }
 
 // excludeNegativeSlices drops negative slice values, keeping labels, colors
@@ -3693,8 +3818,14 @@ func (rc *RadarChart) Draw(data ChartData) error {
 	// is room to spare, so the web keeps the whole height: a legend row under
 	// it cost a fifth of a slide body's height (go-slide-creator-9nk6a).
 	sideKey := showLegend && rc.sideKeyFits(data, plotArea)
-	if sideKey {
+	switch {
+	case sideKey:
 		legendHeight = 0
+	case showLegend:
+		// The key under the web takes as many rows as its names need at this
+		// width: one fixed row listed the first of three series in a
+		// half-width zone and dropped the rest (go-slide-creator-47rss).
+		legendHeight = math.Max(legendHeight, rc.keyRowsHeight(data, plotArea.W))
 	}
 	if rc.config.LegendPosition == LegendPositionBottom {
 		plotArea.H -= legendHeight
@@ -4255,85 +4386,93 @@ func (rc *RadarChart) drawSideKey(data ChartData, colors []Color, reference []bo
 	}
 }
 
-// drawKeyRow draws the series key as one centred row of line swatches under
-// the web. It reports false, drawing nothing, when the row does not fit the
-// plot width.
-func (rc *RadarChart) drawKeyRow(data ChartData, colors []Color, reference []bool, plotArea Rect, legendHeight float64) bool {
-	b := rc.builder
-	style := b.StyleGuide()
-	font := style.Typography.SizeHeading
-	swatchW := font * 1.6
-	gap := style.Spacing.MD
-	itemGap := style.Spacing.XL
-	b.Push()
-	defer b.Pop()
-	b.SetFontSize(font)
-	b.SetFontWeight(style.Typography.WeightNormal)
-	widths := make([]float64, len(data.Series))
-	total := 0.0
-	for i, series := range data.Series {
-		w, _ := b.MeasureText(series.Name)
-		widths[i] = swatchW + gap + w
-		total += widths[i]
-	}
-	total += itemGap * float64(len(data.Series)-1)
-	if total > plotArea.W {
-		return false
-	}
-	x := plotArea.X + (plotArea.W-total)/2
-	y := plotArea.Y + plotArea.H + style.Spacing.MD + legendHeight/2
-	b.SetTextColor(style.Palette.TextPrimary)
-	for i, series := range data.Series {
-		b.Push()
-		b.SetStrokeColor(colors[i%len(colors)])
-		b.SetStrokeWidth(style.Strokes.WidthNormal)
-		if reference[i] {
-			b.SetStrokeWidth(style.Strokes.WidthThin)
-			b.SetDashes(style.Strokes.PatternDashed...)
-		}
-		b.DrawLine(x, y, x+swatchW, y)
-		b.Pop()
-		b.DrawText(series.Name, x+swatchW+gap, y, TextAlignLeft, TextBaselineMiddle)
-		x += widths[i] + itemGap
-	}
-	return true
+// radarKey is the geometry of the series key under the web.
+type radarKey struct {
+	font, swatchW, gap, itemGap, lineH float64
+	widths                             []float64 // swatch + gap + name, per series
+	names                              []string  // names, cut only when one alone is wider than the row
+	rows                               [][]int   // series indices per row
 }
 
-// drawLegend draws the chart legend.
+// keyLayout wraps the series key into rows no wider than width. Every series
+// is listed; a name is shortened only when it alone is wider than a row.
+func (rc *RadarChart) keyLayout(data ChartData, width float64) radarKey {
+	b := rc.builder
+	style := b.StyleGuide()
+	k := radarKey{font: style.Typography.SizeHeading, gap: style.Spacing.MD, itemGap: style.Spacing.XL}
+	k.swatchW = k.font * 1.6
+	k.lineH = k.font * 1.5
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(k.font)
+	b.SetFontWeight(style.Typography.WeightNormal)
+	rowW := 0.0
+	for i, series := range data.Series {
+		name := series.Name
+		w, _ := b.MeasureText(name)
+		if avail := width - k.swatchW - k.gap; w > avail && avail > 0 {
+			name = b.TruncateToWidth(name, avail)
+			w, _ = b.MeasureText(name)
+		}
+		k.names = append(k.names, name)
+		k.widths = append(k.widths, k.swatchW+k.gap+w)
+		if len(k.rows) == 0 || rowW+k.itemGap+k.widths[i] > width {
+			k.rows = append(k.rows, nil)
+			rowW = 0
+		} else {
+			rowW += k.itemGap
+		}
+		rowW += k.widths[i]
+		k.rows[len(k.rows)-1] = append(k.rows[len(k.rows)-1], i)
+	}
+	return k
+}
+
+// keyRowsHeight is the band the key under the web needs at the given width.
+func (rc *RadarChart) keyRowsHeight(data ChartData, width float64) float64 {
+	k := rc.keyLayout(data, width)
+	return float64(len(k.rows))*k.lineH + rc.builder.StyleGuide().Spacing.SM
+}
+
+// drawLegend draws the series key under the web: centred rows of line
+// swatches in each series' own stroke (solid for a web, dashed for a
+// reference series) with its name. Filled squares would name a dashed
+// outline with a block of its ink, and a single row dropped the series that
+// did not fit it.
 func (rc *RadarChart) drawLegend(data ChartData, colors []Color, reference []bool, plotArea Rect, legendHeight float64) {
 	b := rc.builder
 	style := b.StyleGuide()
-
-	// With a reference series the key shows each series' own stroke (solid
-	// web, dashed yardstick) in one centred row; filled squares would name a
-	// dashed outline with a block of its ink.
-	for _, isRef := range reference {
-		if isRef && rc.drawKeyRow(data, colors, reference, plotArea, legendHeight) {
-			return
+	k := rc.keyLayout(data, plotArea.W)
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(k.font)
+	b.SetFontWeight(style.Typography.WeightNormal)
+	b.SetTextColor(style.Palette.TextPrimary)
+	top := plotArea.Y + plotArea.H + style.Spacing.MD
+	if spare := legendHeight - float64(len(k.rows))*k.lineH; spare > 0 {
+		top += spare / 2
+	}
+	for r, row := range k.rows {
+		total := k.itemGap * float64(len(row)-1)
+		for _, i := range row {
+			total += k.widths[i]
+		}
+		x := plotArea.X + (plotArea.W-total)/2
+		y := top + (float64(r)+0.5)*k.lineH
+		for _, i := range row {
+			b.Push()
+			b.SetStrokeColor(colors[i%len(colors)])
+			b.SetStrokeWidth(style.Strokes.WidthNormal)
+			if reference[i] {
+				b.SetStrokeWidth(style.Strokes.WidthThin)
+				b.SetDashes(style.Strokes.PatternDashed...)
+			}
+			b.DrawLine(x, y, x+k.swatchW, y)
+			b.Pop()
+			b.DrawText(k.names[i], x+k.swatchW+k.gap, y, TextAlignLeft, TextBaselineMiddle)
+			x += k.widths[i] + k.itemGap
 		}
 	}
-
-	legendConfig := PresentationLegendConfig(style)
-
-	legend := NewLegend(b, legendConfig)
-
-	items := make([]LegendItem, len(data.Series))
-	for i, series := range data.Series {
-		items[i] = LegendItem{
-			Label: series.Name,
-			Color: colors[i%len(colors)],
-		}
-	}
-	legend.SetItems(items)
-
-	// Add small gap between chart and legend for visual clarity
-	legendBounds := Rect{
-		X: plotArea.X,
-		Y: plotArea.Y + plotArea.H + style.Spacing.MD,
-		W: plotArea.W,
-		H: legendHeight,
-	}
-	legend.Draw(legendBounds)
 }
 
 // getColors returns colors for the series.

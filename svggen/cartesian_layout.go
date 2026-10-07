@@ -544,6 +544,10 @@ func wrapXLabelsTwoLines(b *SVGBuilder, cats []string, limit, fontSize float64) 
 	return out, true
 }
 
+// xLabelMinGutterEm is the least gap between two neighbouring one-line x-axis
+// labels, in ems of the label font.
+const xLabelMinGutterEm = 0.6
+
 // AdaptXLabels computes adaptive font size and rotation for nominal x-axis
 // categories. A category label identifies a bar or point, so it is never
 // thinned like a time-axis tick.
@@ -603,15 +607,25 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 
 	maxLabelWidth := measureMaxLabel(fontSize)
 
+	// fits reports whether one-line labels of width w (already carrying the
+	// safety factor) sit in their bands with a gutter between neighbours. The
+	// gutter is at least xLabelMinGutterEm of the font: eight "Q1 25" labels
+	// measured to 95% of a 35px pitch read as one run of text, and touch
+	// outright where the slide's font is substituted by a wider one
+	// (go-slide-creator-dd817).
+	fits := func(w, fs float64) bool {
+		return w <= bandwidth*0.95 && bandwidth-w/1.1 >= fs*xLabelMinGutterEm
+	}
+
 	// ── Step 1: Shrink font toward 9pt floor ──
-	if maxLabelWidth > bandwidth*0.95 && fontSize > fontFloor {
+	if !fits(maxLabelWidth, fontSize) && fontSize > fontFloor {
 		// Try progressively smaller font sizes down to the floor.
 		for _, candidate := range []float64{fontSize * 0.9, fontSize * 0.8, fontFloor} {
 			candidate = math.Max(fontFloor, candidate)
 			w := measureMaxLabel(candidate)
 			fontSize = candidate
 			maxLabelWidth = w
-			if w <= bandwidth*0.95 {
+			if fits(w, candidate) {
 				break
 			}
 		}
@@ -622,7 +636,7 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 	// ("IT hardware & s…"); a two-line word wrap at 0° keeps the full
 	// category text readable. Try the largest font first so wrapping is
 	// preferred over shrinking to the floor.
-	if maxLabelWidth > bandwidth*0.95 {
+	if !fits(maxLabelWidth, fontSize) {
 		limit := bandwidth * 0.92 / 1.1 // 1.1x safety factor as in measureMaxLabel; 0.92 keeps a visible gutter between wrapped neighbours
 		for _, candidate := range []float64{baseFontSize, baseFontSize * 0.9, baseFontSize * 0.8, fontFloor} {
 			candidate = math.Max(fontFloor, candidate)
@@ -644,7 +658,7 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 	}
 
 	// ── Step 3: Rotate 45 degrees if two-line wrap still overflows ──
-	if maxLabelWidth > bandwidth*0.95 {
+	if !fits(maxLabelWidth, fontSize) {
 		rotation = -45
 
 		// Use steeper angle on narrow charts or very dense charts.
