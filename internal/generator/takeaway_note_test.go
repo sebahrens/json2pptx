@@ -5,16 +5,14 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // TestGenerateTakeawayShape verifies the slide takeaway is the shared
-// takeaway band (go-slide-creator-3a1rm, -fmmec): one shape the width of the
-// body column, filled with the dark structural neutral, carrying 14pt bold
-// text in the ink measured against it, 12pt in from each side and centred —
-// not the 3pt accent bar beside unfilled dk1 text it was before.
+// takeaway component (go-slide-creator-7b5o6): a flush 3pt accent1 bar and
+// 14pt bold dk1 text inset 12pt from it, top-anchored, with no fill and no
+// outline — not the old peach wash framed by a 1pt accent rule.
 func TestGenerateTakeawayShape(t *testing.T) {
-	bounds := pptx.RectEmu{X: 838200, Y: 5700000, CX: 10515600, CY: 661797}
+	bounds := pptx.RectEmu{X: 838200, Y: 5700000, CX: 10515600, CY: 514350}
 	xml := generateTakeawayShapesInBounds("Revenue doubled year over year.", 100, bounds, takeawayStyle{})
 	if xml == "" {
 		t.Fatal("generateTakeawayShapesInBounds returned empty string")
@@ -22,45 +20,34 @@ func TestGenerateTakeawayShape(t *testing.T) {
 
 	wants := []string{
 		"Revenue doubled year over year.",
+		`name="Takeaway Bar"`,
 		`name="Takeaway"`,
 		`sz="1400"`,                       // 14pt
 		`b="1"`,                           // bold
-		`<a:schemeClr val="dk2"`,          // the band: a theme neutral, not a hex
-		`<a:schemeClr val="lt1"`,          // the ink that reads on it
-		`<a:off x="838200" y="5700000"/>`, // flush at the band's left edge
-		`<a:ext cx="10515600"`,            // the whole body column
-		`lIns="152400"`, `rIns="152400"`,  // 12pt in from each side
-		`tIns="101600"`, `bIns="101600"`, // 8pt above and below
-		`anchor="ctr"`, // centred on the band's height
+		`<a:schemeClr val="dk1"`,          // theme ink, not a hex
+		`<a:schemeClr val="accent1"`,      // the bar
+		`<a:ext cx="38100"`,               // 3pt bar
+		`<a:off x="838200" y="5700000"/>`, // bar flush at the band's left edge
+		`lIns="190500"`,                   // bar (3pt) + 12pt to the text
+		`anchor="t"`,                      // top-anchored
 	}
 	for _, want := range wants {
 		if !strings.Contains(xml, want) {
 			t.Errorf("generateTakeawayShapesInBounds() missing %q in:\n%s", want, xml)
 		}
 	}
-	for _, reject := range []string{"Takeaway Bar", "accent1", "srgbClr", `<a:ln w="12700"`} {
+	for _, reject := range []string{"lumMod", "lumOff", "1F1F1F", `<a:ln w="12700"`} {
 		if strings.Contains(xml, reject) {
-			t.Errorf("takeaway must carry no bar, accent, hex or rule; found %q in:\n%s", reject, xml)
+			t.Errorf("takeaway must carry no tint, rule or hex ink; found %q in:\n%s", reject, xml)
 		}
 	}
-	if n := strings.Count(xml, "<p:sp>"); n != 1 {
-		t.Errorf("the band is one shape, got %d", n)
+	// One line of text: the band shrinks to the words instead of running the
+	// bar the whole reserved rectangle.
+	if h := takeawayBandHeight("Revenue doubled year over year.", bounds, takeawayStyle{}); h >= bounds.CY {
+		t.Errorf("one-line band height = %d, want < reserved %d", h, bounds.CY)
 	}
-	// One line of text: the band shrinks to the words and their padding
-	// instead of filling the whole reserved rectangle.
-	if h := takeawayBandHeight("Revenue doubled year over year.", bounds, takeawayStyle{}); h != 35*12700 {
-		t.Errorf("one-line band height = %.1fpt, want 35pt", float64(h)/12700)
-	}
-
-	// Where dk2 is black the band is a charcoal off dk1, never a second black.
-	black := takeawayStyle{ThemeColors: []types.ThemeColor{
-		{Name: "dk1", RGB: "#000000"}, {Name: "dk2", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"}, {Name: "lt2", RGB: "#EEEEEE"},
-	}}
-	charcoal := generateTakeawayShapesInBounds("x", 1, bounds, black)
-	for _, want := range []string{`<a:schemeClr val="dk1"><a:lumMod val="85000"/><a:lumOff val="15000"/>`, `<a:schemeClr val="lt1"`} {
-		if !strings.Contains(charcoal, want) {
-			t.Errorf("black-dk2 band missing %q in:\n%s", want, charcoal)
-		}
+	if !strings.Contains(generateTakeawayShapesInBounds("x", 1, bounds, takeawayStyle{InkHex: "#F0F0F0"}), `srgbClr val="F0F0F0"`) {
+		t.Error("a dark layout's measured ink must replace dk1")
 	}
 }
 

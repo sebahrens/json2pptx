@@ -104,8 +104,8 @@ func TestSparseInsightsWidenTheChart(t *testing.T) {
 			if band == nil || band.VerticalAlign != "center" {
 				t.Fatalf("lone callout cell = %+v, want a band centred on the chart's height", grid.Rows[0].Cells[1])
 			}
-			assertTakeawayFilledBand(t, fullThemeCtx(), band.Rows[len(band.Rows)-1].Cells[0], c.vals.SoWhat)
-			size := cellText(t, band.Rows[len(band.Rows)-1].Cells[0].Shape.Text).Paragraphs[0].Size
+			assertTakeawayBand(t, band.Rows[len(band.Rows)-1], c.vals.SoWhat)
+			size := cellText(t, band.Rows[len(band.Rows)-1].Cells[1].Shape.Text).Paragraphs[0].Size
 			want := scaleLeadPt
 			if runeLen(c.vals.SoWhat) > 100 {
 				want = TakeawaySizePt

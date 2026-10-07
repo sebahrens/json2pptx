@@ -25,7 +25,7 @@ import (
 //          ~30%  │ Generated real AI value
 //   ───────────────────────────────────────────────────────
 //        16→33%  │ Agentic value share expected to double by 2028
-//   █ optional takeaway-band callout (dark neutral fill, bold text)
+//   ▌optional takeaway-band callout (accent bar + bold text)
 //
 // The value column is fixed-width and right-aligned so the numbers line up on
 // their right edge — the typographic convention for a stat stack. One item may
@@ -152,7 +152,7 @@ type MetricListOverrides struct {
 	LabelSize      float64 `json:"label_size,omitempty"`
 	ValueWidthPct  float64 `json:"value_width_pct,omitempty"`
 	CellAccentMode string  `json:"cell_accent_mode,omitempty"`
-	// TakeawayEmphasis styles the callout band: "" (the dark band), "bar",
+	// TakeawayEmphasis styles the callout band: "" (the accent bar), "bar",
 	// "subtle" (5% neutral tint) or "strong" (solid accent).
 	TakeawayEmphasis string `json:"takeaway_emphasis,omitempty"`
 }
@@ -178,7 +178,7 @@ func (m *metricList) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"items":   ArraySchema(itemSchema, metricListMinItems, metricListMaxItems).WithDescription("3-7 metrics, top to bottom"),
-			"callout": StringSchema(metricListCalloutMax).WithDescription("Optional so-what rendered as the takeaway band under the list (≤140 chars): dark neutral fill, bold text; overrides.takeaway_emphasis restyles it"),
+			"callout": StringSchema(metricListCalloutMax).WithDescription("Optional so-what rendered as the takeaway band under the list (≤140 chars): flush accent bar, bold dk1 text, no box; overrides.takeaway_emphasis restyles it"),
 		},
 		[]string{"items"},
 	).WithAdditionalProperties(false)

@@ -44,7 +44,7 @@ func assertTakeawayBand(t *testing.T, band jsonschema.GridRowInput, wantText str
 	}
 }
 
-// assertTakeawayFilledBand holds a cell to the default look
+// assertTakeawayFilledBand holds a cell to the "band" variant
 // (go-slide-creator-3a1rm): one shape in the dark structural neutral — never
 // an accent — with bold text in the ink measured against it, 12pt in from
 // both edges, centred on the band's height, no outline.
@@ -73,12 +73,13 @@ func assertTakeawayFilledBand(t *testing.T, ctx ExpandContext, cell *jsonschema.
 	}
 }
 
-// The default takeaway is a full-width band of the host grid itself: a spacer
+// The "band" variant is a full-width band of the host grid itself: a spacer
 // row, then one filled cell spanning the host's columns, flush with the rules
-// above it (a nested grid would stand 4pt in on each side).
-func TestTakeawayRows_DefaultBand(t *testing.T) {
+// above it (a nested grid would stand 4pt in on each side). The default is
+// the bar.
+func TestTakeawayRows_Band(t *testing.T) {
 	ctx := fullThemeCtx()
-	spec := TakeawaySpec{Text: "Fund the build-out now."}
+	spec := TakeawaySpec{Text: "Fund the build-out now.", Emphasis: TakeawayEmphasisBand}
 	rows := TakeawayRows(ctx, spec, 3, 800, 2)
 	if len(rows) != 2 {
 		t.Fatalf("rows = %d, want spacer + band", len(rows))
@@ -101,9 +102,15 @@ func TestTakeawayRows_DefaultBand(t *testing.T) {
 	if rows := TakeawayRows(ctx, spec, 1, 800, 8); len(rows) != 1 {
 		t.Errorf("rows at an 8pt host gap = %d, want the band alone", len(rows))
 	}
-	// A bar variant is the nested-grid row.
-	if rows := TakeawayRows(ctx, TakeawaySpec{Text: "x", Emphasis: TakeawayEmphasisBar}, 1, 800, 8); len(rows) != 1 || rows[0].Cells[0].Grid == nil {
-		t.Errorf("bar variant rows = %+v, want one nested-grid row", rows)
+	// The default, which "bar" names, is the nested-grid row with the accent
+	// bar: no fill behind the text.
+	for _, e := range []string{TakeawayEmphasisNone, TakeawayEmphasisBar} {
+		rows := TakeawayRows(ctx, TakeawaySpec{Text: "x", Emphasis: e}, 1, 800, 8)
+		if len(rows) != 1 || rows[0].Cells[0].Grid == nil {
+			t.Fatalf("emphasis %q rows = %+v, want one nested-grid row", e, rows)
+		}
+		sub := rows[0].Cells[0].Grid.Rows
+		assertTakeawayBand(t, sub[len(sub)-1], "x")
 	}
 	// On a template whose dk2 is black the band is a charcoal of dk1.
 	fill, ink := TakeawayBandTone(ExpandContext{Theme: types.ThemeInfo{Colors: []types.ThemeColor{
@@ -158,8 +165,8 @@ func TestTakeawayRow_Emphasis(t *testing.T) {
 	if ink := txt.Paragraphs[0].Color; ink != "lt1" {
 		t.Errorf("strong ink on #2E5090 = %q, want lt1 (measured contrast)", ink)
 	}
-	if !ValidTakeawayEmphasis("") || !ValidTakeawayEmphasis("bar") || !ValidTakeawayEmphasis("strong") || ValidTakeawayEmphasis("bold") {
-		t.Error("ValidTakeawayEmphasis accepts only \"\", bar, subtle, strong")
+	if !ValidTakeawayEmphasis("") || !ValidTakeawayEmphasis("bar") || !ValidTakeawayEmphasis("band") || !ValidTakeawayEmphasis("strong") || ValidTakeawayEmphasis("bold") {
+		t.Error("ValidTakeawayEmphasis accepts only \"\", bar, band, subtle, strong")
 	}
 }
 

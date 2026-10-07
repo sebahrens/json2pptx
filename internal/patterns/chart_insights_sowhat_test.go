@@ -115,7 +115,7 @@ func TestChartInsightsSplit_HeadlineAndSoWhatColumn(t *testing.T) {
 	if soWhat.Grid == nil {
 		t.Fatalf("so-what should be a takeaway sub-grid: %+v", soWhat)
 	}
-	assertTakeawayFilledBand(t, fullThemeCtx(), soWhat.Grid.Rows[len(soWhat.Grid.Rows)-1].Cells[0], v.SoWhat)
+	assertTakeawayBand(t, soWhat.Grid.Rows[len(soWhat.Grid.Rows)-1], v.SoWhat)
 	if col.AccentBar != nil {
 		t.Error("the stacked column carries no divider (nested-grid accent bars are not drawn)")
 	}
@@ -155,7 +155,7 @@ func TestChartInsightsSplit_DenseColumnStepsDown(t *testing.T) {
 		t.Errorf("headline should step down to 26pt with 6 insights, got %v", got)
 	}
 	band := col.Rows[2].Cells[0].Grid.Rows
-	if got := cellText(t, band[len(band)-1].Cells[0].Shape.Text).Paragraphs[0].Size; got != 12 {
+	if got := cellText(t, band[len(band)-1].Cells[1].Shape.Text).Paragraphs[0].Size; got != 12 {
 		t.Errorf("so-what should step down to 12pt with 6 insights, got %v", got)
 	}
 	pinned, _ := p.Expand(fullThemeCtx(), v, &ChartInsightsSplitOverrides{HeadlineSize: 40}, nil)

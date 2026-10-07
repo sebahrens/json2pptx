@@ -148,7 +148,7 @@ func TestChartInsightsSplit(t *testing.T) {
 			t.Fatalf("callout-only panel should be a takeaway sub-grid: %+v", cell)
 		}
 		band := cell.Grid.Rows
-		assertTakeawayFilledBand(t, fullThemeCtx(), band[len(band)-1].Cells[0], "Increase capacity")
+		assertTakeawayBand(t, band[len(band)-1], "Increase capacity")
 	})
 
 	t.Run("headline_and_callout_without_bullets", func(t *testing.T) {

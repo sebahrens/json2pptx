@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/textcapacity"
@@ -22,12 +23,16 @@ import (
 func takeawayBandBudget(slide SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) (bandHeight, textWidth int64, budget textcapacity.Density) {
 	layout := findLayoutByID(layouts, slide.LayoutID)
 	band := template.ResolveChromeFrameLines(layout, template.ChromeReferenceLayout(layouts), slideWidth, slideHeight, patterns.TakeawayMaxLines, slide.Source != "").Takeaway
-	// The band writes its text 12pt in from each side and 8pt from top and
-	// bottom (internal/generator/takeaway_note.go). textcapacity and textfit
-	// assume the OOXML 7.2pt / 3.6pt default sides, so hand them the written
-	// text rectangle grown by those defaults.
-	textWidth = template.TakeawayTextWidthEMU(band.CX) + 2*91440
-	height := band.CY - 2*int64(patterns.TakeawayBandPadPt*12700) + 2*45720
+	// The band carries the uniform shape text margin, clamped on a band
+	// too short for it (pptx.EffectiveTextInsets). textcapacity and
+	// textfit assume the OOXML 7.2pt / 3.6pt default sides, so hand them
+	// the written text rectangle grown by those defaults.
+	in := pptx.EffectiveTextInsets(&pptx.TextBody{
+		Insets:     pptx.ShapeTextInsets(),
+		Paragraphs: []pptx.Paragraph{{Runs: []pptx.Run{{Text: slide.Takeaway, FontSize: tokens.TypeScaleSubheadHPt}}}},
+	}, pptx.RectEmu{CX: band.CX, CY: band.CY})
+	textWidth = band.CX - in[0] - in[2] + 2*91440
+	height := band.CY - in[1] - in[3] + 2*45720
 	budget = textcapacity.ForPlaceholder(types.PlaceholderInfo{
 		Bounds:   types.BoundingBox{Width: textWidth, Height: height},
 		FontSize: tokens.TypeScaleSubheadHPt,
@@ -63,10 +68,8 @@ func collectTakeawayFitFindings(input *PresentationInput, layouts []types.Layout
 					"path": path, "max_lines": budget.MaxLines, "max_chars": budget.MaxChars,
 				}},
 			},
-			Action: "refuse",
-			// The band the lines would need, insets included, against the
-			// band the frame can reserve.
-			Measured: &patterns.Extent{HeightEMU: template.TakeawayTextHeightEMU(measured.Lines)},
+			Action:   "refuse",
+			Measured: &patterns.Extent{HeightEMU: measured.RequiredEMU},
 			Allowed:  &patterns.Extent{HeightEMU: bandHeight},
 		})
 	}

@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 )
@@ -34,15 +35,15 @@ func TestNextStepsValidate(t *testing.T) {
 
 // TestNextStepsLayout pins design review C6 (go-slide-creator-7lzdh): numbered
 // rows (action · owner · date) under a header, 0.5pt rules, no tiles, and a
-// decisions band in the takeaway band's dark neutral fill.
+// decisions band with a left accent rule — no outline, no fill.
 func TestNextStepsLayout(t *testing.T) {
 	grid, err := (&nextSteps{}).Expand(ExpandContext{}, (&nextSteps{}).ExemplarValues(), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var cols []float64
-	if err := json.Unmarshal(grid.Columns, &cols); err != nil || len(cols) != 4 {
-		t.Fatalf("columns = %s, want number/action/owner/date", grid.Columns)
+	if err := json.Unmarshal(grid.Columns, &cols); err != nil || len(cols) != 5 {
+		t.Fatalf("columns = %s, want band rule/number/action/owner/date", grid.Columns)
 	}
 	// header, then (rule, row) x3, then spacer + band.
 	if len(grid.Rows) != 1+2*3+2 {
@@ -58,16 +59,19 @@ func TestNextStepsLayout(t *testing.T) {
 			t.Errorf("action cell fill = %s, want none", c.Shape.Fill)
 		}
 	}
-	// The decisions are the takeaway band (go-slide-creator-3a1rm): one filled
-	// shape the width of the table, flush on the edge the row rules start on,
-	// its text 12pt in.
+	// The band's rule fills the first column, flush on the edge the row rules
+	// start on, and the band text starts 12pt to its right
+	// (go-slide-creator-le9d0).
 	last := grid.Rows[len(grid.Rows)-1].Cells
-	if len(last) != 1 || last[0].Shape == nil {
-		t.Fatalf("band row = %+v, want one band cell", last)
+	if len(last) != 2 || last[0].Shape == nil || string(last[0].Shape.Fill) != `"accent1"` || len(last[0].Shape.Text) != 0 {
+		t.Fatalf("band row = %+v, want an accent rule cell and the band text", last)
 	}
-	band := last[0]
+	if got := cols[0] / 100 * 864 * sizingDefaultWidthFrac; math.Abs(got-nextStepsBandBarPt) > 0.2 {
+		t.Errorf("band rule column = %.2fpt, want %vpt", got, nextStepsBandBarPt)
+	}
+	band := last[1]
 	if band.ColSpan != 4 || band.AccentBar != nil {
-		t.Fatalf("band = %+v, want one shape spanning the table", band)
+		t.Fatalf("band = %+v, want the text spanning the table beside its rule", band)
 	}
 	var bandText struct {
 		InsetLeft float64 `json:"inset_left"`
@@ -75,9 +79,13 @@ func TestNextStepsLayout(t *testing.T) {
 	if err := json.Unmarshal(band.Shape.Text, &bandText); err != nil || bandText.InsetLeft != TakeawayTextInsetPt {
 		t.Errorf("band text inset_left = %v, want %v", bandText.InsetLeft, TakeawayTextInsetPt)
 	}
-	wantFill, _ := TakeawayBandTone(ExpandContext{})
-	if string(band.Shape.Fill) != string(wantFill) || string(band.Shape.Line) != `"none"` || strings.Contains(string(band.Shape.Fill), "accent") {
-		t.Errorf("band fill/line = %s/%s, want the takeaway band's dark neutral %s, no outline", band.Shape.Fill, band.Shape.Line, wantFill)
+	for _, r := range []int{0, 2} {
+		if grid.Rows[r].Cells[0].ColSpan != 2 {
+			t.Errorf("row %d: first cell spans %d columns, want 2 (rule column + numeral column)", r, grid.Rows[r].Cells[0].ColSpan)
+		}
+	}
+	if string(band.Shape.Fill) != `"none"` || string(band.Shape.Line) != `"none"` {
+		t.Errorf("band fill/line = %s/%s, want none/none", band.Shape.Fill, band.Shape.Line)
 	}
 	if !strings.Contains(string(band.Shape.Text), "Decisions requested") || !strings.Contains(string(band.Shape.Text), "Approve the") {
 		t.Errorf("band text = %s", band.Shape.Text)

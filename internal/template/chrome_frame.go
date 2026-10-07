@@ -99,36 +99,27 @@ const (
 const takeawayWrapSlack = 0.96
 
 // TakeawayTextHeightEMU is the height lines lines of 14pt bold takeaway text
-// take with the band's text insets (patterns.TakeawayBandPadPt above and
-// below): 35pt for one line, 52pt for two — the height patterns give their
-// own takeaway band (patterns.TakeawayBandHeightPt). It is what the generator
-// draws inside the reserved band.
+// take with the band's text insets: 23pt for one line, 40pt for two. It is
+// what the generator draws inside the reserved band.
 func TakeawayTextHeightEMU(lines int) int64 {
 	const safetyPt = 2.0
-	return int64(math.Ceil(float64(max(lines, 1))*patterns.TakeawaySizePt*1.2+2*patterns.TakeawayBandPadPt+safetyPt)) * 12700
+	return int64(math.Ceil(float64(max(lines, 1))*patterns.TakeawaySizePt*1.2+2*patterns.TakeawayPadPt+safetyPt)) * 12700
 }
 
 // takeawayLineEMU is the height one more line of takeaway text takes: 14pt
 // at 1.2 line spacing, to the whole point.
 var takeawayLineEMU = int64(math.Ceil(patterns.TakeawaySizePt*1.2)) * 12700
 
-// takeawayBandHeightPer10k is the share of the slide height (in 1/10000) the
-// two-line band takes: 52.1pt on a 7.5in slide, the 52pt two lines of 14pt
-// bold need inside the filled band's 8pt top and bottom insets. It was 750
-// (40.5pt) while the band was a bar beside unfilled text with 2pt insets
-// (go-slide-creator-fmmec).
-const takeawayBandHeightPer10k = 965
-
 // TakeawayBandHeightEMU is the height the frame reserves for a takeaway of
 // lines lines on a slide slideHeight tall. Two lines (the band's maximum,
-// patterns.TakeawayMaxLines) take 9.65% of the slide height — 52.1pt on a
-// 7.5in slide — and never less than the two lines need; one line takes one
-// line less, 35.1pt (go-slide-creator-me53q).
+// patterns.TakeawayMaxLines) take 7.5% of the slide height — 40.5pt on a
+// 7.5in slide, the band every takeaway had before go-slide-creator-me53q; one
+// line takes one line less, 23.5pt.
 func TakeawayBandHeightEMU(lines int, slideHeight int64) int64 {
 	if slideHeight <= 0 {
 		slideHeight = chromeDefaultSlideHeight
 	}
-	two := max(slideHeight*takeawayBandHeightPer10k/10000, TakeawayTextHeightEMU(patterns.TakeawayMaxLines))
+	two := max(slideHeight*750/10000, 300000)
 	if lines >= patterns.TakeawayMaxLines {
 		return two
 	}
@@ -136,9 +127,9 @@ func TakeawayBandHeightEMU(lines int, slideHeight int64) int64 {
 }
 
 // TakeawayTextWidthEMU is the width the takeaway text wraps at in a band
-// bandWidth wide: the band minus its two side insets.
+// bandWidth wide: the band minus the accent bar and the bar-to-text inset.
 func TakeawayTextWidthEMU(bandWidth int64) int64 {
-	return bandWidth - int64(2*patterns.TakeawayTextInsetPt*12700)
+	return bandWidth - int64((patterns.TakeawayBarPt+patterns.TakeawayTextInsetPt)*12700)
 }
 
 // TakeawayLines returns how many lines text needs as a 14pt bold takeaway in
