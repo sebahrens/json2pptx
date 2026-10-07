@@ -23,10 +23,10 @@ old example.
 **Completion rule (single source — same text as `get_started.completion_protocol.rule` and the MCP
 server `instructions`):** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
 
-**Must-read before authoring:** [QUALITY.md](QUALITY.md) — ghost deck of
+**Read before authoring:** [QUALITY.md](QUALITY.md) — ghost deck of
 titles first, full-sentence action titles (≤15 words, carrying the number),
-one message per slide, a `takeaway` and `source` on every evidence slide
-(deck-wide default: DeckSpec `meta.source` / raw top-level `source`), and the
+one message per slide, a `takeaway` and `source` on every evidence or
+figure-comparison slide (deck default: DeckSpec `meta.source` / raw top-level `source`), and the
 message → visual table. `score_deck`'s gate enforces the storyline
 (`takeaway_missing`, `TITLE_NOT_ACTION`, `NO_EXECUTIVE_SUMMARY`,
 `CLOSING_WITHOUT_NEXT_STEPS`, `DATA_WITHOUT_SOURCE`, `SLIDE_TEXT_DENSE`:
