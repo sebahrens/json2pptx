@@ -53,10 +53,10 @@ Alternative flat format:
 | `title` | `string` | - | Chart title |
 | `subtitle` | `string` | - | Subtitle below title |
 | `nodes[].children` | `object[]` | - | Nested sub-items (hierarchical) |
-| `nodes[].color` | `string` | - | Custom hex color |
-| `padding` | `number` | - | Cell padding |
-| `corner_radius` | `number` | - | Rounded corners |
-| `label_position` | `string` | - | Label placement |
+| `nodes[].color` | `string` | - | Custom hex color. Without one the largest tile takes `accent1` and the rest a neutral ladder that lightens with size; a parent's children are steps of the parent's colour |
+| `padding` | `number` | `4` | Gutter between tiles, in the page colour |
+| `corner_radius` | `number` | `0` | Rounded corners (a rounded tile also takes a darker outline; square tiles are flat) |
+| `label_position` | `string` | `top-left` | `top-left`: name bold in the tile's corner, value beneath. `center` / `top`: centred label |
 
 ## Examples
 

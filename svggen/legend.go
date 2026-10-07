@@ -58,6 +58,91 @@ func DefaultTitleConfig() TitleConfig {
 	}
 }
 
+// =============================================================================
+// Exhibit heading
+// =============================================================================
+//
+// A chart whose title the slide title does not already carry is headed the way
+// a consulting exhibit is: a bold title at the left edge, an optional lighter
+// unit / period line under it, and one rule the plot hangs from. A centred
+// bold line over the plot read as a pasted thumbnail (go-slide-creator-9nk6a).
+// When the slide title carries the chart title (the caller passes an empty
+// title) the unit line still shows on its own.
+
+// exhibitHeaderPad is the inset of the heading block from the canvas edge.
+const exhibitHeaderPad = 8.0
+
+// exhibitHeader resolves which heading lines a chart shows.
+func exhibitHeader(showTitle bool, title, subtitle string) (string, string) {
+	if !showTitle {
+		title = ""
+	}
+	return title, subtitle
+}
+
+// exhibitHeaderRuleY returns the y of the rule under the heading block, or 0
+// when the chart has no heading.
+func exhibitHeaderRuleY(style *StyleGuide, title, subtitle string) float64 {
+	y := exhibitHeaderPad
+	switch {
+	case title != "" && subtitle != "":
+		y += style.Typography.SizeTitle + style.Spacing.XS + style.Typography.SizeSubtitle
+	case title != "":
+		y += style.Typography.SizeTitle
+	case subtitle != "":
+		y += style.Typography.SizeSubtitle
+	default:
+		return 0
+	}
+	return y + style.Spacing.MD
+}
+
+// chartHeaderHeight is the band a chart reserves above its plot for the
+// exhibit heading (measured from the top margin, like the title band before).
+func chartHeaderHeight(style *StyleGuide, showTitle bool, title, subtitle string) float64 {
+	title, subtitle = exhibitHeader(showTitle, title, subtitle)
+	ruleY := exhibitHeaderRuleY(style, title, subtitle)
+	if ruleY == 0 {
+		return 0
+	}
+	return ruleY - exhibitHeaderPad + style.Spacing.LG
+}
+
+// drawChartHeader draws the exhibit heading across a canvas of the given width.
+func drawChartHeader(b *SVGBuilder, width float64, showTitle bool, title, subtitle string) {
+	title, subtitle = exhibitHeader(showTitle, title, subtitle)
+	style := b.StyleGuide()
+	ruleY := exhibitHeaderRuleY(style, title, subtitle)
+	if ruleY == 0 {
+		return
+	}
+	x := exhibitHeaderPad
+	availW := width - 2*exhibitHeaderPad
+	if availW <= 0 {
+		return
+	}
+	b.Push()
+	y := exhibitHeaderPad
+	if title != "" {
+		size := b.ClampFontSize(title, availW, style.Typography.SizeTitle, style.Typography.SizeSmall)
+		b.SetTextColor(style.Palette.TextPrimary)
+		b.SetFontWeight(style.Typography.WeightBold)
+		b.SetFontSize(size)
+		b.DrawText(b.TruncateToWidth(title, availW), x, y+style.Typography.SizeTitle/2, TextAlignLeft, TextBaselineMiddle)
+		y += style.Typography.SizeTitle + style.Spacing.XS
+	}
+	if subtitle != "" {
+		size := b.ClampFontSize(subtitle, availW, style.Typography.SizeSubtitle, style.Typography.SizeSmall)
+		b.SetTextColor(style.Palette.TextSecondary)
+		b.SetFontWeight(style.Typography.WeightNormal)
+		b.SetFontSize(size)
+		b.DrawText(b.TruncateToWidth(subtitle, availW), x, y+style.Typography.SizeSubtitle/2, TextAlignLeft, TextBaselineMiddle)
+	}
+	b.SetStrokeColor(style.Palette.TextPrimary).SetStrokeWidth(style.Strokes.WidthThin)
+	b.DrawLine(x, ruleY, width-exhibitHeaderPad, ruleY)
+	b.Pop()
+}
+
 // Title renders chart titles and subtitles.
 type Title struct {
 	builder *SVGBuilder

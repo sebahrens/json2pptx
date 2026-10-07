@@ -10,10 +10,7 @@
         {
           "shape": {
             "geometry": "homePlate",
-            "fill": {
-              "color": "accent1",
-              "lumMod": 65000
-            },
+            "fill": "dk2",
             "text": {
               "paragraphs": [
                 {
@@ -41,10 +38,7 @@
         {
           "shape": {
             "geometry": "homePlate",
-            "fill": {
-              "color": "accent1",
-              "lumMod": 65000
-            },
+            "fill": "dk2",
             "text": {
               "paragraphs": [
                 {
@@ -72,10 +66,7 @@
         {
           "shape": {
             "geometry": "homePlate",
-            "fill": {
-              "color": "accent1",
-              "lumMod": 65000
-            },
+            "fill": "dk2",
             "text": {
               "paragraphs": [
                 {
@@ -103,10 +94,7 @@
         {
           "shape": {
             "geometry": "homePlate",
-            "fill": {
-              "color": "accent1",
-              "lumMod": 65000
-            },
+            "fill": "dk2",
             "text": {
               "paragraphs": [
                 {
@@ -224,8 +212,8 @@
             "geometry": "rect",
             "fill": {
               "color": "accent1",
-              "lumMod": 40000,
-              "lumOff": 60000
+              "lumMod": 35000,
+              "lumOff": 65000
             },
             "line": "none",
             "text": {
@@ -266,8 +254,8 @@
             "geometry": "rect",
             "fill": {
               "color": "accent1",
-              "lumMod": 40000,
-              "lumOff": 60000
+              "lumMod": 35000,
+              "lumOff": 65000
             },
             "line": "none",
             "text": {
@@ -289,8 +277,8 @@
             "geometry": "rect",
             "fill": {
               "color": "accent1",
-              "lumMod": 40000,
-              "lumOff": 60000
+              "lumMod": 35000,
+              "lumOff": 65000
             },
             "line": "none",
             "text": {
@@ -318,8 +306,8 @@
             "geometry": "rect",
             "fill": {
               "color": "dk1",
-              "lumMod": 16000,
-              "lumOff": 84000
+              "lumMod": 8000,
+              "lumOff": 92000
             },
             "line": "none",
             "text": {
@@ -341,8 +329,8 @@
             "geometry": "rect",
             "fill": {
               "color": "accent1",
-              "lumMod": 40000,
-              "lumOff": 60000
+              "lumMod": 35000,
+              "lumOff": 65000
             },
             "line": "none",
             "text": {
@@ -365,8 +353,8 @@
             "geometry": "rect",
             "fill": {
               "color": "dk1",
-              "lumMod": 16000,
-              "lumOff": 84000
+              "lumMod": 8000,
+              "lumOff": 92000
             },
             "line": "none",
             "text": {
@@ -395,8 +383,8 @@
             "geometry": "rect",
             "fill": {
               "color": "dk1",
-              "lumMod": 16000,
-              "lumOff": 84000
+              "lumMod": 8000,
+              "lumOff": 92000
             },
             "line": "none",
             "text": {
@@ -469,8 +457,8 @@
                       "geometry": "rect",
                       "fill": {
                         "color": "accent1",
-                        "lumMod": 40000,
-                        "lumOff": 60000
+                        "lumMod": 35000,
+                        "lumOff": 65000
                       },
                       "line": "none"
                     }
@@ -499,8 +487,8 @@
                       "geometry": "rect",
                       "fill": {
                         "color": "dk1",
-                        "lumMod": 16000,
-                        "lumOff": 84000
+                        "lumMod": 8000,
+                        "lumOff": 92000
                       },
                       "line": "none"
                     }

@@ -596,7 +596,7 @@ func (v *StrategyHouseValues) model() HouseModel {
 // style resolves the house's look from the template and the overrides.
 func (v *StrategyHouseValues) style(ctx ExpandContext, ovr *StrategyHouseOverrides, cellOverrides map[int]any) HouseStyle {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	return HouseStyle{
+	st := HouseStyle{
 		Fonts:  ctx.themeFonts(),
 		Accent: baseAccent,
 		PillarAccent: func(i int) string {
@@ -606,15 +606,18 @@ func (v *StrategyHouseValues) style(ctx ExpandContext, ovr *StrategyHouseOverrid
 		// column was invisible below its last bullet (go-slide-creator-pr3g).
 		// Generic light roles become the neutral 4% step (go-slide-creator-8xsj3).
 		PillarSurface: tonalPanel(ctx, baseAccent).fillJSON(),
-		BandFill:      tonalContent(ctx, baseAccent).fillJSON(),
 		HeaderPt:      ResolveSize(ovr.HeaderSize, sizeHeaderPt),
 		BodyPt:        ResolveSize(ovr.BodySize, scaleBodyPt),
-		ColGapPt:      ctx.Gap(strategyHouseColGapPt),
-		RowGapPt:      ctx.Gap(houseRowGapPt),
+		// The house picks its own type step while the author picked none.
+		Grow:     ovr.HeaderSize == 0 && ovr.BodySize == 0,
+		ColGapPt: ctx.Gap(strategyHouseColGapPt),
+		RowGapPt: ctx.Gap(houseRowGapPt),
 		Override: func(idx int, cell *jsonschema.GridCellInput, accent string) {
 			applyStrategyHouseOverride(cell, cellOverrides, idx, accent)
 		},
 	}
+	HouseTonalStyle(ctx, &st)
+	return st
 }
 
 func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {

@@ -45,10 +45,12 @@ Show how an initial value is affected by a series of intermediate positive or ne
 
 | Type | Description | Color |
 |------|-------------|-------|
-| `total` | Starting or ending total (from baseline) | Blue |
-| `increase` | Positive change (floating bar up) | Green |
-| `decrease` | Negative change (floating bar down) | Red |
-| `subtotal` | Intermediate subtotal (from baseline) | Blue |
+| `total` | Starting or ending total (from baseline) | Neutral bar grey (`dk1` at 38%) |
+| `increase` | Positive change (floating bar up) | `accent1` |
+| `decrease` | Negative change (floating bar down) | A tint of `accent1` (50%; a shade where the tint would vanish on the background) |
+| `subtotal` | Intermediate subtotal (from baseline) | Neutral bar grey, like totals |
+
+The deltas are the story of a bridge, so they take the accent and its tint; the totals stand back. `colors.increase` / `colors.decrease` / `colors.total` override each class.
 
 ## Optional Fields
 

@@ -290,10 +290,117 @@ func consultingIntentRouting(all []VisualCandidate, intentLower string, hints *V
 			ensure(VisualCategoryChart, "bar", 0.88, "Sorted bar chart: "+parts+" as bars largest first when the segments are too many for one stacked bar")
 		}
 	}
+	if n, ok := intentIsShortPointList(words, hints, all); ok {
+		lead := "exec-summary"
+		if n > execSummaryMaxPoints {
+			lead = "card-grid" // six points: exec-summary holds five
+		} else {
+			ensure(VisualCategoryPattern, "exec-summary", 0.93, pointListExecSummaryRationale)
+		}
+		ensure(VisualCategoryPattern, "labeled-rows", 0.89, pointListLabeledRowsRationale)
+		cardScore := 0.85
+		if lead == "card-grid" {
+			cardScore = 0.93
+		}
+		ensure(VisualCategoryPattern, "card-grid", cardScore, pointListCardGridRationale)
+		cs := candidateSet(all)
+		if c, top := cs.find(VisualCategoryPlaceholder, "content"), cs.find(VisualCategoryPattern, lead); c != nil && top != nil && c.Score > top.Score-pointListBulletsGap {
+			setCandidateScore(c, top.Score-pointListBulletsGap, pointListBulletsNote)
+		}
+	}
+	if intentIsActionList(words) {
+		ensure(VisualCategoryPattern, "next-steps", 0.94, actionListRationale)
+		candidateSet(all).makeTop(candidateSet(all).find(VisualCategoryPattern, "next-steps"), "")
+	}
 	if addMissing {
 		all = ensureNamedOutright(all, words)
 	}
 	return adjustConsultingIntentScores(all, intentLower, hints)
+}
+
+// Short point lists (go-slide-creator-s49nz). "Five key points", "a bullet
+// list of four reasons", "three findings" matched only the plain bullets
+// layout (or nothing at all): on a template with a large body area that sets
+// five short lines in the top third at body size and leaves the rest of the
+// slide empty. Three to six short parallel points are what exec-summary,
+// labeled-rows and card-grid are for; the bullets layout stays in the
+// ranking, below them, for long sentences and longer lists.
+const (
+	pointListMinPoints = 3
+	pointListMaxPoints = 6
+	// pointListBulletsGap is how far under the leading pattern the bullets
+	// layout is held: more than a near tie, so the pattern is the answer.
+	pointListBulletsGap = 0.12
+	// pointListSpecificScore is the score from which another candidate is a
+	// more specific reading of the intent (an agenda, a chart, a table) and
+	// the point-list routing stays out.
+	pointListSpecificScore = 0.86
+
+	pointListExecSummaryRationale = "3-5 short parallel points as bold lead-in statements, each with one supporting line: it fills the page where a bullet list leaves most of it empty"
+	pointListLabeledRowsRationale = "labeled-rows when each point is a keyword followed by a sentence of explanation (2-6 rows)"
+	pointListCardGridRationale    = "card-grid when each point has a short title and a body: up to 6 cards fill the content area"
+	pointListBulletsNote          = "a bullet list sets short points in the top third at body size and leaves the rest empty; keep it for long sentences or more than six points"
+	actionListRationale           = "Agreed actions as numbered rows of action / owner / date, with the decisions requested: the next-steps pattern, not a list"
+)
+
+var pointListNouns = []string{"key points", "main points", "talking points", "points", "bullet", "bullets", "bullet list", "bullet points",
+	"takeaways", "findings", "reasons", "lessons", "learnings", "insights", "conclusions", "observations",
+	"highlights", "principles", "priorities", "themes", "key messages", "messages"}
+
+var pointListLongForm = []string{"detailed", "dense", "long", "paragraph", "paragraphs", "notes", "speaker notes", "text heavy",
+	"wall of text", "verbatim", "full text", "agenda", "contents", "table of contents"}
+
+var intentNumberWords = map[string]int{"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "dozen": 12}
+
+// intentPointCount is the number of points the intent states — the item
+// count hint, else the first small number in the intent — or 0 for none.
+func intentPointCount(words []string, hints *VisualHints) int {
+	if hints != nil && hints.ItemCount > 0 {
+		return hints.ItemCount
+	}
+	for _, w := range words {
+		if n, ok := intentNumberWords[w]; ok {
+			return n
+		}
+		if n, err := strconv.Atoi(w); err == nil && n >= 1 && n < 100 {
+			return n
+		}
+	}
+	return 0
+}
+
+// intentIsShortPointList reports an intent that asks for three to six short
+// parallel points (or does not say how many) and for nothing more specific:
+// no candidate other than the bullets layout scored as a specific reading.
+// n is the stated count, 0 when the intent gives none.
+func intentIsShortPointList(words []string, hints *VisualHints, all []VisualCandidate) (n int, ok bool) {
+	if !intentHasAny(words, pointListNouns...) || intentHasAny(words, pointListLongForm...) {
+		return 0, false
+	}
+	if intentIsExecSummary(words) || intentIsAppendix(words) || intentIsTabular(words) || intentIsRisk(words) ||
+		intentIsSingleFinding(words) || intentIsActionList(words) {
+		return 0, false
+	}
+	n = intentPointCount(words, hints)
+	if n != 0 && (n < pointListMinPoints || n > pointListMaxPoints) {
+		return 0, false
+	}
+	for _, c := range all {
+		if c.Category == VisualCategoryPlaceholder && c.Name == "content" {
+			continue
+		}
+		if c.Score >= pointListSpecificScore {
+			return 0, false
+		}
+	}
+	return n, true
+}
+
+// intentIsActionList reports a list of agreed actions: the next-steps
+// pattern, whatever other word of the intent ("team") matched a pattern.
+func intentIsActionList(words []string) bool {
+	return intentHasAny(words, "actions", "action items", "action list", "to-dos", "todos") &&
+		!intentHasAny(words, "bios", "members", "headshots", "org chart", "chart", "process", "flow")
 }
 
 // tablePlaceholderRationale is the "table" placeholder rule's rationale.

@@ -149,6 +149,8 @@ func TestGanttProgressRendering(t *testing.T) {
 		b.SetStyleGuide(guide)
 		config := DefaultGanttConfig(900, 500)
 		config.ShowProgress = true
+		// The path shapes matched below are the rounded bar's.
+		config.BarCornerRadius = 3
 		chart := NewGanttChart(b, config)
 		if err := chart.Draw(GanttData{Tasks: []GanttTask{{Label: "Task", StartDate: date(2024, 1, 1), EndDate: date(2024, 2, 1), Progress: progress}}}); err != nil {
 			t.Fatal(err)

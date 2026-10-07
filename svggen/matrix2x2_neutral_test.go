@@ -26,7 +26,7 @@ func effortValueRequest(extra map[string]any) *RequestEnvelope {
 }
 
 var (
-	matrixRectFill   = regexp.MustCompile(`<path d="M[\d.]+ [\d.]+H[\d.]+V[\d.]+H[\d.]+z" fill="rgba\((\d+,\d+,\d+),([\d.]+)\)"`)
+	matrixRectFill   = regexp.MustCompile(`<path d="M[\d.]+ [\d.]+H[\d.]+V[\d.]+H[\d.]+z" fill="(#[0-9a-f]{6})"`)
 	matrixCircleFill = regexp.MustCompile(`<path d="M[\d.]+ [\d.]+A[^"]*" style="fill:(#[0-9a-f]{6})`)
 	matrixYAxisTitle = regexp.MustCompile(`translate\(([\d.]+),[\d.]+\) rotate\(-90\)`)
 )
@@ -40,21 +40,23 @@ func renderMatrix(t *testing.T, req *RequestEnvelope) string {
 	return doc.String()
 }
 
-// TestMatrix2x2_NeutralQuadrantsOneInk pins go-slide-creator-njdno: by default
-// the four quadrants share one neutral tint and every point one ink;
-// highlight_quadrant tints exactly one quadrant; points naming a series get
-// one colour per series.
+// TestMatrix2x2_NeutralQuadrantsOneInk pins go-slide-creator-njdno and
+// go-slide-creator-ckpye: by default the four quadrants share one light field
+// tone (the accent's tint, clearly lighter than the accent) and every point
+// one ink; highlight_quadrant deepens exactly one quadrant; points naming a
+// series get one colour per series.
 func TestMatrix2x2_NeutralQuadrantsOneInk(t *testing.T) {
 	svg := renderMatrix(t, effortValueRequest(nil))
 	quadrantFills := map[string]bool{}
+	accent := DefaultStyleGuide().Palette.Accent1
 	for _, m := range matrixRectFill.FindAllStringSubmatch(svg, 4) {
-		quadrantFills[m[1]+"@"+m[2]] = true
-		if a, _ := strconv.ParseFloat(m[2], 64); a > 0.1 {
-			t.Errorf("quadrant fill %s at opacity %s is not a light neutral wash", m[1], m[2])
+		quadrantFills[m[1]] = true
+		if c := MustParseColor(m[1]); c.Luminance() < 0.6 || accent.ContrastWith(c) < matrixFieldAccentMin {
+			t.Errorf("quadrant fill %s is not a light field the accent stands out on", m[1])
 		}
 	}
 	if len(quadrantFills) != 1 {
-		t.Errorf("default quadrants use %d fills %v, want one neutral", len(quadrantFills), quadrantFills)
+		t.Errorf("default quadrants use %d fills %v, want one field tone", len(quadrantFills), quadrantFills)
 	}
 	pointFills := map[string]bool{}
 	for _, m := range matrixCircleFill.FindAllStringSubmatch(svg, -1) {
@@ -70,10 +72,10 @@ func TestMatrix2x2_NeutralQuadrantsOneInk(t *testing.T) {
 		if len(fills) != 4 {
 			t.Fatalf("highlight %v: found %d quadrant rects", hi, len(fills))
 		}
-		if fills[0][1]+fills[0][2] == fills[1][1]+fills[1][2] {
+		if fills[0][1] == fills[1][1] {
 			t.Errorf("highlight %v: top-left quadrant is not tinted apart from the others", hi)
 		}
-		if fills[1][1]+fills[1][2] != fills[2][1]+fills[2][2] || fills[2][1]+fills[2][2] != fills[3][1]+fills[3][2] {
+		if fills[1][1] != fills[2][1] || fills[2][1] != fills[3][1] {
 			t.Errorf("highlight %v: more than one quadrant tinted: %v", hi, fills)
 		}
 	}
@@ -89,6 +91,45 @@ func TestMatrix2x2_NeutralQuadrantsOneInk(t *testing.T) {
 	}
 	if len(seriesFills) != 2 {
 		t.Errorf("two series drew %d point colours, want 2", len(seriesFills))
+	}
+}
+
+// TestMatrix2x2_AxisBars pins go-slide-creator-ckpye: the quadrants are split
+// by a gutter, each axis is one dark bar that carries Low, its title and
+// High, and a highlighted quadrant holding a list is the solid accent.
+func TestMatrix2x2_AxisBars(t *testing.T) {
+	svg := renderMatrix(t, effortValueRequest(nil))
+	rects := regexp.MustCompile(`<path d="M([\d.]+) ([\d.]+)H([\d.]+)V([\d.]+)H[\d.]+z" fill="#[0-9a-f]{6}"`).FindAllStringSubmatch(svg, 4)
+	if len(rects) != 4 {
+		t.Fatalf("found %d quadrant rects", len(rects))
+	}
+	num := func(s string) float64 { v, _ := strconv.ParseFloat(s, 64); return v }
+	if gap := num(rects[1][1]) - num(rects[0][3]); gap < 2 {
+		t.Errorf("gutter between the top quadrants is %.1f, want a visible gap", gap)
+	}
+	for _, text := range []string{"Implementation effort", "Business value"} {
+		if !regexp.MustCompile(">" + text + "<").MatchString(svg) {
+			t.Errorf("axis bars do not carry %q", text)
+		}
+	}
+	for _, end := range []string{matrixAxisLow, matrixAxisHigh} {
+		if n := len(regexp.MustCompile(">"+end+"<").FindAllStringIndex(svg, -1)); n != 2 {
+			t.Errorf("%s drawn %d times, want once per axis", end, n)
+		}
+	}
+
+	lists := &RequestEnvelope{Type: "matrix_2x2", Output: OutputSpec{Width: 800, Height: 500}, Data: map[string]any{
+		"x_axis_label": "Effort", "y_axis_label": "Value",
+		"quadrants": []any{
+			map[string]any{"position": "top-left", "title": "Quick wins", "items": []any{"A", "B"}, "highlight": true},
+			map[string]any{"position": "top-right", "title": "Major projects", "items": []any{"C"}},
+			map[string]any{"position": "bottom-left", "title": "Fill-ins", "items": []any{"D"}},
+			map[string]any{"position": "bottom-right", "title": "Time sinks", "items": []any{"E"}},
+		},
+	}}
+	fills := matrixRectFill.FindAllStringSubmatch(renderMatrix(t, lists), 4)
+	if len(fills) != 4 || MustParseColor(fills[0][1]).Hex() != DefaultStyleGuide().Palette.Accent1.Hex() {
+		t.Errorf("highlighted list quadrant fills = %v, want the solid accent first", fills)
 	}
 }
 

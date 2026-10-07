@@ -253,12 +253,7 @@ func (sm *smallMultiples) measure() smMetrics {
 	}
 	m.minPlotH = smallMultiplesMinPlotLines * m.labelFS
 
-	if sm.showTitle && sm.data.Title != "" {
-		m.headerH = typ.SizeTitle + style.Spacing.MD
-		if sm.data.Subtitle != "" {
-			m.headerH += typ.SizeSubtitle + style.Spacing.XS
-		}
-	}
+	m.headerH = chartHeaderHeight(style, sm.showTitle, sm.data.Title, sm.data.Subtitle)
 	if sm.mode == YScaleIndependent {
 		m.noteH = typ.SizeCaption*1.4 + style.Spacing.SM
 	}
@@ -442,12 +437,7 @@ func (sm *smallMultiples) draw() error {
 		sm.drawPanel(m, grid, i, s, colors[i], vf)
 	}
 
-	if sm.showTitle && sm.data.Title != "" {
-		titleConfig := DefaultTitleConfig()
-		titleConfig.Text = sm.data.Title
-		titleConfig.Subtitle = sm.data.Subtitle
-		NewTitle(b, titleConfig).Draw(Rect{X: 0, Y: 0, W: sm.config.Width, H: m.headerH + m.topPad})
-	}
+	drawChartHeader(b, sm.config.Width, sm.showTitle, sm.data.Title, sm.data.Subtitle)
 	if sm.mode == YScaleIndependent {
 		b.Push()
 		b.SetFontSize(style.Typography.SizeCaption).SetFontWeight(style.Typography.WeightNormal)

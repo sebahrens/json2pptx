@@ -96,8 +96,9 @@ func TestScatterChartContentCoverage(t *testing.T) {
 func TestScatterAxisTicksAlignWithGrid(t *testing.T) {
 	d := &ScatterChartDiagram{NewBaseDiagram("scatter_chart")}
 	req := &RequestEnvelope{
-		Type:  "scatter_chart",
-		Title: "Axis Alignment Test",
+		// No title: the exhibit heading's rule is a horizontal line too, and
+		// this test counts the grid's.
+		Type: "scatter_chart",
 		Data: map[string]any{
 			"series": []any{
 				map[string]any{

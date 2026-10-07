@@ -132,6 +132,7 @@ actual output accurately when editability matters.
 
 **Layout & Overlap**
 - Elements overlapping (text through shapes, lines crossing words, stacked boxes)
+- Lines of a wrapped title touching: descenders of one line reaching the ascenders of the next (too little line spacing for the line count; report as overlap, P1)
 - Text overflowing its box or cut off at the slide edge
 - Decorative lines/dividers misaligned — designed for 1-line title but title wrapped to 2
 - Footer or citation colliding with content above it
@@ -169,7 +170,7 @@ These checks target presentation polish beyond rendering correctness. Each findi
 
 - **Accent hue count** — count distinct accent hues visible on the slide (excluding background, neutrals, and text colors). More than 2 distinct accent hues on one slide reads as visual noise. Finding code: `ACCENT_OVERLOAD`. Severity: `warning`.
 - **Baseline alignment** — body text in adjacent grid cells (e.g. `card-grid`, `kpi-*`, `comparison-2col`) should sit on the same horizontal baseline. Flag visible misalignment between sibling cards. Finding code: `BASELINE_MISALIGN`. Severity: `warning`.
-- **Takeaway band** — slides showing a chart or 2×2 matrix should carry a visually distinct "takeaway" / "so what" row, typically near the bottom of the slide: a 3pt accent bar beside bold dark text (no box). Flag missing takeaway bands on chart / matrix slides. Finding code: `MISSING_TAKEAWAY`. Severity: `info`.
+- **Takeaway band** — slides showing a chart or 2×2 matrix should carry a visually distinct "takeaway" / "so what" row, typically near the bottom of the slide: a dark full-width band with bold light text (or, with the `bar` variants, a 3pt accent bar beside bold dark text). Flag missing takeaway bands on chart / matrix slides. Finding code: `MISSING_TAKEAWAY`. Severity: `info`.
 - **Executive chart style** — flag the following chart anti-patterns:
   - Visible chart border framing the plot area → `CHART_BORDER` (severity: `warning`)
   - Visible vertical gridlines on a bar/line chart → `CHART_VERTICAL_GRIDLINES` (severity: `warning`)

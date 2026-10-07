@@ -438,9 +438,9 @@ func TestValueChainWarnsAboutUnfittableLabels(t *testing.T) {
 	}
 	ctx := testThemeCtx()
 	vals := &ValueChainValues{Steps: []ValueChainStep{
-		{Label: "Extraction"}, {Label: "Processing"}, {Label: "Manufacturing"}, {Label: "Distribution"},
-		{Label: "Retail"}, {Label: "Service"}, {Label: "Recovery"}, {Label: "Disposal"},
-		{Label: "Renewal"}, {Label: "Closure"},
+		{Label: "Manufacturing"}, {Label: "Manufacturing"}, {Label: "Manufacturing"}, {Label: "Manufacturing"},
+		{Label: "Manufacturing"}, {Label: "Manufacturing"}, {Label: "Manufacturing"}, {Label: "Manufacturing"},
+		{Label: "Manufacturing"}, {Label: "Manufacturing"},
 	}}
 	warnings := warner.PostExpandWarnings(ctx, vals, nil)
 	if len(warnings) != 1 {

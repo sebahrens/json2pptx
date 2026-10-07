@@ -1260,17 +1260,17 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"funnel": {
 			RequiredKeys: []string{"values"},
-			OptionalKeys: []string{"categories", "neck_width", "gap", "show_percentage", "show_conversion"},
-			Description:  "values: [{label, value}] or number[] with categories for labels; show_percentage adds percent of the largest stage (the first stage in a narrowing funnel; default false), show_conversion adds stage-to-stage percent (default true); set both false to suppress percentages",
+			OptionalKeys: []string{"categories", "neck_width", "gap", "show_percentage", "show_conversion", "style"},
+			Description:  "values: [{label, value}] or number[] with categories for labels; show_percentage adds percent of the largest stage (the first stage in a narrowing funnel; default false), show_conversion adds stage-to-stage percent (default true); set both false to suppress percentages. Drawn as centred bars with the stage names on the left; style: \"tapered\" draws stacked trapezoids",
 		},
 		"gauge": {
 			RequiredKeys: []string{"value"},
-			OptionalKeys: []string{"min", "max", "thresholds", "label", "unit"},
-			Description:  "value: number; min/max: number; thresholds: [{value, color, label}]",
+			OptionalKeys: []string{"min", "max", "thresholds", "label", "unit", "style"},
+			Description:  "value: number; min/max: number; thresholds: [{value, color, label}]. Drawn as a large value over a horizontal bar; style: \"dial\" draws the speedometer arc",
 		},
 		"treemap": {
 			RequiredKeys: []string{"nodes"},
-			OptionalKeys: []string{"padding", "corner_radius"},
+			OptionalKeys: []string{"padding", "corner_radius", "label_position"},
 			Description:  "nodes: [{label, value, children?, color?}] (alias: items or values). Cells print name + value (with share of the whole) by default; style.show_values: false shows names only.",
 		},
 		// --- Diagrams ---

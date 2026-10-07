@@ -453,7 +453,7 @@ func (a *gridFitAccum) walk(grid *ShapeGridInput, result *shapegrid.ResolveResul
 			if bounds.CX <= 0 || bounds.CY <= 0 {
 				bounds = rc.Bounds
 			}
-			if sub := resolveGridForStructural(cell.Grid, &bounds, nil, a.slideWidth, a.slideHeight); sub != nil {
+			if sub := resolveGridForStructural(cell.Grid, &bounds, nil, a.slideWidth, a.slideHeight, result.SubGridPeers); sub != nil {
 				a.walk(cell.Grid, sub, slidepath.Join(pathPrefix, "grid"), depth+1)
 			}
 		}

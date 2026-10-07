@@ -1,6 +1,6 @@
 # Gauge Chart
 
-Display a single KPI value against thresholds on a semicircular dial.
+Display a single KPI value on its range: the value set large over a horizontal bar (a neutral track from `min` to `max`, the value in the accent), with optional threshold bands behind it. `style: "dial"` draws the earlier speedometer arc instead.
 
 ## Type Identifier
 
@@ -51,9 +51,10 @@ Display a single KPI value against thresholds on a semicircular dial.
 | `max` | `number` | `100` | Maximum scale value (auto-detects 0-1 range); must be greater than `min`, otherwise the request is rejected |
 | `label` | `string` | - | Value label |
 | `unit` | `string` | - | Unit suffix (e.g., `"%"`, `"ms"`) |
-| `start_angle` | `number` | - | Gauge arc start angle |
-| `end_angle` | `number` | - | Gauge arc end angle |
-| `thresholds` | `object[]` | - | Color bands on the gauge |
+| `style` | `string` | `bullet` | `bullet`: large value over a horizontal bar, `min` / `max` and the threshold bounds labelled under it. `dial`: speedometer arc with needle and tick labels |
+| `start_angle` | `number` | - | Dial arc start angle; setting it selects the dial |
+| `end_angle` | `number` | - | Dial arc end angle; setting it selects the dial |
+| `thresholds` | `object[]` | - | Bands on the gauge. On the bar they are a neutral ladder (darkest at the low end) behind a thinner value bar unless a band names its `color`; on the dial an uncoloured band takes the template's negative / warning / positive colours |
 | `thresholds[].value` | `number` | - | Upper bound of this band; values beyond `max` are clamped so the last band stops at `max`, and bands at or below `min` are skipped |
 | `thresholds[].color` | `string` | - | Hex color for this band |
 | `thresholds[].label` | `string` | - | Band label |
