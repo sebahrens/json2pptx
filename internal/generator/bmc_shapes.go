@@ -527,13 +527,6 @@ func bmcBulletSpaceAfterAt(pad int64) int {
 	return bmcBulletSpaceAfter
 }
 
-// bmcExtraColumn is a further column of a section's bullets: a text box over
-// the section's body.
-type bmcExtraColumn struct {
-	rect pptx.RectEmu
-	text pptx.TextBody
-}
-
 // generateBMCBodyShapeXML produces one text-bearing shape of a section body:
 // the card in the section's tint, or — with no tint — an unfilled text box
 // over it.
