@@ -518,11 +518,19 @@ func (tc *TreemapChart) drawNodeLabel(node *TreemapNode, bounds Rect, style *Sty
 	var labelX, labelY float64
 	switch tc.config.LabelPosition {
 	case TreemapLabelTopLeft:
+		// DrawText raises a size under the builder's floor to the floor, so
+		// measure and place at the size that will be drawn: a small tile's
+		// name was fitted at 8pt and drawn at 12pt, across its neighbour.
+		fontSize = math.Max(fontSize, b.MinFontSize())
+		b.SetFontSize(fontSize)
 		inset := math.Min(style.Spacing.MD, math.Min(bounds.W, bounds.H)*0.12)
 		availW := bounds.W - 2*inset
 		b.SetFontWeight(style.Typography.WeightBold)
 		name := b.TruncateToWidth(node.Label, availW)
-		valueFont := treemapValueFont(style, fontSize)
+		if w, _ := b.MeasureText(name); w > availW {
+			break // not even an ellipsis fits: leave the tile unlabelled
+		}
+		valueFont := math.Max(treemapValueFont(style, fontSize), b.MinFontSize())
 		valueText := ""
 		if tc.config.ShowValueLabels && bounds.H >= 2*inset+fontSize*1.25+valueFont*1.2 {
 			valueText = tc.valueLabel(node, availW, valueFont)

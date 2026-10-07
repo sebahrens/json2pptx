@@ -72,9 +72,12 @@ func DefaultGanttConfig(width, height float64) GanttConfig {
 		BarHeight:   20,
 		// Flat square bars: a rounded bar under a darker outline read as a UI
 		// pill (go-slide-creator-n978t).
-		BarCornerRadius:       0,
-		MilestoneSize:         24,
-		LabelWidth:            math.Max(140, width*0.25),
+		BarCornerRadius: 0,
+		MilestoneSize:   24,
+		// The label column's floor; autoSizeLabelWidth widens it to the
+		// longest row label. A quarter of the canvas left a slide-wide chart
+		// with an empty left third (go-slide-creator-n978t).
+		LabelWidth:            140,
 		ShowGrid:              true,
 		GridColor:             MustParseColor(DefaultThemeTimeGridHex),
 		DependencyColor:       MustParseColor(DefaultThemeDependencyHex),
@@ -909,22 +912,14 @@ func (gc *GanttChart) drawRowLabel(label string, rowY, labelX, labelWidth float6
 	// and must remain readable when the chart is scaled down in PPTX placeholders.
 	maxFontSize := style.Typography.SizeBody
 
-	// Adaptive font size reduction: when rows are compressed (many tasks),
-	// scale the max font size down proportionally to the row height. The
-	// nominal row height is 32 (DefaultGanttConfig). With fewer tasks the
-	// rows expand and maxFontSize stays at SizeBody; with many tasks the
-	// rows shrink and maxFontSize shrinks too, down to a floor of 9pt.
-	const nominalRowHeight = 32.0
-	if gc.config.RowHeight < nominalRowHeight {
-		heightRatio := gc.config.RowHeight / nominalRowHeight
-		adaptedSize := maxFontSize * heightRatio
-		// Floor at DefaultMinFontSize (9pt)
-		if adaptedSize < DefaultMinFontSize {
-			adaptedSize = DefaultMinFontSize
-		}
-		if adaptedSize < maxFontSize {
-			maxFontSize = adaptedSize
-		}
+	// Adaptive font size reduction: a row label keeps its size as long as its
+	// row holds the line (1.25 line heights), and only then shrinks with the
+	// row, down to a floor of 9pt. Scaling it with the row from the nominal
+	// 32pt height set six tasks in a slide body at 9.5pt although each row had
+	// room for 12pt (go-slide-creator-n978t).
+	const rowLabelLineHeight = 1.25
+	if adaptedSize := gc.config.RowHeight / rowLabelLineHeight; adaptedSize < maxFontSize {
+		maxFontSize = math.Max(adaptedSize, DefaultMinFontSize)
 	}
 
 	minFontSize := DefaultMinFontSize

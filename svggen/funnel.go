@@ -442,6 +442,9 @@ const (
 	// height: on a wide, short body the funnel stays a funnel instead of
 	// stretching edge to edge.
 	funnelStepMaxAspect = 2.6
+	// funnelStepConvMaxFrac is the share of the plot width the conversion
+	// column may take before it drops to the bare rate.
+	funnelStepConvMaxFrac = 0.22
 	// funnelStepConnectorAlpha is how much of the stage colour the pale
 	// connector keeps over the background.
 	funnelStepConnectorAlpha = 0.16
@@ -509,6 +512,18 @@ func (fc *FunnelChart) drawSteps(data FunnelData, plotArea Rect, colors []Color)
 			convs[i] = funnelConversionLabel(data.Points, i)
 			w, _ := b.MeasureText(convs[i])
 			convW = math.Max(convW, w)
+		}
+		// In a narrow cell "44% of Qualified" would be cut short: the rate
+		// alone still says what the connector beside it means.
+		if convW > plotArea.W*funnelStepConvMaxFrac {
+			convW = 0
+			for i := 1; i < n; i++ {
+				if cut := strings.Index(convs[i], " of "); cut > 0 {
+					convs[i] = convs[i][:cut]
+				}
+				w, _ := b.MeasureText(convs[i])
+				convW = math.Max(convW, w)
+			}
 		}
 		b.Pop()
 		convW = math.Min(convW, plotArea.W*0.3)

@@ -3803,7 +3803,7 @@ func (rc *RadarChart) Draw(data ChartData) error {
 	if sideKey {
 		rc.drawSideKey(data, colors, reference, plotArea, centerX, radius)
 	} else if showLegend {
-		rc.drawLegend(data, colors, plotArea, legendHeight)
+		rc.drawLegend(data, colors, reference, plotArea, legendHeight)
 	}
 
 	// Draw footnote
@@ -4243,10 +4243,63 @@ func (rc *RadarChart) drawSideKey(data ChartData, colors []Color, reference []bo
 	}
 }
 
-// drawLegend draws the chart legend.
-func (rc *RadarChart) drawLegend(data ChartData, colors []Color, plotArea Rect, legendHeight float64) {
+// drawKeyRow draws the series key as one centred row of line swatches under
+// the web. It reports false, drawing nothing, when the row does not fit the
+// plot width.
+func (rc *RadarChart) drawKeyRow(data ChartData, colors []Color, reference []bool, plotArea Rect, legendHeight float64) bool {
 	b := rc.builder
 	style := b.StyleGuide()
+	font := style.Typography.SizeHeading
+	swatchW := font * 1.6
+	gap := style.Spacing.MD
+	itemGap := style.Spacing.XL
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(font)
+	b.SetFontWeight(style.Typography.WeightNormal)
+	widths := make([]float64, len(data.Series))
+	total := 0.0
+	for i, series := range data.Series {
+		w, _ := b.MeasureText(series.Name)
+		widths[i] = swatchW + gap + w
+		total += widths[i]
+	}
+	total += itemGap * float64(len(data.Series)-1)
+	if total > plotArea.W {
+		return false
+	}
+	x := plotArea.X + (plotArea.W-total)/2
+	y := plotArea.Y + plotArea.H + style.Spacing.MD + legendHeight/2
+	b.SetTextColor(style.Palette.TextPrimary)
+	for i, series := range data.Series {
+		b.Push()
+		b.SetStrokeColor(colors[i%len(colors)])
+		b.SetStrokeWidth(style.Strokes.WidthNormal)
+		if reference[i] {
+			b.SetStrokeWidth(style.Strokes.WidthThin)
+			b.SetDashes(style.Strokes.PatternDashed...)
+		}
+		b.DrawLine(x, y, x+swatchW, y)
+		b.Pop()
+		b.DrawText(series.Name, x+swatchW+gap, y, TextAlignLeft, TextBaselineMiddle)
+		x += widths[i] + itemGap
+	}
+	return true
+}
+
+// drawLegend draws the chart legend.
+func (rc *RadarChart) drawLegend(data ChartData, colors []Color, reference []bool, plotArea Rect, legendHeight float64) {
+	b := rc.builder
+	style := b.StyleGuide()
+
+	// With a reference series the key shows each series' own stroke (solid
+	// web, dashed yardstick) in one centred row; filled squares would name a
+	// dashed outline with a block of its ink.
+	for _, isRef := range reference {
+		if isRef && rc.drawKeyRow(data, colors, reference, plotArea, legendHeight) {
+			return
+		}
+	}
 
 	legendConfig := PresentationLegendConfig(style)
 
