@@ -42,6 +42,21 @@ How to cut a release (tag, archives, container image) is described in
   `analyze_deck_rhythm`, `export_deck`). `SKILL.md` points at the wiki from a
   repository checkout.
 
+### Fixed
+
+- **`plan_deck`** (`format: "deckspec"`): facts routed to the items of an
+  enumerated outline are returned in `slots[].facts` instead of being dropped
+  with an empty `unplaced_facts`; a data list after a label about one slide
+  ("A chart slide shows the market: 2021 …, 2025 …") stays on that slide
+  instead of becoming the deck's outline; "… on the left and … on the right"
+  drafts one `regions` slide with the chart data and the number filled in; and
+  each `slots[].regions` describes its own slide.
+- **Sources**: a `comparison` of figures (fee against fee, weeks against
+  weeks) inherits `meta.source` and reports `DATA_WITHOUT_SOURCE` when the
+  deck has none, in the two-column and the multi-column rendering.
+- **`restore`**: restoring a deck revision restores the template it was bound
+  to, including one named by a `template` argument or a `template_path`.
+
 ## [1.0.0] - 2026-09-29
 
 First tagged release. Everything below was developed since the initial

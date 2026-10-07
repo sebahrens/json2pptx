@@ -229,6 +229,12 @@ func (mc *mcpConfig) storeCommit(c deckCommit) (string, bool) {
 	if c.Src.Restore > 0 {
 		h.storeNote = fmt.Sprintf("restored revision %d", c.Src.Restore)
 	}
+	if c.Src.Rebound && h.Template == "" && h.TemplatePath == "" {
+		// The call named no template of its own: the deck goes back to the
+		// one the restored revision was bound to, and the history says so.
+		h.Template, h.TemplatePath, h.BaseDir = c.Src.Template, c.Src.TemplatePath, c.Src.BaseDir
+		h.storeNote += fmt.Sprintf(" on its template %s", firstNonEmpty(h.Template, h.TemplatePath))
+	}
 	if c.resent {
 		h.storeNote = "spec sent again"
 	}

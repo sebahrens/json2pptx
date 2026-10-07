@@ -67,7 +67,16 @@ likelihood × impact → `risk_heatmap`, a loop / lifecycle / flywheel / hub and
 spoke → `cycle` with its `style`, "chart on the left, number on the right"
 → `regions`, one closer), fills the kinds' structured fields from the brief's
 sentences, and never ellipsises a title — the four journey briefs went from
-13–28 unplaced facts to 0–4 (`go-slide-creator-xbwlt`). Still read
+13–28 unplaced facts to 0–4 (`go-slide-creator-xbwlt`). A brief that lists its
+slides ("Slides: …", "Outline: …", "Slide 1: …") gets one slot per item, and the
+facts of its other sentences are routed into those slots' `facts[]`; a list
+after a label about one slide ("A chart slide shows the market: 2021 EUR 8.1bn,
+2025 EUR 9.4bn, 2028 forecast EUR 10.6bn") is that slide's data and stays on
+one chart. "… on the left and … on the right" is drafted as one `regions` slide
+with the chart's series and the number already in its regions, and each
+`slots[i].regions[]` describes the regions of that slot's own slide (kind,
+position, path), so a deck with two `regions` slides gets two different lists.
+Still read
 `unplaced_facts[]` and `constraints[]`, replace every `__FILL__`, and check each
 slot's kind against [visual-vocabulary.md](visual-vocabulary.md) before
 authoring; the draft is a scaffold, not the deck.
@@ -132,6 +141,12 @@ prints no footer. If you keep the deck in a file and send the whole revised
 spec instead of a patch, give every slide an `id`: a spec with the title,
 template and slide ids of a stored deck is that `deck_id`'s next revision, so
 the diff and `known_hashes` work the same (`fork: true` starts a new deck).
+`restore: N` starts from revision N and brings back the template the deck was
+bound to on it — whether a `template` argument, `template_path` or
+`meta.template` chose it — so undoing a template trial restores the design;
+the history row reads "restored revision N on its template <name>". A
+`template` argument on the restoring call is a one-off on top of that binding,
+and a patch to `/meta/template` in the same call wins.
 Stop after three repair rounds and hand back open findings per slide rather
 than loop.
 

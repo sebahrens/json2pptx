@@ -739,8 +739,10 @@ func outlineDeckSpecSlots(o *briefOutline, budget int, account *Budget) (ordered
 			rest = append(rest, f)
 		}
 	}
-	body, appendix := o.splitAppendix()
+	// Route before splitting: splitAppendix copies the items, and a copy taken
+	// first would not see the facts routed here (go-slide-creator-l3e28).
 	unplaced = o.routeRest(rest)
+	body, appendix := o.splitAppendix()
 
 	ordered = []deckSpecSlotDef{{slot: "cover", kind: "title", guidance: outlineCover.guidance}}
 	for _, it := range body {
@@ -919,7 +921,7 @@ func BuildDeckSpecPlan(p Params) *DeckSpecPlan {
 		draft.Structure = draftStructure(d.ordered, d.secs, backMatter, d.slots, slideFor)
 	}
 
-	annotateRegionSlots(&d, req, outline == nil)
+	annotateRegionSlots(&d, req, backMatter, outline == nil)
 
 	account.Planned = rendered
 	accountDeckSpec(&account, d.ordered, draft, len(backMatter) > 0)
@@ -966,26 +968,36 @@ func draftMeta(title, template, audience string, sources []string, chaptered boo
 	return meta
 }
 
-// annotateRegionSlots fills slots[].regions for the regions slide: from the
-// parsed region request on the storyline path, or — for an outline item that
-// puts two visuals on one slide — from the drafted fields
-// (go-slide-creator-xbwlt).
-func annotateRegionSlots(d *specDraft, req *regionRequest, storyline bool) {
+// annotateRegionSlots fills slots[].regions for every regions slide, each from
+// its own definition: the fields drafted for it (an outline item or an
+// appendix page that puts two visuals on one slide, go-slide-creator-xbwlt),
+// else the parsed region request behind the storyline's regions slot. A slot
+// never borrows another slide's regions (go-slide-creator-zjyee).
+func annotateRegionSlots(d *specDraft, req *regionRequest, backMatter []deckSpecSlotDef, storyline bool) {
+	// Slots run in the order of d.ordered, then the back matter — after the
+	// divider slot a flat draft inserts before it.
+	back := len(d.slots) - len(backMatter)
+	defFor := func(i int) *deckSpecSlotDef {
+		switch {
+		case i < len(d.ordered):
+			return &d.ordered[i]
+		case i >= back && i-back < len(backMatter):
+			return &backMatter[i-back]
+		}
+		return nil
+	}
 	for i := range d.slots {
-		if d.slots[i].Slot != "regions" {
+		def := defFor(i)
+		if def == nil || d.slots[i].Kind != "regions" {
 			continue
 		}
 		path := d.slots[i].Path
 		pathOf := func(k int) string { return fmt.Sprintf("%s.regions[%d]", path, k) }
-		if req.draftable() && d.slots[i].Kind == "regions" && storyline {
+		switch {
+		case len(def.fields) > 0:
+			d.slots[i].Regions = regionSlotsFromFields(def.fields, d.slots[i].Facts, pathOf)
+		case def.slot == "regions" && req.draftable() && storyline:
 			d.slots[i].Regions = req.regionSlots(pathOf)
-			continue
-		}
-		for _, def := range d.ordered {
-			if def.slot == "regions" && len(def.fields) > 0 {
-				d.slots[i].Regions = regionSlotsFromFields(def.fields, d.slots[i].Facts, pathOf)
-				break
-			}
 		}
 	}
 }
@@ -1060,7 +1072,10 @@ func storylineDraft(brief, audience string, budget int, req *regionRequest, chap
 	for i := range d.slots {
 		switch d.slots[i].Slot {
 		case "regions":
-			d.slots[i].Facts = req.facts()
+			// A regions slide a sentence names carries its own facts.
+			if len(d.ordered[i].fields) == 0 && req.draftable() {
+				d.slots[i].Facts = req.facts()
+			}
 		case "cover":
 			d.sources = d.slots[i].Facts
 		}

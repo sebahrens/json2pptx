@@ -539,6 +539,10 @@ type comparisonPlan struct {
 	fits   bool
 	header bool    // rows[0] is the header row
 	total  float64 // the rows' written-fit heights together
+	// tightHeader: the header row is one line tall although a header sits
+	// within shapegrid.RenderFaceSlack of its box width, because the rows
+	// have no room for the second line a renderer's wider face needs.
+	tightHeader bool
 }
 
 // sizeRows hands the rows their heights. Rows that fit are content-sized
@@ -648,6 +652,17 @@ func comparisonLayout(ctx ExpandContext, vals *Comparison2colValues, ovr *Compar
 	for _, st := range steps {
 		plan := comparisonMeasure(ctx, vals, ovr, cellOverrides, st.header, st.body, st.gap)
 		if plan.fits {
+			// A header left on one line within a renderer's face slack of its
+			// width is wrapped and shrunk by that renderer alone, and the two
+			// headers read at two sizes. With no room for its second line —
+			// a source line or a takeaway took it — the headers step down one
+			// size together, where the long one holds its line with room
+			// (go-slide-creator-0d9xy).
+			if plan.tightHeader && ovr.HeaderSize == 0 && st.header > comparisonMinHeaderPt {
+				if lower := comparisonMeasure(ctx, vals, ovr, cellOverrides, comparisonMinHeaderPt, st.body, st.gap); lower.fits && !lower.tightHeader {
+					return lower
+				}
+			}
 			return plan
 		}
 		plans = append(plans, plan)
@@ -710,8 +725,17 @@ func comparisonMeasure(ctx ExpandContext, vals *Comparison2colValues, ovr *Compa
 		total += need
 		wrapTotal += wrapNeed
 	}
-	if wrapTotal <= plan.avail {
+	switch {
+	case wrapTotal <= plan.avail:
 		plan.needs, total = wrapNeeds, wrapTotal
+	case plan.header && wrapNeeds[0] > plan.needs[0]:
+		// The header row comes first: its second line is what keeps the two
+		// headers at one size.
+		if grown := total + wrapNeeds[0] - plan.needs[0]; grown <= plan.avail {
+			plan.needs[0], total = wrapNeeds[0], grown
+		} else {
+			plan.tightHeader = total <= plan.avail
+		}
 	}
 	plan.fits = total <= plan.avail
 	plan.total = total

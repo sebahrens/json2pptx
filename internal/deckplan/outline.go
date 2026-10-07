@@ -178,6 +178,16 @@ var (
 	// outlineHeader marks a label that introduces the deck's slides.
 	outlineHeader = regexp.MustCompile(`(?i)\b(?:slides?|outline|agenda|sections?|structure|storyline|story ?line|flow|chapters|topics|covering|covers?|order|required|must (?:include|have|cover)|deliverables?)\b`)
 
+	// outlineDeckHeader marks a label that names the deck's slides outright:
+	// its list is the outline whatever the items are.
+	outlineDeckHeader = regexp.MustCompile(`(?i)\b(?:slides|outline|agenda|sections|chapters|storyline|story ?line)\b`)
+
+	// outlineOneSlide matches a label about one slide — "A regions slide shows
+	// a bar chart of the market", "The bridge slide walks EBITDA", "One KPI
+	// slide" — whose list is that slide's data (go-slide-creator-hxcum). "The
+	// slide order" still names the deck's.
+	outlineOneSlide = regexp.MustCompile(`(?i)\b(?:a|an|one|this|that)\s+(?:[\w-]+\s+){0,3}slide\b|\S\s+slide$|\bslide\s+(?:shows?|has|carries|contains|walks|gives|lists|with|is|covers?|compares?|presents?|plots?|charts?|breaks)\b`)
+
 	// outlineLineItem matches a list line: a bullet, a number, or "Slide 3:".
 	outlineLineItem = regexp.MustCompile(`(?i)^\s*(?:[-*•▪·–—]|\(?\d{1,2}[.)]|slide\s+\d{1,2}\s*[:.)–—-])\s*`)
 
@@ -197,6 +207,35 @@ var (
 	// space after it keeps "1.5x growth" whole.
 	outlineInlineEnumerator = regexp.MustCompile(`(?i)^(?:\(?\d{1,2}[.)]\s+|slide\s+\d{1,2}\s*[:.)–—-]\s*)`)
 )
+
+// labelsOutline reports whether a list's label introduces the deck's slides.
+// A label that names the slides outright ("Slides", "Outline", "Agenda") does.
+// A label about one slide ("A chart slide shows the market") does not, and any
+// other header word ("covering", "must include", "order") does only when the
+// list is not mostly figures: the data of a chart, a bridge or a KPI row is
+// content, not slides.
+func labelsOutline(label string, items []string) bool {
+	switch {
+	case !outlineHeader.MatchString(label):
+		return false
+	case outlineDeckHeader.MatchString(label):
+		return true
+	case outlineOneSlide.MatchString(label):
+		return false
+	}
+	return !mostlyFigures(items)
+}
+
+// mostlyFigures reports whether more than half the items are figures.
+func mostlyFigures(items []string) bool {
+	figures := 0
+	for _, it := range items {
+		if classifyFact(it, factQuantity.MatchString(it)).numeric {
+			figures++
+		}
+	}
+	return 2*figures > len(items)
+}
 
 // minOutlineItems is the fewest listed items that read as an outline.
 const minOutlineItems = 3
@@ -254,7 +293,7 @@ func parseLineOutline(brief string, stated int) *briefOutline {
 	if start > 0 {
 		label = strings.TrimSpace(lines[start-1])
 	}
-	labelled := strings.HasSuffix(label, ":") && outlineHeader.MatchString(label) && !isFillerLabel(strings.TrimSuffix(label, ":"))
+	labelled := strings.HasSuffix(label, ":") && labelsOutline(strings.TrimSuffix(label, ":"), texts) && !isFillerLabel(strings.TrimSuffix(label, ":"))
 	if !numbered && !labelled && !outlineCountMatches(texts, stated) {
 		return nil
 	}
@@ -296,8 +335,8 @@ func parseInlineOutline(brief string, stated int) *briefOutline {
 			continue
 		}
 		isTopic := labelStart == 0
-		labelled := !isTopic && outlineHeader.MatchString(label)
-		if isTopic && outlineHeader.MatchString(label) && len(strings.Fields(label)) <= 4 {
+		labelled := !isTopic && labelsOutline(label, texts)
+		if isTopic && labelsOutline(label, texts) && len(strings.Fields(label)) <= 4 {
 			labelled = true // the brief opens with "Slides: …"
 		}
 		switch {
@@ -369,13 +408,7 @@ func outlineCountMatches(items []string, stated int) bool {
 	if stated <= 0 || len(items) > stated || len(items) < stated-2 {
 		return false
 	}
-	figures := 0
-	for _, it := range items {
-		if classifyFact(it, factQuantity.MatchString(it)).numeric {
-			figures++
-		}
-	}
-	return 2*figures <= len(items)
+	return !mostlyFigures(items)
 }
 
 // outlineItemsAreTopics reports whether every item of a list of four or more
@@ -434,6 +467,7 @@ func outlineItemFields(text, kind string) map[string]any {
 			delete(body, "title")
 			return body
 		}
+		return sidesFields(text)
 	case "option_matrix":
 		if m := namedHeaderParen.FindStringSubmatch(text); m != nil {
 			return map[string]any{"criteria": splitCriteria(m[1])}
@@ -610,10 +644,7 @@ func mergeIntoRegions(fields map[string]any, n namedSlide) {
 		switch {
 		case region["kind"] == "chart" && n.kind == "chart_insight":
 			if chart, ok := n.fields["chart"].(map[string]any); ok {
-				region["chart"] = chart
-				if title, ok := chart["title"].(string); ok {
-					region["heading"] = title
-				}
+				setRegionChart(region, chart)
 			}
 		case region["kind"] == "stat" && n.kind == "kpi_snapshot":
 			if kpis, ok := n.fields["kpis"].([]any); ok && len(kpis) > 0 {
@@ -625,6 +656,21 @@ func mergeIntoRegions(fields map[string]any, n namedSlide) {
 			region["headers"], region["rows"] = n.fields["headers"], n.fields["rows"]
 		}
 	}
+}
+
+// setRegionChart puts a drafted chart into a chart region. The chart's title
+// becomes the region's heading and is not repeated inside the chart: a region
+// draws its heading directly above the chart.
+func setRegionChart(region, chart map[string]any) {
+	inner := make(map[string]any, len(chart))
+	for k, v := range chart {
+		inner[k] = v
+	}
+	if title, ok := inner["title"].(string); ok {
+		region["heading"] = title
+		delete(inner, "title")
+	}
+	region["chart"] = inner
 }
 
 // mergeDecisionIntoMatrix turns a decision's enumerated options into the

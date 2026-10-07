@@ -460,6 +460,96 @@ func regionSlotsFromFields(fields map[string]any, facts []string, pathOf func(in
 	return out
 }
 
+// Side-by-side sentences (go-slide-creator-hxcum).
+//
+// "A regions slide shows a bar chart of the market: 2021 EUR 8.1bn, 2025 EUR
+// 9.4bn, 2028 forecast EUR 10.6bn on the left and our 2.3% share on the right"
+// lays one slide out in two columns with the positions after the content, a
+// form the position-first clause grammar above does not read. The sentence is
+// one regions slide: each side is drafted as the visual it names or carries —
+// a series or a chart word is a chart with its data, one figure a stat, and so
+// on through the region cues — and anything else is the text beside it.
+
+var (
+	sidesLeftRight = regexp.MustCompile(`(?i)^(.+?),?\s+on the left(?:[- ]hand side)?,?\s+(?:and|with|while|then)\s+(.+?),?\s+on the right(?:[- ]hand side)?$`)
+	sidesRightLeft = regexp.MustCompile(`(?i)^(.+?),?\s+on the right(?:[- ]hand side)?,?\s+(?:and|with|while|then)\s+(.+?),?\s+on the left(?:[- ]hand side)?$`)
+	// sideLead matches the words that introduce a side's visual rather than
+	// name its subject: "A regions slide shows a bar chart of the market".
+	sideLead    = regexp.MustCompile(`(?i)^.*?\b(?:charts?|graphs?|plots?|tables?|timelines?)\s+(?:of|for|on|showing|with)\s+`)
+	sideArticle = regexp.MustCompile(`(?i)^(?:(?:and|with)\s+)?(?:a|an|the|our|its|their)\s+`)
+)
+
+// splitSides cuts a side-by-side sentence into its left and right halves.
+func splitSides(sentence string) (left, right string, ok bool) {
+	s := strings.TrimSpace(strings.TrimRight(strings.TrimSpace(sentence), ".!?;"))
+	if m := sidesLeftRight.FindStringSubmatch(s); m != nil {
+		return m[1], m[2], true
+	}
+	if m := sidesRightLeft.FindStringSubmatch(s); m != nil {
+		return m[2], m[1], true
+	}
+	return "", "", false
+}
+
+// sideRegion drafts one side of a side-by-side sentence: the region kind, and
+// the fields the side's own words fill.
+func sideRegion(text string) map[string]any {
+	n := readSentence(text)
+	// The chart is named for its subject, not for the sentence that asks for it.
+	n.header = sentenceCase(strings.TrimSpace(sideArticle.ReplaceAllString(sideLead.ReplaceAllString(n.header, ""), "")))
+	req := regionReq{kind: slides.RegionText, text: text}
+	for _, cue := range regionCues {
+		if m := cue.re.FindString(text); m != "" && cue.kind != "" {
+			req.kind, req.visual = cue.kind, strings.ToLower(m)
+			break
+		}
+	}
+	sd := parseSeries(n)
+	metrics := namedMetric.FindAllString(namedYear.ReplaceAllString(text, ""), -1)
+	switch {
+	case req.kind == slides.RegionChart || (req.kind == slides.RegionText && sd != nil && len(sd.categories) >= 2):
+		req.kind, req.chartType = slides.RegionChart, "bar_chart"
+		for word, typ := range chartTypeWords {
+			if strings.Contains(req.visual, word) {
+				req.chartType = typ
+			}
+		}
+	case req.kind == slides.RegionText && len(metrics) == 1:
+		req.kind = slides.RegionStat
+	}
+	region := draftRegion(req)
+	switch req.kind {
+	case slides.RegionChart:
+		if sd != nil {
+			chart := sd.chart()
+			chart["type"] = req.chartType
+			setRegionChart(region, chart)
+		}
+	case slides.RegionStat:
+		if len(metrics) == 1 {
+			kpi := parseKPI(sideArticle.ReplaceAllString(strings.TrimSpace(text), ""))
+			region["value"], region["label"] = kpi["value"], sentenceCase(fmt.Sprint(kpi["label"]))
+		}
+	case slides.RegionText:
+		region["body"] = sentenceCase(strings.TrimSpace(text))
+	}
+	return region
+}
+
+// sidesFields drafts the regions slide a side-by-side sentence asks for, or
+// nil when the sentence is not one or neither side is a visual.
+func sidesFields(sentence string) map[string]any {
+	left, right, ok := splitSides(sentence)
+	if !ok {
+		return nil
+	}
+	l, r := sideRegion(left), sideRegion(right)
+	if l["kind"] == slides.RegionText && r["kind"] == slides.RegionText {
+		return nil
+	}
+	return map[string]any{"arrangement": slides.ArrangeColumns, "regions": []any{l, r}, "takeaway": patterns.FillPlaceholder}
+}
+
 // facts are every region clause, verbatim.
 func (q *regionRequest) facts() []string {
 	out := make([]string, len(q.regions))

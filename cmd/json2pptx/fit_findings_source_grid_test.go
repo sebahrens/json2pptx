@@ -145,3 +145,123 @@ func TestSlideDataKindReadsRawGridCells(t *testing.T) {
 		}
 	}
 }
+
+// comparisonSourceSpec compiles the comparison renderings (go-slide-creator-0d9xy):
+// two columns of figures (comparison-2col), three columns of figures
+// (stylish-panels), the same three as cards (card-grid), and their qualitative
+// controls — two columns of words, a figure on one side only, and three
+// columns of words.
+func comparisonSourceSpec(t *testing.T, metaSource, slide0Source string) (*PresentationInput, *semantic.CompileResult) {
+	t.Helper()
+	column := func(header string, items ...any) map[string]any {
+		return map[string]any{"header": header, "items": items}
+	}
+	scopes := []any{
+		column("Scope A", "Desktop model only", "€180k fee", "3 weeks"),
+		column("Scope B", "25 customer interviews", "€320k fee", "4 weeks"),
+		column("Scope C", "25 interviews plus survey", "€410k fee", "5 weeks"),
+	}
+	quantitative := map[string]any{"title": "Scope B tests price risk within four weeks", "highlight_column": "Scope B", "columns": scopes[1:]}
+	if slide0Source != "" {
+		quantitative["source"] = slide0Source
+	}
+	words := []any{
+		column("Build", "Full control of the roadmap", "Slow to first release"),
+		column("Partner", "Shared roadmap", "Fast to first release"),
+		column("Buy", "Vendor roadmap", "Fastest to first release"),
+	}
+	spec := &semantic.DeckSpec{
+		Meta: semantic.DeckMeta{Title: "Comparisons", Source: metaSource},
+		Slides: []semantic.SlideSpec{
+			{Kind: semantic.KindComparison, Body: quantitative},
+			{Kind: semantic.KindComparison, Body: map[string]any{"title": "Three scopes trade fee against evidence", "columns": scopes}},
+			{Kind: semantic.KindComparison, Body: map[string]any{"title": "Three scopes trade fee against evidence as cards", "columns": scopes, "pattern": "card-grid"}},
+			{Kind: semantic.KindComparison, Body: map[string]any{"title": "Partnering is faster than building", "columns": words[:2]}},
+			{Kind: semantic.KindComparison, Body: map[string]any{"title": "Only the incumbent is certified", "columns": []any{
+				column("Incumbent", "ISO 27001 certified", "Named account team"),
+				column("Challenger", "Not certified", "Shared service desk"),
+			}}},
+			{Kind: semantic.KindComparison, Body: map[string]any{"title": "Buying is fastest and least flexible", "columns": words}},
+		},
+	}
+	input, result, err := semantic.Compile(spec, semantic.CompileOptions{Strict: semantic.StrictnessWarn})
+	if err != nil {
+		t.Fatalf("compile: %v (%+v)", err, result.Diagnostics)
+	}
+	wantPatterns := []string{"comparison-2col", "stylish-panels", "card-grid", "comparison-2col", "comparison-2col", "stylish-panels"}
+	for i, w := range wantPatterns {
+		if p := input.Slides[i].Pattern; p == nil || p.Name != w {
+			t.Fatalf("slide %d compiled to %+v, want the %s pattern", i, p, w)
+		}
+	}
+	return input, result
+}
+
+// TestDeckSourceReachesQuantitativeComparisons: meta.source lands once on each
+// comparison of figures, in every rendering; an explicit slide source wins;
+// comparisons in words stay unsourced.
+func TestDeckSourceReachesQuantitativeComparisons(t *testing.T) {
+	const deck = "Illustrative procurement estimates"
+	input, _ := comparisonSourceSpec(t, deck, "")
+	applyDefaults(input)
+	for i, want := range []string{deck, deck, deck, "", "", ""} {
+		if got := input.Slides[i].Source; got != want {
+			t.Errorf("slide %d (%q) source = %q, want %q", i, slideDataKind(input.Slides[i]), got, want)
+		}
+	}
+	if got := dataWithoutSourceCodes(collectDataWithoutSourceFindings(input)); len(got) != 0 {
+		t.Errorf("a defaulted deck should raise no DATA_WITHOUT_SOURCE, got %v", got)
+	}
+
+	input, _ = comparisonSourceSpec(t, deck, "Supplier quotes, Sep 2026")
+	applyDefaults(input)
+	if got := input.Slides[0].Source; got != "Supplier quotes, Sep 2026" {
+		t.Errorf("explicit slide source should win over meta.source, got %q", got)
+	}
+}
+
+// TestDataWithoutSourceOnQuantitativeComparisons: with no source anywhere, the
+// comparisons of figures are flagged at the DeckSpec slide's source field and
+// the ones in words are not.
+func TestDataWithoutSourceOnQuantitativeComparisons(t *testing.T) {
+	input, result := comparisonSourceSpec(t, "", "")
+	applyDefaults(input)
+	got := dataWithoutSourceCodes(collectDataWithoutSourceFindings(input))
+	want := map[string]string{"/slides/0/source": "slides[0].source", "/slides/1/source": "slides[1].source", "/slides/2/source": "slides[2].source"}
+	if len(got) != len(want) {
+		t.Errorf("DATA_WITHOUT_SOURCE at %v, want exactly %v", got, want)
+	}
+	for raw, sem := range want {
+		if !got[raw] {
+			t.Errorf("DATA_WITHOUT_SOURCE missing at %s", raw)
+		}
+		if path, _, ok := result.SourceMap.ResolveSemantic(raw); !ok || path != sem {
+			t.Errorf("ResolveSemantic(%s) = %q, %v; want %q", raw, path, ok, sem)
+		}
+	}
+}
+
+// TestComparisonHasFigures pins what counts as figures set against each other.
+func TestComparisonHasFigures(t *testing.T) {
+	for _, tc := range []struct {
+		name, values string
+		want         bool
+	}{
+		{"comparison-2col", `{"headers":["B","C"],"rows":["€320k fee | €410k fee"]}`, true},
+		{"comparison-2col", `{"headers":["B","C"],"rows":["4 weeks | 5 weeks"]}`, true},
+		{"comparison-2col", `{"headers":["B","C"],"rows":["12% churn | 9% churn"]}`, true},
+		{"comparison-2col", `{"headers":["2025","2026"],"rows":["Manual close | Automated close"]}`, false},
+		{"comparison-2col", `{"headers":["B","C"],"rows":["ISO 27001 certified | Not certified"]}`, false},
+		{"comparison-2col", `{"headers":["B","C"],"rows":["Launched in 2024 | Launches 2026"]}`, false},
+		{"comparison-2col", `{"headers":["B","C"],"rows":["€320k fee | Fee on request","In 4 weeks | Later"]}`, false},
+		{"stylish-panels", `[{"title":"A","body":["€180k"]},{"title":"B","body":["€320k"]},{"title":"C","body":["€410k"]}]`, true},
+		{"stylish-panels", `[{"title":"A","body":["€180k"]},{"title":"B","body":["Cheap"]},{"title":"C","body":["Dear"]}]`, false},
+		{"card-grid", `{"cells":[{"header":"A","body":"3 weeks"},{"header":"B","body":"4 weeks"}]}`, true},
+		{"card-grid", `{"cells":[{"header":"Pillar 1","body":"Governance"},{"header":"Pillar 2","body":"Controls"}]}`, false},
+		{"icon-row", `[{"caption":"4 weeks"},{"caption":"5 weeks"}]`, false},
+	} {
+		if got := comparisonHasFigures(tc.name, json.RawMessage(tc.values)); got != tc.want {
+			t.Errorf("comparisonHasFigures(%s, %s) = %v, want %v", tc.name, tc.values, got, tc.want)
+		}
+	}
+}

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -14,7 +15,8 @@ import (
 // KPI / stat families. Qualitative data_visual patterns (matrix-2x2,
 // table-highlight's Harvey balls, capability-heatmap ratings) are left out —
 // a source line under a judgement call is noise (go-slide-creator-cuszt). A
-// table-highlight of figures is caught by patternDataKind instead.
+// table-highlight of figures and a comparison of figures are caught by
+// patternDataKind instead.
 var dataSourcePatterns = map[string]bool{
 	"chart-insights-split":         true,
 	"waterfall-bridge":             true,
@@ -172,15 +174,85 @@ func slideDataKind(slide SlideInput) string {
 
 // patternDataKind names the data a pattern shows, or "". The data patterns
 // always count; a table-highlight counts only when a text-scale cell holds a
-// figure ("$1.2m", "25k") — Harvey and RAG judgements stay exempt.
+// figure ("$1.2m", "25k") — Harvey and RAG judgements stay exempt — and a
+// comparison only when it sets figures against each other.
 func patternDataKind(name string, values json.RawMessage) string {
 	switch {
 	case dataSourcePatterns[name]:
 		return "the " + name + " pattern"
 	case name == "table-highlight" && tableHighlightHasFigures(values):
 		return "a matrix of figures"
+	case comparisonHasFigures(name, values):
+		return "a comparison of figures"
 	}
 	return ""
+}
+
+var (
+	// comparisonFigure matches a figure in a comparison cell: a money amount,
+	// a percentage or scaled number, or a count with its noun ("25
+	// interviews", "4 weeks").
+	comparisonFigure = regexp.MustCompile(`(?i)(?:[$€£¥]|\b(?:EUR|USD|GBP|CHF)\s?)\d|\d[\d.,]*\s?(?:%|(?:k|m|mm|bn|x|pp|pts?|bps)\b)|(?:^|[\s(~≈<>+\-−])\d[\d.,]*\s+\p{L}{2,}`)
+	// comparisonYear matches a calendar year, which dates a cell rather than
+	// measuring anything.
+	comparisonYear = regexp.MustCompile(`\b(?:19|20)\d{2}\b`)
+)
+
+func hasComparisonFigure(text string) bool {
+	return comparisonFigure.MatchString(comparisonYear.ReplaceAllString(text, ""))
+}
+
+// comparisonHasFigures reports whether a comparison sets figures against each
+// other (go-slide-creator-0d9xy): a comparison-2col row with a figure on both
+// sides ("€320k fee" against "€410k fee"), or — in the stylish-panels and
+// card-grid renderings a comparison of three or more columns compiles to — a
+// figure in every column. Two options compared in words, or with a number on
+// one side only ("ISO 27001 certified" against "not certified"), cite nothing
+// an audience would ask the origin of and stay exempt. Headers are names, not
+// data.
+func comparisonHasFigures(name string, values json.RawMessage) bool {
+	if len(values) == 0 {
+		return false
+	}
+	var columns []string
+	switch name {
+	case "comparison-2col":
+		var v patterns.Comparison2colValues
+		if json.Unmarshal(values, &v) != nil {
+			return false
+		}
+		for _, row := range v.Rows {
+			if hasComparisonFigure(row.Left) && hasComparisonFigure(row.Right) {
+				return true
+			}
+		}
+		return false
+	case "stylish-panels":
+		var v []patterns.StylishPanelsItem
+		if json.Unmarshal(values, &v) != nil {
+			return false
+		}
+		for _, panel := range v {
+			columns = append(columns, strings.Join(panel.Body, "\n"))
+		}
+	case "card-grid":
+		var v patterns.CardGridValues
+		if json.Unmarshal(values, &v) != nil {
+			return false
+		}
+		for _, cell := range v.Cells {
+			columns = append(columns, cell.Body)
+		}
+	}
+	if len(columns) < 2 {
+		return false
+	}
+	for _, body := range columns {
+		if !hasComparisonFigure(body) {
+			return false
+		}
+	}
+	return true
 }
 
 // tableHighlightHasFigures reports whether any text-scale cell of a

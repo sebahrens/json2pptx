@@ -255,6 +255,10 @@ type specSource struct {
 	// root it (and relative assets) resolved against (go-slide-creator-b7qqg.8).
 	TemplatePath string
 	BaseDir      string
+	// Rebound is set by a restore of a revision the deck was bound to another
+	// template on: Template / TemplatePath / BaseDir are then that revision's
+	// binding, which storing the call puts back (go-slide-creator-dmiz6).
+	Rebound bool
 	// BaseSpec is the stored spec the call loaded before patching; storing
 	// the result compares against it so concurrent patches cannot be lost.
 	BaseSpec []byte
@@ -322,6 +326,12 @@ func (mc *mcpConfig) resolveSpecSource(tool string, request mcp.CallToolRequest)
 				"integer", handle.Revision, nil)
 		}
 		start = rev.Spec
+		// The revision comes back on the template it was bound to. A
+		// template the restored spec pins, or one this call patches in or
+		// names, still takes precedence in resolveSpecTemplate.
+		if b := rev.Bound; (b.Template != "" || b.TemplatePath != "") && b != handle.binding() {
+			src.Template, src.TemplatePath, src.BaseDir, src.Rebound = b.Template, b.TemplatePath, b.BaseDir, true
+		}
 	}
 	if src.Data, src.RawPatch, src.MovedIDs, errRes = applySpecPatchArg(tool, request, start, handle.NextSlideID); errRes != nil {
 		return specSource{}, errRes
@@ -1000,7 +1010,7 @@ func deckHandleToolParams(tool string) []mcp.ToolOption {
 	deckID, patch := deckIDParamDescription, deckPatchParamDescription
 	dryRun := "true: run without storing anything."
 	fork := "true: store the result under a NEW deck_id; this one stays as it is."
-	restore := `Revision of deck_id to start from (validate_deck_spec read:"history" lists them); patch applies on top and the result is a new revision.`
+	restore := `Revision of deck_id to start from (validate_deck_spec read:"history" lists them); patch applies on top and the result is a new revision, on the template that revision was bound to.`
 	if tool != "render_deck_spec" {
 		const see = "; see render_deck_spec."
 		deckID = "Stored spec handle, sent INSTEAD of spec" + see

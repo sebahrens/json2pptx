@@ -102,7 +102,9 @@ reading.
   or `insight`; a duplicate `takeaway` there goes to the notes.
 - **A `source`**: origin and base ("Regulator's 2025 review; management
   information 2023–2025"). `meta.source` sets the deck default; a data slide
-  without any source is `DATA_WITHOUT_SOURCE`.
+  without any source is `DATA_WITHOUT_SOURCE`. A `comparison` counts as data
+  when it sets figures against each other (fee against fee, weeks against
+  weeks); one in words takes no source line.
 
 ## 5. Chrome, confidentiality, numbering
 

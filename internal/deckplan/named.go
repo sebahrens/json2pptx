@@ -403,6 +403,9 @@ var namedRules = []namedRule{
 	{kind: "next_steps", match: func(n *namedSlide, head, all string) bool {
 		return cueNamedCloser.MatchString(head) || (head == "" && cueNamedAskStart.MatchString(all))
 	}, after: func(n *namedSlide, _ string) { n.closer = true }},
+	// "… on the left and … on the right" is one slide in two regions, whatever
+	// each side shows (go-slide-creator-hxcum).
+	{kind: "regions", match: func(_ *namedSlide, _, all string) bool { return sidesFields(all) != nil }},
 	{kind: "bridge", match: func(_ *namedSlide, _, all string) bool { return cueNamedBridge.MatchString(all) }},
 	{kind: "matrix_2x2", match: func(_ *namedSlide, _, all string) bool { return cueNamedMatrix.MatchString(all) },
 		after: func(n *namedSlide, all string) {
@@ -813,6 +816,8 @@ func factPositions(brief string, facts []briefFact) []int {
 // namedFields drafts the kind's own fields from the sentence.
 func namedFields(n *namedSlide) map[string]any {
 	switch n.kind {
+	case "regions":
+		return sidesFields(n.sentence)
 	case "bridge":
 		return bridgeFields(n)
 	case "kpi_snapshot":
@@ -1587,7 +1592,8 @@ type chartSeries struct {
 var (
 	namedSlashSeries = regexp.MustCompile(`(?i)([\p{L}][\p{L} -]*?)\s+(\d+(?:\.\d+)?(?:/\d+(?:\.\d+)?){2,})`)
 	namedAmount      = `(?:(?:EUR|USD|GBP|CHF)\s?|[$€£¥]\s?)?[+\-−]?\d[\d,]*(?:\.\d+)?\s?(?:%|bn|mm|m|k)?`
-	namedYearValue   = regexp.MustCompile(`\b((?:19|20)\d{2}):?\s+(` + namedAmount + `)`)
+	// A value may say what it is: "2028 forecast EUR 10.6bn".
+	namedYearValue   = regexp.MustCompile(`(?i)\b((?:19|20)\d{2}):?\s+(?:(?:forecast|estimated?|expected|projected|target|plan|budget|actuals?)\s+)?(` + namedAmount + `)`)
 	namedValueYear   = regexp.MustCompile(`(` + namedAmount + `)\s*(?:\(((?:19|20)\d{2})\)|\bby\s+((?:19|20)\d{2})\b|\bin\s+((?:19|20)\d{2})\b)`)
 	namedPercentPair = regexp.MustCompile(`([\p{L}][\p{L}\- /]*?)\s+(\d+(?:\.\d+)?)\s*%`)
 	namedChangeVerb  = regexp.MustCompile(`(?i)\s+(?:grew|rose|fell|declined|increased|decreased|went|moved|climbed|dropped|is|was)\b.*$`)

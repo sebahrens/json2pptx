@@ -112,6 +112,12 @@ type deckRevision struct {
 	// named. A diff of two revisions compares each on its own
 	// (go-slide-creator-oqu4a).
 	Template string
+	// Bound is the template the deck was bound to while this was its current
+	// revision — the handle's Template or TemplatePath, and BaseDir — so
+	// restoring the revision restores its design, not only its spec
+	// (go-slide-creator-dmiz6). A one-off render on another template does not
+	// change it.
+	Bound deckTemplateSource
 }
 
 // --- slide ids ---
@@ -551,7 +557,7 @@ func (h *deckHandle) inherit(old *deckHandle, tool, note string, now time.Time) 
 	evaluated := firstNonEmpty(h.storeEvaluated, h.templateIdentity())
 	h.storeEvaluated = ""
 	if old != nil && string(old.Spec) == string(h.Spec) {
-		h.reevaluatedOn(evaluated)
+		h.reevaluatedOn(evaluated, h.binding())
 		h.applyPendingRender()
 		return
 	}
@@ -570,6 +576,7 @@ func (h *deckHandle) inherit(old *deckHandle, tool, note string, now time.Time) 
 		Spec:     h.Spec,
 		Changes:  classifySlideChanges(before, h.State.renderedOn(evaluated), h.storeMoved),
 		Template: evaluated,
+		Bound:    h.binding(),
 	}
 	revisions := make([]deckRevision, 0, len(h.Revisions)+1)
 	revisions = append(revisions, h.Revisions...)
@@ -581,16 +588,30 @@ func (h *deckHandle) inherit(old *deckHandle, tool, note string, now time.Time) 
 	h.applyPendingRender()
 }
 
+// binding is the template the handle is bound to.
+func (h *deckHandle) binding() deckTemplateSource {
+	return deckTemplateSource{Template: h.Template, TemplatePath: h.TemplatePath, BaseDir: h.BaseDir}
+}
+
 // reevaluatedOn records that the current revision was validated or rendered
 // again, on template: the revision keeps the template it was last evaluated
-// on. The revision list is copied, because a stored handle is never mutated.
-func (h *deckHandle) reevaluatedOn(template string) {
+// on, and the binding the deck has now (the first call to name a template
+// binds a deck without changing its spec). The revision list is copied,
+// because a stored handle is never mutated.
+func (h *deckHandle) reevaluatedOn(template string, bound deckTemplateSource) {
 	n := len(h.Revisions)
-	if n == 0 || template == "" || h.Revisions[n-1].Template == template {
+	if n == 0 {
+		return
+	}
+	last := h.Revisions[n-1]
+	if template == "" {
+		template = last.Template
+	}
+	if last.Template == template && last.Bound == bound {
 		return
 	}
 	revisions := append([]deckRevision(nil), h.Revisions...)
-	revisions[n-1].Template = template
+	revisions[n-1].Template, revisions[n-1].Bound = template, bound
 	h.Revisions = revisions
 }
 

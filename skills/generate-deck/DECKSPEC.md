@@ -174,14 +174,14 @@ classifies every affected slide (`edited | inserted | restyled | moved |
 renumbered | notes_only | removed`); `stored: false` means the patch was not
 kept (a refused render, or `dry_run: true`). `validate_deck_spec` also reads
 the store (`read: "spec" | "history" | "diff:A..B" | <slide id>`; `diff:A`
-compares A with the current revision; each side is read on the template
+compares A with the current one; each side is read on the template
 it was validated or rendered on, so a call's `template` change shows as
-`restyled` slides and `summary` ends `(template A → B)`), finds or replaces text everywhere
-(`find`, `replace`), restores a revision (`restore: N`) and forks
+`restyled` slides and `summary` ends `(template A → B)`), finds or replaces text
+(`find`, `replace`), restores a revision and its template (`restore: N`) and forks
 (`fork: true`). A whole spec sent again is the next revision of its
 `deck_id` when its title, template and slide `id`s match a stored deck
-(`fork: true`: new deck). Handles are process-local and expire after one hour; retain
-the source spec yourself.
+(`fork: true`: new deck). Handles are process-local and expire after an hour; keep
+the source spec.
 The default filename carries a digest of the spec; an explicit
 `output_filename` may overwrite an earlier artifact (check `overwrote`).
 

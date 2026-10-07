@@ -93,8 +93,8 @@ apply `fix` (`remove_key` `labels`: labels move outside).
 `score_deck` classifies a finding as `pattern_choice` (a
 different visual family), `rendering` (fit, geometry or contrast repair) or
 `content` (e.g. `TITLE_NOT_ACTION`, `TITLE_TOO_LONG`: a better title,
-evidence, labels or copy). `DATA_WITHOUT_SOURCE` (review: a
-chart, figures table / matrix or KPI / stat pattern, unsourced) is one:
+evidence, labels or copy). `DATA_WITHOUT_SOURCE` (review: unsourced
+chart, KPI / stat or figures table / matrix / comparison) is one:
 set `slides[N].source` (`fix.params.field: "source"`), a chart `footnote` or
 a deck default (QUALITY.md §5); never invent one.
 
