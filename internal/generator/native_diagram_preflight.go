@@ -113,6 +113,9 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 		}
 		labelW, labelH := pfConnLabelSize(connection.label, font)
 		label := pfConnLabelBounds(src, tgt, layout.direction, labelW, labelH, stepKinds[connection.from] == pfDecisionType)
+		if d, ok := pfDetourFor(layout.detours, i); ok {
+			label = pfDetourLabelBounds(d, labelW, labelH)
+		}
 		for id, stepRect := range stepRects {
 			if pfRectHitsStep(label, stepRect, stepKinds[id]) {
 				out = append(out, patterns.FitFinding{
