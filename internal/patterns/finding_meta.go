@@ -1415,7 +1415,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        "chart.label_truncated",
 		Summary:     "An axis or data label was truncated to fit available width.",
 		Severity:    "review",
-		WhenEmitted: "svggen layout pass shortens a label string that would exceed available width. A timeline event label is shortened only after one line, staggering above / below, a two-line wrap and the smaller shared size have all failed, and is then reported as shrink_or_split (blocking) at the item's own path with fix.params.original / truncated.",
+		WhenEmitted: "svggen layout pass shortens a label string that would exceed available width. A timeline label block is shortened only after the other side of the axis, a further lane, sliding and narrowing the block have all failed, and is then reported as shrink_or_split (blocking) at the item's own path with fix.params.original / truncated.",
 		RemediationSteps: []string{
 			"Shorten the source label.",
 			"Or widen the chart cell so the full label fits.",
