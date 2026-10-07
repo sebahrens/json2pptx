@@ -82,7 +82,51 @@ func titleFitParams(in TitleFitInput) textfit.Params {
 		p.MinFontScalePct = int(math.Ceil(float64(in.MinFontHPt) / float64(in.Style.SizeHPt) * 100))
 	}
 	applyInheritedStyleToParams(&p, in.Style)
+	applyWrappedTitleLeading(&p, in.Style.CapsAll)
 	return p
+}
+
+// minWrappedTitleLineSpacingPct is the tightest leading a mixed-case title
+// keeps once it wraps to more than one line, in percent of single spacing.
+//
+// Display layouts often declare 75–80% for their title: the designer set one
+// short line at 66–80pt. An authored closing statement wraps to two or three
+// lines there, and at 80% (or at the 85% the reduction floor allowed) the
+// descenders of one line sit on the ascenders of the next: "Approve" over
+// "launch" on the p-style closing slide (go-slide-creator-vxnfu). 90% is the
+// leading PowerPoint's own masters give titles and the first value at which a
+// serif face's g / p / y clear the b / d / l below. All-caps titles have no
+// descenders and keep the template's leading (minTitleLineSpacingPctThousandths
+// still floors a reduction).
+const minWrappedTitleLineSpacingPct = 90
+
+// WrappedTitleLineSpacing is the line spacing multiplier a title of the given
+// case takes once it wraps (textfit.Params.WrappedLineSpacing), or 0 for an
+// all-caps title, which keeps the template's leading on every line count.
+func WrappedTitleLineSpacing(capsAll bool) float64 {
+	if capsAll {
+		return 0
+	}
+	return baseLineSpacing * minWrappedTitleLineSpacingPct / 100.0
+}
+
+// applyWrappedTitleLeading gives title fit params the wrapped-title leading
+// floor. Generation and every preflight measurement build their params
+// through it, so a title is measured at the leading it is written with.
+//
+// Where the floor is above the template's own leading the title needs more
+// height per line, so a large display title may shrink to its comfort size
+// (TitleComfortScalePct: 32pt for a 66pt title) instead of stopping at the
+// default 60% and spilling out of its box; a caller's own floor (the divider
+// 28pt floor) is kept.
+func applyWrappedTitleLeading(p *textfit.Params, capsAll bool) {
+	p.WrappedLineSpacing = WrappedTitleLineSpacing(capsAll)
+	if p.LineSpacing <= 0 || p.WrappedLineSpacing <= p.LineSpacing || p.MinFontScalePct != 0 {
+		return
+	}
+	if comfort := TitleComfortScalePct(p.FontSizeHPt); comfort < textfit.DefaultMinFontScalePct {
+		p.MinFontScalePct = comfort
+	}
 }
 
 // SectionTitleMinHPt is the readable floor for divider titles. The full
@@ -470,10 +514,20 @@ func bakeTitleFit(shape *shapeXML, p textfit.Params, res textfit.FitResult) {
 			}
 		}
 	}
-	if res.LnSpcReduction > 0 {
+	if res.LnSpcReduction > 0 || res.LineSpacingRaised {
 		basePct := 100.0
 		if p.LineSpacing > 0 {
 			basePct = p.LineSpacing / baseLineSpacing * 100.0
+		}
+		floor := minTitleLineSpacingPctThousandths
+		if p.WrappedLineSpacing > 0 {
+			// A mixed-case title: descenders need the wrapped leading.
+			floor = minWrappedTitleLineSpacingPct * 1000
+		}
+		if res.LineSpacingRaised {
+			// The title wraps and the template's leading is tighter than the
+			// wrapped floor: the fit was measured at the floor, so write it.
+			basePct = p.WrappedLineSpacing / baseLineSpacing * 100.0
 		}
 		val := int(basePct*(1.0-float64(res.LnSpcReduction)/100000.0)*1000.0 + 0.5)
 		// Floor the pitch so lines cannot physically overlap. The reduction is
@@ -483,8 +537,8 @@ func bakeTitleFit(shape *shapeXML, p textfit.Params, res textfit.FitResult) {
 		// all-caps glyphs, which LibreOffice renders with the lines on top of
 		// each other (go-slide-creator-g5h7). Titles that still do not fit at
 		// the floor are reported as TITLE_OVERFLOW rather than crushed.
-		if val < minTitleLineSpacingPctThousandths {
-			val = minTitleLineSpacingPctThousandths
+		if val < floor {
+			val = floor
 		}
 		lnSpc := fmt.Sprintf(`<a:lnSpc><a:spcPct val="%d"/></a:lnSpc>`, val)
 		for i := range shape.TextBody.Paragraphs {

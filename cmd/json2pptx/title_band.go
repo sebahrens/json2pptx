@@ -4,6 +4,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/tokens"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -110,6 +111,9 @@ func measuredTitleBottom(title *types.PlaceholderInfo, text string, titleGapPt f
 		FontName:    title.FontFamily,
 		Paragraphs:  []string{text},
 		LineSpacing: lineSpacing,
+		// A wrapped mixed-case title is written at the wrapped-title leading
+		// floor when the template's is tighter (go-slide-creator-vxnfu).
+		WrappedLineSpacing: generator.WrappedTitleLineSpacing(title.TextCaps),
 		// A bold, tracked title (blue-corporate: b="1", spc="300", all caps)
 		// wraps well before the regular untracked face says it does
 		// (go-slide-creator-b7qqg.13).

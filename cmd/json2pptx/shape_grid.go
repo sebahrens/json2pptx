@@ -1032,11 +1032,17 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	return resolveShapeGridAs(input, alloc, overrideBounds, zone, slideWidth, slideHeight, diagCtx, zone != nil)
 }
 
+// resolveNestedShapeGrid resolves a grid nested in a sub-grid cell, in that
+// cell's frame, under the peer scope its parent's nested grids share.
+func resolveNestedShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, bounds *pptx.RectEmu, slideWidth, slideHeight int64, diagCtx *GridDiagramContext, peers *shapegrid.PeerScope) (*ShapeGridResult, error) {
+	return resolveShapeGridAs(input, alloc, bounds, nil, slideWidth, slideHeight, diagCtx, false, peers)
+}
+
 // resolveShapeGridAs is resolveShapeGrid with the grid's role stated:
 // slideBlock marks the slide's own content block, which the composition
 // policy places (shapegrid.Grid.Compose). Callers that resolve a slide's grid
 // without a content zone (pattern previews) pass true.
-func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64, diagCtx *GridDiagramContext, slideBlock bool) (*ShapeGridResult, error) {
+func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64, diagCtx *GridDiagramContext, slideBlock bool, peers ...*shapegrid.PeerScope) (*ShapeGridResult, error) {
 	if input == nil || len(input.Rows) == 0 {
 		return nil, nil
 	}
@@ -1092,6 +1098,9 @@ func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, ove
 	grid.KeepTextSizes = input.KeepTextSizes
 	grid.CanvasScale = gridCanvasScale(input, slideWidth, slideHeight)
 	grid.Links = convertGridLinks(input.Links)
+	if len(peers) > 0 {
+		grid.Peers = peers[0]
+	}
 
 	// Validate grid structure before rendering (catches overlaps, span errors, etc.)
 	if vErr := shapegrid.Validate(grid); vErr != nil {
@@ -1151,6 +1160,10 @@ func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pp
 	if input == nil || out == nil {
 		return nil
 	}
+	// The nested grids of one parent share a peer scope: the labels of sibling
+	// sub-grids grow together or not at all (go-slide-creator-7ophx). The
+	// preflight walkers build the same scope (resolveGridForStructural).
+	peers := nestedPeerScope(input, out.Cells, slideWidth, slideHeight)
 	for _, rc := range out.Cells {
 		if rc.Kind != shapegrid.CellKindSubGrid {
 			continue
@@ -1162,17 +1175,8 @@ func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pp
 		if src == nil || src.Grid == nil {
 			continue
 		}
-		inset := pptx.RectEmu{
-			X:  rc.Bounds.X + subGridInsetEMU,
-			Y:  rc.Bounds.Y + subGridInsetEMU,
-			CX: rc.Bounds.CX - 2*subGridInsetEMU,
-			CY: rc.Bounds.CY - 2*subGridInsetEMU,
-		}
-		if inset.CX <= 0 || inset.CY <= 0 {
-			// Cell is too small for inset; fall back to raw bounds.
-			inset = rc.Bounds
-		}
-		sub, err := resolveShapeGrid(src.Grid, alloc, &inset, nil, slideWidth, slideHeight, diagCtx)
+		inset := subGridBounds(rc.Bounds)
+		sub, err := resolveNestedShapeGrid(src.Grid, alloc, &inset, slideWidth, slideHeight, diagCtx, peers)
 		// The sub-grid was resolved as if it were the slide's grid: re-root
 		// what it reports under the authored cell hosting it, at any depth
 		// (go-slide-creator-epch2).

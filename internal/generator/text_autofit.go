@@ -163,6 +163,9 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 
 	bp := shape.TextBody.BodyProperties
 	if handleNoAutofitDirective(bp, shape, &cfg) {
+		if cfg.isTitle {
+			raiseWrappedTitleLeading(shape, &cfg)
+		}
 		emitBodySizeFinding(&cfg, 100000)
 		return
 	}
@@ -562,8 +565,30 @@ func buildTextfitParams(shape *shapeXML, widthEMU, heightEMU int64, texts []stri
 	}
 	if style != nil {
 		applyInheritedStyleToParams(&params, *style)
+		if cfg.isTitle {
+			applyWrappedTitleLeading(&params, style.CapsAll)
+		}
 	}
 	return params
+}
+
+// raiseWrappedTitleLeading writes the wrapped-title leading floor on a title
+// the template pins with noAutofit: its size stays, but a mixed-case title
+// that wraps there under a leading tighter than the floor would still set its
+// lines on top of each other (go-slide-creator-vxnfu).
+func raiseWrappedTitleLeading(shape *shapeXML, cfg *autofitConfig) {
+	widthEMU, heightEMU := getShapeDimensions(shape)
+	texts := collectParagraphTexts(shape.TextBody.Paragraphs)
+	if widthEMU <= 0 || heightEMU <= 0 || len(texts) == 0 {
+		return
+	}
+	params := buildTextfitParams(shape, widthEMU, heightEMU, texts, cfg)
+	params.MinFontScalePct = 100 // measure at the pinned size only
+	res, err := textfit.Calculate(params)
+	if err != nil || !res.LineSpacingRaised {
+		return
+	}
+	bakeTitleFit(shape, params, textfit.FitResult{LineSpacingRaised: true})
 }
 
 // defaultParagraphSpacingPt is the per-paragraph space a slide master

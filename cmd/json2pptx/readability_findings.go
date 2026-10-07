@@ -393,7 +393,7 @@ func readabilityGridCells(grid *ShapeGridInput, result *shapegrid.ResolveResult,
 		if inset.CX <= 0 || inset.CY <= 0 {
 			inset = rc.Bounds
 		}
-		if sub := resolveGridForStructural(src.Grid, &inset, nil, slideWidth, slideHeight); sub != nil {
+		if sub := resolveGridForStructural(src.Grid, &inset, nil, slideWidth, slideHeight, result.SubGridPeers); sub != nil {
 			out = append(out, readabilityGridCells(src.Grid, sub, path+"/grid", slideWidth, slideHeight, depth+1)...)
 		}
 	}

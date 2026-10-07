@@ -384,6 +384,10 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 		}
 	}
 	sharePeerGrowth(cells, growth)
+	grid.Peers.hold(cells, growth)
+	if grid.MeasurePeers {
+		recordPeerGrowth(cells, growth)
+	}
 	for i := range cells {
 		cell := &cells[i]
 		if cell.Kind == CellKindShape && cell.ShapeSpec != nil {

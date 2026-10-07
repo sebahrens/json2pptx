@@ -58,6 +58,7 @@ const (
 	nextStepsBandGapPt     = 14.0
 	nextStepsMinBandGapPt  = 6.0
 	nextStepsBandPadPt     = 4.0 // extra top / bottom air inside the filled band
+	nextStepsBandBarPt     = TakeawayBarPt
 	nextStepsOwnerPct      = 22.0
 	nextStepsDatePct       = 15.0
 	nextStepsOwnerMaxPct   = 30.0
@@ -137,6 +138,14 @@ type NextStepsOverrides struct {
 	Accent         string  `json:"accent,omitempty"`
 	SemanticAccent string  `json:"semantic_accent,omitempty"`
 	ActionSize     float64 `json:"action_size,omitempty"`
+	// TakeawayEmphasis "bar" draws the decisions as a flush accent rule
+	// beside dk1 text instead of the dark neutral band.
+	TakeawayEmphasis string `json:"takeaway_emphasis,omitempty"`
+}
+
+// barBand reports the bar look of the decisions band.
+func (o *NextStepsOverrides) barBand() bool {
+	return o != nil && o.TakeawayEmphasis == TakeawayEmphasisBar
 }
 
 // NextStepsCellOverride is the shared per-cell override, indexed by action.
@@ -167,9 +176,10 @@ func (n *nextSteps) Schema() *Schema {
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":          StringSchema(0).WithDescription("Accent scheme color for the numerals and the band rule (default accent1)").WithDefault("accent1"),
-			"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"action_size":     NumberSchema(12, 24).WithDescription("Action and decision text size in points, held instead of the default ladder (default 14, stepping to 12 only when the list does not fit even with tightened rows); with action_size set, owner and date are 2pt smaller, never under 12"),
+			"accent":            StringSchema(0).WithDescription("Accent scheme color for the numerals and the band rule (default accent1)").WithDefault("accent1"),
+			"semantic_accent":   EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"action_size":       NumberSchema(12, 24).WithDescription("Action and decision text size in points, held instead of the default ladder (default 14, stepping to 12 only when the list does not fit even with tightened rows); with action_size set, owner and date are 2pt smaller, never under 12"),
+			"takeaway_emphasis": EnumSchema(TakeawayEmphasisBar).WithDescription("Decisions band style: omit for the dark neutral band; bar is a flush 3pt accent rule beside dk1 text, no fill"),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -197,8 +207,16 @@ func (n *nextSteps) Validate(values, overrides any, cellOverrides map[int]any) e
 		ovr, ok := overrides.(*NextStepsOverrides)
 		if !ok {
 			errs = append(errs, fmt.Errorf("next-steps: overrides must be *NextStepsOverrides, got %T", overrides))
-		} else if ovr.ActionSize != 0 && (ovr.ActionSize < 12 || ovr.ActionSize > 24) {
-			errs = append(errs, errOutOfRange(name, "overrides.action_size", 12, 24, int(ovr.ActionSize)))
+		} else {
+			if ovr.ActionSize != 0 && (ovr.ActionSize < 12 || ovr.ActionSize > 24) {
+				errs = append(errs, errOutOfRange(name, "overrides.action_size", 12, 24, int(ovr.ActionSize)))
+			}
+			if e := ovr.TakeawayEmphasis; e != TakeawayEmphasisNone && e != TakeawayEmphasisBar {
+				errs = append(errs, &ValidationError{
+					Pattern: name, Path: "overrides.takeaway_emphasis", Code: "invalid_enum",
+					Message: fmt.Sprintf("%s: overrides.takeaway_emphasis must be bar (omit for the default band); got %q", name, e),
+				})
+			}
 		}
 	}
 	if len(vals.Actions) < nextStepsMinActions {
@@ -260,9 +278,10 @@ type nextStepsLayout struct {
 	padPt                                   float64 // top / bottom text margin of every cell; 0 = the uniform margin
 	decisionSize                            float64
 	numberCol, actionCol, ownerCol, dateCol int
-	// barPct is the width of a leading rule column the numeral cells span.
-	// The decisions band is one filled shape now (go-slide-creator-3a1rm) and
-	// takes none, so it is 0; the column logic stays for a bar variant.
+	// barPct is the width of a leading rule column the numeral cells span:
+	// the accent rule of the decisions band under overrides.takeaway_emphasis
+	// "bar". The default band is one filled shape (go-slide-creator-3a1rm)
+	// and takes none, so it is 0.
 	barPct float64
 }
 
@@ -287,7 +306,7 @@ func layoutNextSteps(ctx ExpandContext, vals *NextStepsValues, ovr *NextStepsOve
 		scales = [][3]float64{{scales[0][0], ovr.ActionSize, math.Max(scaleBodyPt, ovr.ActionSize-2)}}
 	}
 	fit := func(sc [3]float64, padPt float64) (nextStepsLayout, bool) {
-		lay := measureNextSteps(ctx, vals, sc[0], sc[1], sc[2], padPt)
+		lay := measureNextSteps(ctx, vals, sc[0], sc[1], sc[2], padPt, ovr.barBand())
 		if lay.natural() <= areaH {
 			return lay, true
 		}
@@ -339,14 +358,14 @@ func nextStepsLeastHeightPt(ctx ExpandContext, vals *NextStepsValues, ovr *NextS
 	if ovr.ActionSize > 0 {
 		sc = [3]float64{nextStepsScales[0][0], ovr.ActionSize, math.Max(scaleBodyPt, ovr.ActionSize-2)}
 	}
-	lay := measureNextSteps(ctx, vals, sc[0], sc[1], sc[2], rowPadStepsPt[len(rowPadStepsPt)-1])
+	lay := measureNextSteps(ctx, vals, sc[0], sc[1], sc[2], rowPadStepsPt[len(rowPadStepsPt)-1], ovr.barBand())
 	if lay.bandPt > 0 {
 		lay.bandGapPt = ctx.Gap(nextStepsMinBandGapPt)
 	}
 	return lay.natural()
 }
 
-func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, actionSize, metaSize, padPt float64) nextStepsLayout {
+func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, actionSize, metaSize, padPt float64, barBand bool) nextStepsLayout {
 	areaW, _ := sizingAreaPt(ctx)
 	trim := rowPadTrimPt(padPt)
 	lay := nextStepsLayout{padPt: padPt, numberSize: numberSize, actionSize: actionSize, metaSize: metaSize, decisionSize: actionSize, bandGapPt: ctx.Gap(nextStepsBandGapPt), rowGapPt: ctx.Gap(nextStepsRowGapPt),
@@ -414,6 +433,17 @@ func measureNextSteps(ctx ExpandContext, vals *NextStepsValues, numberSize, acti
 			paras = append(paras, sizedPara{text: d, sizePt: lay.decisionSize, bold: true, spaceAfterPt: 2, bullet: true})
 		}
 		band := nextStepsBandCell(vals, lay.decisionSize, "lt1", "lt1", padPt)
+		if barBand {
+			// overrides.takeaway_emphasis "bar": the band's rule takes a
+			// column of its own at the table's left edge and the text has no
+			// fill to pad.
+			lay.bandPt = math.Ceil(math.Max(sizedBlockHeightPt(ctx, paras, areaW-nextStepsBandBarPt)-trim,
+				writtenFitHeightPt(ctx.themeFonts(), band.Shape.Text, areaW-nextStepsBandBarPt, 0)))
+			lay.barPct = math.Round(nextStepsBandBarPt/areaW*10000) / 100
+			lay.cols[0] = math.Round((lay.cols[0]-lay.barPct)*100) / 100
+			lay.cols = append([]float64{lay.barPct}, lay.cols...)
+			return lay
+		}
 		// The band is the takeaway band (go-slide-creator-3a1rm): one filled
 		// shape the width of the table, so it takes no column of its own.
 		lay.bandPt = math.Ceil(math.Max(sizedBlockHeightPt(ctx, paras, areaW)-trim,
@@ -630,13 +660,23 @@ func (n *nextSteps) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		// The decisions close the slide in the takeaway band's language: the
 		// dark structural neutral, the label and the asks in the ink measured
 		// against it.
-		fill, ink := TakeawayBandTone(ctx)
-		band := nextStepsBandCell(vals, lay.decisionSize, ink, ink, lay.padPt)
-		band.ColSpan = nCols
-		band.Shape.Fill = fill
-		band.Shape.Line = noLine
-		band.Shape.TypeScale = peerTextTypeScale
-		rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.bandPt, MaxHeight: lay.bandPt, Cells: []*jsonschema.GridCellInput{band}})
+		if lay.barPct > 0 {
+			// overrides.takeaway_emphasis "bar": a flush accent rule, the
+			// label in the accent ink and the asks in dk1, no fill.
+			band := nextStepsBandCell(vals, lay.decisionSize, accentInkOnLight(ctx, accent, 4.5), "dk1", lay.padPt)
+			band.ColSpan = nCols - 1
+			accentFill, _ := json.Marshal(accent)
+			bar := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: accentFill, Line: noLine}}
+			rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.bandPt, MaxHeight: lay.bandPt, Cells: []*jsonschema.GridCellInput{bar, band}})
+		} else {
+			fill, ink := TakeawayBandTone(ctx)
+			band := nextStepsBandCell(vals, lay.decisionSize, ink, ink, lay.padPt)
+			band.ColSpan = nCols
+			band.Shape.Fill = fill
+			band.Shape.Line = noLine
+			band.Shape.TypeScale = peerTextTypeScale
+			rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.bandPt, MaxHeight: lay.bandPt, Cells: []*jsonschema.GridCellInput{band}})
+		}
 		itemRow = append(itemRow, false)
 	}
 

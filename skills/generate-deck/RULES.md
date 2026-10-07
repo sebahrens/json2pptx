@@ -72,7 +72,7 @@ The table publishes the type-scale tokens in [`internal/tokens/typography.go`](.
 
 | # | Rule | Rationale |
 |---|---|---|
-| 10b | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as 14pt bold text beside a 3pt accent bar above the source/footer; content frames shrink above it. Budget two lines. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
+| 10b | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as a dark band of 14pt bold text above the source/footer; content frames shrink above it. Budget two lines. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
 
 ```json
 {"layout_id": "blank-title", "takeaway": "Margin contraction is driven by the EU region — not company-wide.",
