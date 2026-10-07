@@ -235,6 +235,7 @@ func autofitMeasureInput(tb *TextBody, bounds RectEmu) (autofitInput, bool) {
 			Text:         text,
 			FontPt:       pt,
 			SpaceAfterPt: float64(p.SpaceAfter) / 100.0,
+			IndentEMU:    hangingIndentEMU(p),
 		})
 	}
 	if len(paras) == 0 {
@@ -257,6 +258,19 @@ func autofitMeasureInput(tb *TextBody, bounds RectEmu) (autofitInput, bool) {
 		measureW += 2 * autofitMeasureSideEMU
 	}
 	return autofitInput{paras: paras, measureW: measureW, availablePt: availablePt, widthEMU: widthEMU, face: autofitMeasureFace(tb)}, true
+}
+
+// hangingIndentEMU is the width a bulleted paragraph's left margin takes from
+// every one of its lines: the bullet hangs in it (indent = -marL) and the
+// text, first line and wrapped lines alike, starts at marL. The margins of an
+// unbulleted paragraph are the line balancer's (shapegrid balanceHeadingLines)
+// and are left out on purpose: it only narrows a heading's measure where that
+// keeps the line count, so they take no height.
+func hangingIndentEMU(p Paragraph) int64 {
+	if p.Bullet == nil || p.MarginL <= 0 {
+		return 0
+	}
+	return p.MarginL
 }
 
 // longestWordScale returns the shrink at which the body's widest word fits

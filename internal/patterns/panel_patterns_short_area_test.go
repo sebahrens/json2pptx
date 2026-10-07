@@ -294,8 +294,11 @@ func TestPanelPatternsGiveWayBeforeReporting(t *testing.T) {
 		w, h          float64
 		values        any
 	}{
-		// 90-character bullets: 14pt holds about 55 on abstract, 12pt 95.
-		{"stylish-panels 4×3 bullets on abstract", "stylish-panels", 687, 294, stylish(4, 3, 90)},
+		// 80-character bullets: 14pt holds about 55 on abstract, 12pt 80. It
+		// was 90 of 95 while the writer's measure wrapped a bullet at the full
+		// text width; with the hanging indent off the line a 121pt bullet
+		// column holds a line less (go-slide-creator-vn35f).
+		{"stylish-panels 4×3 bullets on abstract", "stylish-panels", 687, 294, stylish(4, 3, 80)},
 		{"stylish-panels 3×3 bullets on modern", "stylish-panels", 851, 311, stylish(3, 3, 160)},
 		// The headshots give way to a full bio.
 		{"team-bios 4 members on abstract", "team-bios", 687, 294, team(4, 180)},

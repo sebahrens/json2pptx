@@ -31,6 +31,14 @@ type AutofitParagraph struct {
 	// twelve bullets at 6pt space-after carry 72pt of spacing the glyph
 	// measurement never sees (go-slide-creator-wvr0).
 	SpaceAfterPt float64
+	// IndentEMU is the width the paragraph's hanging indent takes from its
+	// lines: the left margin every line of a bulleted paragraph starts at
+	// (its bullet hangs in it). Measured at the full text width, "Run the
+	// runtime" (85pt) fitted a 90pt bullet column whose lines are 76pt wide:
+	// the writer stored no shrink for a list every renderer wraps onto one
+	// more line, and LibreOffice then shrank that one cell of a business
+	// model canvas (go-slide-creator-vn35f).
+	IndentEMU int64
 }
 
 // AutofitOptions tunes the scale search.
@@ -103,7 +111,11 @@ func autofitFitsAt(paras []AutofitParagraph, widthEMU int64, availableHeightPt f
 			continue
 		}
 		pt := p.FontPt * scale
-		m, err := MeasureRun(p.Text, opts.FontName, pt, widthEMU, 0)
+		lineW := widthEMU - p.IndentEMU
+		if lineW <= 0 {
+			lineW = widthEMU
+		}
+		m, err := MeasureRun(p.Text, opts.FontName, pt, lineW, 0)
 		if err != nil {
 			return true // cannot measure: do not invent an overflow
 		}
