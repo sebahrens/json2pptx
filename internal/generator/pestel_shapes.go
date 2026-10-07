@@ -41,8 +41,8 @@ const (
 	pestelGap int64 = 73152
 
 	// pestelHeaderFontSize is the segment header font size (hundredths of a point).
-	// 1600 = 16pt
-	pestelHeaderFontSize int = 1600
+	// 1400 = 14pt
+	pestelHeaderFontSize int = 1400
 
 	// pestelBodyFontSize is the bullet text size: the 12pt body step, the
 	// smallest size a projected slide carries. It was 11pt

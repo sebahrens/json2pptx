@@ -40,8 +40,8 @@ const (
 	swotGap int64 = 73152
 
 	// swotHeaderFontSize is the quadrant header font size (hundredths of a point).
-	// 1600 = 16pt
-	swotHeaderFontSize int = 1600
+	// 1400 = 14pt
+	swotHeaderFontSize int = 1400
 
 	// swotBodyFontSize is the bullet text font size (hundredths of a point).
 	// 1200 = 12pt
