@@ -268,6 +268,27 @@ func scaleStrokeWidths(s string) string {
 	})
 }
 
+// scaleStrokeDashes scales stroke-dasharray and stroke-dashoffset values in
+// style attributes. They are lengths in the same millimetre units as the
+// stroke width; left unscaled, a dash was drawn at about a quarter of its
+// length against a stroke scaled to px (go-slide-creator-rtfyz).
+var strokeDashRe = regexp.MustCompile(`stroke-dash(array|offset):([-0-9., ]+)`)
+
+func scaleStrokeDashes(s string) string {
+	return strokeDashRe.ReplaceAllStringFunc(s, func(match string) string {
+		colon := strings.IndexByte(match, ':')
+		fields := strings.FieldsFunc(match[colon+1:], func(r rune) bool { return r == ' ' || r == ',' })
+		for i, f := range fields {
+			v, err := strconv.ParseFloat(f, 64)
+			if err != nil {
+				return match
+			}
+			fields[i] = formatScaledNum(v * mmToPxFactor)
+		}
+		return match[:colon+1] + strings.Join(fields, " ")
+	})
+}
+
 // scaleTranslateTransforms scales translate(x,y) values in transform attributes.
 var translateRe = regexp.MustCompile(`translate\(([^)]+)\)`)
 
@@ -374,8 +395,9 @@ func scaleSVGToPixelCoordsSafe(svgContent []byte, widthMM, heightMM float64) []b
 	// 4. Scale font sizes
 	content = scaleFontSizes(content)
 
-	// 5. Scale stroke widths
+	// 5. Scale stroke widths and dash patterns
 	content = scaleStrokeWidths(content)
+	content = scaleStrokeDashes(content)
 
 	// 6. Scale transform translate values
 	content = scaleTranslateTransforms(content)

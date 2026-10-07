@@ -164,6 +164,14 @@ type SVGBuilder struct {
 	textBoxes     []drawnTextBox
 	textRotation  textRotation
 	rotationStack []textRotation
+
+	// dashPattern is the current dash pattern in points, as SetDashes was
+	// given it (nil = solid), and dashStack its saved values across Push /
+	// Pop. The canvas library reads a dash pattern as multiples of the
+	// stroke width, so the pattern is re-applied whenever either changes
+	// (applyDashes).
+	dashPattern []float64
+	dashStack   [][]float64
 }
 
 // FontErr returns the first font-related error recorded during text operations,
@@ -673,6 +681,7 @@ func (b *SVGBuilder) SetStrokeColor(c Color) *SVGBuilder {
 // SetStrokeWidth sets the stroke width in points.
 func (b *SVGBuilder) SetStrokeWidth(width float64) *SVGBuilder {
 	b.ctx.SetStrokeWidth(width * ptToMM)
+	b.applyDashes()
 	return b
 }
 
@@ -702,15 +711,38 @@ func (b *SVGBuilder) SetLineJoin(join LineJoin) *SVGBuilder {
 	return b
 }
 
-// SetDashes sets the dash pattern. Empty pattern means solid line.
+// SetDashes sets the dash pattern in points: SetDashes(6, 3) draws 6pt
+// dashes 3pt apart at any stroke width. Empty pattern means solid line.
 func (b *SVGBuilder) SetDashes(pattern ...float64) *SVGBuilder {
-	// Convert points to mm
-	mmPattern := make([]float64, len(pattern))
-	for i, v := range pattern {
-		mmPattern[i] = v * ptToMM
-	}
-	b.ctx.SetDashes(0, mmPattern...)
+	b.dashPattern = append([]float64(nil), pattern...)
+	b.applyDashes()
 	return b
+}
+
+// applyDashes hands the current dash pattern to the canvas in the unit the
+// canvas reads it in. Every canvas renderer (SVG, raster, PDF) multiplies a
+// dash pattern by the stroke width in millimetres (canvas.ScaleDash), so a
+// pattern passed in millimetres came out width-times too short: 6 / 3pt on a
+// 1.5pt stroke was drawn 1.1 / 0.6px, shorter than the line is wide, and
+// every dashed stroke read as a thin solid one (go-slide-creator-rtfyz). The
+// pattern is therefore divided by the stroke width, and re-applied when the
+// width changes, so the lengths drawn are the points asked for.
+func (b *SVGBuilder) applyDashes() {
+	if len(b.dashPattern) == 0 {
+		b.ctx.SetDashes(0)
+		return
+	}
+	width := b.ctx.StrokeWidth
+	if width <= 0 {
+		// Nothing is stroked at zero width; keep the pattern for the next
+		// SetStrokeWidth.
+		width = 1
+	}
+	scaled := make([]float64, len(b.dashPattern))
+	for i, v := range b.dashPattern {
+		scaled[i] = v * ptToMM / width
+	}
+	b.ctx.SetDashes(0, scaled...)
 }
 
 // Push saves the current state onto the stack.
@@ -718,6 +750,7 @@ func (b *SVGBuilder) Push() *SVGBuilder {
 	b.ctx.Push()
 	b.textColorStack = append(b.textColorStack, b.textColor)
 	b.rotationStack = append(b.rotationStack, b.textRotation)
+	b.dashStack = append(b.dashStack, b.dashPattern)
 	return b
 }
 
@@ -731,6 +764,10 @@ func (b *SVGBuilder) Pop() *SVGBuilder {
 	if n := len(b.rotationStack); n > 0 {
 		b.textRotation = b.rotationStack[n-1]
 		b.rotationStack = b.rotationStack[:n-1]
+	}
+	if n := len(b.dashStack); n > 0 {
+		b.dashPattern = b.dashStack[n-1]
+		b.dashStack = b.dashStack[:n-1]
 	}
 	return b
 }
