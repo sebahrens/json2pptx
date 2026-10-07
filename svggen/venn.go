@@ -452,6 +452,9 @@ func (vc *VennChart) drawCircleStroke(cl circleLayout) {
 // Uses SizeSmall for bold labels and SizeCaption for item text.
 const vennLoScale = 1.0
 
+// vennLinePitch is the line pitch of venn text, as a multiple of its size.
+const vennLinePitch = 1.25
+
 // vennLabelStep is the size of a region label relative to item text.
 const vennLabelStep = 14.0 / 12.0
 
@@ -1311,6 +1314,12 @@ func (d *VennDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVG
 		}
 
 		assumeSlidePlacement(builder, req)
+		// Labels and item lists at the slide floor are a third taller than
+		// they used to be; a tighter pitch gives the lines back so a list
+		// that fitted its circle still does.
+		if typ := builder.StyleGuide().Typography; typ != nil && typ.LineHeight > vennLinePitch {
+			typ.LineHeight = vennLinePitch
+		}
 		width, height := builder.Width(), builder.Height()
 		config := DefaultVennConfig(width, height)
 
