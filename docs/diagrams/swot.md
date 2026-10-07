@@ -49,6 +49,17 @@ At least one quadrant must be provided:
 | `quadrant_opacity` | `number` | - | Fill opacity (0-1) |
 | `corner_radius` | `number` | - | Rounded corner radius |
 
+## Native Layout
+
+Tone carries the two readings of the grid. The helpful column (Strengths,
+Opportunities) takes tints of the template accent and the harmful column
+(Weaknesses, Threats) the neutral surface; the internal row (Strengths,
+Weaknesses) is the deeper step of each — the accent's Lighter 80% and `dk1` at
+8% — and the external row (Opportunities, Threats) the paler one — Lighter 90%
+and `dk1` at 4%. Headings are 16pt bold and bullets 12pt, both in the text
+ink. One accent, no second hue; `style.colors` recolours the quadrants in
+order (`["accent1","accent2"]` gives the two-accent polarity look).
+
 ## Examples
 
 ### Product Launch

@@ -531,8 +531,20 @@ func porterForceFill(f porterForceData, themeColors []types.ThemeColor) pptx.Fil
 	if f.forceType == porterRivalry {
 		return nativeSurface{colors: themeColors}.emphasis().fill()
 	}
-	scheme, lumMod, lumOff := porterIntensityColor(f.intensity)
+	scheme, lumMod, lumOff := porterForceTint(f, themeColors)
 	return porterBoxFill(scheme, lumMod, lumOff)
+}
+
+// porterForceTint is porterIntensityColor resolved against the template: the
+// intensity steps are tints of the template's primary accent, the colour the
+// rivalry block is filled with, so the diagram keeps one hue on a template
+// whose primary fill is not accent1.
+func porterForceTint(f porterForceData, themeColors []types.ThemeColor) (scheme string, lumMod, lumOff int) {
+	scheme, lumMod, lumOff = porterIntensityColor(f.intensity)
+	if scheme == porterAccent {
+		scheme = nativeSurface{colors: themeColors}.accent()
+	}
+	return scheme, lumMod, lumOff
 }
 
 // porterForceInk names the scheme colour of a force's text: the emphasis ink
@@ -862,7 +874,7 @@ func porterFitBudget(forceMap map[porterForceType]porterForceData, bounds types.
 // porterHeaderParagraphs are a force box's header and, when the author stated
 // one, its intensity line.
 func porterHeaderParagraphs(f porterForceData, isCenter bool, themeColors []types.ThemeColor) []pptx.Paragraph {
-	scheme, lumMod, lumOff := porterIntensityColor(f.intensity)
+	scheme, lumMod, lumOff := porterForceTint(f, themeColors)
 	// The intensity line used to be painted in the box's own scheme colour on
 	// the box's own tint of it: "Medium (50%)" measured 1.55:1 on the old accent3
 	// tile. Pick it against the fill the reader actually sees, the same way the

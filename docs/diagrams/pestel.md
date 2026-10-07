@@ -60,6 +60,14 @@ Use individual category keys or a segments array:
 | `title` | `string` | - | Diagram title |
 | `subtitle` | `string` | - | Subtitle below title |
 
+## Native Layout
+
+The six segments are an open 3 × 2 grid, like the `card-grid` pattern's open
+cards: each segment a bold 16pt heading standing on one rule (1pt, `dk1` at
+60%) with its 12pt bullets under it, on the page with whitespace gutters and
+no tile. The first column starts on the slide's text edge. `style.colors`
+brings back accent-tinted cards, one colour per segment in order.
+
 ## Examples
 
 ### Using Segments Array

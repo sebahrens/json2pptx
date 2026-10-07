@@ -49,11 +49,12 @@ LOW      │   Under   │  Average  │   Solid   │  row 2
                ← PERFORMANCE →
 ```
 
-Cell fills follow the template's `semantic_accents`: low score bands use the
-negative accent, the middle diagonal uses neutral, and high score bands use
-positive. Adjacent bands vary lightness within the same semantic hue, so the
-grid preserves its meaning across templates instead of assuming fixed accent
-numbers are red, yellow, or green.
+Cell fills are one ladder from neutral to accent along the diagonal.
+Performance plus potential gives five score bands: the lowest (Under
+Performer) sits on the neutral surface (`dk1` at 4%) and the four above it
+take the template accent's Lighter 90 / 80 / 65 / 50% swatches, so the eye is
+led from the grey corner to the Star cell. One accent; the template's
+`semantic_accents` are not used.
 
 ## Required Fields
 
@@ -250,9 +251,10 @@ Rating words are case-insensitive; the strings `"1"`, `"2"`, and `"3"` are also 
 
 ## Native Layout
 
-The native grid is drawn on its axes: a line with an arrowhead along the bottom
-(rising to the right) and up the left (rising to the top), each beside its bold
-title. The arrow says which way a scale rises, so `Low / Medium / High` tick
+The native grid is drawn on its axes: a pale block arrow along the bottom
+(pointing right) and up the left (pointing up), each carrying its bold 12pt
+title. An axis with tick labels but no title keeps a plain line with an
+arrowhead. The arrow says which way a scale rises, so `Low / Medium / High` tick
 labels are drawn only when `x_axis_labels` / `y_axis_labels` name them. An axis
 title costs 27pt of the region, a row of tick labels 20pt more.
 

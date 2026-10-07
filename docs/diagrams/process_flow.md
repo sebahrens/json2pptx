@@ -78,6 +78,30 @@ Document workflows with steps, decisions, and connections.
 | `direction` | `string` | `horizontal` | Flow direction: `horizontal`, `vertical` |
 | `footnote` | `string` | - | Footnote text |
 
+**A plain sequence is a band of interlocking arrows.** A horizontal flow of
+`step` and `decision` steps whose connections are the generated defaults (no
+`connections` key) or an unlabelled chain from each step to the next is drawn
+like the `process-flow` pattern: the first step a pentagon, every later step a
+chevron tucked round the point before it, each carrying a `01`, `02`, …
+numeral over its bold label and its description, all in the accent's light
+tint. No connector is drawn — the shapes are the order. A decision stays a
+diamond (unnumbered): the solid accent when it is the flow's only decision,
+the tint under an accent outline otherwise; the generated `Yes` / `No`
+branches are not drawn on a band. Up to four steps in a row are set at 24pt
+numerals, 16pt labels and 14pt descriptions; five or six at 20 / 14 / 12pt;
+more at 18 / 14 / 12pt. A row holds as many steps as keep every label's
+longest word whole (and give a description a 1.6in line); the rest wrap onto
+balanced rows (seven steps with descriptions: 4 + 3), and each second row runs
+back right to left with its arrows mirrored, starting under the end of the row
+above.
+
+**Anything else is a flowchart.** Authored `connections` that branch, skip or
+carry a `label` or `style: "dashed"`, a `start` / `end` / `subprocess` step,
+`direction: "vertical"`, or a sequence too long for three rows keep boxes and
+connectors: steps in the accent's light tint (decisions outlined in the
+accent) joined by neutral 1.5pt connectors (`dk1` at 50%) — a connector is
+never drawn in the accent.
+
 In `vertical` mode, step boxes are content-sized and capped at 40% of the
 diagram width so the flow retains side lanes. A decision with two or more
 outgoing connections places its direct targets on left/right lanes (`Yes` left,
