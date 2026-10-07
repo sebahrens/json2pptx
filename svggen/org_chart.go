@@ -744,7 +744,9 @@ func (oc *OrgChartRenderer) drawConnectors(node *layoutNode) {
 		// Single child: straight vertical line down
 		child := node.children[0]
 		childTopY := child.y - oc.config.NodeHeight/2
-		b.DrawLine(node.x, midY, child.x, midY)
+		if child.x != node.x {
+			b.DrawLine(node.x, midY, child.x, midY)
+		}
 		b.DrawLine(child.x, midY, child.x, childTopY)
 	} else {
 		// Multiple children: horizontal bar with drop-downs

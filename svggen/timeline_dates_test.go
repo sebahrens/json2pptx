@@ -1,7 +1,6 @@
 package svggen
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 	"testing"
@@ -9,7 +8,7 @@ import (
 
 // TestTimeline_CS6_DateAccuracy reproduces bead go-slide-creator-5fni5:
 // warm-coral slide 6 shows wrong milestone dates (May/Sep/Nov instead of Jun/Oct/Dec).
-// The fix ensures the time axis prioritises labels at activity-aligned dates.
+// The milestone track prints each date in the event's own label block.
 func TestTimeline_CS6_DateAccuracy(t *testing.T) {
 	d := &Timeline{NewBaseDiagram("timeline")}
 
@@ -50,27 +49,18 @@ func TestTimeline_CS6_DateAccuracy(t *testing.T) {
 
 	content := doc.String()
 
-	// SVG uses HTML entities for apostrophes: &#39; instead of '
-	// Check both forms for robustness
-	checkDate := func(month string) bool {
-		literal := fmt.Sprintf("%s '26", month)
-		encoded := fmt.Sprintf("%s &#39;26", month)
-		return strings.Contains(content, literal) || strings.Contains(content, encoded)
-	}
-
-	// All four milestone months MUST appear on the axis
-	expectedMonths := []string{"Mar", "Jun", "Oct", "Dec"}
-	for _, month := range expectedMonths {
-		if !checkDate(month) {
-			t.Errorf("Expected axis label for %s '26 not found in SVG", month)
+	// Every milestone prints the date its author wrote, in its own label
+	// block, so no axis tick can attribute it to a neighbouring month.
+	for _, date := range []string{"Mar 2026", "Jun 2026", "Oct 2026", "Dec 2026"} {
+		if !strings.Contains(content, ">"+date+"<") {
+			t.Errorf("milestone date %q not printed with its label", date)
 		}
 	}
 
-	// The old wrong dates (May, Sep, Nov) should NOT appear
-	wrongMonths := []string{"May", "Sep", "Nov"}
-	for _, month := range wrongMonths {
-		if checkDate(month) {
-			t.Errorf("Unexpected axis label %s '26 found — activity dates should have replaced it", month)
+	// The old wrong dates (May, Sep, Nov) must not appear anywhere.
+	for _, month := range []string{"May", "Sep", "Nov"} {
+		if strings.Contains(content, month+" '26") || strings.Contains(content, month+" &#39;26") || strings.Contains(content, month+" 2026") {
+			t.Errorf("unexpected date %s 2026 found", month)
 		}
 	}
 

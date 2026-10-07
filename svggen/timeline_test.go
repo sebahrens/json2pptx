@@ -900,9 +900,9 @@ func TestTimeline_MarkdownFormat(t *testing.T) {
 	}
 }
 
-// TestTimeline_NarrowColumnDropsDescriptions verifies that descriptions are
-// dropped in narrow two-column layouts where vertical space is too tight,
-// preventing illegible <8pt text. Labels should still render.
+// TestTimeline_NarrowColumnDropsDescriptions verifies that a narrow
+// two-column timeline keeps every label and sets no text below the slide
+// floor: descriptions are cut to the lines that fit, never shrunk.
 func TestTimeline_NarrowColumnDropsDescriptions(t *testing.T) {
 	d := &Timeline{NewBaseDiagram("timeline")}
 
@@ -952,11 +952,14 @@ func TestTimeline_NarrowColumnDropsDescriptions(t *testing.T) {
 		}
 	}
 
-	// Descriptions should be dropped in narrow layout to prevent illegible text
-	for _, desc := range []string{"New architecture launch", "Advanced features rollout", "Ecosystem expansion", "Intelligent automation"} {
-		if strings.Contains(content, desc) {
-			t.Errorf("Description %q should be dropped in narrow layout to prevent illegible text", desc)
-		}
+	// The track never sets text below the slide floor: a description is
+	// drawn at body size or cut, not shrunk to fit.
+	b, _, err := d.RenderWithBuilder(req)
+	if err != nil {
+		t.Fatalf("RenderWithBuilder() error = %v", err)
+	}
+	if min := b.MinDrawnFontSize(); min+0.05 < diagramReadablePt {
+		t.Errorf("narrow timeline drew text at %.1fpt, below the %.0fpt floor", min, diagramReadablePt)
 	}
 }
 
