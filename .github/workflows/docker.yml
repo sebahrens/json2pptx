@@ -1,11 +1,23 @@
 name: Docker
 
+# A change that cannot alter the image does not build one. Tag pushes ignore
+# path filters, so a release always builds.
 on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths-ignore:
+      - 'beads/**'
+      - 'docs/**'
+      - 'scripts/ci_test_durations.txt'
+      - 'scripts/ci_test_affinity.txt'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'beads/**'
+      - 'docs/**'
+      - 'scripts/ci_test_durations.txt'
+      - 'scripts/ci_test_affinity.txt'
 
 permissions:
   contents: read

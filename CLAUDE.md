@@ -124,7 +124,7 @@ examples/         # Example JSON input decks (+ diagrams/, semantic/)
 - Golden file tests use `testdata/` directories within packages
 - Font metrics differ across platforms (macOS vs Linux CI) -- some tests use `t.Logf` instead of `t.Errorf` for font-dependent assertions
 - `svggen/` is a separate module -- run its tests with `cd svggen && go test ./...`
-- CI runs on GitHub Actions (`.github/workflows/ci.yml`)
+- CI runs on GitHub Actions (`.github/workflows/ci.yml`); its `changes` job (`scripts/ci_changed_paths.sh`) skips jobs whose inputs a push did not touch: lint and security need Go changes, the svggen jobs need `svggen/` changes, and a push of only the bead export or the shard tables runs none of the heavy jobs
 
 ## Templates
 

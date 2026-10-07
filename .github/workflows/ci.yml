@@ -10,7 +10,29 @@ permissions:
   contents: read
 
 jobs:
+  # Which groups of jobs this change needs (scripts/ci_changed_paths.sh): a
+  # push that did not touch a job's inputs skips it. A skipped job counts as
+  # passed for a required check.
+  changes:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.paths.outputs.go }}
+      svggen: ${{ steps.paths.outputs.svggen }}
+      build: ${{ steps.paths.outputs.build }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: paths
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          scripts/ci_changed_paths.sh "$BASE" "$GITHUB_SHA" | tee -a "$GITHUB_OUTPUT"
+
   template-portability-rendered:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
@@ -39,6 +61,8 @@ jobs:
           path: output/portability-matrix
 
   test:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     timeout-minutes: 100
     runs-on: ubuntu-latest
     steps:
@@ -121,6 +145,8 @@ jobs:
             coverage.html
 
   template-pattern-matrix:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     # Renders every named pattern × every bundled template via runJSONMode and
     # writes a pass/fail markdown matrix under output/test-matrix/MATRIX.md.
     # Owned by go-slide-creator-qxgj; covers the template-coverage epic
@@ -170,6 +196,8 @@ jobs:
         run: bash scripts/check-skill-canonical.sh
 
   lint:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
@@ -209,6 +237,8 @@ jobs:
           echo "✓ install.sh has executable bit set (${MODE})"
 
   svggen-test:
+    needs: changes
+    if: needs.changes.outputs.svggen == 'true'
     timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
@@ -237,6 +267,8 @@ jobs:
         run: cd svggen && go vet ./...
 
   svggen-lint:
+    needs: changes
+    if: needs.changes.outputs.svggen == 'true'
     timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
@@ -259,6 +291,8 @@ jobs:
           args: --timeout=5m
 
   security:
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
@@ -281,6 +315,8 @@ jobs:
         run: govulncheck ./...
 
   palette-parity:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
@@ -351,6 +387,8 @@ jobs:
             ./smoke
 
   pptx-validation:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
@@ -510,6 +548,8 @@ jobs:
           exit 1
 
   corpus-headless:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     # Generates every examples/*.json against every bundled template and
     # round-trips each output through headless LibreOffice. Asserts that
     # soffice emits no repair/corruption/invalid/malformed warnings — the
@@ -559,6 +599,8 @@ jobs:
         run: go test -tags=integration ./cmd/json2pptx/... -run '${{ matrix.run }}' -skip '${{ matrix.skip }}' -count=1 -timeout=40m -v
 
   render-integration:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
     # Exercises the tool-gated render and SVG-conversion tests that skip by
     # default when LibreOffice/ImageMagick/rsvg-convert are absent. Without this
     # job the internal/render integration tests (TestIntegrationRenderSlide,
