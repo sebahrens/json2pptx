@@ -3003,164 +3003,20 @@ func (sc *ScatterChart) drawPointLabels(labels []scatterLabel) {
 	b.SetFontWeight(style.Typography.WeightNormal)
 	b.SetTextColor(style.Palette.TextPrimary)
 
-	type labelRect struct {
-		x1, y1, x2, y2 float64
-	}
-	var placedLabels []labelRect
-
-	pad := 2.0
-	labelH := labelFontSize * 1.3
-
-	overlaps := func(r labelRect) bool {
-		for _, placed := range placedLabels {
-			if r.x1-pad < placed.x2+pad && r.x2+pad > placed.x1-pad &&
-				r.y1-pad < placed.y2+pad && r.y2+pad > placed.y1-pad {
-				return true
-			}
-		}
-		return false
-	}
-
-	// inArea reports whether a label box lies in the label area. A label
-	// placed right of a point near the plot's right edge ran off the canvas
-	// ("Vendor onboardi"): it now goes to the left, above or below instead
-	// (go-slide-creator-fchaq).
-	area := sc.labelArea
-	inArea := func(r labelRect) bool {
-		if area.W <= 0 || area.H <= 0 {
-			return true
-		}
-		return r.x1 >= area.X-0.5 && r.x2 <= area.X+area.W+0.5 && r.y1 >= area.Y-labelH*0.5 && r.y2 <= area.Y+area.H+0.5
-	}
-	// onMarker reports whether a label box covers another point's marker: a
-	// bubble's label must not be set across its neighbour.
-	onMarker := func(r labelRect, self int) bool {
-		if !sc.config.VariableSize {
-			return false // a dot under a label's edge is no harm
-		}
-		for i, other := range labels {
-			if i == self || other.radius <= 0 {
-				continue
-			}
-			nx := math.Max(r.x1, math.Min(other.x, r.x2))
-			ny := math.Max(r.y1, math.Min(other.y, r.y2))
-			if math.Hypot(nx-other.x, ny-other.y) < other.radius-1 {
-				return true
-			}
-		}
-		return false
-	}
-
+	p := &scatterLabelPlacer{b: b, labels: labels, area: sc.labelArea, font: labelFontSize, labelH: labelFontSize * 1.3}
 	skipped := 0
 	for li, lab := range labels {
-		px, py := lab.x, lab.y
 		lbl := lab.text
 		if len([]rune(lbl)) > maxLabelChars {
 			lbl = string([]rune(lbl)[:maxLabelChars-1]) + "\u2026"
 		}
-
 		labelW, _ := b.MeasureText(lbl)
 		labelW *= 1.1 // safety margin
-		pointOffset := math.Max(lab.radius, sc.config.PointSize/2) + 3
-
-		// A bubble wide enough for its own label carries it: the label then
-		// cannot be read as belonging to a neighbour.
-		if sc.config.VariableSize && lab.radius > 0 {
-			half := math.Sqrt(math.Max(0, lab.radius*lab.radius-(labelH/2)*(labelH/2)))
-			inside := labelRect{px - labelW/2, py - labelH/2, px + labelW/2, py + labelH/2}
-			if labelW/2+pad <= half && !overlaps(inside) {
-				b.Push()
-				b.SetTextColor(lab.fill.TextColorFor())
-				b.DrawText(lbl, px, py, TextAlignCenter, TextBaselineMiddle)
-				b.Pop()
-				placedLabels = append(placedLabels, inside)
-				continue
-			}
+		offset := math.Max(lab.radius, sc.config.PointSize/2) + 3
+		if sc.config.VariableSize && p.placeInside(lab, lbl, labelW) {
+			continue
 		}
-
-		// Try 4 positions: right, above, left, below
-		type candidate struct {
-			x, y  float64
-			align TextAlign
-			base  TextBaseline
-			rect  labelRect
-		}
-
-		candidates := []candidate{
-			{ // Right
-				x: px + pointOffset, y: py - labelH/4,
-				align: TextAlignLeft, base: TextBaselineBottom,
-				rect: labelRect{px + pointOffset, py - labelH, px + pointOffset + labelW, py},
-			},
-			{ // Above
-				x: px, y: py - pointOffset - 2,
-				align: TextAlignCenter, base: TextBaselineBottom,
-				rect: labelRect{px - labelW/2, py - pointOffset - labelH - 2, px + labelW/2, py - pointOffset - 2},
-			},
-			{ // Left
-				x: px - pointOffset, y: py - labelH/4,
-				align: TextAlignRight, base: TextBaselineBottom,
-				rect: labelRect{px - pointOffset - labelW, py - labelH, px - pointOffset, py},
-			},
-			{ // Below
-				x: px, y: py + pointOffset + labelH,
-				align: TextAlignCenter, base: TextBaselineBottom,
-				rect: labelRect{px - labelW/2, py + pointOffset, px + labelW/2, py + pointOffset + labelH},
-			},
-		}
-		// The four diagonals, tried after the four sides: in a crowded or
-		// narrow plot they are often the only free places.
-		diag := pointOffset * 0.72
-		for _, d := range [][2]float64{{1, -1}, {1, 1}, {-1, -1}, {-1, 1}} {
-			c := candidate{x: px + d[0]*diag, align: TextAlignLeft, base: TextBaselineBottom}
-			x1 := c.x
-			if d[0] < 0 {
-				c.align = TextAlignRight
-				x1 = c.x - labelW
-			}
-			y2 := py - diag
-			if d[1] > 0 {
-				y2 = py + diag + labelH
-			}
-			c.y = y2 - labelH/4
-			c.rect = labelRect{x1, y2 - labelH, x1 + labelW, y2}
-			candidates = append(candidates, c)
-		}
-
-		placed := false
-		for _, c := range candidates {
-			if inArea(c.rect) && !overlaps(c.rect) && !onMarker(c.rect, li) {
-				b.DrawText(lbl, c.x, c.y, c.align, c.base)
-				placedLabels = append(placedLabels, c.rect)
-				placed = true
-				break
-			}
-		}
-		// No side holds the whole label: shorten it into the roomier of the
-		// two horizontal sides rather than drop it.
-		if !placed && area.W > 0 {
-			right, left := candidates[0], candidates[2]
-			availRight := area.X + area.W - right.rect.x1
-			availLeft := left.rect.x2 - area.X
-			side, avail := right, availRight
-			if availLeft > availRight {
-				side, avail = left, availLeft
-			}
-			if short := b.TruncateToWidth(lbl, avail/1.1); avail >= labelFontSize*scatterLabelMinEm && short != "" && short != lbl {
-				w, _ := b.MeasureText(short)
-				w *= 1.1
-				r := labelRect{side.rect.x1, side.rect.y1, side.rect.x1 + w, side.rect.y2}
-				if side.align == TextAlignRight {
-					r = labelRect{side.rect.x2 - w, side.rect.y1, side.rect.x2, side.rect.y2}
-				}
-				if inArea(r) && !overlaps(r) && !onMarker(r, li) {
-					b.DrawText(short, side.x, side.y, side.align, side.base)
-					placedLabels = append(placedLabels, r)
-					placed = true
-				}
-			}
-		}
-		if !placed {
+		if !p.placeBeside(li, lab, lbl, labelW, offset) {
 			skipped++
 		}
 	}
@@ -3182,6 +3038,162 @@ func (sc *ScatterChart) drawPointLabels(labels []scatterLabel) {
 			},
 		})
 	}
+}
+
+// scatterLabelRect is a label's box.
+type scatterLabelRect struct {
+	x1, y1, x2, y2 float64
+}
+
+// scatterLabelSpot is one place a label can go beside its point.
+type scatterLabelSpot struct {
+	x, y  float64
+	align TextAlign
+	rect  scatterLabelRect
+}
+
+// scatterLabelPlacer places the point labels of one chart against one shared
+// set of occupied boxes.
+type scatterLabelPlacer struct {
+	b      *SVGBuilder
+	labels []scatterLabel
+	area   Rect // where a label may go; zero constrains nothing
+	font   float64
+	labelH float64
+	placed []scatterLabelRect
+}
+
+// scatterLabelPad is the clearance kept between two labels.
+const scatterLabelPad = 2.0
+
+// overlaps reports whether r comes within the pad of a label already placed.
+func (p *scatterLabelPlacer) overlaps(r scatterLabelRect) bool {
+	for _, o := range p.placed {
+		if r.x1-scatterLabelPad < o.x2+scatterLabelPad && r.x2+scatterLabelPad > o.x1-scatterLabelPad &&
+			r.y1-scatterLabelPad < o.y2+scatterLabelPad && r.y2+scatterLabelPad > o.y1-scatterLabelPad {
+			return true
+		}
+	}
+	return false
+}
+
+// inArea reports whether r lies in the label area. A label placed right of a
+// point near the plot's right edge ran off the canvas ("Vendor onboardi"): it
+// now goes to the left, above or below instead (go-slide-creator-fchaq).
+func (p *scatterLabelPlacer) inArea(r scatterLabelRect) bool {
+	a := p.area
+	if a.W <= 0 || a.H <= 0 {
+		return true
+	}
+	return r.x1 >= a.X-0.5 && r.x2 <= a.X+a.W+0.5 && r.y1 >= a.Y-p.labelH*0.5 && r.y2 <= a.Y+a.H+0.5
+}
+
+// onMarker reports whether r covers another point's marker: a label must not
+// be set across its neighbour's dot or bubble.
+func (p *scatterLabelPlacer) onMarker(r scatterLabelRect, self int) bool {
+	for i, other := range p.labels {
+		if i == self || other.radius <= 0 {
+			continue
+		}
+		nx := math.Max(r.x1, math.Min(other.x, r.x2))
+		ny := math.Max(r.y1, math.Min(other.y, r.y2))
+		if math.Hypot(nx-other.x, ny-other.y) < other.radius-1 {
+			return true
+		}
+	}
+	return false
+}
+
+// free reports whether a label may take r.
+func (p *scatterLabelPlacer) free(r scatterLabelRect, self int) bool {
+	return p.inArea(r) && !p.overlaps(r) && !p.onMarker(r, self)
+}
+
+// placeInside sets a bubble's label on the bubble when the bubble is wide
+// enough for it: the label then cannot be read as belonging to a neighbour.
+func (p *scatterLabelPlacer) placeInside(lab scatterLabel, text string, w float64) bool {
+	if lab.radius <= 0 {
+		return false
+	}
+	half := math.Sqrt(math.Max(0, lab.radius*lab.radius-(p.labelH/2)*(p.labelH/2)))
+	r := scatterLabelRect{lab.x - w/2, lab.y - p.labelH/2, lab.x + w/2, lab.y + p.labelH/2}
+	if w/2+scatterLabelPad > half || p.overlaps(r) {
+		return false
+	}
+	p.b.Push()
+	p.b.SetTextColor(lab.fill.TextColorFor())
+	p.b.DrawText(text, lab.x, lab.y, TextAlignCenter, TextBaselineMiddle)
+	p.b.Pop()
+	p.placed = append(p.placed, r)
+	return true
+}
+
+// spots lists the places a label of width w can take beside its point, in
+// order of preference: right, above, left, below, then the four diagonals,
+// which in a crowded or narrow plot are often the only free ones.
+func (p *scatterLabelPlacer) spots(px, py, w, offset float64) []scatterLabelSpot {
+	h := p.labelH
+	out := []scatterLabelSpot{
+		{x: px + offset, y: py - h/4, align: TextAlignLeft, rect: scatterLabelRect{px + offset, py - h, px + offset + w, py}},
+		{x: px, y: py - offset - 2, align: TextAlignCenter, rect: scatterLabelRect{px - w/2, py - offset - h - 2, px + w/2, py - offset - 2}},
+		{x: px - offset, y: py - h/4, align: TextAlignRight, rect: scatterLabelRect{px - offset - w, py - h, px - offset, py}},
+		{x: px, y: py + offset + h, align: TextAlignCenter, rect: scatterLabelRect{px - w/2, py + offset, px + w/2, py + offset + h}},
+	}
+	diag := offset * 0.72
+	for _, d := range [][2]float64{{1, -1}, {1, 1}, {-1, -1}, {-1, 1}} {
+		spot := scatterLabelSpot{x: px + d[0]*diag, align: TextAlignLeft}
+		x1 := spot.x
+		if d[0] < 0 {
+			spot.align = TextAlignRight
+			x1 = spot.x - w
+		}
+		y2 := py - diag
+		if d[1] > 0 {
+			y2 = py + diag + h
+		}
+		spot.y = y2 - h/4
+		spot.rect = scatterLabelRect{x1, y2 - h, x1 + w, y2}
+		out = append(out, spot)
+	}
+	return out
+}
+
+// placeBeside sets a label in the first free spot beside its point. When no
+// spot holds the whole label it is shortened into the roomier of the two
+// horizontal sides rather than dropped; it reports false when even that
+// cannot be placed.
+func (p *scatterLabelPlacer) placeBeside(self int, lab scatterLabel, text string, w, offset float64) bool {
+	spots := p.spots(lab.x, lab.y, w, offset)
+	for _, s := range spots {
+		if p.free(s.rect, self) {
+			p.b.DrawText(text, s.x, s.y, s.align, TextBaselineBottom)
+			p.placed = append(p.placed, s.rect)
+			return true
+		}
+	}
+	if p.area.W <= 0 {
+		return false
+	}
+	side, avail := spots[0], p.area.X+p.area.W-spots[0].rect.x1
+	if left := spots[2].rect.x2 - p.area.X; left > avail {
+		side, avail = spots[2], left
+	}
+	short := p.b.TruncateToWidth(text, avail/1.1)
+	if avail < p.font*scatterLabelMinEm || short == "" || short == text {
+		return false
+	}
+	sw, _ := p.b.MeasureText(short)
+	sw *= 1.1
+	r := scatterLabelRect{side.rect.x1, side.rect.y1, side.rect.x1 + sw, side.rect.y2}
+	if side.align == TextAlignRight {
+		r = scatterLabelRect{side.rect.x2 - sw, side.rect.y1, side.rect.x2, side.rect.y2}
+	}
+	if !p.free(r, self) {
+		return false
+	}
+	p.b.DrawText(short, side.x, side.y, side.align, TextBaselineBottom)
+	p.placed = append(p.placed, r)
+	return true
 }
 
 // getColors returns colors for the series.
