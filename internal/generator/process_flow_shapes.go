@@ -267,6 +267,9 @@ type pfLayoutResult struct {
 	// band is set when the flow is drawn as interlocking arrows
 	// (process_flow_band.go); nil is the flowchart of boxes and connectors.
 	band *pfBand
+	// detours are the routes of the connections of a one-row flowchart that
+	// do not join a step to the step after it (process_flow_detour.go).
+	detours []pfDetour
 }
 
 // computeProcessFlowLayout calculates EMU positions for all steps within bounds.
@@ -288,6 +291,9 @@ func computeProcessFlowLayout(steps []processFlowStep, connections []processFlow
 	// A horizontal flow holds as many steps in a row as stay readable; the
 	// rest wrap. More rows than pfMaxRows read better as a vertical flow.
 	perRow := n
+	// A flow with branches, skips or loops routes them outside its rows
+	// (process_flow_detour.go).
+	detoured := direction == "horizontal" && pfNeedsDetours(steps, connections)
 	if direction == "horizontal" {
 		perRow = pfStepsPerRow(steps, bounds, font)
 		if rows := (n + perRow - 1) / perRow; rows > pfMaxRows && n > 4 {
@@ -319,6 +325,14 @@ func computeProcessFlowLayout(steps []processFlowStep, connections []processFlow
 		}
 	}
 
+	if detoured {
+		// Rows that read left to right with the detours in the gaps; a flow
+		// that does not fit that way is the vertical flow.
+		if rows, ok := pfLayoutDetouredRows(layouts, steps, connections, bounds, perRow); ok {
+			return rows
+		}
+		return pfLayoutVertical(layouts, steps, connections, bounds, font)
+	}
 	if totalW <= bounds.Width || n <= 4 {
 		return pfLayoutSingleRow(layouts, bounds, totalW, maxH)
 	}
@@ -977,10 +991,23 @@ func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.Bounding
 	}
 
 	// Generate connectors.
-	for _, conn := range connections {
+	for ci, conn := range connections {
 		srcOpts, srcOK := stepShapes[conn.from]
 		tgtOpts, tgtOK := stepShapes[conn.to]
 		if !srcOK || !tgtOK {
+			continue
+		}
+		// A connection that is not step-to-next-step runs outside the row.
+		if d, ok := pfDetourFor(layout.detours, ci); ok {
+			var segments [][]byte
+			segments, nextID = pfGenerateDetour(d, conn, nextID)
+			children = append(children, segments...)
+			if conn.label != "" {
+				if labelXML := pfGenerateDetourLabel(nextID, d, conn.label, meta.fontName); len(labelXML) > 0 {
+					children = append(children, labelXML)
+					nextID++
+				}
+			}
 			continue
 		}
 
@@ -1382,10 +1409,21 @@ func pfGenerateConnLabel(shapeID uint32, src, tgt pptx.ShapeOptions, label, dire
 	labelW, labelH := pfConnLabelSize(label, font)
 	labelBounds := pfConnLabelBounds(src.Bounds, tgt.Bounds, direction, labelW, labelH, src.Geometry == pptx.GeomFlowChartDecision)
 
-	b, err := pptx.GenerateShape(pptx.ShapeOptions{
+	b, err := pptx.GenerateShape(pfConnLabelShape(shapeID, label, labelBounds))
+	if err != nil {
+		slog.Warn("process flow conn label failed", "error", err)
+		return nil
+	}
+	return b
+}
+
+// pfConnLabelShape is a connection label: utility text on a knock-out of the
+// page colour.
+func pfConnLabelShape(shapeID uint32, label string, bounds pptx.RectEmu) pptx.ShapeOptions {
+	return pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     fmt.Sprintf("Conn Label %s", label),
-		Bounds:   labelBounds,
+		Bounds:   bounds,
 		Geometry: pptx.GeomRect,
 		Fill:     pptx.SchemeFill("bg1"),
 		Line:     pptx.Line{Width: 0, Fill: pptx.NoFill()},
@@ -1406,12 +1444,7 @@ func pfGenerateConnLabel(shapeID uint32, src, tgt pptx.ShapeOptions, label, dire
 				}},
 			}},
 		},
-	})
-	if err != nil {
-		slog.Warn("process flow conn label failed", "error", err)
-		return nil
 	}
-	return b
 }
 
 // pfConnLabelSize is the knock-out box a connection label needs: its measured
@@ -1510,7 +1543,8 @@ func abs64(v int64) int64 {
 }
 
 // pfEstimateShapeCount returns the estimated number of shapes for ID allocation.
-// 1 (group) + N (step shapes) + M (connectors) + L (connection labels)
+// 1 (group) + N (step shapes) + 3×M (a detoured connector is three segments)
+// + L (connection labels)
 func pfEstimateShapeCount(panels []nativePanelData) uint32 {
 	steps := 0
 	conns := 0
@@ -1525,7 +1559,7 @@ func pfEstimateShapeCount(panels []nativePanelData) uint32 {
 			steps++
 		}
 	}
-	return uint32(1 + steps + conns + labels)
+	return uint32(1 + steps + 3*conns + labels)
 }
 
 // Ensure math import is used.

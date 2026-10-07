@@ -102,6 +102,19 @@ connectors: steps in the accent's light tint (decisions outlined in the
 accent) joined by neutral 1.5pt connectors (`dk1` at 50%) — a connector is
 never drawn in the accent.
 
+**No connector crosses a step.** In a horizontal flowchart only a step and its
+right-hand neighbour in a row are joined by a straight connector. Every other
+connection — a decision's branch to the step after next (the generated `No`
+branch included), a loop back, the turn onto the next row — takes a detour
+outside the rows: it leaves its source's top or bottom edge, runs along a lane
+between the rows (skips forward under a row, loops back over it) and enters
+its target's top or bottom edge, with its label beside the first stub.
+Detours that would share a stretch of lane get lanes of their own, 0.3in
+apart. A flowchart with such connections sets its rows left to right, one
+under the other; a plain chain that wraps still snakes. When a detour would
+have to pass a whole row, or the rows and lanes do not fit the region, the
+flow is drawn in the vertical layout below instead.
+
 In `vertical` mode, step boxes are content-sized and capped at 40% of the
 diagram width so the flow retains side lanes. A decision with two or more
 outgoing connections places its direct targets on left/right lanes (`Yes` left,
