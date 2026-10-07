@@ -57,7 +57,9 @@ Display a single KPI value on its range: the value set large over a horizontal b
 | `thresholds` | `object[]` | - | Bands on the gauge. On the bar they are a neutral ladder (darkest at the low end) behind a thinner value bar unless a band names its `color`; on the dial an uncoloured band takes the template's negative / warning / positive colours |
 | `thresholds[].value` | `number` | - | Upper bound of this band; values beyond `max` are clamped so the last band stops at `max`, and bands at or below `min` are skipped |
 | `thresholds[].color` | `string` | - | Hex color for this band |
-| `thresholds[].label` | `string` | - | Band label |
+| `thresholds[].label` | `string` | - | Band label, set under its band on the bar. A band narrower than its label keeps the whole label: it is moved aside, or the labels take two rows |
+
+Every band bound inside the range is ticked and numbered, on the bar and on the dial (a dial with thresholds is ticked at its bounds instead of at even steps), so a zone ending at 95 of 100 shows its 95.
 
 ## Examples
 
