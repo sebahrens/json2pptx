@@ -272,7 +272,7 @@ func nineBoxTestSpec(names int, name string, extra map[string]any) *types.Diagra
 // gives up anything else; a cell they fit keeps one.
 func TestNineBoxSetsNamesInColumns(t *testing.T) {
 	env := nativeDiagramEnv{fontName: "Calibri"}
-	tints := nineBoxSemanticTints(nil)
+	tints := nineBoxLadderTints(nativeSurface{})
 	panels, _ := nineBoxPanels(exampleDiagramSpec(t, "nine_box_talent"))
 
 	short := layoutNineBox(panels, ptBounds(850, 273), tints, env)
@@ -314,7 +314,7 @@ func TestNineBoxSetsNamesInColumns(t *testing.T) {
 func TestNineBoxDrawsItsAxes(t *testing.T) {
 	bounds := ptBounds(850, 342)
 	example, _ := nativeGroupFor(t, exampleDiagramSpec(t, "nine_box_talent"), bounds, "Calibri")
-	for _, want := range []string{"Current Performance", "Growth Potential", `name="X-Axis"`, `name="Y-Axis"`, `vert="vert270"`, `type="triangle"`} {
+	for _, want := range []string{"Current Performance", "Growth Potential", `name="X-Axis"`, `name="Y-Axis"`, `vert="vert270"`, `prst="rightArrow"`, `prst="upArrow"`} {
 		if !strings.Contains(example, want) {
 			t.Errorf("example group lacks %s", want)
 		}

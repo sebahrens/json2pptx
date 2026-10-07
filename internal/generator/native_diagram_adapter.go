@@ -134,7 +134,7 @@ func layoutNativeDiagram(spec *types.DiagramSpec, bounds types.BoundingBox, env 
 	case isNineBoxDiagram(spec):
 		ins.panels, _ = nineBoxPanels(spec)
 		ins.nineBoxMode = true
-		ins.nineBoxTints = nineBoxSemanticTints(env.semanticAccents)
+		ins.nineBoxTints = nineBoxLadderTints(surface)
 		// A grid that cannot hold its names at 12pt says what a cell holds.
 		if !layoutNineBox(ins.panels, bounds, ins.nineBoxTints, env).fits {
 			budget := nineBoxFitBudget(ins.panels, bounds, ins.nineBoxTints, env)

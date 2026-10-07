@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -37,9 +38,8 @@ import (
 //           │(negative) │       │(negative) │       │ (neutral) │
 //           └──────────┘       └──────────┘       └──────────┘
 //
-// Color strategy: performance + potential forms five score bands. The bands
-// resolve through the template's negative, neutral, and positive semantic
-// accents; lightness distinguishes adjacent bands without unrelated hues.
+// Color strategy: performance + potential forms five score bands, drawn as one
+// ladder from the neutral surface (lowest) to the accent's deep tint (highest).
 
 // Nine Box EMU constants.
 const (
@@ -93,26 +93,27 @@ const (
 	nineBoxDefaultYTitle = "Potential"
 )
 
-func nineBoxSemanticTints(semanticAccents map[string]string) []taxonomyTint {
-	role := func(name, fallback string) string {
-		if resolved := strings.TrimSpace(semanticAccents[name]); resolved != "" {
-			return resolved
-		}
-		return fallback
-	}
-	negative := role("negative", "accent2")
-	neutral := role("neutral", "accent3")
-	positive := role("positive", "accent1")
-
-	// Score = performance + potential on two 0..2 axes. Each anti-diagonal
-	// therefore shares one meaning; only the outer bands need a lightness step
-	// to preserve the five-level progression.
+// nineBoxLadderTints are the nine cell fills resolved against a template: one
+// ladder from neutral to accent along the diagonal (go-slide-creator-mhc3k).
+//
+// Score = performance + potential on two 0..2 axes, so each anti-diagonal
+// shares one meaning and the grid has five bands. The lowest is the neutral
+// surface and the four above it are the accent's Lighter 90 / 80 / 65 / 50%
+// swatches, each darker than the one before: the eye is led from the grey
+// corner to the accent one. The bands used to resolve through the
+// template's negative / neutral / positive semantic accents, which on a
+// one-accent template were three tints of the same hue with the lowest band
+// as dark as the highest.
+func nineBoxLadderTints(surface nativeSurface) []taxonomyTint {
+	// The two upper bands step past the tonal system's content swatch so the
+	// five bands stay apart; Lighter 50% still carries dark text.
+	const nineBoxUpperLighter, nineBoxTopLighter = 65, 50
 	band := [5]taxonomyTint{
-		{scheme: negative, lumMod: 35000, lumOff: 65000},
-		{scheme: negative, lumMod: 20000, lumOff: 80000},
-		{scheme: neutral, lumMod: 25000, lumOff: 75000},
-		{scheme: positive, lumMod: 20000, lumOff: 80000},
-		{scheme: positive, lumMod: 35000, lumOff: 65000},
+		tonalTint(surface.neutral(patterns.NeutralTint4)),
+		tonalTint(surface.content(patterns.TonalLighterPale)),
+		tonalTint(surface.content(patterns.TonalLighterContent)),
+		tonalTint(surface.content(nineBoxUpperLighter)),
+		tonalTint(surface.content(nineBoxTopLighter)),
 	}
 	out := make([]taxonomyTint, 0, 9)
 	for row := 0; row < 3; row++ {
@@ -335,8 +336,12 @@ func nineBoxColumnText(names []string, j, n int, bodyW, pad int64, tint taxonomy
 		// The last name needs no space under it.
 		paras[len(paras)-1].SpaceAfter = 0
 	}
-	// Use the same accent color for bullets but with full strength.
-	bulletColor := pptx.ResolveColorString(tint.scheme)
+	// Bullets take the text ink on a theme-linked tint: an accent bullet on
+	// a tint of the same accent is the faintest mark in the cell.
+	bulletColor := pptx.SchemeFill("dk1")
+	if !pptx.IsSchemeColor(tint.scheme) && tint.scheme != "" {
+		bulletColor = pptx.ResolveColorString(tint.scheme)
+	}
 	for i := range paras {
 		if paras[i].Bullet != nil {
 			paras[i].Bullet.Color = bulletColor
@@ -545,7 +550,7 @@ func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 		return ""
 	}
 	if len(tints) != 9 {
-		tints = nineBoxSemanticTints(nil)
+		tints = nineBoxLadderTints(nativeSurface{colors: env.themeColors})
 	}
 	l := layoutNineBox(panels, bounds, tints, env)
 
@@ -599,15 +604,18 @@ func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 	return string(b)
 }
 
-// nineBoxAxisShapes draws the axes: below the grid a line with an arrowhead
-// pointing right, the tick labels the author named and the title; left of it
-// the same, turned to read bottom to top with the arrowhead pointing up.
+// nineBoxAxisShapes draws the axes: below the grid the tick labels the author
+// named and a block arrow pointing right that carries the axis title; left of
+// it the same, turned to read bottom to top with the arrow pointing up. An
+// axis with ticks but no title keeps a plain line with an arrowhead.
 func nineBoxAxisShapes(l nineBoxLayout, bounds types.BoundingBox, id func() uint32) [][]byte {
 	var out [][]byte
 	if l.axes.hasX() {
 		y := l.gridY + l.gridH + nineBoxAxisLineOffset
-		out = append(out, []byte(generateNineBoxAxisLineXML(
-			pptx.RectEmu{X: l.gridX, Y: y, CX: l.gridW, CY: 0}, id(), "X-Axis", false)))
+		if l.axes.xTitle == "" {
+			out = append(out, []byte(generateNineBoxAxisLineXML(
+				pptx.RectEmu{X: l.gridX, Y: y, CX: l.gridW, CY: 0}, id(), "X-Axis", false)))
+		}
 		y += nineBoxAxisLineClear
 		if l.axes.xTicks != [3]string{} {
 			for col, tick := range l.axes.xTicks {
@@ -621,14 +629,16 @@ func nineBoxAxisShapes(l nineBoxLayout, bounds types.BoundingBox, id func() uint
 			y += nineBoxAxisStrip
 		}
 		if l.axes.xTitle != "" {
-			out = append(out, []byte(generateNineBoxAxisLabelXML(
-				l.axes.xTitle, pptx.RectEmu{X: l.gridX, Y: y, CX: l.gridW, CY: nineBoxAxisStrip}, id(), nineBoxAxisTitleFontSize, true, false)))
+			out = append(out, []byte(generateNineBoxAxisArrowXML(
+				l.axes.xTitle, pptx.RectEmu{X: l.gridX, Y: y, CX: l.gridW, CY: nineBoxAxisStrip}, id(), false)))
 		}
 	}
 	if l.axes.hasY() {
 		x := l.gridX - nineBoxAxisLineOffset
-		out = append(out, []byte(generateNineBoxAxisLineXML(
-			pptx.RectEmu{X: x, Y: l.gridY, CX: 0, CY: l.gridH}, id(), "Y-Axis", true)))
+		if l.axes.yTitle == "" {
+			out = append(out, []byte(generateNineBoxAxisLineXML(
+				pptx.RectEmu{X: x, Y: l.gridY, CX: 0, CY: l.gridH}, id(), "Y-Axis", true)))
+		}
 		x -= nineBoxAxisLineClear
 		if l.axes.yTicks != [3]string{} {
 			x -= nineBoxAxisStrip
@@ -642,8 +652,8 @@ func nineBoxAxisShapes(l nineBoxLayout, bounds types.BoundingBox, id func() uint
 			}
 		}
 		if l.axes.yTitle != "" {
-			out = append(out, []byte(generateNineBoxAxisLabelXML(
-				l.axes.yTitle, pptx.RectEmu{X: bounds.X, Y: l.gridY, CX: nineBoxAxisStrip, CY: l.gridH}, id(), nineBoxAxisTitleFontSize, true, true)))
+			out = append(out, []byte(generateNineBoxAxisArrowXML(
+				l.axes.yTitle, pptx.RectEmu{X: bounds.X, Y: l.gridY, CX: nineBoxAxisStrip, CY: l.gridH}, id(), true)))
 		}
 	}
 	return out
@@ -692,6 +702,60 @@ func generateNineBoxAxisLineXML(rect pptx.RectEmu, shapeID uint32, name string, 
 	})
 	if err != nil {
 		slog.Warn("generateNineBoxAxisLineXML failed", "error", err)
+		return ""
+	}
+	return string(b)
+}
+
+// generateNineBoxAxisArrowXML produces an axis as a block arrow that carries
+// its title: a pale pentagon as long as the grid, pointing the way the scale
+// rises (go-slide-creator-mhc3k). rect is the strip the arrow occupies on the
+// slide. Both are block arrows whose shaft is as wide as their head (adj1 at
+// its maximum), which is a pentagon: the rightArrow preset below the grid,
+// the upArrow preset beside it with the title turned to read bottom to top.
+// Neither is rotated, so each shape's stored frame is where it is drawn.
+func generateNineBoxAxisArrowXML(title string, rect pptx.RectEmu, shapeID uint32, upward bool) string {
+	name, geom, vert := "X-Axis", pptx.GeomRightArrow, ""
+	insets := [4]int64{pptx.ShapeTextInsetEMU, 0, pptx.ShapeTextInsetEMU, 0}
+	if upward {
+		name, geom, vert = "Y-Axis", pptx.GeomUpArrow, "vert270"
+		insets = [4]int64{0, pptx.ShapeTextInsetEMU, 0, pptx.ShapeTextInsetEMU}
+	}
+	b, err := pptx.GenerateShape(pptx.ShapeOptions{
+		ID:       shapeID,
+		Name:     name,
+		Bounds:   rect,
+		Geometry: geom,
+		// adj1: the shaft's share of the arrow's thickness; adj2: the head's
+		// length against that thickness.
+		Adjustments: []pptx.AdjustValue{{Name: "adj1", Value: 100000}, {Name: "adj2", Value: 50000}},
+		Fill:        nativeNeutralFill(patterns.NeutralTint8),
+		Line:        pptx.Line{Width: 0, Fill: pptx.NoFill()},
+		Text: &pptx.TextBody{
+			Wrap:   "square",
+			Anchor: "ctr",
+			Vert:   vert,
+			// A strip one line thick: the title keeps the margins along its
+			// reading direction only.
+			Insets:         insets,
+			ExplicitInsets: true,
+			AutoFit:        "noAutofit",
+			Paragraphs: []pptx.Paragraph{{
+				Align:    "ctr",
+				NoBullet: true,
+				Runs: []pptx.Run{{
+					Text:     title,
+					Lang:     "en-US",
+					FontSize: nineBoxAxisTitleFontSize,
+					Bold:     true,
+					Dirty:    true,
+					Color:    pptx.SchemeFill("dk1"),
+				}},
+			}},
+		},
+	})
+	if err != nil {
+		slog.Warn("generateNineBoxAxisArrowXML failed", "error", err)
 		return ""
 	}
 	return string(b)
