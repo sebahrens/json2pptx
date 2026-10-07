@@ -86,11 +86,15 @@ Each force object takes `{label?, intensity (0.0-1.0), factors?: string[], descr
 
 ## Intensity Scale
 
-| Value | Meaning | Color |
+| Value | Meaning | Fill of the force |
 |-------|---------|-------|
-| 0.0 - 0.33 | Low intensity | Green |
-| 0.34 - 0.66 | Medium intensity | Yellow |
-| 0.67 - 1.0 | High intensity | Red |
+| 0.0 - 0.33 | Low intensity | The accent's Lighter 90% swatch |
+| 0.34 - 0.66 | Medium intensity | Lighter 80% |
+| 0.67 - 1.0 | High intensity | Lighter 50% |
+| omitted | Unscored | The neutral surface (`dk1` at 4%) |
+
+Rivalry is always the solid accent block, scored or not; its intensity is
+stated by its intensity line.
 
 ## Optional Fields
 
@@ -203,18 +207,20 @@ Each force object takes `{label?, intensity (0.0-1.0), factors?: string[], descr
 
 ## Native Layout
 
-Rivalry sits in the centre with a force on each side and an arrow from each
-pointing in. Headers, the intensity line and factors are 12pt (rivalry's
-header 14pt); factors are a bulleted list with a hanging indent, and every
-factor given is drawn.
+Rivalry is the one solid accent block in the centre (its text in the ink that
+reads on the accent). Each of the four forces around it is a pentagon whose
+point aims at it: the force's box plus a point on the side facing the centre,
+in the force's own fill, stopping 4pt short of the rivalry block. No connector
+line is drawn — the shapes carry the direction. Headers are 14pt bold, the
+intensity line and factors 12pt; factors are a bulleted list with a hanging
+indent in the text ink, and every factor given is drawn.
 
 Boxes are sized from their text. On a region at least 690pt wide the boxes
 above and below rivalry are bands — header and intensity on the left, the
 factors beside them — so the column of three boxes fits a short content area.
 A narrower region (a `shape_grid` cell) stacks the factors under the header.
-On the shortest shipped content area (273pt, `modern`, Calibri) every force
-holds three one-line factors at the uniform margin and four at tighter
-padding, a line taking about 39 characters in the narrowest box. A cross that
+The gap between rivalry and the forces above and below it is at least 5% of
+the height (14pt at least), the room their points need. A cross that
 does not fit tightens the top and bottom padding of its boxes (10 / 7 / 5pt)
 before any text is shrunk; one that needs a shrink reports
 `TEXT_BELOW_READABLE_MIN` with `fix.params.max_items_per_force` and

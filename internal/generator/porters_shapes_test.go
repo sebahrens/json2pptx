@@ -4,7 +4,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -244,7 +243,7 @@ func TestGeneratePortersFiveGroupXML_Basic(t *testing.T) {
 	if !strings.Contains(result, `val="accent1"`) {
 		t.Error("should contain accent1 fill")
 	}
-	for _, tint := range []string{`lumMod val="60000"`, `lumMod val="40000"`, `lumMod val="20000"`} {
+	for _, tint := range []string{`lumMod val="50000"`, `lumMod val="20000"`, `lumMod val="10000"`} {
 		if !strings.Contains(result, tint) {
 			t.Errorf("should contain intensity tint %q", tint)
 		}
@@ -255,19 +254,16 @@ func TestGeneratePortersFiveGroupXML_Basic(t *testing.T) {
 		t.Error("cards should be square-cornered rects, not roundRect")
 	}
 
-	// Should contain connectors
-	if !strings.Contains(result, "p:cxnSp") {
-		t.Error("should contain p:cxnSp connector elements")
+	// The forces point at rivalry with their shape, not with connector
+	// lines (go-slide-creator-av25u).
+	if strings.Contains(result, "p:cxnSp") {
+		t.Error("should contain no connector: each force's point carries the direction")
 	}
-
-	// Should contain straightConnector1
-	if !strings.Contains(result, `prst="straightConnector1"`) {
-		t.Error("should use straightConnector1 geometry for connectors")
+	if got := strings.Count(result, " Point\""); got != 4 {
+		t.Errorf("should contain 4 force points, got %d", got)
 	}
-
-	// Should contain triangle arrowheads
-	if !strings.Contains(result, `type="triangle"`) {
-		t.Error("should contain triangle arrowheads")
+	if !strings.Contains(result, `prst="triangle"`) || !strings.Contains(result, `prst="homePlate"`) {
+		t.Error("points should be triangle (above / below) and homePlate (left / right) presets")
 	}
 
 	// Should contain factor text
@@ -348,13 +344,13 @@ func TestPorterIntensityColor(t *testing.T) {
 		wantMod   int
 		wantOff   int
 	}{
-		{0.0, 20000, 80000},  // Low
-		{0.33, 20000, 80000}, // Low boundary
-		{0.34, 40000, 60000}, // Medium
-		{0.50, 40000, 60000}, // Medium
-		{0.66, 40000, 60000}, // Medium boundary
-		{0.67, 60000, 40000}, // High
-		{1.0, 60000, 40000},  // High
+		{0.0, 10000, 90000},  // Low: Lighter 90%
+		{0.33, 10000, 90000}, // Low boundary
+		{0.34, 20000, 80000}, // Medium: Lighter 80%
+		{0.50, 20000, 80000}, // Medium
+		{0.66, 20000, 80000}, // Medium boundary
+		{0.67, 50000, 50000}, // High: Lighter 50%
+		{1.0, 50000, 50000},  // High
 	}
 
 	for _, tt := range tests {
@@ -500,9 +496,9 @@ func TestAllocatePanelIconRelIDs_PortersMode(t *testing.T) {
 		t.Error("Porters groupXML should contain 'Porters Five Forces' name")
 	}
 
-	// Should contain connectors
-	if !strings.Contains(inserts[0].groupXML, "p:cxnSp") {
-		t.Error("Porters groupXML should contain connectors")
+	// The forces' points replace the connectors.
+	if strings.Contains(inserts[0].groupXML, "p:cxnSp") || !strings.Contains(inserts[0].groupXML, " Point\"") {
+		t.Error("Porters groupXML should contain force points and no connectors")
 	}
 
 	// Should be well-formed XML
@@ -535,101 +531,89 @@ func TestPorterDefaultLabel(t *testing.T) {
 	}
 }
 
-// go-slide-creator-2zej: connectorPairs assumed rect connection site 1 = right
-// and 3 = left, but OOXML lists rect sites counter-clockwise from the top
-// (0 = top, 1 = left, 2 = bottom, 3 = right). Both horizontal connectors
-// therefore attached to the FAR side of their box and ran straight through its
-// text into Rivalry. Sites must come from pptx.ConnectionSiteIndex so this
-// cannot drift from the shapegrid connector code again.
-func TestPorterConnectorSites(t *testing.T) {
-	xml := generatePorterFiveForcesXMLForTest(t)
-
-	type link struct{ from, to string }
-	// The side each connector must leave / enter, expressed as the canonical
-	// site index for a roundRect.
-	want := map[link][2]int{
-		{"Threat of New Entrants", "Competitive Rivalry"}: {
-			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideBottom),
-			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideTop),
-		},
-		{"Threat of Substitutes", "Competitive Rivalry"}: {
-			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideTop),
-			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideBottom),
-		},
-		{"Supplier Power", "Competitive Rivalry"}: {
-			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideRight),
-			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideLeft),
-		},
-		{"Buyer Power", "Competitive Rivalry"}: {
-			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideLeft),
-			pptx.ConnectionSiteIndex(pptx.GeomRoundRect, pptx.SideRight),
-		},
+// Each peripheral force is a pentagon aimed at rivalry: its point sits on the
+// side facing the centre, spans that side, takes the force's own fill and
+// stops just short of the rivalry block (go-slide-creator-av25u). The thin
+// connector arrows this replaces attached to the far side of their boxes once
+// (go-slide-creator-2zej) and vanished in PowerPoint once
+// (go-slide-creator-7ec2s); a shape has neither failure.
+func TestPorterForcesPointAtRivalry(t *testing.T) {
+	spec := porterTestSpec(3, "A factor")
+	bounds := ptBounds(900, 400)
+	layout := layoutPorter(porterForcesFromPanels(porterPanels(spec)), bounds, nativeDiagramEnv{fontName: "Arial"})
+	var center pptx.RectEmu
+	for _, box := range layout.boxes {
+		if box.force.forceType == porterRivalry {
+			center = box.rect
+		}
 	}
-
-	names := map[string]string{}
-	for _, m := range regexp.MustCompile(`<p:cNvPr id="(\d+)" name="Porter ([^"]*)"`).FindAllStringSubmatch(xml, -1) {
-		names[m[1]] = m[2]
-	}
-
-	starts := regexp.MustCompile(`<a:stCxn id="(\d+)" idx="(\d+)"/>`).FindAllStringSubmatch(xml, -1)
-	ends := regexp.MustCompile(`<a:endCxn id="(\d+)" idx="(\d+)"/>`).FindAllStringSubmatch(xml, -1)
-	if len(starts) != 4 || len(ends) != 4 {
-		t.Fatalf("expected 4 connectors, got %d stCxn / %d endCxn", len(starts), len(ends))
-	}
-
-	got := map[link][2]int{}
-	for i := range starts {
-		fromName := names[starts[i][1]]
-		toName := names[ends[i][1]]
-		fromIdx, _ := strconv.Atoi(starts[i][2])
-		toIdx, _ := strconv.Atoi(ends[i][2])
-		got[link{fromName, toName}] = [2]int{fromIdx, toIdx}
-	}
-
-	for l, sites := range want {
-		g, ok := got[l]
-		if !ok {
-			t.Errorf("no connector from %q to %q; got %v", l.from, l.to, got)
+	for _, box := range layout.boxes {
+		if box.force.forceType == porterRivalry {
 			continue
 		}
-		if g != sites {
-			t.Errorf("%s -> %s attaches at sites %v, want %v (a wrong site routes the line through the box text)",
-				l.from, l.to, g, sites)
+		tip, ok := porterTipRect(box, center)
+		if !ok {
+			t.Errorf("%s: no room for a point", box.force.forceType)
+			continue
+		}
+		r := box.rect
+		switch box.force.forceType {
+		case porterNewEntrant:
+			if tip.X != r.X || tip.CX != r.CX || tip.Y+tip.CY > center.Y || tip.Y+tip.CY < center.Y-2*porterTipGapEMU-porterTipMaxDepthEMU || tip.Y > r.Y+r.CY {
+				t.Errorf("new entrants point %+v does not hang under %+v toward %+v", tip, r, center)
+			}
+		case porterSubstitute:
+			if tip.X != r.X || tip.CX != r.CX || tip.Y < center.Y+center.CY || tip.Y+tip.CY < r.Y {
+				t.Errorf("substitutes point %+v does not rise from %+v toward %+v", tip, r, center)
+			}
+		case porterSupplier:
+			if tip.Y != r.Y || tip.CY != r.CY || tip.X+tip.CX > center.X || tip.X > r.X+r.CX {
+				t.Errorf("suppliers point %+v does not extend %+v toward %+v", tip, r, center)
+			}
+		case porterBuyer:
+			if tip.Y != r.Y || tip.CY != r.CY || tip.X < center.X+center.CX || tip.X+tip.CX < r.X {
+				t.Errorf("buyers point %+v does not extend %+v toward %+v", tip, r, center)
+			}
+		}
+	}
+
+	xml := generatePorterFiveForcesXMLForTest(t)
+	flips := map[string]string{}
+	for _, m := range regexp.MustCompile(`(?s)name="Porter ([^"]*) Point"/>.*?<a:xfrm([^>]*)>`).FindAllStringSubmatch(xml, -1) {
+		flips[m[1]] = strings.TrimSpace(m[2])
+	}
+	want := map[string]string{
+		"Threat of New Entrants": `flipV="1"`, // triangle turned to point down
+		"Threat of Substitutes":  "",
+		"Supplier Power":         "",
+		"Buyer Power":            `flipH="1"`, // pentagon turned to point left
+	}
+	for name, flip := range want {
+		got, ok := flips[name]
+		if !ok || got != flip {
+			t.Errorf("%s point: xfrm flags %q (present %t), want %q", name, got, ok, flip)
 		}
 	}
 }
 
-// PowerPoint requires a real connector transform even when stCxn/endCxn are
-// present. A 1x1 placeholder is auto-routed by LibreOffice but disappears in
-// PowerPoint (go-slide-creator-7ec2s).
-func TestPorterConnectorBoundsAreExplicit(t *testing.T) {
-	xml := generatePorterFiveForcesXMLForTest(t)
-	connector := regexp.MustCompile(`(?s)<p:cxnSp>.*?<a:xfrm(?: flipH="([01])")?(?: flipV="([01])")?>\s*<a:off x="(\d+)" y="(\d+)"/>\s*<a:ext cx="(\d+)" cy="(\d+)"/>`).FindAllStringSubmatch(xml, -1)
-	if len(connector) != 4 {
-		t.Fatalf("expected 4 connector transforms, got %d", len(connector))
-	}
-
-	wantFlips := [][2]string{
-		{"", ""},  // top to center
-		{"", "1"}, // bottom to center
-		{"", ""},  // left to center
-		{"1", ""}, // right to center
-	}
-	for i, match := range connector {
-		cx, err := strconv.ParseInt(match[5], 10, 64)
-		if err != nil {
-			t.Fatalf("connector %d cx %q: %v", i, match[5], err)
+// Rivalry is the one solid accent block; its text takes the ink that reads
+// on it.
+func TestPorterRivalryIsTheSolidAccent(t *testing.T) {
+	theme := portersTestTheme()
+	intensity := 0.2
+	for _, f := range []porterForceData{
+		{forceType: porterRivalry, label: "Competitive Rivalry", factors: []string{"Price wars"}},
+		{forceType: porterRivalry, label: "Competitive Rivalry", intensity: &intensity},
+	} {
+		text, _, _ := porterBoxText(f, true, false, 2000000, pptx.ShapeTextInsetEMU, nativeDiagramEnv{themeColors: theme})
+		xml := generatePorterForceBoxXML(porterBox{force: f, rect: pptx.RectEmu{CX: 2000000, CY: 1000000}, text: text}, 5, nativeDiagramEnv{themeColors: theme})
+		fill := regexp.MustCompile(`(?s)</a:prstGeom>\s*<a:solidFill>(.*?)</a:solidFill>`).FindStringSubmatch(xml)
+		if fill == nil || !strings.Contains(fill[1], `val="accent1"`) || strings.Contains(fill[1], "lumOff") {
+			t.Errorf("rivalry fill = %v, want the solid accent", fill)
 		}
-		cy, err := strconv.ParseInt(match[6], 10, 64)
-		if err != nil {
-			t.Fatalf("connector %d cy %q: %v", i, match[6], err)
-		}
-		if (cx == 1) == (cy == 1) {
-			t.Errorf("connector %d bounds = %dx%d, want one axis at 1 EMU and a resolved span on the other", i, cx, cy)
-		}
-		if match[1] != wantFlips[i][0] || match[2] != wantFlips[i][1] {
-			t.Errorf("connector %d flips = (%q,%q), want (%q,%q)",
-				i, match[1], match[2], wantFlips[i][0], wantFlips[i][1])
+		ink := nativeSurface{colors: theme}.emphasis().ink
+		if n := strings.Count(xml, `<a:schemeClr val="`+ink+`"/>`); n < len(text.Paragraphs) {
+			t.Errorf("rivalry text is not set in the emphasis ink %s throughout:\n%s", ink, xml)
 		}
 	}
 }
@@ -685,5 +669,5 @@ func porterTestBoxXML(f porterForceData, shapeID uint32, theme []types.ThemeColo
 	text, _, _ := porterBoxText(f, false, false, 2000000, pptx.ShapeTextInsetEMU, nativeDiagramEnv{themeColors: theme})
 	return generatePorterForceBoxXML(porterBox{
 		force: f, rect: pptx.RectEmu{CX: 2000000, CY: 1000000}, text: text,
-	}, shapeID)
+	}, shapeID, nativeDiagramEnv{themeColors: theme})
 }

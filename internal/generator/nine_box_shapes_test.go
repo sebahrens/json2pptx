@@ -6,7 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 func TestIsNineBoxDiagram(t *testing.T) {
@@ -41,39 +43,53 @@ func TestIsNineBoxDiagram(t *testing.T) {
 	}
 }
 
-func TestNineBoxSemanticTintsUseTemplateRolesAndScoreBands(t *testing.T) {
-	tints := nineBoxSemanticTints(map[string]string{
-		"negative": "accent6",
-		"neutral":  "accent5",
-		"positive": "accent4",
-	})
-	wantSchemes := []string{
-		"accent5", "accent4", "accent4",
-		"accent6", "accent5", "accent4",
-		"accent6", "accent6", "accent5",
+// The nine cells are one ladder from neutral to accent along the diagonal:
+// five score bands, each anti-diagonal one tone, lightness falling as the
+// score rises (go-slide-creator-mhc3k).
+func TestNineBoxLadderRunsFromNeutralToAccent(t *testing.T) {
+	colors := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"}, {Name: "dk2", RGB: "#1B2A4A"},
+		{Name: "accent1", RGB: "#FD5108"}, {Name: "accent2", RGB: "#2E7D32"}, {Name: "accent3", RGB: "#7E57C2"},
 	}
-	if len(tints) != len(wantSchemes) {
-		t.Fatalf("len(tints) = %d, want %d", len(tints), len(wantSchemes))
+	tints := nineBoxLadderTints(nativeSurface{colors: colors})
+	if len(tints) != 9 {
+		t.Fatalf("len(tints) = %d, want 9", len(tints))
 	}
-	for i, want := range wantSchemes {
-		if tints[i].scheme != want {
-			t.Errorf("tints[%d].scheme = %q, want %q", i, tints[i].scheme, want)
+	// Row 0 is high potential, column 0 low performance: index 6 is the
+	// lowest score, index 2 the highest.
+	white := svggen.MustParseColor("#FFFFFF")
+	lum := func(i int) float64 {
+		base := svggen.MustParseColor(resolveSchemeColorToHex(tints[i].scheme, colors))
+		return patterns.EffectiveColorMods(base, tints[i].mods(), white).Luminance()
+	}
+	for _, same := range [][]int{{3, 7}, {0, 4, 8}, {1, 5}} {
+		for _, i := range same[1:] {
+			if tints[i] != tints[same[0]] {
+				t.Errorf("cells %d and %d share a score and must share a tone: %+v vs %+v", same[0], i, tints[same[0]], tints[i])
+			}
 		}
 	}
-	// The semantic endpoints share their hue with the adjacent score band but
-	// are darker, producing an ordered five-band scale rather than a rainbow.
-	if tints[6].lumMod <= tints[7].lumMod {
-		t.Errorf("weakest endpoint should be darker than adjacent band: endpoint=%+v adjacent=%+v", tints[6], tints[7])
+	accent := nativeSurface{colors: colors}.accent()
+	if tints[6].scheme != patterns.NeutralSurfaceColor {
+		t.Errorf("the lowest band is %q, want the neutral surface", tints[6].scheme)
 	}
-	if tints[2].lumMod <= tints[1].lumMod {
-		t.Errorf("star endpoint should be darker than adjacent band: star=%+v adjacent=%+v", tints[2], tints[1])
+	for _, i := range []int{0, 1, 2, 3, 4, 5, 7, 8} {
+		if tints[i].scheme != accent {
+			t.Errorf("cell %d is %q, want a tint of the one accent %s", i, tints[i].scheme, accent)
+		}
 	}
-}
-
-func TestNineBoxSemanticTintsFallbacksAreStable(t *testing.T) {
-	tints := nineBoxSemanticTints(nil)
-	if tints[2].scheme != "accent1" || tints[8].scheme != "accent3" || tints[6].scheme != "accent2" {
-		t.Fatalf("fallback semantic roles = star:%q neutral:%q weakest:%q", tints[2].scheme, tints[8].scheme, tints[6].scheme)
+	// Above the neutral corner every band is darker than the one before.
+	order := []int{7, 8, 5, 2}
+	for k := 1; k < len(order); k++ {
+		if lum(order[k]) >= lum(order[k-1]) {
+			t.Errorf("band %d (cell %d) is not darker than band %d (cell %d)", k+1, order[k], k, order[k-1])
+		}
+	}
+	// Dark names stay readable on the deepest band.
+	dark := svggen.MustParseColor("#000000")
+	top := patterns.EffectiveColorMods(svggen.MustParseColor(resolveSchemeColorToHex(tints[2].scheme, colors)), tints[2].mods(), white)
+	if ratio := dark.ContrastWith(top); ratio < svggen.WCAGAANormal {
+		t.Errorf("dark text on the top band measures %.2f:1", ratio)
 	}
 }
 
@@ -296,7 +312,7 @@ func TestGenerateNineBoxGroupXML_Basic(t *testing.T) {
 	}
 
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 10000000, Height: 6000000}
-	result := generateNineBoxGroupXML(panels, bounds, 100, nineBoxSemanticTints(nil), nativeDiagramEnv{})
+	result := generateNineBoxGroupXML(panels, bounds, 100, nineBoxLadderTints(nativeSurface{}), nativeDiagramEnv{})
 
 	if result == "" {
 		t.Fatal("generateNineBoxGroupXML returned empty string")
@@ -401,7 +417,7 @@ func TestGenerateNineBoxGroupXML_NoAxes(t *testing.T) {
 	}
 
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
-	result := generateNineBoxGroupXML(panels, bounds, 100, nineBoxSemanticTints(nil), nativeDiagramEnv{})
+	result := generateNineBoxGroupXML(panels, bounds, 100, nineBoxLadderTints(nativeSurface{}), nativeDiagramEnv{})
 
 	if result == "" {
 		t.Fatal("should produce valid XML even without axis labels")

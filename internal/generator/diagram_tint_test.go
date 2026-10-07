@@ -56,11 +56,6 @@ func TestTaxonomyAuthoredHexEmitsValidRGBColors(t *testing.T) {
 		{"business canvas", func() string {
 			return generateBMCGroupXML(panels[:9], bounds, 100, taxonomyPalette(spec, 9, bmcDefaultTint), "")
 		}},
-		{"nine box semantic accent", func() string {
-			return generateNineBoxGroupXML(panels, bounds, 100, nineBoxSemanticTints(map[string]string{
-				"negative": "#0097A7", "neutral": "#0097A7", "positive": "#0097A7",
-			}), nativeDiagramEnv{})
-		}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

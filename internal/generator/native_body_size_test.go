@@ -204,14 +204,14 @@ func TestPorterBandsUseTheWidthOfALandscapeRegion(t *testing.T) {
 // layout measures what the region holds and the readability finding raised on
 // its shapes carries that budget.
 func TestNativeShrinkCarriesAMeasuredBudget(t *testing.T) {
-	spec := porterTestSpec(7, "A factor long enough to wrap onto a second line in any box")
+	spec := porterTestSpec(6, "A factor long enough to wrap onto a second line in any box")
 	bounds := ptBounds(850, 273)
 	group, layout := nativeGroupFor(t, spec, bounds, "Calibri")
 	b := layout.insert.fitBudget
 	if b == nil {
 		t.Fatal("an over-full cross measured no budget")
 	}
-	if b.item != "factor" || b.container != "force" || b.maxItems < 1 || b.maxItems >= 7 || b.maxChars < 10 {
+	if b.item != "factor" || b.container != "force" || b.maxItems < 1 || b.maxItems >= 6 || b.maxChars < 10 {
 		t.Fatalf("budget = %+v", *b)
 	}
 	// The budget is what fits: that many one-line factors are written unshrunk.
@@ -272,7 +272,7 @@ func nineBoxTestSpec(names int, name string, extra map[string]any) *types.Diagra
 // gives up anything else; a cell they fit keeps one.
 func TestNineBoxSetsNamesInColumns(t *testing.T) {
 	env := nativeDiagramEnv{fontName: "Calibri"}
-	tints := nineBoxSemanticTints(nil)
+	tints := nineBoxLadderTints(nativeSurface{})
 	panels, _ := nineBoxPanels(exampleDiagramSpec(t, "nine_box_talent"))
 
 	short := layoutNineBox(panels, ptBounds(850, 273), tints, env)
@@ -314,7 +314,7 @@ func TestNineBoxSetsNamesInColumns(t *testing.T) {
 func TestNineBoxDrawsItsAxes(t *testing.T) {
 	bounds := ptBounds(850, 342)
 	example, _ := nativeGroupFor(t, exampleDiagramSpec(t, "nine_box_talent"), bounds, "Calibri")
-	for _, want := range []string{"Current Performance", "Growth Potential", `name="X-Axis"`, `name="Y-Axis"`, `vert="vert270"`, `type="triangle"`} {
+	for _, want := range []string{"Current Performance", "Growth Potential", `name="X-Axis"`, `name="Y-Axis"`, `vert="vert270"`, `prst="rightArrow"`, `prst="upArrow"`} {
 		if !strings.Contains(example, want) {
 			t.Errorf("example group lacks %s", want)
 		}

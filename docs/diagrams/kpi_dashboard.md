@@ -1,6 +1,8 @@
 # KPI Dashboard
 
-Display multiple key performance indicators as a card grid with optional trends and deltas.
+Display multiple key performance indicators as a grid of big numbers with optional trends and deltas.
+
+By default the dashboard is open, like the `kpi-Nup` patterns: each value (28pt bold, in the accent) stands on the page over its label (14pt, as authored — not capitalised) and its delta (12pt, in the trend ink), with a hairline divider between the columns of a row and no tile behind the numbers. `style.colors` brings back tinted cards, one colour per metric in order.
 
 ## Type Identifier
 

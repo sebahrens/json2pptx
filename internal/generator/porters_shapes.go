@@ -17,32 +17,28 @@ import (
 // =============================================================================
 //
 // Replaces SVG-rendered Porter's Five Forces diagrams with native OOXML grouped
-// shapes. Central rivalry box + 4 peripheral force boxes (square corners) in cross
-// pattern, connected by straightConnector1 with triangle arrowheads. Each box
-// has a scheme-colored fill, bold header, intensity indicator text, and factor
-// bullet list. All shapes wrapped in a single p:grpSp.
+// shapes. Rivalry is the one solid accent block in the centre; the four forces
+// around it are pentagons whose points aim at it, so the direction of each
+// force is carried by its shape and no connector line is drawn
+// (go-slide-creator-av25u). Each force has a bold header, an intensity line
+// and a bulleted factor list; its fill is a tint step of the accent that
+// follows its intensity. All shapes wrapped in a single p:grpSp.
 //
 // Layout:
 //
 //                 ┌───────────────┐
 //                 │  New Entrants │
-//                 │   (accent2)   │
-//                 └───────┬───────┘
-//                         │ ▼
-//   ┌──────────┐    ┌─────┴─────┐    ┌──────────┐
-//   │ Suppliers│───▶│  Rivalry  │◀───│  Buyers  │
-//   │ (accent4)│    │  (accent1) │    │ (accent5)│
-//   └──────────┘    └─────┬─────┘    └──────────┘
-//                         │ ▼
-//                 ┌───────┴───────┐
+//                 └──────╲ ╱──────┘
+//   ┌──────────╲    ┌───────────┐    ╱──────────┐
+//   │ Suppliers ❯   │  Rivalry  │   ❮  Buyers   │
+//   └──────────╱    └───────────┘    ╲──────────┘
+//                 ┌──────╱ ╲──────┐
 //                 │  Substitutes  │
-//                 │   (accent3)   │
 //                 └───────────────┘
 //
-// Color strategy: intensity-based accent mapping.
-//   High (0.67-1.0): accent1 tint
-//   Medium (0.34-0.66): accent3 tint
-//   Low (0.0-0.33): accent5 tint
+// Color strategy: one accent. Rivalry is solid; a scored force takes the
+// accent's Lighter 50% (high), 80% (medium) or 90% (low) swatch, an unscored
+// force the neutral surface.
 
 // Porter EMU constants.
 const (
@@ -80,12 +76,14 @@ const (
 	// height, left for the connector between Rivalry and the boxes above and
 	// below it; porterMinConnectorGapEMU (10pt) is its floor, the room an
 	// arrowhead needs to read as one.
-	porterMinConnectorGapRatio       = 0.04
-	porterMinConnectorGapEMU   int64 = 10 * 12700
+	porterMinConnectorGapRatio       = 0.05
+	porterMinConnectorGapEMU   int64 = 14 * 12700
 
-	// porterHeaderFontSize is the force header font size (hundredths of a point).
-	// 1200 = 12pt
-	porterHeaderFontSize int = 1200
+	// porterHeaderFontSize is the force header font size (hundredths of a
+	// point): 14pt bold, one step above the factors under it; rivalry's is
+	// porterCenterHeaderFontSize.
+	porterHeaderFontSize       int = 1400
+	porterCenterHeaderFontSize int = 1400
 
 	// porterBodyFontSize is the factor text size: the 12pt body step, the
 	// smallest size a projected slide carries. It was 10pt
@@ -104,9 +102,19 @@ const (
 	// box holds.
 	porterMaxBudgetFactors = 8
 
-	// porterConnectorWidth is the connector line width in EMU.
-	// 12700 EMU = 1pt
-	porterConnectorWidth int64 = 12700
+	// porterTipGapEMU is the space between a force's point and the rivalry
+	// block it aims at (4pt): close enough to read as pointing at it.
+	porterTipGapEMU int64 = 4 * 12700
+
+	// porterTipMaxDepthEMU caps the depth of a force's point (0.5"), and
+	// porterTipMaxAspect its depth against the side it sits on: a point is
+	// a blunt arrowhead, not a spike.
+	porterTipMaxDepthEMU int64   = 457200
+	porterTipMaxAspect   float64 = 0.35
+
+	// porterTipOverlapEMU is how far a point's shape reaches under its force
+	// box, so no renderer shows a seam between the two same-coloured shapes.
+	porterTipOverlapEMU int64 = 12700
 )
 
 // porterForceType identifies which force position a force occupies.
@@ -158,8 +166,13 @@ const porterNeutralScheme = patterns.NeutralSurfaceColor
 // connectors.
 const porterAccent = "accent1"
 
-// porterIntensityColor maps ordinal intensity to three RGB tint steps of the
-// same template accent. An unstated intensity takes the neutral surface:
+// porterHighLighter is the swatch of a high-intensity force: Lighter 50%, a
+// step deeper than the tonal system's Lighter 60% so that high and low stay
+// apart on a dark accent too, and still light enough for dark text.
+const porterHighLighter = 50
+
+// porterIntensityColor maps ordinal intensity to three "Lighter N%" swatches
+// of the same template accent, the rungs of the patterns' tonal system. An unstated intensity takes the neutral surface:
 // colour-coding a force nobody scored asserts a reading the author never made.
 func porterIntensityColor(intensity *float64) (scheme string, lumMod, lumOff int) {
 	if intensity == nil {
@@ -168,11 +181,11 @@ func porterIntensityColor(intensity *float64) (scheme string, lumMod, lumOff int
 	}
 	switch {
 	case *intensity >= 0.67:
-		return porterAccent, 60000, 40000 // strongest tint
+		return porterAccent, (100 - porterHighLighter) * 1000, porterHighLighter * 1000 // Lighter 50%
 	case *intensity >= 0.34:
-		return porterAccent, 40000, 60000 // middle tint
+		return porterAccent, (100 - patterns.TonalLighterContent) * 1000, patterns.TonalLighterContent * 1000 // Lighter 80%
 	default:
-		return porterAccent, 20000, 80000 // lightest tint
+		return porterAccent, (100 - patterns.TonalLighterPale) * 1000, patterns.TonalLighterPale * 1000 // Lighter 90%
 	}
 }
 
@@ -390,15 +403,12 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 	var children [][]byte
 	nextID := shapeIDBase + 1
 
-	// Track shape IDs for connector references.
-	shapeIDs := make(map[porterForceType]uint32)
 	shapeBounds := make(map[porterForceType]pptx.RectEmu)
 
 	// Generate force box shapes, in the layout's fixed order.
 	for _, box := range layout.boxes {
-		shapeIDs[box.force.forceType] = nextID
 		shapeBounds[box.force.forceType] = box.rect
-		children = append(children, []byte(generatePorterForceBoxXML(box, nextID)))
+		children = append(children, []byte(generatePorterForceBoxXML(box, nextID, env)))
 		nextID++
 		if box.factorText != nil {
 			children = append(children, []byte(generatePorterFactorColumnXML(box, nextID)))
@@ -406,56 +416,16 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 		}
 	}
 
-	// Generate connectors between center and peripherals.
-	// Each connector goes from the peripheral toward the center (arrow points to center).
-	// Sites are resolved through pptx.ConnectionSiteIndex rather than written
-	// as literals. The horizontal pairs used to assume rect site 1 = right and
-	// 3 = left, but OOXML lists rect sites counter-clockwise from the top
-	// (0 = top, 1 = left, 2 = bottom, 3 = right), so both connectors attached to
-	// the FAR side of their box and ran straight through its text into Rivalry.
-	// The same literals were corrected for shapegrid in 13e4292; this caller was
-	// missed (go-slide-creator-2zej). Naming the sides keeps them in step.
-	site := func(sd pptx.ConnectionSide) int {
-		return pptx.ConnectionSiteIndex(nativeSurfaceGeometry, sd)
-	}
-	connectorPairs := []struct {
-		from     porterForceType
-		to       porterForceType
-		fromSite int // Connection site on 'from' shape
-		toSite   int // Connection site on 'to' shape
-	}{
-		// New entrants sit above Rivalry: leave its bottom, enter Rivalry's top.
-		{porterNewEntrant, porterRivalry, site(pptx.SideBottom), site(pptx.SideTop)},
-		// Substitutes sit below: leave its top, enter Rivalry's bottom.
-		{porterSubstitute, porterRivalry, site(pptx.SideTop), site(pptx.SideBottom)},
-		// Suppliers sit to the left: leave its right, enter Rivalry's left.
-		{porterSupplier, porterRivalry, site(pptx.SideRight), site(pptx.SideLeft)},
-		// Buyers sit to the right: leave its left, enter Rivalry's right.
-		{porterBuyer, porterRivalry, site(pptx.SideLeft), site(pptx.SideRight)},
-	}
-
-	for _, cp := range connectorPairs {
-		fromID, hasFrom := shapeIDs[cp.from]
-		toID, hasTo := shapeIDs[cp.to]
-		if !hasFrom || !hasTo {
+	// Each peripheral force points at rivalry: a triangle on the side that
+	// faces the centre, in the force's own fill, makes its box a pentagon.
+	for _, box := range layout.boxes {
+		if box.force.forceType == porterRivalry {
 			continue
 		}
-
-		// Connectors carry the diagram's accent, as a pattern's do; a force's
-		// own colour is its intensity, and an unscored force has none.
-		scheme := porterAccent
-		route := pptx.Route(
-			pptx.ShapeOptions{Bounds: shapeBounds[cp.from], Geometry: nativeSurfaceGeometry},
-			pptx.ShapeOptions{Bounds: shapeBounds[cp.to], Geometry: nativeSurfaceGeometry},
-			false,
-		)
-
-		connXML := generatePorterConnectorXML(
-			nextID, fromID, cp.fromSite, toID, cp.toSite, route.Bounds,
-			route.FlipH, route.FlipV, scheme,
-		)
-		children = append(children, []byte(connXML))
-		nextID++
+		if tip := generatePorterTipXML(box, shapeBounds[porterRivalry], nextID, env.themeColors...); tip != "" {
+			children = append(children, []byte(tip))
+			nextID++
+		}
 	}
 
 	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}
@@ -536,21 +506,115 @@ func porterBoxFill(scheme string, lumMod, lumOff int) pptx.Fill {
 
 // generatePorterForceBoxXML produces the square-cornered shape of a force box:
 // its fill and the text set in it. A filled surface carries no outline.
-func generatePorterForceBoxXML(box porterBox, shapeID uint32) string {
-	scheme, lumMod, lumOff := porterIntensityColor(box.force.intensity)
+func generatePorterForceBoxXML(box porterBox, shapeID uint32, env nativeDiagramEnv) string {
 	text := box.text
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     fmt.Sprintf("Porter %s", box.force.label),
 		Bounds:   box.rect,
 		Geometry: nativeSurfaceGeometry,
-		// An unscored force sits on the shared neutral surface.
-		Fill: porterBoxFill(scheme, lumMod, lumOff),
+		// Rivalry is the solid accent; a scored force a tint step of it; an
+		// unscored force sits on the shared neutral surface.
+		Fill: porterForceFill(box.force, env.themeColors),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &text,
 	})
 	if err != nil {
 		slog.Warn("generatePorterForceBoxXML failed", "error", err)
+		return ""
+	}
+	return string(b)
+}
+
+// porterForceFill is the fill of a force's box and of its point.
+func porterForceFill(f porterForceData, themeColors []types.ThemeColor) pptx.Fill {
+	if f.forceType == porterRivalry {
+		return nativeSurface{colors: themeColors}.emphasis().fill()
+	}
+	scheme, lumMod, lumOff := porterForceTint(f, themeColors)
+	return porterBoxFill(scheme, lumMod, lumOff)
+}
+
+// porterForceTint is porterIntensityColor resolved against the template: the
+// intensity steps are tints of the template's primary accent, the colour the
+// rivalry block is filled with, so the diagram keeps one hue on a template
+// whose primary fill is not accent1.
+func porterForceTint(f porterForceData, themeColors []types.ThemeColor) (scheme string, lumMod, lumOff int) {
+	scheme, lumMod, lumOff = porterIntensityColor(f.intensity)
+	if scheme == porterAccent {
+		scheme = nativeSurface{colors: themeColors}.accent()
+	}
+	return scheme, lumMod, lumOff
+}
+
+// porterForceInk names the scheme colour of a force's text: the emphasis ink
+// on rivalry's solid accent, the text role elsewhere.
+func porterForceInk(f porterForceData, themeColors []types.ThemeColor) string {
+	if f.forceType == porterRivalry {
+		return nativeSurface{colors: themeColors}.emphasis().ink
+	}
+	return "dk1"
+}
+
+// porterTipRect is the rectangle of the point a peripheral force aims at
+// rivalry: on the box side that faces the centre, as long as that side and
+// reaching to porterTipGapEMU short of the rivalry block. ok is false when
+// the two boxes leave no room for a point.
+func porterTipRect(box porterBox, center pptx.RectEmu) (rect pptx.RectEmu, ok bool) {
+	r := box.rect
+	depth := func(gap, side int64) int64 {
+		return min(gap-porterTipGapEMU, porterTipMaxDepthEMU, int64(float64(side)*porterTipMaxAspect))
+	}
+	const minDepth = 6 * 12700
+	switch box.force.forceType {
+	case porterNewEntrant:
+		d := depth(center.Y-(r.Y+r.CY), r.CX)
+		return pptx.RectEmu{X: r.X, Y: r.Y + r.CY - porterTipOverlapEMU, CX: r.CX, CY: d + porterTipOverlapEMU}, d >= minDepth
+	case porterSubstitute:
+		d := depth(r.Y-(center.Y+center.CY), r.CX)
+		return pptx.RectEmu{X: r.X, Y: r.Y - d, CX: r.CX, CY: d + porterTipOverlapEMU}, d >= minDepth
+	case porterSupplier:
+		d := depth(center.X-(r.X+r.CX), r.CY)
+		return pptx.RectEmu{X: r.X + r.CX - porterTipOverlapEMU, Y: r.Y, CX: d + porterTipOverlapEMU, CY: r.CY}, d >= minDepth
+	case porterBuyer:
+		d := depth(r.X-(center.X+center.CX), r.CY)
+		return pptx.RectEmu{X: r.X - d, Y: r.Y, CX: d + porterTipOverlapEMU, CY: r.CY}, d >= minDepth
+	}
+	return pptx.RectEmu{}, false
+}
+
+// generatePorterTipXML produces the point of a peripheral force: a triangle
+// in the force's fill whose apex faces the rivalry block. Above and below it
+// is the triangle preset (flipped to point down); left and right it is a
+// pentagon with no body, which is a triangle that points sideways without a
+// rotation.
+func generatePorterTipXML(box porterBox, center pptx.RectEmu, shapeID uint32, themeColors ...types.ThemeColor) string {
+	rect, ok := porterTipRect(box, center)
+	if !ok {
+		return ""
+	}
+	opts := pptx.ShapeOptions{
+		ID:     shapeID,
+		Name:   fmt.Sprintf("Porter %s Point", box.force.label),
+		Bounds: rect,
+		Fill:   porterForceFill(box.force, themeColors),
+		Line:   pptx.Line{Width: 0, Fill: pptx.NoFill()},
+	}
+	switch box.force.forceType {
+	case porterNewEntrant:
+		opts.Geometry, opts.FlipV = pptx.GeomTriangle, true
+	case porterSubstitute:
+		opts.Geometry = pptx.GeomTriangle
+	default:
+		// homePlate's point is adj/100000 of its shorter side deep: at the
+		// preset maximum the whole shape is the point.
+		opts.Geometry = pptx.GeomHomePlate
+		opts.Adjustments = []pptx.AdjustValue{{Name: "adj", Value: 100000 * rect.CX / max(min(rect.CX, rect.CY), 1)}}
+		opts.FlipH = box.force.forceType == porterBuyer
+	}
+	b, err := pptx.GenerateShape(opts)
+	if err != nil {
+		slog.Warn("generatePorterTipXML failed", "error", err)
 		return ""
 	}
 	return string(b)
@@ -644,7 +708,7 @@ func porterBanded(forceMap map[porterForceType]porterForceData, totalW int64) bo
 func porterBoxText(f porterForceData, isCenter, banded bool, w, pad int64, env nativeDiagramEnv) (box pptx.TextBody, factors *pptx.TextBody, factorW int64) {
 	fonts := pptx.ThemeFonts{Major: env.fontName, Minor: env.fontName}
 	header := porterHeaderParagraphs(f, isCenter, env.themeColors)
-	bullets := porterFactorParagraphs(f)
+	bullets := porterFactorParagraphs(f, env.themeColors)
 	box = pptx.TextBody{
 		Wrap:       "square",
 		Anchor:     "ctr",
@@ -810,7 +874,7 @@ func porterFitBudget(forceMap map[porterForceType]porterForceData, bounds types.
 // porterHeaderParagraphs are a force box's header and, when the author stated
 // one, its intensity line.
 func porterHeaderParagraphs(f porterForceData, isCenter bool, themeColors []types.ThemeColor) []pptx.Paragraph {
-	scheme, lumMod, lumOff := porterIntensityColor(f.intensity)
+	scheme, lumMod, lumOff := porterForceTint(f, themeColors)
 	// The intensity line used to be painted in the box's own scheme colour on
 	// the box's own tint of it: "Medium (50%)" measured 1.55:1 on the old accent3
 	// tile. Pick it against the fill the reader actually sees, the same way the
@@ -819,8 +883,11 @@ func porterHeaderParagraphs(f porterForceData, isCenter bool, themeColors []type
 
 	// Header paragraph — bold, left-aligned like every native card title
 	headerSize := porterHeaderFontSize
+	ink := porterForceInk(f, themeColors)
 	if isCenter {
-		headerSize = porterHeaderFontSize + 200 // 14pt for center
+		headerSize = porterCenterHeaderFontSize
+		// On the solid accent every line takes the emphasis ink.
+		intensityColor = ink
 	}
 	paras := []pptx.Paragraph{{
 		Align:    nativeHeaderAlign,
@@ -831,7 +898,7 @@ func porterHeaderParagraphs(f porterForceData, isCenter bool, themeColors []type
 			FontSize: headerSize,
 			Bold:     true,
 			Dirty:    true,
-			Color:    pptx.SchemeFill("dk1"),
+			Color:    pptx.SchemeFill(ink),
 		}},
 	}}
 
@@ -861,8 +928,10 @@ func porterHeaderParagraphs(f porterForceData, isCenter bool, themeColors []type
 // factor the author gave. A list cut at four (three for rivalry) left the
 // fifth factor off the slide with nothing said; a list too long for its box
 // is now measured and reported instead.
-func porterFactorParagraphs(f porterForceData) []pptx.Paragraph {
-	scheme, _, _ := porterIntensityColor(f.intensity)
+func porterFactorParagraphs(f porterForceData, themeColors []types.ThemeColor) []pptx.Paragraph {
+	// Bullets take the text ink: an accent bullet on a tint of the same
+	// accent is the least readable mark on the slide.
+	ink := porterForceInk(f, themeColors)
 	paras := make([]pptx.Paragraph, 0, len(f.factors))
 	for _, factor := range f.factors {
 		paras = append(paras, pptx.Paragraph{
@@ -880,57 +949,16 @@ func porterFactorParagraphs(f porterForceData) []pptx.Paragraph {
 				// in the bullet colour (go-slide-creator-2zej). Arial is
 				// the same buFont pptx.BulletOptions defaults to.
 				Font:  pptx.DefaultBulletFont,
-				Color: pptx.SchemeFill(scheme),
+				Color: pptx.SchemeFill(ink),
 			},
 			Runs: []pptx.Run{{
 				Text:     factor,
 				Lang:     "en-US",
 				FontSize: porterBodyFontSize,
 				Dirty:    true,
-				Color:    pptx.SchemeFill("dk1"),
+				Color:    pptx.SchemeFill(ink),
 			}},
 		})
 	}
 	return paras
-}
-
-// generatePorterConnectorXML produces a straightConnector1 between two shapes.
-func generatePorterConnectorXML(connID, fromShapeID uint32, fromSite int, toShapeID uint32, toSite int,
-	bounds pptx.RectEmu, flipH, flipV bool, scheme string,
-) string {
-	b, err := pptx.GenerateConnector(pptx.ConnectorOptions{
-		ID:       connID,
-		Name:     fmt.Sprintf("Porter Connector %d", connID),
-		Geometry: pptx.GeomStraightConnector1,
-		// PowerPoint does not derive a visible path from stCxn/endCxn when the
-		// stored transform is the old 1x1 placeholder. LibreOffice does, which
-		// hid the portability bug. Keep the attachment metadata and also persist
-		// the resolved path so both applications draw the same connector
-		// (go-slide-creator-7ec2s).
-		Bounds: bounds,
-		Line: pptx.Line{
-			Width: porterConnectorWidth,
-			Fill:  pptx.SchemeFill(scheme),
-		},
-		FlipH: flipH,
-		FlipV: flipV,
-		TailEnd: &pptx.ArrowHead{
-			Type: "triangle",
-			W:    "med",
-			Len:  "med",
-		},
-		StartConn: &pptx.ConnectionRef{
-			ShapeID: fromShapeID,
-			SiteIdx: fromSite,
-		},
-		EndConn: &pptx.ConnectionRef{
-			ShapeID: toShapeID,
-			SiteIdx: toSite,
-		},
-	})
-	if err != nil {
-		slog.Warn("generatePorterConnectorXML failed", "error", err)
-		return ""
-	}
-	return string(b)
 }

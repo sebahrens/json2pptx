@@ -20,11 +20,11 @@ func portersTestTheme() []types.ThemeColor {
 // unscored force printed "Medium (50%)" in the accent3 tint: a chart that
 // looked like an assessment and was a default (go-slide-creator-ceodq).
 func TestPorterUnscoredForceAssertsNothing(t *testing.T) {
-	unscored := porterForceFromMap(porterRivalry, map[string]any{"factors": []any{"Three clearers"}})
+	unscored := porterForceFromMap(porterBuyer, map[string]any{"factors": []any{"Three clearers"}})
 	if unscored.intensity != nil {
 		t.Errorf("an unstated intensity became %v", *unscored.intensity)
 	}
-	scored := porterForceFromMap(porterRivalry, map[string]any{"intensity": 0.85})
+	scored := porterForceFromMap(porterBuyer, map[string]any{"intensity": 0.85})
 	if scored.intensity == nil || *scored.intensity != 0.85 {
 		t.Fatalf("a stated intensity was lost: %v", scored.intensity)
 	}

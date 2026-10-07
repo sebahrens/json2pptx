@@ -99,8 +99,11 @@ func TestNativeFrameworksShareOneSurface(t *testing.T) {
 			if strings.Contains(xml, "roundRect") {
 				t.Error("native cards are square-cornered; found roundRect")
 			}
-			if !strings.Contains(xml, `<a:schemeClr val="dk1"><a:lumMod val="4000"/><a:lumOff val="96000"/>`) {
-				t.Error("no card on the neutral 4% surface")
+			// pestel and kpi_dashboard are open: text on the page, a rule
+			// or a divider, and no tile (go-slide-creator-w107j).
+			open := name == "pestel" || name == "kpi_dashboard"
+			if has := strings.Contains(xml, `<a:schemeClr val="dk1"><a:lumMod val="4000"/><a:lumOff val="96000"/>`); has == open {
+				t.Errorf("card on the neutral 4%% surface: %t, want %t", has, !open)
 			}
 			for _, m := range nativeSchemeRE.FindAllStringSubmatch(xml, -1) {
 				if m[1] != "accent1" && !semantic[name][m[1]] {

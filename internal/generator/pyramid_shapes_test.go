@@ -2,10 +2,14 @@ package generator
 
 import (
 	"encoding/xml"
+	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 func TestIsPyramidDiagram(t *testing.T) {
@@ -165,9 +169,53 @@ func TestPyramidLevelFill(t *testing.T) {
 
 func TestPyramidLevelTextColor(t *testing.T) {
 	// Just verify the functions don't panic.
-	_ = pyramidLevelTextColor(0, 5) // apex — should be light text
-	_ = pyramidLevelTextColor(4, 5) // base — should be dark text
-	_ = pyramidLevelTextColor(0, 1) // single level
+	_ = pyramidLevelTextColor(0, 5, nil) // apex — should be light text
+	_ = pyramidLevelTextColor(4, 5, nil) // base — should be dark text
+	_ = pyramidLevelTextColor(0, 1, nil) // single level
+}
+
+// The ink of every tier is the text role that measures higher on that tier's
+// own fill, on a bright accent as on a dark one (go-slide-creator-3fct0: white
+// on the second tier of five measured 2.6:1 on an orange accent).
+func TestPyramidLevelTextColorIsMeasured(t *testing.T) {
+	themes := map[string][]types.ThemeColor{
+		"bright orange": {{Name: "accent1", RGB: "#FD5108"}, {Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"}},
+		"dark blue":     {{Name: "accent1", RGB: "#1F3864"}, {Name: "dk1", RGB: "#1A1A1A"}, {Name: "lt1", RGB: "#FFFFFF"}},
+		"pale yellow":   {{Name: "accent1", RGB: "#FFD54F"}, {Name: "dk1", RGB: "#222222"}, {Name: "lt1", RGB: "#FFFFFF"}},
+	}
+	white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
+	for name, colors := range themes {
+		for levels := 1; levels <= 8; levels++ {
+			for i := 0; i < levels; i++ {
+				tone := pyramidLevelTone(i, levels)
+				base, err := svggen.ParseColor(resolveSchemeColorToHex(tone.scheme, colors))
+				if err != nil {
+					t.Fatal(err)
+				}
+				fill := patterns.EffectiveColorMods(base, diagramTintMods(tone.lumMod, tone.lumOff), white)
+				got := heatmapValueColor(tone, colors)
+				other := "dk1"
+				if got == "dk1" {
+					other = "lt1"
+				}
+				gotC, _ := svggen.ParseColor(resolveSchemeColorToHex(got, colors))
+				otherC, _ := svggen.ParseColor(resolveSchemeColorToHex(other, colors))
+				if gotC.ContrastWith(fill) < otherC.ContrastWith(fill) {
+					t.Errorf("%s: level %d of %d: ink %s measures %.2f, %s measures %.2f", name, i+1, levels, got, gotC.ContrastWith(fill), other, otherC.ContrastWith(fill))
+				}
+				// A mid-tone tier of a dark accent sits between the two inks
+				// (4.25:1 at best on a mid blue); the better ink never falls
+				// to the 2.6:1 the index rule produced.
+				if gotC.ContrastWith(fill) < 4.0 {
+					t.Errorf("%s: level %d of %d: ink %s on %s measures %.2f:1, want >= 4.0", name, i+1, levels, got, fill.Hex(), gotC.ContrastWith(fill))
+				}
+				want := pptx.SchemeFill(got)
+				if f := pyramidLevelTextColor(i, levels, colors); !reflect.DeepEqual(f, want) {
+					t.Errorf("%s: level %d of %d: pyramidLevelTextColor = %+v, want %s", name, i+1, levels, f, got)
+				}
+			}
+		}
+	}
 }
 
 func TestGeneratePyramidGroupXML(t *testing.T) {

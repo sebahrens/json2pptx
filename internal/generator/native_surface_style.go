@@ -94,6 +94,50 @@ func (s nativeSurface) contentTint(i, pct int) taxonomyTint {
 	return taxonomyTint{scheme: s.accent(), lumMod: (100 - pct) * 1000, lumOff: pct * 1000}
 }
 
+// openTint is a cell with no surface: text on the page under a heading that
+// stands on one rule, as the card-grid pattern's open cards. The title is
+// set in the text ink at titleHundredths; accentTitle sets it in the accent
+// where that reads on the page (a KPI value).
+func (s nativeSurface) openTint(titleHundredths int, accentTitle bool) taxonomyTint {
+	t := taxonomyTint{scheme: "lt1", ink: "dk1", open: true}
+	if accentTitle {
+		t.ink = s.titleInk(0, titleHundredths)
+	}
+	return t
+}
+
+// tonalTint is tone as a cell tint whose title takes the tone's own ink.
+func tonalTint(tone nativeTone) taxonomyTint {
+	return taxonomyTint{scheme: tone.tone.Color, lumMod: tone.tone.LumMod, lumOff: tone.tone.LumOff, ink: tone.ink}
+}
+
+// nativeRuleInkPct and nativeRuleWidthEMU are the rule an open heading
+// stands on and the divider between open columns: the card-grid pattern's
+// 1pt rule at dk1 60%, and a 0.75pt hairline at dk1 30% for a divider.
+const (
+	nativeRuleInkPct            = patterns.NeutralTint60
+	nativeRuleWidthEMU    int64 = 12700
+	nativeDividerInkPct         = 30
+	nativeDividerWidthEMU int64 = 9525
+)
+
+// nativeRuleXML is a horizontal rule (or, taller than wide, a vertical
+// divider) as a filled, unlined rectangle.
+func nativeRuleXML(name string, rect pptx.RectEmu, shapeID uint32, inkPct int) string {
+	b, err := pptx.GenerateShape(pptx.ShapeOptions{
+		ID:       shapeID,
+		Name:     name,
+		Bounds:   rect,
+		Geometry: pptx.GeomRect,
+		Fill:     nativeNeutralFill(inkPct),
+		Line:     pptx.Line{Width: 0, Fill: pptx.NoFill()},
+	})
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}
+
 // nativeNeutralTint is the neutral surface at pct% coverage as a cell tint.
 func nativeNeutralTint(pct int) taxonomyTint {
 	lumMod, lumOff := patterns.NeutralSurfaceMods(pct)
@@ -110,6 +154,9 @@ func nativeNeutralFill(pct int) pptx.Fill {
 // (lumMod / lumOff), exactly as the patterns write it, and so is an accent
 // tint (diagramTintFill): one tint family across both engines.
 func (t taxonomyTint) fill() pptx.Fill {
+	if t.open {
+		return pptx.NoFill()
+	}
 	if t.scheme == patterns.NeutralSurfaceColor && t.lumOff != 0 {
 		return pptx.SchemeFill(t.scheme, pptx.LumMod(t.lumMod), pptx.LumOff(t.lumOff))
 	}
@@ -134,4 +181,62 @@ func (t taxonomyTint) titleFill() pptx.Fill {
 		return pptx.SchemeFill(t.ink)
 	}
 	return diagramPanelTextFill(t.scheme)
+}
+
+// nativeTone is a fill of the patterns' tonal system (patterns.TonalFill)
+// with the ink that reads on it: what a native diagram shape that plays one
+// of the system's roles — panel, content, emphasis — is drawn in
+// (go-slide-creator-w107j, go-slide-creator-av25u).
+type nativeTone struct {
+	tone patterns.TonalFill
+	// ink is the scheme colour of body text on the fill.
+	ink string
+}
+
+// fill renders the tone as a shape fill.
+func (t nativeTone) fill() pptx.Fill {
+	if !pptx.IsSchemeColor(t.tone.Color) {
+		return pptx.ResolveColorString(t.tone.Color)
+	}
+	var mods []pptx.ColorMod
+	if t.tone.LumMod > 0 {
+		mods = append(mods, pptx.LumMod(t.tone.LumMod))
+	}
+	if t.tone.LumOff > 0 {
+		mods = append(mods, pptx.LumOff(t.tone.LumOff))
+	}
+	if t.tone.Shade > 0 {
+		mods = append(mods, pptx.Shade(t.tone.Shade))
+	}
+	return pptx.SchemeFill(t.tone.Color, mods...)
+}
+
+// inkFill is the tone's body ink as a text fill.
+func (t nativeTone) inkFill() pptx.Fill { return pptx.SchemeFill(t.ink) }
+
+// neutral is the neutral surface at pct% ink coverage.
+func (s nativeSurface) neutral(pct int) nativeTone {
+	f := patterns.TonalNeutralFill(pct)
+	return nativeTone{tone: f, ink: patterns.TonalInkOn(s.colors, f)}
+}
+
+// content is the tone of a shape that is the content: the accent's
+// "Lighter pct%" swatch, or its neutral stand-in where the tint collides.
+func (s nativeSurface) content(pct int) nativeTone {
+	f := patterns.TonalContentFill(s.colors, s.accent(), pct)
+	return nativeTone{tone: f, ink: patterns.TonalInkOn(s.colors, f)}
+}
+
+// emphasis is the tone of the one emphasised item: the solid accent, deepened
+// where white ink would not read on it.
+func (s nativeSurface) emphasis() nativeTone {
+	f, ink := patterns.TonalEmphasisFill(s.colors, s.accent())
+	return nativeTone{tone: f, ink: ink}
+}
+
+// accentInk names the colour of large display text (a numeral, a heading of
+// 14pt bold or more) on tone: the accent where it reads there, else the
+// tone's own ink.
+func (s nativeSurface) accentInk(t nativeTone) string {
+	return patterns.TonalAccentInkOn(s.colors, t.tone, s.accent(), patterns.TonalLargeTextContrast)
 }

@@ -76,6 +76,12 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 			}
 			continue
 		}
+		if layout.band != nil {
+			if need, have := pfBandTextDeficit(steps, i, layout, font); need > have {
+				out = append(out, nativeTextCollisionFinding(spec.Type, slidepath.Field(path, fmt.Sprintf("data.steps[%d]", i)), step.label, step.description, need, have))
+			}
+			continue
+		}
 		usableW, availableH := pfTextArea(step, font, box.cx, box.cy)
 		if usableW < 1 {
 			usableW = 1
@@ -97,7 +103,7 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 		stepKinds[step.id] = step.stepType
 	}
 	for i, connection := range connections {
-		if connection.label == "" {
+		if connection.label == "" || layout.band != nil {
 			continue
 		}
 		src, srcOK := stepRects[connection.from]

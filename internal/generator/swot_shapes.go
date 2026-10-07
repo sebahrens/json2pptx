@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -68,6 +69,22 @@ var swotQuadrantColors = [4]struct {
 // was the one thing separating a SWOT from every pattern on the deck
 // (go-slide-creator-amtkg). swotPolarityColors restores the two-tone look.
 func swotDefaultTint(int) taxonomyTint { return nativeSurface{}.cardTint(swotHeaderFontSize) }
+
+// swotTonalTints are the default quadrants resolved against a template: tone
+// carries the two readings of the grid (go-slide-creator-w107j). The helpful
+// column (Strengths, Opportunities) takes the accent's tint and the harmful
+// column (Weaknesses, Threats) the neutral surface; the internal row is the
+// deeper step of each, the external row the paler one. One accent, no
+// second hue, and four tiles that are no longer interchangeable.
+func swotTonalTints(surface nativeSurface) func(int) taxonomyTint {
+	tones := [4]nativeTone{
+		surface.content(patterns.TonalLighterContent), // Strengths: internal, helpful
+		surface.neutral(patterns.NeutralTint8),        // Weaknesses: internal, harmful
+		surface.content(patterns.TonalLighterPale),    // Opportunities: external, helpful
+		surface.neutral(patterns.NeutralTint4),        // Threats: external, harmful
+	}
+	return func(i int) taxonomyTint { return tonalTint(tones[i%len(tones)]) }
+}
 
 // swotPolarityColors is the style.colors value that restores the two-accent
 // polarity tints: Strengths / Opportunities in accent1, Weaknesses / Threats
@@ -218,8 +235,13 @@ func swotHeaderText(title string, tint taxonomyTint) pptx.TextBody {
 func swotBodyText(body, schemeColor string) pptx.TextBody {
 	paras := panelBulletsParagraphs(body, swotBodyFontSize)
 
-	// Use the same accent color for bullets but with full strength
-	bulletColor := pptx.ResolveColorString(schemeColor)
+	// Bullets take the text ink on a theme-linked tint: an accent bullet on a
+	// tint of the same accent is the faintest mark in the quadrant. An
+	// authored hex keeps its own text colour (diagramPanelBodyColors).
+	bulletColor := pptx.SchemeFill("dk1")
+	if !pptx.IsSchemeColor(schemeColor) && schemeColor != "" {
+		bulletColor = pptx.ResolveColorString(schemeColor)
+	}
 
 	// Override bullet color in parsed paragraphs
 	for i := range paras {
@@ -248,7 +270,9 @@ func swotHeaderHeight(panels []nativePanelData, quadW, quadH int64) int64 {
 		probe.AutoFit = "normAutofit"
 		headerCY = max(headerCY, nativeTextNeedEMU(probe, quadW, quadH))
 	}
-	return min(headerCY, quadH)
+	// Never more than half the quadrant: a body squeezed to nothing stores no
+	// shrink for the readability check to see (go-slide-creator-w107j).
+	return min(headerCY, quadH/2)
 }
 
 // swotGridHeight is the 2x2 grid height at which no quadrant body shrinks,
