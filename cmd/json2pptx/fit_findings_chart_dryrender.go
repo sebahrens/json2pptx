@@ -430,50 +430,30 @@ func dryRenderRequest(
 	bounds types.BoundingBox,
 	viewingModes ...tokens.ViewingMode,
 ) *svggen.RequestEnvelope {
-	// Build a minimal RequestEnvelope. The full diagramSpecToSVGGen converter
-	// in internal/generator pulls in too many dependencies (and is render-path
-	// specific); for dry-run we only need geometry + palette routing so the
-	// labeling pass produces correct findings.
-	title := spec.Title
-	if spec.TitleOnSlide {
-		title = ""
-	}
-	req := &svggen.RequestEnvelope{
-		Type:     spec.Type,
-		Title:    title,
-		Subtitle: spec.Subtitle,
-		Data:     spec.Data,
-	}
-	if !gridSurface && len(viewingModes) > 0 {
-		// The placeholder render sets the viewing mode and nothing else of
-		// the placement (renderDiagramSpecFull with a nil placement).
-		req.Style.ViewingMode = string(viewingModes[0])
-	}
-	req.Output.Width, req.Output.Height, _ = generator.ResolveDiagramRenderDimensions(spec, bounds)
-	req.Output.StrictFit = strictFit
-	if gridSurface && bounds.Width > 0 && bounds.Height > 0 {
-		mode := tokens.ViewingModePresentation
-		if len(viewingModes) > 0 {
-			mode = viewingModes[0]
+	// Build the request with generation's own converter, so the dry render
+	// sees the template's theme: its text and background inks, the tonal
+	// series ladder a chart takes on a template without a data palette, the
+	// transparent chart canvas, the value format and the title drop. A second
+	// hand-built request measured every chart on svggen's default palette
+	// (go-slide-creator-akleu).
+	sized := *spec
+	sized.Width, sized.Height, _ = generator.ResolveDiagramRenderDimensions(spec, bounds)
+	req := generator.DiagramRenderRequest(&sized, themeColors, strictFit)
+	req.Output.Width, req.Output.Height = sized.Width, sized.Height
+	mode := tokens.ViewingModePresentation
+	if len(viewingModes) > 0 {
+		mode = viewingModes[0]
+		if !gridSurface {
+			// The placeholder render sets the viewing mode and nothing else
+			// of the placement (renderDiagramSpecFull with a nil placement).
+			req.Style.ViewingMode = string(mode)
 		}
+	}
+	if gridSurface && bounds.Width > 0 && bounds.Height > 0 {
 		req.Style.PlacementWidthPt = float64(bounds.Width) / float64(types.EMUPerPoint)
 		req.Style.PlacementHeightPt = float64(bounds.Height) / float64(types.EMUPerPoint)
 		req.Style.MinReadablePt = float64(tokens.MinReadableHPt(mode, tokens.TextRoleBody)) / 100
 		req.Style.ViewingMode = string(mode)
-	}
-	// Forward resolved colors so dry-render palette behavior matches generation.
-	if spec.Style != nil && len(spec.Style.Colors) > 0 {
-		effectiveTheme := themeColors
-		if len(spec.Style.ThemeColors) > 0 {
-			effectiveTheme = spec.Style.ThemeColors
-		}
-		for i, value := range spec.Style.Colors {
-			color, ok := generator.ResolveDiagramStyleColor(value, effectiveTheme)
-			if !ok {
-				color = generator.ChartAccentFallback(i, effectiveTheme)
-			}
-			req.Style.Palette.Colors = append(req.Style.Palette.Colors, color)
-		}
 	}
 	// Font: measure label fit under the same typeface the renderer will use.
 	// An explicit per-diagram style.font_family wins; otherwise fall back to the

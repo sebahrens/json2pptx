@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -619,6 +620,43 @@ func TestPlaceholderChartDryRenderRequestMatchesGenerate(t *testing.T) {
 	}
 	if req.Style.ViewingMode != string(tokens.ViewingModePresentation) {
 		t.Errorf("placeholder chart viewing mode = %q, want %q", req.Style.ViewingMode, tokens.ViewingModePresentation)
+	}
+
+	// go-slide-creator-akleu: the request carries the template's theme and the
+	// series palette generate derives from it, not svggen's default palette.
+	theme := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "dk2", RGB: "#2D2D2D"}, {Name: "lt2", RGB: "#F2F2F2"},
+		{Name: "accent1", RGB: "#FD5108"}, {Name: "accent2", RGB: "#FE7C39"},
+		{Name: "accent3", RGB: "#FFAA72"}, {Name: "accent4", RGB: "#A1A8B3"},
+		{Name: "accent5", RGB: "#B5BCC4"}, {Name: "accent6", RGB: "#CBD1D6"},
+	}
+	want := generator.DiagramRenderRequest(onSlide, theme, "warn")
+	got := dryRenderRequest(onSlide, theme, "", "warn", false, bounds, tokens.ViewingModePresentation)
+	if len(want.Style.ThemeColors) == 0 || len(want.Style.DataPalette) == 0 {
+		t.Fatalf("generate request carries no theme or series palette: %+v", want.Style)
+	}
+	if !reflect.DeepEqual(got.Style.ThemeColors, want.Style.ThemeColors) {
+		t.Errorf("theme colours differ from generate:\n got %v\nwant %v", got.Style.ThemeColors, want.Style.ThemeColors)
+	}
+	if !reflect.DeepEqual(got.Style.DataPalette, want.Style.DataPalette) || got.Style.DataPaletteFixed != want.Style.DataPaletteFixed {
+		t.Errorf("series palette differs from generate:\n got %v (fixed %v)\nwant %v (fixed %v)",
+			got.Style.DataPalette, got.Style.DataPaletteFixed, want.Style.DataPalette, want.Style.DataPaletteFixed)
+	}
+	if got.Style.Background != want.Style.Background || got.Style.Surface != want.Style.Surface ||
+		got.Style.DisablePaletteEnforcement != want.Style.DisablePaletteEnforcement {
+		t.Errorf("canvas / enforcement differ from generate: got %q %q %v, want %q %q %v",
+			got.Style.Background, got.Style.Surface, got.Style.DisablePaletteEnforcement,
+			want.Style.Background, want.Style.Surface, want.Style.DisablePaletteEnforcement)
+	}
+	// Authored colours resolve against the same theme on both paths.
+	authored := *spec
+	authored.Style = &types.DiagramStyle{Colors: []string{"accent4", "#123456"}}
+	want = generator.DiagramRenderRequest(&authored, theme, "warn")
+	got = dryRenderRequest(&authored, theme, "", "warn", false, bounds, tokens.ViewingModePresentation)
+	if !reflect.DeepEqual(got.Style.ThemeColors, want.Style.ThemeColors) || !reflect.DeepEqual(got.Style.Palette, want.Style.Palette) {
+		t.Errorf("authored colours differ from generate:\n got %v %v\nwant %v %v",
+			got.Style.ThemeColors, got.Style.Palette, want.Style.ThemeColors, want.Style.Palette)
 	}
 
 	kept := generator.WithoutDuplicateChartTitle(spec, "EMEA leads")
