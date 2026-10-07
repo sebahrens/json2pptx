@@ -164,7 +164,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "KEY RESOURCES\n• Engineering team (45 FTE)\n• Proprietary ML models\n• SOC 2 certification\n• Customer data platform",
+                    "content": "KEY RESOURCES\n• 45 engineers\n• Proprietary models\n• SOC 2 certification\n• Customer data",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -256,7 +256,7 @@
         ],
         "rows": [
           {
-            "height": 8.0,
+            "height": 7.0,
             "cells": [
               {
                 "col_span": 6,
@@ -276,7 +276,7 @@
             ]
           },
           {
-            "height": 39.0,
+            "height": 37.0,
             "cells": [
               {
                 "row_span": 2,
@@ -335,7 +335,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "CUSTOMER RELATIONSHIPS\n• Buyer: Automated/self-service\n• Seller: Dedicated support\n• Loyalty program\n• Review ecosystem",
+                    "content": "CUSTOMER RELATIONSHIPS\n• Buyer: Self-service\n• Seller: Dedicated support\n• Loyalty program\n• Review ecosystem",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -366,7 +366,7 @@
             ]
           },
           {
-            "height": 32.0,
+            "height": 35.0,
             "cells": [
               {
                 "shape": {

@@ -388,8 +388,10 @@ func nineBoxLabelText(label string, pad int64, tint taxonomyTint, env nativeDiag
 }
 
 // nineBoxColumnsFit reports whether names, set in c columns, are written
-// without a shrink in a cell body of the given size.
-func nineBoxColumnsFit(names []string, c int, body pptx.RectEmu, pad int64, tint taxonomyTint, env nativeDiagramEnv) bool {
+// without a shrink in a cell body of the given size. Unless wrapOK is set,
+// several columns also need every name on one line.
+func nineBoxColumnsFit(names []string, c int, body pptx.RectEmu, pad int64, tint taxonomyTint, env nativeDiagramEnv, wrapOK ...bool) bool {
+	allowWrap := len(wrapOK) > 0 && wrapOK[0]
 	cols := nativeSplitColumns(names, c)
 	for j, col := range cols {
 		text := nineBoxColumnText(col, j, len(cols), body.CX, pad, tint, env)
@@ -399,7 +401,7 @@ func nineBoxColumnsFit(names []string, c int, body pptx.RectEmu, pad int64, tint
 		}
 		// Columns are for short names: one that wraps in its column reads
 		// worse there than in a single column at a tighter margin.
-		if len(cols) > 1 {
+		if len(cols) > 1 && !allowWrap {
 			blank := make([]string, len(col))
 			for i := range blank {
 				blank[i] = "x"
@@ -411,6 +413,46 @@ func nineBoxColumnsFit(names []string, c int, body pptx.RectEmu, pad int64, tint
 		}
 	}
 	return true
+}
+
+// nineBoxWrappedColumnsFit is the last step before the type gives: columns in
+// which a long name wraps. A wrapped name in a column reads worse than a
+// one-line list, and better than the whole cell set smaller — "Christopher
+// Anderson" over two lines beside two short names, not four names at 11pt
+// (go-slide-creator-vn35f: the measure used to pass that name as one line in
+// a column it does not fit). It sets the layout and reports whether every
+// cell is then written unshrunk.
+func nineBoxWrappedColumnsFit(l *nineBoxLayout, names [9][]string, tints []taxonomyTint, env nativeDiagramEnv) bool {
+	for _, pad := range nativeVerticalPadSteps {
+		var labelCY int64
+		for i := range l.cells {
+			labelCY = max(labelCY, nativeHeaderNeedEMU(nineBoxLabelText(l.cells[i].title, pad, tints[i], env), l.cellW, l.cellH))
+		}
+		body := pptx.RectEmu{CX: l.cellW, CY: l.cellH - labelCY}
+		columns := [9][][]string{}
+		fits := labelCY < l.cellH/2
+		for i := range l.cells {
+			if len(names[i]) == 0 {
+				continue
+			}
+			for c := 1; c <= nineBoxMaxColumns && columns[i] == nil; c++ {
+				if nineBoxColumnsFit(names[i], c, body, pad, tints[i], env, true) {
+					columns[i] = nativeSplitColumns(names[i], c)
+				}
+			}
+			if columns[i] == nil {
+				fits = false
+			}
+		}
+		if fits {
+			l.pad, l.labelCY, l.fits = pad, labelCY, true
+			for i := range l.cells {
+				l.cells[i].columns = columns[i]
+			}
+			return true
+		}
+	}
+	return false
 }
 
 // layoutNineBox lays the nine cells and the axes out in bounds. panels is the
@@ -460,6 +502,9 @@ func layoutNineBox(panels []nativePanelData, bounds types.BoundingBox, tints []t
 		if l.fits {
 			return l
 		}
+	}
+	if nineBoxWrappedColumnsFit(&l, names, tints, env) {
+		return l
 	}
 	// Nothing left to give but the type: the writer stores the shrink each
 	// over-full cell then needs.

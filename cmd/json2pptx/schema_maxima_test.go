@@ -512,7 +512,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"agenda-with-images":           5.8,
 	"arch-stack":                   4.1,  // twelve 40-character component blocks per tier (go-slide-creator-6h1fy)
 	"before-after":                 5.5,  // rows floored at written fit (n1muf)
-	"before-after-compact":         11.0, // rows floored at written fit (n1muf); real bullets (zieyk); no 60% bounds box, the pinned rows share the whole area (yhzxt)
+	"before-after-compact":         10.8, // bullet hanging indent measured (vn35f, was 11.0); rows floored at written fit (n1muf); real bullets (zieyk); no 60% bounds box, the pinned rows share the whole area (yhzxt)
 	"bmc-canvas":                   2.4,
 	"capability-heatmap":           3.8,
 	"card-grid":                    2.4,
@@ -571,7 +571,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"scqa-summary":        5.5, // content-weighted rows (k3eb3)
 	"stat-hero":           0.0, // unit is a 40% suffix run, no longer display size (yn2pw)
 	"state-shift-hub":     5.8, // rows sized to written fit, hub gives way (k3eb3)
-	"strategy-house":      5.3,
+	"strategy-house":      5.0, // bullet hanging indent measured (vn35f, was 5.3)
 	"stylish-panels":      2.8,
 	"swimlane":            4.1, // lane bands: a zero-width edge column keeps the last step off the band end, 0.75pt per step column at 8 steps (go-slide-creator-vx7wk), was 4.3
 	"table-highlight":     7.9, // over-full rows keep their tightest padding (go-slide-creator-u8orh); the steps a table gives up before it is refused left more for the text (go-slide-creator-dwha2), was 6.7
@@ -587,6 +587,9 @@ var schemaMaximaShrinkPt = map[string]float64{
 // four-template baseline. The map is checked only when p-style.pptx is present.
 // As with the bundled pins, these use the corrected long-word wrapping from
 // s1uvj.12. They record extreme-schema fit debt, not visual quality approval.
+// next-steps (6.7 → 6.5) and strategy-house (6.0 → 5.8) were re-pinned when
+// the autofit measure took a bullet's hanging indent off its lines
+// (go-slide-creator-vn35f): their maximum payloads were never that large.
 var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8,
 	"agenda-with-images":           6.7,
@@ -622,7 +625,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"labeled-rows":                 6.2,
 	"matrix-2x2":                   11.5,
 	"metric-list":                  7.6,
-	"next-steps":                   6.7,
+	"next-steps":                   6.5,
 	"numbered-step-strip":          5.8,
 	"phase-roadmap":                7.4,
 	"process-flow":                 0,
@@ -637,7 +640,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"scqa-summary":                 6.0,
 	"stat-hero":                    0.0, // unit as a 40% suffix run (yn2pw)
 	"state-shift-hub":              6.7,
-	"strategy-house":               6.0,
+	"strategy-house":               5.8,
 	"stylish-panels":               2.8,
 	"swimlane":                     4.8,
 	"table-highlight":              8.2, // as above (go-slide-creator-u8orh)
