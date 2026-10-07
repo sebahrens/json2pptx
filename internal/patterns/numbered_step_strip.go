@@ -127,20 +127,36 @@ type NumberedStepStripValues struct {
 // lane treatment.
 type NumberedStepStripOverrides struct {
 	TextOverrides
-	// Style is the stacked-box / toc number treatment (not the render style,
-	// which is values.style): "tinted" (default: accent numerals on a neutral
-	// lane, unfilled toc numerals) or "solid" (accent-filled number lanes and
-	// toc badges with white numerals; legacy look).
+	// Style is the number treatment (not the render style, which is
+	// values.style): "badge" (default: a dark numeral block leading a pale row
+	// band in stacked-box, big accent numerals over hairline rules in toc,
+	// accent-tint chevrons), "tinted" (the earlier default: accent numerals on
+	// a neutral lane, small unfilled toc numerals, solid accent chevrons) or
+	// "solid" (accent-filled number lanes and toc badges with white numerals).
 	Style string `json:"style,omitempty"`
 }
 
-// numberedStepLaneStyles are the accepted overrides.style values.
-var numberedStepLaneStyles = []string{"tinted", "solid"}
+// The accepted overrides.style values.
+const (
+	numberedStepStyleBadge  = "badge"
+	numberedStepStyleTinted = "tinted"
+	numberedStepStyleSolid  = "solid"
+)
+
+var numberedStepLaneStyles = []string{numberedStepStyleBadge, numberedStepStyleTinted, numberedStepStyleSolid}
+
+// laneStyle is the number treatment the overrides ask for.
+func (o *NumberedStepStripOverrides) laneStyle() string {
+	if o == nil || o.Style == "" {
+		return numberedStepStyleBadge
+	}
+	return o.Style
+}
 
 // numberedStepStripOverridesSchema is the text overrides schema plus style.
 func numberedStepStripOverridesSchema() *Schema {
 	s := textOverridesSchema()
-	s.raw.Properties["style"] = EnumSchema(numberedStepLaneStyles...).WithDescription("Number treatment for stacked-box and toc (the render style is values.style). tinted (default): accent numerals on a neutral-tint lane (stacked-box) or unfilled (toc), so the column of numbers does not read as a row of accent blocks. solid: accent-filled number lanes / badges with white numerals (legacy look)").WithDefault("tinted")
+	s.raw.Properties["style"] = EnumSchema(numberedStepLaneStyles...).WithDescription("Number treatment (the render style is values.style). badge (default): stacked-box rows are pale bands led by a dark numeral block; toc rows carry a big accent numeral, the label with its detail a fixed gap beside it, and a hairline rule between steps; chevrons are accent tints. tinted: the earlier default (accent numerals on a neutral lane, small unfilled toc numerals, solid accent chevrons). solid: accent-filled number lanes / badges with white numerals").WithDefault(numberedStepStyleBadge)
 	return s
 }
 
@@ -463,6 +479,14 @@ func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepS
 	fit := fitChevronLabels(ctx, vals, geo, labelSize)
 	labelSize = fit.labelPt
 
+	// The ordinal leads its label as a figure where the chevron is tall
+	// enough for both lines at their sizes (go-slide-creator-f064j); a
+	// shallow chevron and the earlier styles keep the small ordinal.
+	numberSize := labelSize - 2
+	if ovr.laneStyle() == numberedStepStyleBadge && geo.chevHPt >= (chevronNumeralPt+labelSize)*chevronLineHeight+2*defaultShapeInsetTBPt {
+		numberSize = chevronNumeralPt
+	}
+
 	chevronCells := make([]*jsonschema.GridCellInput, count)
 	descCells := make([]*jsonschema.GridCellInput, count)
 	maxDescLines := 0
@@ -471,12 +495,23 @@ func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepS
 		if fill == "" {
 			fill = ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		}
-		textColor := readableTextOn(ctx, fillTone{Color: fill}, "lt1")
-		text := buildChevronLabelText(stepNumber(step, i), pptx.ConvertMarkdownEmphasis(step.Label), labelSize, textColor)
+		// The chevrons are the content, so they take the accent's tint and
+		// leave the solid accent to the one thing a slide emphasises
+		// (go-slide-creator-f064j). A step the author coloured (tip_color,
+		// cell_accent_mode) and the earlier styles keep the solid fill.
+		tone := fillTone{Color: fill}
+		textColor := readableTextOn(ctx, tone, "lt1")
+		numberColor := textColor
+		if ovr.laneStyle() == numberedStepStyleBadge && step.TipColor == "" && cellAccentMode == "" {
+			tone = tonalContent(ctx, fill)
+			textColor = tonalInk(ctx, tone)
+			numberColor = accentInkOnTone(ctx, fill, tone, TextContrastThreshold(numberSize, true))
+		}
+		text := buildChevronLabelText(stepNumber(step, i), pptx.ConvertMarkdownEmphasis(step.Label), numberSize, labelSize, numberColor, textColor)
 		cell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry:    "chevron",
-				Fill:        json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
+				Fill:        tone.fillJSON(),
 				Text:        text,
 				Adjustments: map[string]int64{"adj": fit.adj},
 			},
@@ -558,6 +593,9 @@ const (
 	// broke mid-word. A blunter notch is a far cheaper loss than "Qualific /
 	// ation".
 	chevronFitSafetyFrac = 0.90
+	// chevronNumeralPt is the ordinal's size in a badge-style chevron tall
+	// enough to hold it over the label: the lead step, a display figure.
+	chevronNumeralPt = scaleLeadPt
 	// chevronDescDefaultSize is the default detail-zone text size (pt).
 	chevronDescDefaultSize = scaleBodyPt
 	// chevronDescInsetPt is the detail zone's side margin: the uniform shape
@@ -750,10 +788,10 @@ func estimateWrappedLines(text string, sizePt, widthPt float64) int {
 // buildChevronLabelText renders the number + label inside a chevron. The
 // preset's text rectangle clears the tail notch and the point, and the
 // uniform shape text margin sits inside it.
-func buildChevronLabelText(number, label string, size float64, color string) json.RawMessage {
+func buildChevronLabelText(number, label string, numberSize, size float64, numberColor, color string) json.RawMessage {
 	obj := numberedStepTextObj{
 		Paragraphs: []numberedStepParagraph{
-			{Content: number, Size: size - 2, Bold: true, Color: color, Align: "ctr"},
+			{Content: number, Size: numberSize, Bold: true, Color: numberColor, Align: "ctr"},
 			{Content: label, Size: size, Bold: true, Color: color, Align: "ctr"},
 		},
 		Align:         "ctr",
@@ -783,7 +821,7 @@ func buildChevronDescText(body string, size float64) json.RawMessage {
 // ---------------------------------------------------------------------------
 
 func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
-	spec := numberedStepDetailSpec(ctx, vals, ovr, stackedBoxRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx), sizeLabelPt)
+	spec := numberedStepDetailSpec(ctx, vals, ovr, stackedBoxRowSpec(ctx, vals, ovr).withGutter(ctx), sizeLabelPt)
 	lay := layoutNumberedStepRows(ctx, spec, sizeLabelPt, func(labelPt float64) []jsonschema.GridRowInput {
 		return n.stackedBoxRows(ctx, vals, ovr, cellOverrides, labelPt, spec.detailBeside)
 	})
@@ -791,12 +829,61 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 }
 
 // stackedBoxRowSpec is the stacked-box column geometry: number lane, optional
-// icon column, body column.
-func stackedBoxRowSpec(withIcons bool) numberedStepRowSpec {
-	if withIcons {
-		return numberedStepRowSpec{cols: `[1, 0.7, 8]`, weights: []float64{1, 0.7, 8}, colGapPt: stackedBoxColGapPt}
+// icon column, body column. The badge style sizes the lane to its numerals,
+// so the dark block is a badge and not a slab.
+func stackedBoxRowSpec(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides) numberedStepRowSpec {
+	lane := 1.0
+	if ovr.laneStyle() == numberedStepStyleBadge {
+		lane = numberedStepNumberWeight(ctx, vals, ResolveSize(ovr.HeaderSize, scaleLeadPt), 9, stackedBoxLanePadPt, 0.55, 1)
 	}
-	return numberedStepRowSpec{cols: `[1, 8]`, weights: []float64{1, 8}, colGapPt: stackedBoxColGapPt}
+	if numberedStepsHaveIcons(vals) {
+		return newNumberedStepRowSpec(stackedBoxColGapPt, lane, 0.7, 9-lane)
+	}
+	return newNumberedStepRowSpec(stackedBoxColGapPt, lane, 9-lane)
+}
+
+// stackedBoxLanePadPt is the room a badge numeral keeps on each side of its
+// lane, on top of the uniform text margin.
+const stackedBoxLanePadPt = 6.0
+
+// newNumberedStepRowSpec is a row spec with the given column weights.
+func newNumberedStepRowSpec(colGapPt float64, weights ...float64) numberedStepRowSpec {
+	parts := make([]string, len(weights))
+	for i, w := range weights {
+		weights[i] = math.Round(w*100) / 100
+		parts[i] = strconv.FormatFloat(weights[i], 'f', -1, 64)
+	}
+	return numberedStepRowSpec{cols: "[" + strings.Join(parts, ", ") + "]", weights: weights, colGapPt: colGapPt}
+}
+
+// numberedStepFigureGrowth is how far the placement policy may grow a display
+// figure (two figure steps of 1.2), and numberedStepFigureSlack the room a
+// renderer's wider face needs on top (shapegrid.RenderFaceSlack and a
+// little): a number column narrower than that pins the whole strip's type.
+const (
+	numberedStepFigureGrowth = 1.44
+	numberedStepFigureSlack  = 1.16
+)
+
+// numberedStepNumberWeight is the number column's weight, out of total, at
+// which the widest ordinal fits on one line at sizePt (with room for the
+// placement policy's type step), the uniform text margin and padPt a side —
+// held between minW and maxW. Without metrics it is maxW, the fixed lane.
+func numberedStepNumberWeight(ctx ExpandContext, vals *NumberedStepStripValues, sizePt, total, padPt, minW, maxW float64) float64 {
+	areaW, _ := contentAreaPt(ctx)
+	if areaW <= 0 {
+		return maxW
+	}
+	need := 0.0
+	for i, step := range vals.Steps {
+		w, err := textfit.MeasureStyledLineWidth(stepNumber(step, i), ctx.Theme.BodyFont, sizePt*numberedStepFigureGrowth, true)
+		if err != nil {
+			return maxW
+		}
+		need = math.Max(need, float64(w)/12700)
+	}
+	need = need*numberedStepFigureSlack + 2*float64(pptx.ShapeTextInsetEMU)/12700 + 2*padPt
+	return clampPt(math.Ceil(need/areaW*total*100)/100, minW, maxW)
 }
 
 // stackedBoxRows builds the stacked-box rows with the step labels at labelSize.
@@ -805,7 +892,9 @@ func (n *numberedStepStrip) stackedBoxRows(ctx ExpandContext, vals *NumberedStep
 	numberSize := ResolveSize(ovr.HeaderSize, scaleLeadPt)
 	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
-	solid := ovr.Style == "solid"
+	solid := ovr.laneStyle() == numberedStepStyleSolid
+	badge := ovr.laneStyle() == numberedStepStyleBadge
+	badgeTone, badgeInk := tonalBadge(ctx)
 
 	withIcons := numberedStepsHaveIcons(vals)
 	rows := make([]jsonschema.GridRowInput, len(vals.Steps))
@@ -830,6 +919,16 @@ func (n *numberedStepStrip) stackedBoxRows(ctx ExpandContext, vals *NumberedStep
 			numberCell.Shape.Fill = json.RawMessage(fmt.Sprintf(`"%s"`, tip))
 			numberCell.Shape.Line = nil
 			numberCell.Shape.Text = buildNumberedStepNumberText(stepNumber(step, i), numberSize, "lt1")
+		}
+		if badge {
+			// A dark numeral block anchors the row (the tonal system's badge);
+			// a step the author coloured carries that colour instead.
+			tone, ink := badgeTone, badgeInk
+			if step.TipColor != "" || cellAccentMode != "" {
+				tone, ink = accentFillAndInk(ctx, fillTone{Color: tip}, TextContrastThreshold(numberSize, true))
+			}
+			numberCell.Shape.Fill = tone.fillJSON()
+			numberCell.Shape.Text = buildNumberedStepNumberText(stepNumber(step, i), numberSize, ink)
 		}
 
 		bodyCell := &jsonschema.GridCellInput{
@@ -859,6 +958,10 @@ func (n *numberedStepStrip) stackedBoxRows(ctx ExpandContext, vals *NumberedStep
 			cells = append(cells, numberedStepDetailCell(bodyCell, step, labelSize, bodySize, cellOverrides, i))
 		}
 		rows[i] = jsonschema.GridRowInput{Cells: cells}
+		if badge {
+			// One pale band groups the row behind its badge.
+			rows[i].Band = tonalPanel(ctx, baseAccent).fillJSON()
+		}
 	}
 	return rows
 }
@@ -880,10 +983,24 @@ type numberedStepRowSpec struct {
 	detailBeside bool
 }
 
-// numberedStepLabelShare is the label column's share of the label + detail
-// width in the detail-beside layout: the details start a third of the way
-// across the slide, so one-line details reach its right half.
+// numberedStepLabelShare is the most the label column takes of the label +
+// detail width in the detail-beside layout; a strip whose longest label needs
+// more keeps its bodies under the labels.
 const numberedStepLabelShare = 0.36
+
+// numberedStepDetailGapPt is the gap between the longest label and the detail
+// column: the details start a fixed distance after the labels, so the eye
+// pairs a label with its detail instead of crossing a third of the slide
+// (go-slide-creator-f064j). numberedStepMinLabelShare keeps a column of very
+// short labels from collapsing.
+const (
+	numberedStepDetailGapPt   = 20.0
+	numberedStepMinLabelShare = 0.10
+	// numberedStepDetailReach is the share of the content width the longest
+	// detail line reaches at least: short details move right, up to the
+	// numberedStepLabelShare column, rather than leave 40% of the slide empty.
+	numberedStepDetailReach = 0.62
+)
 
 // numberedStepDetailGrowth is the size the one-line test allows for: the
 // composition policy may step a sparse strip's text up once.
@@ -932,10 +1049,27 @@ func numberedStepDetailSpec(ctx ExpandContext, vals *NumberedStepStripValues, ov
 		labelNeed = math.Max(labelNeed, lineWidthPt(step.Label, labelPt, true))
 	}
 	// 1.1: the renderer's face may draw wider than the one measured.
-	share := numberedStepLabelShare
-	if (labelNeed*1.1+inset)/bodyColW > share {
+	if (labelNeed*1.1+inset)/bodyColW > numberedStepLabelShare {
 		return spec
 	}
+	// The label column is as wide as the longest label and a fixed gap —
+	// or wider, by just as much as the longest detail needs to reach
+	// numberedStepDetailReach of the content width: details that all end
+	// before it leave the right of the slide empty (HORIZONTAL_IMBALANCE).
+	share := (labelNeed*1.1 + inset + numberedStepDetailGapPt) / bodyColW
+	bodyNeed := 0.0
+	for _, step := range vals.Steps {
+		if body := strings.TrimSpace(step.Body); body != "" {
+			if w, err := textfit.MeasureStyledLineWidth(body, font, math.Max(bodyPt, shapegrid.MinTextSizePt), false); err == nil {
+				bodyNeed = math.Max(bodyNeed, float64(w)/12700)
+			}
+		}
+	}
+	if bodyNeed > 0 {
+		bodyColX := areaW - bodyColW
+		share = math.Max(share, (areaW*numberedStepDetailReach-bodyColX-inset/2-bodyNeed)/bodyColW)
+	}
+	share = clampPt(share, numberedStepMinLabelShare, numberedStepLabelShare)
 	detailW := bodyColW*(1-share) - inset
 	for _, step := range vals.Steps {
 		if body := strings.TrimSpace(step.Body); body != "" && lineWidthPt(body, bodyPt, false)*1.05 > detailW {
@@ -1164,12 +1298,12 @@ func (n *numberedStepStrip) numberedStepRowsWarning(ctx ExpandContext, vals *Num
 	}
 	var lay numberedStepRowLayout
 	if style == numberedStepStripTOC {
-		spec := numberedStepDetailSpec(ctx, vals, ovr, tocRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx), scaleSubheadPt)
+		spec := numberedStepDetailSpec(ctx, vals, ovr, tocRowSpec(ctx, vals, ovr).withGutter(ctx), scaleSubheadPt)
 		lay = layoutNumberedStepRows(ctx, spec, scaleSubheadPt, func(labelPt float64) []jsonschema.GridRowInput {
 			return n.tocRows(ctx, vals, ovr, nil, labelPt, spec.detailBeside)
 		})
 	} else {
-		spec := numberedStepDetailSpec(ctx, vals, ovr, stackedBoxRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx), sizeLabelPt)
+		spec := numberedStepDetailSpec(ctx, vals, ovr, stackedBoxRowSpec(ctx, vals, ovr).withGutter(ctx), sizeLabelPt)
 		lay = layoutNumberedStepRows(ctx, spec, sizeLabelPt, func(labelPt float64) []jsonschema.GridRowInput {
 			return n.stackedBoxRows(ctx, vals, ovr, nil, labelPt, spec.detailBeside)
 		})
@@ -1212,28 +1346,53 @@ func numberedStepIconCell(ctx ExpandContext, step NumberedStepStripStep, tip str
 // ---------------------------------------------------------------------------
 
 func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any) *jsonschema.ShapeGridInput {
-	spec := numberedStepDetailSpec(ctx, vals, ovr, tocRowSpec(numberedStepsHaveIcons(vals)).withGutter(ctx), scaleSubheadPt)
+	spec := numberedStepDetailSpec(ctx, vals, ovr, tocRowSpec(ctx, vals, ovr).withGutter(ctx), scaleSubheadPt)
 	lay := layoutNumberedStepRows(ctx, spec, scaleSubheadPt, func(labelPt float64) []jsonschema.GridRowInput {
 		return n.tocRows(ctx, vals, ovr, cellOverrides, labelPt, spec.detailBeside)
 	})
 	return lay.grid(spec)
 }
 
-// tocRowSpec is the toc column geometry: number, optional icon, title.
-func tocRowSpec(withIcons bool) numberedStepRowSpec {
-	if withIcons {
-		return numberedStepRowSpec{cols: `[1, 0.6, 6]`, weights: []float64{1, 0.6, 6}, colGapPt: tocColGapPt}
+// toc numeral sizes (go-slide-creator-f064j): the badge style sets a big
+// accent numeral beside the label; six or seven rows keep the 20pt numeral so
+// the list still fits its area. The numeral is a display figure, so a strip
+// alone on a slide grows it with its rows.
+const (
+	tocBadgeNumeralPt     = 28.0
+	tocBadgeNumeralMaxRow = 5
+)
+
+// tocNumberPt is the toc numeral size.
+func tocNumberPt(vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides) float64 {
+	if ovr.laneStyle() == numberedStepStyleBadge && len(vals.Steps) <= tocBadgeNumeralMaxRow {
+		return ResolveSize(ovr.HeaderSize, tocBadgeNumeralPt)
 	}
-	return numberedStepRowSpec{cols: `[1, 6]`, weights: []float64{1, 6}, colGapPt: tocColGapPt}
+	return ResolveSize(ovr.HeaderSize, sizeLeadPlusPt)
+}
+
+// tocRowSpec is the toc column geometry: number, optional icon, title. The
+// badge style sizes the number column to its numerals, which stand on the
+// content area's left edge.
+func tocRowSpec(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides) numberedStepRowSpec {
+	num, badge := 1.0, ovr.laneStyle() == numberedStepStyleBadge
+	if badge {
+		num = numberedStepNumberWeight(ctx, vals, tocNumberPt(vals, ovr), 7, 0, 0.4, 1)
+	}
+	spec := newNumberedStepRowSpec(tocColGapPt, num, 7-num)
+	if numberedStepsHaveIcons(vals) {
+		spec = newNumberedStepRowSpec(tocColGapPt, num, 0.6, 7-num)
+	}
+	return spec
 }
 
 // tocRows builds the toc rows with the step titles at titleSize.
 func (n *numberedStepStrip) tocRows(ctx ExpandContext, vals *NumberedStepStripValues, ovr *NumberedStepStripOverrides, cellOverrides map[int]any, titleSize float64, detailBeside bool) []jsonschema.GridRowInput {
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	numberSize := ResolveSize(ovr.HeaderSize, sizeLeadPlusPt)
+	numberSize := tocNumberPt(vals, ovr)
 	bodySize := ResolveSize(ovr.BodySize, scaleCaptionPt)
 	cellAccentMode := ovr.CellAccentMode
-	solid := ovr.Style == "solid"
+	solid := ovr.laneStyle() == numberedStepStyleSolid
+	badgeStyle := ovr.laneStyle() == numberedStepStyleBadge
 
 	withIcons := numberedStepsHaveIcons(vals)
 	rows := make([]jsonschema.GridRowInput, len(vals.Steps))
@@ -1259,6 +1418,10 @@ func (n *numberedStepStrip) tocRows(ctx ExpandContext, vals *NumberedStepStripVa
 			numberCell.Shape.Line = nil
 			numberCell.Shape.Text = buildNumberedStepNumberText(stepNumber(step, i), numberSize, "lt1")
 		}
+		if badgeStyle {
+			// A big accent figure standing on the left edge, no tile.
+			numberCell.Shape.Text = buildTOCNumeralText(stepNumber(step, i), numberSize, accentInkOnLight(ctx, badge, 3.0))
+		}
 
 		titleCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
@@ -1280,6 +1443,10 @@ func (n *numberedStepStrip) tocRows(ctx ExpandContext, vals *NumberedStepStripVa
 			cells = append(cells, numberedStepDetailCell(titleCell, step, titleSize, bodySize, cellOverrides, i))
 		}
 		rows[i] = jsonschema.GridRowInput{Cells: cells}
+		if badgeStyle && i < len(vals.Steps)-1 {
+			// One rule between steps.
+			rows[i].Rule = "below"
+		}
 	}
 	return rows
 }
@@ -1313,6 +1480,26 @@ func buildNumberedStepNumberText(number string, size float64, color string) json
 		VerticalAlign: "ctr",
 	}
 	data, _ := json.Marshal(obj)
+	return data
+}
+
+// tocNumeralPadPt is the top and bottom text margin of a big toc numeral. It
+// is a display figure standing beside its label, so it takes a hairline of
+// margin instead of the uniform 0.5 cm: the label and its detail set the row
+// height, not the figure, and the placement policy can grow all three.
+const tocNumeralPadPt = 2.0
+
+// buildTOCNumeralText is the badge-style toc numeral: a big figure standing on
+// the content area's left edge, centred on its row.
+func buildTOCNumeralText(number string, size float64, color string) json.RawMessage {
+	pad := tocNumeralPadPt
+	data, _ := json.Marshal(insetText{
+		Paragraphs:    []chartInsightsParagraph{{Content: number, Size: size, Bold: true, Color: color, Align: "l"}},
+		Align:         "l",
+		VerticalAlign: "ctr",
+		InsetTop:      &pad,
+		InsetBottom:   &pad,
+	})
 	return data
 }
 

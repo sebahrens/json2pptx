@@ -156,15 +156,30 @@ func TestCapabilityHeatmap_ExpandStructure(t *testing.T) {
 	if c := grid.Rows[3].Cells[2]; c.Shape != nil {
 		t.Errorf("short column should leave an empty cell, got %+v", c.Shape)
 	}
-	// Tier fills: tier 0 is the accent itself, tier 1 a tint, tier 2 the neutral 16% grey.
+	// Tier fills on a three-level scale: tier 0 is the accent itself, tier 1
+	// its tint, tier 2 the pale neutral.
 	if got := string(grid.Rows[1].Cells[0].Shape.Fill); got != `"accent1"` {
 		t.Errorf("tier 0 fill = %s", got)
 	}
 	if got := string(grid.Rows[2].Cells[0].Shape.Fill); !strings.Contains(got, "accent1") || !strings.Contains(got, "lumOff") {
 		t.Errorf("tier 1 fill = %s", got)
 	}
-	if got := string(grid.Rows[3].Cells[0].Shape.Fill); got != neutral16JSON {
-		t.Errorf("tier 2 fill = %s, want neutral 16%%", got)
+	if got := string(grid.Rows[3].Cells[0].Shape.Fill); got != string(neutralTone(NeutralTint8).fillJSON()) {
+		t.Errorf("tier 2 fill = %s, want neutral 8%%", got)
+	}
+	// The headers are structure: the neutral dark, never the accent.
+	if got := string(header.Fill); strings.Contains(got, "accent") {
+		t.Errorf("default header fill = %s, want the neutral dark", got)
+	}
+	accentHdr, err := p.Expand(ExpandContext{}, v, &CapabilityHeatmapOverrides{HeaderFill: "accent"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(accentHdr.Rows[0].Cells[0].Shape.Fill); !strings.Contains(got, "accent1") {
+		t.Errorf("header_fill accent: header fill = %s", got)
+	}
+	if err := p.Validate(v, &CapabilityHeatmapOverrides{HeaderFill: "pink"}, nil); err == nil {
+		t.Error("an unknown header_fill must be rejected")
 	}
 	legend := grid.Rows[len(grid.Rows)-1].Cells[0]
 	if legend.ColSpan != 4 || legend.Grid == nil || len(legend.Grid.Rows[0].Cells) != 2*len(v.Tiers) {

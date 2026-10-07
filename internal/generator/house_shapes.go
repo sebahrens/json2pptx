@@ -288,13 +288,19 @@ func houseStyle(meta houseDiagramMeta, env nativeDiagramEnv) patterns.HouseStyle
 	st := patterns.HouseStyle{
 		Fonts:  pptx.ThemeFonts{Major: env.fontName, Minor: env.fontName},
 		Accent: patterns.PrimaryFill(env.themeColors),
+		// A house with room steps its type up, as the pattern's does.
+		Grow: true,
 	}
 	for _, floor := range meta.floors {
 		if floor.sectionCount >= houseDenseSections {
 			st.HeaderPt, st.BandPt, st.BodyPt = tokens.TypeScaleBodyPt, tokens.TypeScaleBodyPt, tokens.BodyTextMinPt
+			st.Grow = false
 			break
 		}
 	}
+	// The pattern's tones, measured on this template's colours: tinted caps
+	// and bands, a neutral-dark base.
+	patterns.HouseTonalStyle(patterns.ExpandContext{Theme: types.ThemeInfo{Colors: env.themeColors}}, &st)
 	return st
 }
 
@@ -338,6 +344,25 @@ func houseGrid(in *jsonschema.ShapeGridInput, cols int, bounds types.BoundingBox
 			}
 			if c.AccentBar != nil {
 				cell.AccentBar = &shapegrid.AccentBarSpec{Position: c.AccentBar.Position, Color: c.AccentBar.Color, Width: c.AccentBar.Width}
+			}
+			// A pillar's cap is a layer of its cell.
+			for _, l := range c.Layers {
+				if l.Shape == nil {
+					continue
+				}
+				cell.Layers = append(cell.Layers, shapegrid.Layer{
+					Name:  l.Name,
+					Frame: shapegrid.LayerFrame{X: l.Frame.X, Y: l.Frame.Y, W: l.Frame.W, H: l.Frame.H},
+					Shape: &shapegrid.ShapeSpec{
+						Geometry:    l.Shape.Geometry,
+						TypeScale:   l.Shape.TypeScale,
+						Fill:        l.Shape.Fill,
+						Line:        l.Shape.Line,
+						Text:        l.Shape.Text,
+						Adjustments: l.Shape.Adjustments,
+						ThemeFonts:  fonts,
+					},
+				})
 			}
 			row.Cells = append(row.Cells, cell)
 		}
@@ -388,18 +413,35 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 
 	names := houseShapeNames(houseModel(panels, meta), strings.TrimSpace(panels[len(panels)-1].title) != "")
 	var children [][]byte
-	for i, cell := range resolved.Cells {
+	// Names follow the cells in drawing order; a pillar's cap layer comes
+	// right after its cell and takes that cell's name.
+	next, last := 0, ""
+	for _, cell := range resolved.Cells {
 		if cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil {
+			if !cell.Layer {
+				next++
+			}
 			continue
+		}
+		name := ""
+		if cell.Layer {
+			if last != "" {
+				name = last + " Cap"
+			}
+		} else {
+			if next < len(names) {
+				name = names[next]
+			}
+			next, last = next+1, name
 		}
 		xml, err := shapegrid.GenerateCellShapeXML(cell)
 		if err != nil {
 			slog.Warn("house diagram: shape failed", "error", err, "id", cell.ID)
 			continue
 		}
-		if i < len(names) && names[i] != "" {
+		if name != "" {
 			xml = []byte(strings.Replace(string(xml),
-				fmt.Sprintf(`name="Shape %d"`, cell.ID), fmt.Sprintf(`name="%s"`, pptxEscapeAttr(names[i])), 1))
+				fmt.Sprintf(`name="Shape %d"`, cell.ID), fmt.Sprintf(`name="%s"`, pptxEscapeAttr(name)), 1))
 		}
 		children = append(children, xml)
 	}
@@ -450,7 +492,7 @@ func pptxEscapeAttr(s string) string {
 }
 
 // houseDiagramEstimateShapeCount returns the estimated number of shapes for ID allocation:
-// the group, one shape per panel, and one accent rule per pillar.
+// the group, one shape per panel, and one cap per pillar.
 func houseDiagramEstimateShapeCount(panels []nativePanelData) uint32 {
 	return uint32(1 + 2*len(panels))
 }

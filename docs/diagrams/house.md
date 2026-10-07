@@ -2,7 +2,7 @@
 
 A strategy house: a gabled roof (the vision or objective) over a row of pillars, any further levels, and a foundation band.
 
-`house_diagram` is drawn as native PowerPoint shapes by the same builder as the [`strategy-house` pattern](../PATTERNS.md#strategy-house-and-house_diagram-one-house-builder), so the two look alike on a template: one accent for the roof and the pillar rules, neutral pillar and band surfaces, a gable pitched from the house's width, and levels sized from their text.
+`house_diagram` is drawn as native PowerPoint shapes by the same builder as the [`strategy-house` pattern](../PATTERNS.md#strategy-house-and-house_diagram-one-house-builder), so the two look alike on a template: one solid accent for the roof, its tint for the bands and the pillar caps, pale pillar shafts, a neutral-dark base (the lowest level), a gable pitched from the house's width, and levels sized from their text.
 
 ## Type Identifier
 

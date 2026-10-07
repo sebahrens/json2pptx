@@ -100,7 +100,7 @@ var valueChainStyles = []string{valueChainStyleArrows, valueChainStyleBoxes}
 // valueChainOverridesSchema is the text overrides plus the step style.
 func valueChainOverridesSchema() *Schema {
 	s := textOverridesSchema()
-	s.raw.Properties["style"] = EnumSchema(valueChainStyles...).WithDescription("arrows (default): step labels are interlocking arrows — a pentagon, then chevrons whose tails tuck under the point before them; labels wrap at spaces inside the arrow, and a word no arrow can hold is reported as TEXT_EXCEEDS_SHAPE. boxes: rectangular one-line labels joined by small connector arrows (the earlier look)").WithDefault(valueChainStyleArrows)
+	s.raw.Properties["style"] = EnumSchema(valueChainStyles...).WithDescription("arrows (default): step labels are interlocking arrows — a pentagon, then chevrons whose tails tuck under the point before them; labels wrap at spaces inside the arrow and no word breaks: the step with a long word borrows width from the shorter ones, and only a word that still cannot fit is reported as TEXT_EXCEEDS_SHAPE. boxes: rectangular one-line labels joined by small connector arrows (the earlier look)").WithDefault(valueChainStyleArrows)
 	return s
 }
 
@@ -294,6 +294,7 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	colsJSON, _ := json.Marshal(n)
+	var colWs []float64
 
 	gap := ctx.Gap(valueChainGapPt)
 	labelRow := jsonschema.GridRowInput{
@@ -305,7 +306,9 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		// The arrows say "next" themselves, so no connector is drawn, and the
 		// row is as tall as its tallest label needs — not a quarter of the
 		// slide (go-slide-creator-gm4q9).
-		gap = valueChainArrowGapPt
+		gap = arrowFit.gap()
+		colsJSON = arrowFit.columnsJSON(n)
+		colWs = arrowFit.colWs
 		rowH := arrowFit.rowHeightPt(ctx.themeFonts(), labelCells)
 		for i, c := range labelCells {
 			c.Shape.Adjustments = map[string]int64{"adj": arrowFit.adj(i, rowH)}
@@ -325,7 +328,7 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 				// descriptions inside it, so a full-width empty stripe ran
 				// between the step boxes and their descriptions and the bottom
 				// third of the slide was blank (go-slide-creator-pr3g).
-				MaxHeight: valueChainDescRowHeightPt(ctx, descCells, n, gap),
+				MaxHeight: valueChainDescRowHeightPt(ctx, descCells, n, gap, colWs),
 				Cells:     descCells,
 			},
 		},
@@ -427,11 +430,53 @@ const (
 // valueChainArrowFit is the geometry the arrow row renders at: one point
 // depth and one label size for the whole chain.
 type valueChainArrowFit struct {
-	colWPt  float64  // step column width
+	colWPt  float64  // step column width (the equal share)
 	rowHPt  float64  // arrow height before any label needs more
 	notchPt float64  // depth of every point and notch
 	labelPt float64  // label size
 	unfit   []string // labels with a word no arrow can hold on one line
+	// gapPt is the slanted gap between one arrow's point and the next arrow's
+	// notch; zero means valueChainArrowGapPt.
+	gapPt float64
+	// colWs, when set, are the per-step column widths of a chain whose
+	// longest label borrows width from the shorter ones (go-slide-creator-2vjjp);
+	// nil means every step is colWPt wide.
+	colWs []float64
+}
+
+// gap is the column gap the fit settled on.
+func (f valueChainArrowFit) gap() float64 {
+	if f.gapPt > 0 {
+		return f.gapPt
+	}
+	return valueChainArrowGapPt
+}
+
+// colW is step i's column width.
+func (f valueChainArrowFit) colW(i int) float64 {
+	if i >= 0 && i < len(f.colWs) {
+		return f.colWs[i]
+	}
+	return f.colWPt
+}
+
+// columnsJSON is the grid's columns value: the step count, or the width of
+// each step as a percentage when the steps are not equally wide.
+func (f valueChainArrowFit) columnsJSON(n int) json.RawMessage {
+	if len(f.colWs) != n || n == 0 {
+		data, _ := json.Marshal(n)
+		return data
+	}
+	total := 0.0
+	for _, w := range f.colWs {
+		total += w
+	}
+	pcts := make([]float64, n)
+	for i, w := range f.colWs {
+		pcts[i] = math.Round(w/total*100000) / 1000
+	}
+	data, _ := json.Marshal(pcts)
+	return data
 }
 
 // geometry is step i's preset: a pentagon first, chevrons after it.
@@ -456,15 +501,15 @@ func (f valueChainArrowFit) bleedPt(i int) float64 {
 // its point and its notch.
 func (f valueChainArrowFit) textRectPt(i int) float64 {
 	if i == 0 {
-		return f.colWPt - f.notchPt/2
+		return f.colW(i) - f.notchPt/2
 	}
-	return f.colWPt + f.bleedPt(i) - 2*f.notchPt
+	return f.colW(i) + f.bleedPt(i) - 2*f.notchPt
 }
 
 // adj is step i's preset adjustment for a row rowHPt tall: the point depth
 // as a share (x100000) of the shape's shorter side.
 func (f valueChainArrowFit) adj(i int, rowHPt float64) int64 {
-	short := math.Min(f.colWPt+f.bleedPt(i), rowHPt)
+	short := math.Min(f.colW(i)+f.bleedPt(i), rowHPt)
 	if short <= 0 {
 		return 0
 	}
@@ -484,42 +529,75 @@ func (f valueChainArrowFit) rowHeightPt(fonts pptx.ThemeFonts, cells []*jsonsche
 	return math.Ceil(h)
 }
 
+// labelNeedPt is the width label's widest word needs on one line at the fit's
+// label size, measured as the writer measures it (pptx.WordLineNeedEMU): the
+// writer gives a word the label margin back before it lets it break
+// (pptx.EffectiveTextInsets), so the need is held against the bare text
+// rectangle. A single glyph cannot break and needs nothing.
+func (f valueChainArrowFit) labelNeedPt(label, font string) float64 {
+	need := 0.0
+	for _, word := range strings.Fields(label) {
+		if utf8.RuneCountInString(word) < 2 {
+			continue
+		}
+		emu, ok := pptx.WordLineNeedEMU(word, font, f.labelPt, true, 0)
+		if !ok {
+			// No metrics for the face: the line model answers fits / does
+			// not fit at a width, so search it for the narrowest that fits.
+			lo, hi := 0.0, 4*f.colWPt
+			for hi-lo > 0.5 {
+				mid := (lo + hi) / 2
+				if measuredLines(word, font, true, f.labelPt, mid) <= 1 {
+					hi = mid
+				} else {
+					lo = mid
+				}
+			}
+			need = math.Max(need, hi)
+			continue
+		}
+		need = math.Max(need, float64(emu)/sizingEMUPerPt)
+	}
+	return need
+}
+
 // unfitLabels returns the labels with a word wider than their arrow's text
-// rectangle at the fit's point depth and label size — the words a renderer
-// breaks mid-word. The word is measured as the writer measures it
-// (pptx.WordLineNeedEMU), against the bare rectangle: the writer gives a
-// word the label margin back before it lets it break
-// (pptx.EffectiveTextInsets).
+// rectangle at the fit's point depth, column widths and label size — the
+// words a renderer breaks mid-word.
 func (f valueChainArrowFit) unfitLabels(steps []ValueChainStep, font string) []string {
 	var unfit []string
 	for i, step := range steps {
-		availPt := f.textRectPt(i)
-		for _, word := range strings.Fields(step.Label) {
-			if utf8.RuneCountInString(word) < 2 {
-				continue
-			}
-			need, ok := pptx.WordLineNeedEMU(word, font, f.labelPt, true, 0)
-			if !ok {
-				if measuredLines(word, font, true, f.labelPt, availPt) <= 1 {
-					continue
-				}
-			} else if float64(need) <= availPt*sizingEMUPerPt {
-				continue
-			}
+		if f.labelNeedPt(step.Label, font) > f.textRectPt(i) {
 			unfit = append(unfit, step.Label)
-			break
 		}
 	}
 	return unfit
 }
 
-// fitValueChainArrows finds the deepest point and the largest label size at
-// which every label word stays whole inside its arrow, and reports the
-// labels that cannot. The point gives way first — the arrow reads the same a
-// little blunter — and the label only shrinks to the readable floor.
+// valueChainArrowGaps are the column gaps the fit tries, widest first: the
+// designed hairline, then tighter ones that still read as a seam.
+var valueChainArrowGaps = []float64{valueChainArrowGapPt, 3, 2}
+
+// valueChainMinColFrac is the narrowest a step may get, as a share of the
+// equal step width, when a long label borrows width from its neighbours.
+const valueChainMinColFrac = 0.8
+
+// fitValueChainArrows finds the geometry at which every label word stays
+// whole inside its arrow, and reports the labels that cannot. No word may
+// break (go-slide-creator-2vjjp), so the chain gives way in this order:
+//
+//  1. the point gets shallower — the arrow reads the same a little blunter;
+//  2. the seam between the arrows tightens (4 -> 2pt);
+//  3. the label steps down to the readable floor (12pt);
+//  4. the step with the long label borrows width from the shorter ones, none
+//     of which gets narrower than its own label needs or than
+//     valueChainMinColFrac of the equal width;
+//
+// and only a label that still does not fit is reported, by name.
 func fitValueChainArrows(ctx ExpandContext, steps []ValueChainStep, labelPt float64) valueChainArrowFit {
 	contentW, _ := contentAreaPt(ctx)
-	colW := equalColumnWidthPt(contentW, len(steps), valueChainArrowGapPt)
+	n := len(steps)
+	colW := equalColumnWidthPt(contentW, n, valueChainArrowGapPt)
 	rowH := clampPt(math.Round(colW*valueChainArrowAspect), valueChainArrowMinHPt, valueChainArrowMaxHPt)
 	fit := valueChainArrowFit{colWPt: colW, rowHPt: rowH, labelPt: labelPt}
 	font := ctx.Theme.BodyFont
@@ -528,33 +606,100 @@ func fitValueChainArrows(ctx ExpandContext, steps []ValueChainStep, labelPt floa
 	floor := math.Min(labelPt, valueChainMinLabelPt)
 	for size := labelPt; size >= floor; size-- {
 		fit.labelPt = size
-		for d := deepest; d >= valueChainMinNotchPt; d-- {
-			fit.notchPt = d
-			if len(fit.unfitLabels(steps, font)) == 0 {
-				return fit
+		for _, gap := range valueChainArrowGaps {
+			fit.gapPt = gap
+			fit.colWPt = equalColumnWidthPt(contentW, n, gap)
+			for d := deepest; d >= valueChainMinNotchPt; d-- {
+				fit.notchPt = d
+				if len(fit.unfitLabels(steps, font)) == 0 {
+					return fit
+				}
 			}
 		}
 	}
+	// Equal steps cannot hold the longest word at the floor: let it borrow.
+	fit.notchPt = valueChainMinNotchPt
+	for _, gap := range valueChainArrowGaps {
+		fit.gapPt = gap
+		fit.colWPt = equalColumnWidthPt(contentW, n, gap)
+		if widths, ok := fit.borrowedWidths(steps, font); ok {
+			fit.colWs = widths
+			return fit
+		}
+	}
+	fit.gapPt = 0
+	fit.colWPt = colW
 	fit.unfit = fit.unfitLabels(steps, font)
 	return fit
 }
 
+// borrowedWidths returns per-step column widths, summing to the equal
+// widths' total, at which every label's widest word fits: each step is as
+// wide as a shared level or as its own label needs, whichever is more
+// (water-filling), so the steps that give width up stay equal to one another.
+// ok is false when the labels need more than the row has or the level would
+// drop under valueChainMinColFrac of the equal width.
+func (f valueChainArrowFit) borrowedWidths(steps []ValueChainStep, font string) ([]float64, bool) {
+	n := len(steps)
+	if n == 0 {
+		return nil, false
+	}
+	total := f.colWPt * float64(n)
+	equal := valueChainArrowFit{colWPt: f.colWPt, notchPt: f.notchPt}
+	needs := make([]float64, n)
+	for i, step := range steps {
+		// The column a label needs: its word, what the arrow's own shape
+		// takes from the column (textRectPt), and a point of rounding room.
+		needs[i] = f.labelNeedPt(step.Label, font) + (f.colWPt - equal.textRectPt(i)) + 1
+	}
+	sorted := slices.Clone(needs)
+	slices.Sort(sorted)
+	// Find the level L with sum(max(L, need)) == total: walk the needs from
+	// the widest down, fixing the ones above the level.
+	rest, level := total, 0.0
+	for k := n; k > 0; k-- {
+		level = rest / float64(k)
+		if sorted[k-1] <= level {
+			break
+		}
+		rest -= sorted[k-1]
+		if k == 1 || rest <= 0 {
+			return nil, false
+		}
+	}
+	if level < f.colWPt*valueChainMinColFrac {
+		return nil, false
+	}
+	widths := make([]float64, n)
+	for i := range widths {
+		widths[i] = math.Max(level, needs[i])
+	}
+	return widths, true
+}
+
 // valueChainDescRowHeightPt is the height the description row needs for its
 // tallest description at the step column width.
-func valueChainDescRowHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellInput, cols int, gapPt float64) float64 {
+func valueChainDescRowHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellInput, cols int, gapPt float64, colWs []float64) float64 {
 	contentW, _ := contentAreaPt(ctx)
-	colW := equalColumnWidthPt(contentW, cols, gapPt)
-	textW := colW - 2*defaultShapeInsetLRPt
-	if textW <= 0 {
+	equalW := equalColumnWidthPt(contentW, cols, gapPt)
+	// colW is column i's width: the equal share, or its own width in a chain
+	// whose long label borrowed from the others.
+	colW := func(i int) float64 {
+		if i < len(colWs) {
+			return colWs[i]
+		}
+		return equalW
+	}
+	if equalW-2*defaultShapeInsetLRPt <= 0 {
 		return 0
 	}
 	font := ctx.Theme.BodyFont
 	h := 0.0
-	for _, c := range cells {
+	for i, c := range cells {
 		if c == nil || c.Shape == nil {
 			continue
 		}
-		h = math.Max(h, shapeTextHeightPt(font, c.Shape.Text, textW))
+		h = math.Max(h, shapeTextHeightPt(font, c.Shape.Text, math.Max(colW(i)-2*defaultShapeInsetLRPt, 1)))
 	}
 	if h == 0 {
 		return 0
@@ -562,9 +707,9 @@ func valueChainDescRowHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellIn
 	// The row shares one autofit shrink, so every description must fit
 	// unscaled by the writer's own measure, not only the theme-font model.
 	h = math.Round(h + 2*defaultShapeInsetTBPt)
-	for _, c := range cells {
+	for i, c := range cells {
 		if c != nil && c.Shape != nil {
-			h = math.Max(h, writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, colW, h))
+			h = math.Max(h, writtenFitHeightPt(ctx.themeFonts(), c.Shape.Text, colW(i), h))
 		}
 	}
 	return h
