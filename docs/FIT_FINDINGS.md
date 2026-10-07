@@ -473,7 +473,7 @@ With an overlay present, the scrim decides the text's background: at `alpha` ≥
 
 An authored picture reached generation but could not be embedded, so its frame renders empty: the file is missing, outside the allowed image roots (`ALLOWED_IMAGE_PATHS`), unreadable, or its bytes carry no recognised image signature (PNG, JPEG, GIF, BMP, TIFF, WebP raster magic, or an `<svg` root for `.svg`). It covers pattern images (`image_case` / `image-text-split`, headshots, …), `shape_grid` image cells at any nesting depth (`cells[].grid`), content `image_value` pictures and slide background images. The path names the field the author wrote — `/slides/0/pattern/values/image`, not the expanded grid cell.
 
-It is refuse-class: `deterministic_ready` is false and the quality gate fails, so a deck missing a required asset cannot be approved. Missing local files are normally refused earlier by the asset preflight (`IMAGE_PATH` / `BACKGROUND_IMAGE_PATH`, including nested grid cells) and unreachable URLs by `URL_FETCH_FAILED`; this finding is the render-time backstop for everything that slips past (corrupt bytes, a path the preflight did not see).
+It is refuse-class: `deterministic_ready` is false and the quality gate fails, so a deck missing a required asset cannot be approved. Missing local files are normally refused earlier by the asset preflight (`IMAGE_PATH` / `BACKGROUND_IMAGE_PATH`, including nested grid cells and the images of a pattern in a `compose` segment or a grid cell, each resolved against the deck directory / `base_dir`) and unreachable URLs by `URL_FETCH_FAILED`; this finding is the render-time backstop for everything that slips past (corrupt bytes, a path the preflight did not see).
 
 ```json
 {
