@@ -105,13 +105,14 @@ shorter labels or more space.
 Native types (`swot`, `porters_five_forces`, `pestel`,
 `business_model_canvas`, `value_chain`, `nine_box_talent`, `kpi_dashboard`,
 `process_flow`, `heatmap`, `pyramid`, `house_diagram`, `panel_layout`; aliases
-`icon_columns` / `icon_rows` / `stat_cards`) also render as editable shapes in
-a `shape_grid` cell or `compose` segment, sized to it. Text under 7pt is
-refused as `DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu` /
-`min_height_emu`): enlarge the region, use a body placeholder
-(`diagram_value`) or cut items. A word wider than its shape is
+`icon_columns` / `icon_rows` / `stat_cards`) also render as shapes in a
+`shape_grid` cell or `compose` segment. Text under 7pt is refused as
+`DIAGRAM_REGION_TOO_SMALL` (`fix.params.min_width_emu` / `min_height_emu`):
+enlarge it, use `diagram_value` or cut items. A too-wide word is
 `TEXT_EXCEEDS_SHAPE` (`fix.params.words`); text shrunk to fit,
-`TEXT_BELOW_READABLE_MIN` (`max_items_per_*`, `max_chars_per_item`).
+`TEXT_BELOW_READABLE_MIN` (`max_items_per_*`, `max_chars_per_item`). A
+`kpi_dashboard` metric that improves by falling takes
+`good_direction: "down"`.
 Diagram/chart data keys are strict at every level: an undrawn key is
 `unknown_key`.
 
