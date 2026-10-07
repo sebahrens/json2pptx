@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
 func archComponentValues() *ArchStackValues {
@@ -18,9 +20,10 @@ func archComponentValues() *ArchStackValues {
 	}
 }
 
-// go-slide-creator-6h1fy: a tier with components is a band holding one block
-// per component; seven or more wrap to two rows; the rails take an accent tint
-// so they do not read as one more neutral tier.
+// go-slide-creator-6h1fy, go-slide-creator-tfxns: a tier with components is a
+// lane — a pentagon tab before one block per component, no band behind them;
+// seven or more wrap to two rows; the rails are dark bars, so they read as
+// neither one more lane nor a second accent.
 func TestArchStack_ComponentsRenderAsBlocks(t *testing.T) {
 	p, _ := Default().Get("arch-stack")
 	vals := archComponentValues()
@@ -31,19 +34,21 @@ func TestArchStack_ComponentsRenderAsBlocks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
-	// Two rows per tier: its content, then the band that bleeds up under it.
-	if got := len(grid.Rows); got != 8 {
-		t.Fatalf("rows = %d, want 2 per tier", got)
+	if got := len(grid.Rows); got != 4 {
+		t.Fatalf("rows = %d, want one per tier", got)
 	}
 	blocks := func(tier int) [][]string {
 		var out [][]string
-		for _, c := range grid.Rows[2*tier].Cells {
+		for _, c := range grid.Rows[tier].Cells {
 			if c == nil || c.Grid == nil {
 				continue
 			}
 			for _, r := range c.Grid.Rows {
 				var row []string
 				for _, b := range r.Cells {
+					if len(b.Shape.Text) == 0 {
+						continue
+					}
 					var text struct {
 						Paragraphs []struct {
 							Content string `json:"content"`
@@ -54,7 +59,9 @@ func TestArchStack_ComponentsRenderAsBlocks(t *testing.T) {
 					}
 					row = append(row, text.Paragraphs[0].Content)
 				}
-				out = append(out, row)
+				if len(row) > 0 {
+					out = append(out, row)
+				}
 			}
 		}
 		return out
@@ -72,22 +79,68 @@ func TestArchStack_ComponentsRenderAsBlocks(t *testing.T) {
 		t.Errorf("tier 3 blocks = %v, want 9 components wrapped to rows of 5 and 4", got)
 	}
 
-	// The band is the last cell of the row under the content, bled up over it,
-	// with the tier name held to the label column.
-	bandRow := grid.Rows[1]
-	band := bandRow.Cells[len(bandRow.Cells)-1]
-	if band.BleedTop < grid.Rows[0].MaxHeight || !strings.Contains(string(band.Shape.Text), `"inset_right"`) || !strings.Contains(string(band.Shape.Text), "Channels") {
-		t.Errorf("band = bleed_top %.1f text %s; want it bled over the %.0fpt content row with the label inset from the blocks", band.BleedTop, band.Shape.Text, grid.Rows[0].MaxHeight)
-	}
-	var rail, tier string
-	for _, c := range grid.Rows[0].Cells {
-		if c != nil && c.Shape != nil && strings.Contains(string(c.Shape.Text), "Security") {
-			rail = string(c.Shape.Fill)
+	// Every tier leads with a pentagon tab carrying its name in bold, pulled
+	// in to the blocks' edges; nothing lies behind the blocks.
+	var tabFill, blockFill string
+	for i, row := range grid.Rows {
+		tab := row.Cells[0]
+		if tab.Shape == nil || tab.Shape.Geometry != "homePlate" || tab.InsetTop != archStackSubGridInsetPt || tab.InsetBottom != archStackSubGridInsetPt ||
+			!strings.Contains(string(tab.Shape.Text), vals.Tiers[i].Label) || !strings.Contains(string(tab.Shape.Text), `"bold":true`) {
+			t.Errorf("tier %d label = %+v, want a bold pentagon tab inset to the blocks' edges", i, tab)
+		}
+		tabFill = string(tab.Shape.Fill)
+		for _, c := range row.Cells {
+			if c != nil && c.Shape != nil && c.Shape.Geometry == "rect" && c.RowSpan == 0 {
+				t.Errorf("tier %d draws a band behind its blocks: %+v", i, c.Shape)
+			}
 		}
 	}
-	tier = string(band.Shape.Fill)
-	if rail == "" || rail == tier || !strings.Contains(rail, "accent1") {
-		t.Errorf("rail fill %s, tier fill %s; want the rail in an accent tint, distinct from the neutral tier", rail, tier)
+	blockFill = string(grid.Rows[0].Cells[1].Grid.Rows[0].Cells[0].Shape.Fill)
+	if tabFill == blockFill || !strings.Contains(tabFill, "accent1") || !strings.Contains(blockFill, "accent1") {
+		t.Errorf("tab fill %s, block fill %s; want two rungs of the accent ladder", tabFill, blockFill)
+	}
+	var rail *jsonschema.GridCellInput
+	for _, c := range grid.Rows[0].Cells {
+		if c != nil && c.Shape != nil && strings.Contains(string(c.Shape.Text), "Security") {
+			rail = c
+		}
+	}
+	if rail == nil || rail.RowSpan != 4 || strings.Contains(string(rail.Shape.Fill), "accent") || !strings.Contains(string(rail.Shape.Text), `"bold":true`) {
+		t.Errorf("rail = %+v; want one dark neutral bar down every tier with a bold name", rail)
+	}
+}
+
+// The stack is set one type step up when no name wraps for it and it keeps
+// its air, and grows its lanes towards the lower third.
+func TestArchStack_ComponentScale(t *testing.T) {
+	pat := &archStack{}
+	ctx := fullThemeCtx()
+	_, contentH := contentAreaPt(ctx)
+	lay := layoutArchStackComponents(ctx, pat.ExemplarValues().(*ArchStackValues), &ArchStackOverrides{})
+	if lay.headerSize != archStackLeadScale[0] || lay.bodySize != archStackLeadScale[1] {
+		t.Errorf("exemplar set at %.0f / %.0fpt, want the larger step %v", lay.headerSize, lay.bodySize, archStackLeadScale)
+	}
+	sum := 0.0
+	for _, h := range lay.tierH {
+		sum += h
+	}
+	if sum < lay.needPt || sum > contentH {
+		t.Errorf("lanes take %.0fpt: want at least the %.0fpt they need and at most the %.0fpt area", sum, lay.needPt, contentH)
+	}
+	if kept := layoutArchStackComponents(ctx, pat.ExemplarValues().(*ArchStackValues), &ArchStackOverrides{BodySize: 12}); kept.bodySize != 12 || kept.headerSize != scaleSubheadPt {
+		t.Errorf("authored body_size: set at %.0f / %.0fpt, want 14 / 12", kept.headerSize, kept.bodySize)
+	}
+	// Twelve components in six tiers have no room for the larger step.
+	dense := &ArchStackValues{}
+	for i := 0; i < 6; i++ {
+		tier := ArchStackTier{Label: "Tier"}
+		for j := 0; j < 12; j++ {
+			tier.Components = append(tier.Components, "Service name")
+		}
+		dense.Tiers = append(dense.Tiers, tier)
+	}
+	if lay := layoutArchStackComponents(ctx, dense, &ArchStackOverrides{}); lay.bodySize != scaleDenseBodyPt {
+		t.Errorf("dense stack set at %.0fpt, want the standard %.0fpt", lay.bodySize, scaleDenseBodyPt)
 	}
 }
 

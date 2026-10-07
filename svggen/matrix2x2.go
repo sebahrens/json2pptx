@@ -64,6 +64,16 @@ type Matrix2x2Config struct {
 
 	// LabelOffset is the distance from point center to label.
 	LabelOffset float64
+
+	// Gutter is the width of the background-coloured cross that holds the
+	// four quadrant fields apart. Zero draws them abutting (with ShowGridLines
+	// the two midlines then mark the split).
+	Gutter float64
+
+	// AxisBars draws each axis as a dark bar along the matrix's edge that
+	// ends in a point at its high end and carries the low end, the bold axis
+	// title and the high end. False draws the axis titles as plain text.
+	AxisBars bool
 }
 
 // DefaultMatrix2x2Config returns default matrix 2x2 configuration.
@@ -218,6 +228,13 @@ func (mc *Matrix2x2Chart) Draw(data Matrix2x2Data) error {
 	leftSpace := bodyH + style.Spacing.LG
 	bottomSpace := bodyH + style.Spacing.LG // X-axis name (horizontal text)
 	rightPad := style.Spacing.LG
+	if mc.config.AxisBars {
+		// The bars sit against the matrix: a bar and its gap on the left and
+		// under it, and the matrix runs to the right margin.
+		leftSpace = mc.axisBarThickness() + mc.axisBarGap()
+		bottomSpace = leftSpace
+		rightPad = 0
+	}
 
 	plotArea.Y += headerHeight
 	plotArea.H -= headerHeight + bottomSpace
@@ -232,8 +249,12 @@ func (mc *Matrix2x2Chart) Draw(data Matrix2x2Data) error {
 		mc.drawGridLines(plotArea)
 	}
 
-	// Draw axis labels
-	mc.drawAxisLabels(plotArea)
+	// Draw the axes
+	if mc.config.AxisBars {
+		mc.drawAxisBars(plotArea)
+	} else {
+		mc.drawAxisLabels(plotArea)
+	}
 
 	if data.HasQuadrantItems() {
 		// Coordinate-free form: each quadrant is a titled list filling its own
@@ -278,17 +299,7 @@ func (mc *Matrix2x2Chart) Draw(data Matrix2x2Data) error {
 func (mc *Matrix2x2Chart) drawQuadrants(plotArea Rect) {
 	b := mc.builder
 
-	halfW := plotArea.W / 2
-	halfH := plotArea.H / 2
-
-	quadrants := []Rect{
-		{X: plotArea.X, Y: plotArea.Y, W: halfW, H: halfH},                 // top-left (high value, low effort)
-		{X: plotArea.X + halfW, Y: plotArea.Y, W: halfW, H: halfH},         // top-right (high value, high effort)
-		{X: plotArea.X, Y: plotArea.Y + halfH, W: halfW, H: halfH},         // bottom-left (low value, low effort)
-		{X: plotArea.X + halfW, Y: plotArea.Y + halfH, W: halfW, H: halfH}, // bottom-right (low value, high effort)
-	}
-
-	for i, rect := range quadrants {
+	for i, rect := range mc.quadrantRects(plotArea) {
 		b.Push()
 		color := mc.config.QuadrantColors[i]
 		if color.A == 0 {
@@ -299,6 +310,157 @@ func (mc *Matrix2x2Chart) drawQuadrants(plotArea Rect) {
 		b.FillRect(rect)
 		b.Pop()
 	}
+}
+
+// quadrantRects returns the four quadrant fields — top-left, top-right,
+// bottom-left, bottom-right — each pulled back from the midlines by half the
+// gutter.
+func (mc *Matrix2x2Chart) quadrantRects(plotArea Rect) [4]Rect {
+	halfW := plotArea.W / 2
+	halfH := plotArea.H / 2
+	g := math.Max(0, math.Min(mc.config.Gutter, math.Min(halfW, halfH))) / 2
+	return [4]Rect{
+		{X: plotArea.X, Y: plotArea.Y, W: halfW - g, H: halfH - g},
+		{X: plotArea.X + halfW + g, Y: plotArea.Y, W: halfW - g, H: halfH - g},
+		{X: plotArea.X, Y: plotArea.Y + halfH + g, W: halfW - g, H: halfH - g},
+		{X: plotArea.X + halfW + g, Y: plotArea.Y + halfH + g, W: halfW - g, H: halfH - g},
+	}
+}
+
+// quadrantInk returns the text colour on quadrant i's field: preferred when
+// it reads there (WCAG AA), else whichever of white and dark does.
+func (mc *Matrix2x2Chart) quadrantInk(i int, preferred Color) Color {
+	bg := mc.builder.StyleGuide().Palette.Background
+	if bg.A < 1 {
+		bg = bg.BlendOver(Color{R: 255, G: 255, B: 255, A: 1})
+	}
+	fill := mc.config.QuadrantColors[i]
+	if fill.A == 0 {
+		fill = fill.WithAlpha(mc.config.QuadrantOpacity)
+	}
+	fill = fill.BlendOver(bg)
+	if preferred.ContrastWith(fill) >= WCAGAANormal {
+		return preferred
+	}
+	return fill.TextColorFor()
+}
+
+// Axis bars (go-slide-creator-ckpye): the matrix_2x2 diagram and the
+// matrix-2x2 pattern draw one family — tonal quadrant fields split by a
+// gutter, and two dark bars that say which way each axis grows.
+const (
+	// matrixAxisBarInk is the share of the text ink an axis bar is filled
+	// with (the pattern engine's badge tone).
+	matrixAxisBarInk = 0.8
+	// matrixAxisLow and matrixAxisHigh are the end labels of an axis bar.
+	matrixAxisLow  = "Low"
+	matrixAxisHigh = "High"
+)
+
+// matrixAxisBarColor is the fill of an axis bar, the pattern engine's badge
+// tone: the template's dk2 where it carries the brand (a navy, a forest
+// green) and reads as a dark mark on the background, else the text ink at
+// matrixAxisBarInk.
+func matrixAxisBarColor(p *Palette) Color {
+	bg := p.Background
+	if bg.A < 1 {
+		bg = bg.BlendOver(Color{R: 255, G: 255, B: 255, A: 1})
+	}
+	dk2 := p.TextSecondary.BlendOver(bg)
+	hi, lo := max(dk2.R, dk2.G, dk2.B), min(dk2.R, dk2.G, dk2.B)
+	nearBlack := dk2.Luminance() < 0.02 && hi-lo <= 24
+	if nearBlack || dk2.ContrastWith(bg) < WCAGAANormal {
+		return NeutralInk(p, matrixAxisBarInk)
+	}
+	return dk2
+}
+
+// axisBarThickness is the thickness of an axis bar: one line of the axis
+// title with room above and below.
+func (mc *Matrix2x2Chart) axisBarThickness() float64 {
+	return math.Ceil(mc.builder.StyleGuide().Typography.SizeBody * 2)
+}
+
+// axisBarGap separates an axis bar from the matrix.
+func (mc *Matrix2x2Chart) axisBarGap() float64 {
+	return math.Max(mc.config.Gutter, mc.builder.StyleGuide().Spacing.XS)
+}
+
+// drawAxisBars draws the two axes as dark bars: the x bar under the matrix
+// pointing right, the y bar left of it pointing up. Each carries its low end,
+// its bold title and its high end; the ends are dropped where the bar is too
+// short to hold them beside the title.
+func (mc *Matrix2x2Chart) drawAxisBars(plotArea Rect) {
+	b := mc.builder
+	style := b.StyleGuide()
+	t, gap := mc.axisBarThickness(), mc.axisBarGap()
+	point := t / 2
+	fill := matrixAxisBarColor(style.Palette)
+	ink := fill.TextColorFor()
+	pad := style.Spacing.MD
+
+	// drawTexts sets the low end, the title and the high end along a bar of
+	// the given length; at(d) is the point d along the bar's centre line.
+	drawTexts := func(title string, length float64, draw func(text string, d float64, align TextAlign)) {
+		titleSize, endSize := style.Typography.SizeBody, style.Typography.SizeSmall
+		b.SetFontWeight(style.Typography.WeightBold)
+		b.SetFontSize(titleSize)
+		floor := LabelFloor(b, 8)
+		avail := length - point - 2*pad
+		titleW, _ := b.MeasureText(title)
+		for titleW > avail && titleSize > floor {
+			titleSize = math.Max(floor, titleSize-0.5)
+			b.SetFontSize(titleSize)
+			titleW, _ = b.MeasureText(title)
+		}
+		centre := (length - point) / 2
+		draw(title, centre, TextAlignCenter)
+
+		b.SetFontWeight(style.Typography.WeightNormal)
+		b.SetFontSize(endSize)
+		lowW, _ := b.MeasureText(matrixAxisLow)
+		highW, _ := b.MeasureText(matrixAxisHigh)
+		// The ends need clear air beside the title (LibreOffice sets text a
+		// little wider than it is measured here).
+		if centre-titleW/2-pad/2 < pad+math.Max(lowW, highW)*1.2 {
+			return
+		}
+		draw(matrixAxisLow, pad, TextAlignLeft)
+		draw(matrixAxisHigh, length-point-pad*0.25, TextAlignRight)
+	}
+
+	b.Push()
+	b.SetFillColor(fill)
+	b.SetStrokeColor(Color{A: 0})
+	b.SetStrokeWidth(0)
+
+	// X bar.
+	x0, x1 := plotArea.X, plotArea.X+plotArea.W
+	y0 := plotArea.Y + plotArea.H + gap
+	b.DrawPolygon([]Point{{X: x0, Y: y0}, {X: x1 - point, Y: y0}, {X: x1, Y: y0 + t/2}, {X: x1 - point, Y: y0 + t}, {X: x0, Y: y0 + t}})
+
+	// Y bar.
+	xr := plotArea.X - gap
+	xl := xr - t
+	yt, yb := plotArea.Y, plotArea.Y+plotArea.H
+	b.DrawPolygon([]Point{{X: xl, Y: yb}, {X: xl, Y: yt + point}, {X: xl + t/2, Y: yt}, {X: xr, Y: yt + point}, {X: xr, Y: yb}})
+	b.Pop()
+
+	b.Push()
+	b.SetTextColor(ink)
+	drawTexts(mc.config.XAxisLabel, plotArea.W, func(text string, d float64, align TextAlign) {
+		b.DrawText(text, x0+d, y0+t/2, align, TextBaselineMiddle)
+	})
+	// The y bar's text reads bottom to top: rotated -90° about its anchor
+	// (the SVG postprocessor rewrites the matrix transform for LibreOffice).
+	drawTexts(mc.config.YAxisLabel, plotArea.H, func(text string, d float64, align TextAlign) {
+		cx, cy := xl+t/2, yb-d
+		b.Push()
+		b.RotateAround(-90, cx, cy)
+		b.DrawText(text, cx, cy, align, TextBaselineMiddle)
+		b.Pop()
+	})
+	b.Pop()
 }
 
 // drawGridLines draws the grid lines at the midpoints.
@@ -375,13 +537,11 @@ func (mc *Matrix2x2Chart) drawQuadrantLabels(plotArea Rect) [4]placedLabel {
 		// plot, repeating them in every quadrant consumes the entire point area.
 		labels = [4]string{"High / Low", "High / High", "Low / Low", "Low / High"}
 	}
-	// Each quadrant label gets a bounded rectangle within its quadrant.
-	// Labels are centered in each quadrant for clean consulting-style layout.
-	rects := []Rect{
-		{X: plotArea.X + pad, Y: plotArea.Y + pad, W: halfW - 2*pad, H: halfH - 2*pad},
-		{X: plotArea.X + halfW + pad, Y: plotArea.Y + pad, W: halfW - 2*pad, H: halfH - 2*pad},
-		{X: plotArea.X + pad, Y: plotArea.Y + halfH + pad, W: halfW - 2*pad, H: halfH - 2*pad},
-		{X: plotArea.X + halfW + pad, Y: plotArea.Y + halfH + pad, W: halfW - 2*pad, H: halfH - 2*pad},
+	// Each quadrant label gets a bounded rectangle within its quadrant's field.
+	fields := mc.quadrantRects(plotArea)
+	rects := make([]Rect, len(fields))
+	for i, f := range fields {
+		rects[i] = Rect{X: f.X + pad, Y: f.Y + pad, W: f.W - 2*pad, H: f.H - 2*pad}
 	}
 
 	// Captions sit in each quadrant's OUTER TOP corner, not its centre.
@@ -453,6 +613,7 @@ func (mc *Matrix2x2Chart) drawQuadrantLabels(plotArea Rect) [4]placedLabel {
 		bands[i] = placedLabel{x: bandX, y: rects[i].Y - pad, w: bandW, h: bandH}
 		labelRect := rects[i]
 		labelRect.H = math.Max(1, bandH-2*pad)
+		b.SetTextColor(mc.quadrantInk(i, style.Palette.TextPrimary))
 		b.DrawWrappedText(label, labelRect, aligns[i])
 	}
 
@@ -468,14 +629,10 @@ func (mc *Matrix2x2Chart) drawQuadrantLists(data Matrix2x2Data, plotArea Rect) {
 	b := mc.builder
 	style := b.StyleGuide()
 
-	halfW := plotArea.W / 2
-	halfH := plotArea.H / 2
 	pad := style.Spacing.MD
-	rects := [4]Rect{
-		{X: plotArea.X + pad, Y: plotArea.Y + pad, W: halfW - 2*pad, H: halfH - 2*pad},
-		{X: plotArea.X + halfW + pad, Y: plotArea.Y + pad, W: halfW - 2*pad, H: halfH - 2*pad},
-		{X: plotArea.X + pad, Y: plotArea.Y + halfH + pad, W: halfW - 2*pad, H: halfH - 2*pad},
-		{X: plotArea.X + halfW + pad, Y: plotArea.Y + halfH + pad, W: halfW - 2*pad, H: halfH - 2*pad},
+	rects := mc.quadrantRects(plotArea)
+	for i, f := range rects {
+		rects[i] = Rect{X: f.X + pad, Y: f.Y + pad, W: f.W - 2*pad, H: f.H - 2*pad}
 	}
 
 	// One type scale across all four quadrants, driven by the fullest one, so
@@ -494,7 +651,7 @@ func (mc *Matrix2x2Chart) drawQuadrantLists(data Matrix2x2Data, plotArea Rect) {
 			b.Push()
 			b.SetFontSize(titleSize)
 			b.SetFontWeight(style.Typography.WeightBold)
-			b.SetTextColor(style.Palette.TextPrimary)
+			b.SetTextColor(mc.quadrantInk(i, style.Palette.TextPrimary))
 			b.DrawText(title, rect.X, y+titleSize*0.5, TextAlignLeft, TextBaselineMiddle)
 			b.Pop()
 			y += titleSize * quadrantListLineFactor
@@ -506,7 +663,7 @@ func (mc *Matrix2x2Chart) drawQuadrantLists(data Matrix2x2Data, plotArea Rect) {
 		b.Push()
 		b.SetFontSize(itemSize)
 		b.SetFontWeight(style.Typography.WeightNormal)
-		b.SetTextColor(style.Palette.TextSecondary)
+		b.SetTextColor(mc.quadrantInk(i, style.Palette.TextSecondary))
 		bulletIndent := itemSize * 0.9
 		itemFit := LabelFitStrategy{PreferredSize: itemSize, MinSize: itemSize, MinCharWidth: 4.5}
 		for _, item := range items {
@@ -1102,16 +1259,21 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		width, height := builder.Width(), builder.Height()
 		config := DefaultMatrix2x2Config(width, height)
 		config.ShowPointLabels = true
-		config.ShowGridLines = true
 
-		// Neutral quadrants by default: one light ink tint for all four, and
-		// the accent reserved for a quadrant the author highlights. Four
-		// accent tints read as a patchwork and bury which quadrant matters
-		// (go-slide-creator-njdno).
+		// One tone for all four quadrants — four different accents read as a
+		// patchwork and bury which quadrant matters (go-slide-creator-njdno) —
+		// and that tone is the accent's own light swatch, the fields held
+		// apart by a gutter instead of two crossing lines; a flat grey slab
+		// with a hairline cross was a wireframe (go-slide-creator-ckpye). The
+		// accent proper is reserved for the quadrant the author highlights.
 		style := builder.StyleGuide()
+		field, deep := matrixFieldColors(style.Palette)
 		for i := range config.QuadrantColors {
-			config.QuadrantColors[i] = style.Palette.TextPrimary.WithAlpha(matrixNeutralQuadrantAlpha)
+			config.QuadrantColors[i] = field
 		}
+		config.ShowGridLines = false
+		config.Gutter = style.Spacing.SM
+		config.AxisBars = true
 
 		// Apply custom axis labels (support multiple key formats)
 		if xLabel, ok := req.Data["x_axis_label"].(string); ok {
@@ -1162,10 +1324,15 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 			}
 		}
 
-		// The highlighted quadrant (by index, position or label) takes the
-		// accent tint.
+		// The highlighted quadrant (by index, position or label) is the one
+		// solid accent field when the quadrants hold lists; under plotted
+		// points, which are drawn in the accent themselves, it takes the
+		// deeper swatch instead.
 		if hi, ok := matrixHighlightQuadrant(req.Data, config.QuadrantLabels); ok {
-			config.QuadrantColors[hi] = style.Palette.Accent1.WithAlpha(matrixHighlightQuadrantAlpha)
+			config.QuadrantColors[hi] = deep
+			if data.HasQuadrantItems() {
+				config.QuadrantColors[hi] = style.Palette.Accent1.Opaque()
+			}
 		}
 
 		// Apply custom quadrant colors
@@ -1228,12 +1395,33 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 	})
 }
 
-// Quadrant tints: the neutral default is a 6% wash of the text ink; the
-// highlighted quadrant is a light accent1 tint.
+// Quadrant fields. A field is the accent's "Lighter 80%" swatch and the
+// deeper field its "Lighter 50%" (Color.Tint, the pattern engine's tonal
+// system). Where that swatch cannot be told from the background or from the
+// solid accent (a yellow accent), both come from the neutral ink instead.
 const (
-	matrixNeutralQuadrantAlpha   = 0.06
-	matrixHighlightQuadrantAlpha = 0.18
+	matrixFieldKeep       = 0.2
+	matrixFieldDeepKeep   = 0.5
+	matrixFieldPaperMin   = 1.12
+	matrixFieldAccentMin  = 1.6
+	matrixNeutralField    = 0.10
+	matrixNeutralDeepFill = 0.24
 )
+
+// matrixFieldColors returns the fill of a quadrant field and of the deeper
+// field a highlighted quadrant takes under plotted points.
+func matrixFieldColors(p *Palette) (field, deep Color) {
+	bg := p.Background
+	if bg.A < 1 {
+		bg = bg.BlendOver(Color{R: 255, G: 255, B: 255, A: 1})
+	}
+	accent := p.Accent1.BlendOver(bg)
+	field = accent.Tint(matrixFieldKeep)
+	if field.ContrastWith(bg) < matrixFieldPaperMin || accent.ContrastWith(field) < matrixFieldAccentMin {
+		return NeutralInk(p, matrixNeutralField), NeutralInk(p, matrixNeutralDeepFill)
+	}
+	return field, accent.Tint(matrixFieldDeepKeep)
+}
 
 // matrixHighlightQuadrant resolves data.highlight_quadrant — an index 0-3
 // (top-left, top-right, bottom-left, bottom-right), a position such as

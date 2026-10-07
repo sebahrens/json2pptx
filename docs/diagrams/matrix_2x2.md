@@ -105,13 +105,21 @@ In `points` mode the quadrant captions sit in each quadrant's **outer top corner
 | `quadrant_labels` | `string[4]` | See below | Labels for [TL, TR, BL, BR] |
 | `title` | `string` | - | Diagram title |
 | `subtitle` | `string` | - | Subtitle |
-| `highlight_quadrant` | `number` \| `string` | - | The one quadrant tinted in accent1: index 0-3 (TL, TR, BL, BR), a position (`"top-left"`, `"top_right"`, ...) or a quadrant label. `quadrants[].highlight: true` does the same |
+| `highlight_quadrant` | `number` \| `string` | - | The one quadrant emphasised (solid accent1 under quadrant lists, the deeper accent tint under plotted points): index 0-3 (TL, TR, BL, BR), a position (`"top-left"`, `"top_right"`, ...) or a quadrant label. `quadrants[].highlight: true` does the same |
 | `quadrant_colors` | `string[4]` | - | Explicit hex fills for [TL, TR, BL, BR] (at `quadrant_opacity`, default 0.3) |
 
-Colour is restrained by default: all four quadrants share one light neutral
-wash (6% of the text ink), and every point is drawn in accent1. Tint the
-quadrant that carries the message with `highlight_quadrant`; points that name a
-`series` get one accent per series.
+Colour is restrained by default: all four quadrants are fields in one tone,
+the accent's "Lighter 80%" swatch (the neutral ink where that swatch cannot be
+told from the background or from the accent), held apart by a gutter instead of
+two crossing lines, and every point is drawn in accent1. Emphasise the quadrant
+that carries the message with `highlight_quadrant`: it is the solid accent when
+the quadrants hold lists and the deeper "Lighter 50%" swatch under plotted
+points. Points that name a `series` get one accent per series.
+
+Each axis is a dark bar along the matrix's edge — under it for x, left of it
+for y — that ends in a point at its high end and carries `Low`, the bold axis
+title and `High` (the ends are dropped where a short bar cannot hold them
+beside the title). The native `matrix-2x2` pattern draws the same family.
 
 ## Default Quadrant Labels
 
