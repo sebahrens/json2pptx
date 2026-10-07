@@ -24,8 +24,12 @@ func unrenderableDiagramFindings(input *PresentationInput, analysis *types.Templ
 	if input == nil || analysis == nil {
 		return nil
 	}
+	theme := analysis.Theme
+	if theme.Metadata == nil {
+		theme.Metadata = analysis.Metadata
+	}
 	all := collectChartDryRenderFindingsResolved(input, analysis.Theme.Colors, analysis.Theme.BodyFont, "warn",
-		true, analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight)
+		true, analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight, chartTemplateStyleOf(&theme))
 	var failed []patterns.FitFinding
 	for _, f := range all {
 		if f.Code == patterns.ErrCodeDiagramRenderFailed && f.Action == "refuse" {
@@ -102,9 +106,64 @@ func collectChartDryRenderFindingsInFrames(
 	bodyFont, strictFit string,
 	layouts []types.LayoutMetadata,
 	slideWidth, slideHeight int64,
+	tmpl ...chartTemplateStyle,
 ) []patterns.FitFinding {
 	return collectChartDryRenderFindingsResolved(input, themeColors, bodyFont, strictFit,
-		generator.NewSVGConverter().IsPNGAvailable(), layouts, slideWidth, slideHeight)
+		generator.NewSVGConverter().IsPNGAvailable(), layouts, slideWidth, slideHeight, tmpl...)
+}
+
+// chartTemplateStyle is what a template's metadata adds to a chart's style on
+// the generate path, beyond the theme colours: the declared series palette
+// (data_palette, resolved to hex) and the semantic accent roles. The dry
+// render applies it to each chart the way generation does, so both measure
+// the same palette (go-slide-creator-xlkwt).
+type chartTemplateStyle struct {
+	dataPalette     []string
+	semanticAccents map[string]string
+}
+
+// chartTemplateStyleOf reads the template style from a theme that carries its
+// template's metadata. A nil theme, or a template without metadata, adds
+// nothing.
+func chartTemplateStyleOf(theme *types.ThemeInfo) chartTemplateStyle {
+	if theme == nil {
+		return chartTemplateStyle{}
+	}
+	tmpl := chartTemplateStyle{
+		dataPalette:     resolveDataPalette(theme.Metadata, theme.Colors),
+		semanticAccents: theme.SemanticAccents,
+	}
+	if len(tmpl.semanticAccents) == 0 && theme.Metadata != nil {
+		tmpl.semanticAccents = theme.Metadata.SemanticAccents
+	}
+	return tmpl
+}
+
+// apply returns spec with the template style injected as the render path
+// injects it, on a copy; spec itself is never changed. A placeholder chart
+// takes the series palette (unless it names its own colours) and the semantic
+// accents (unless it names its own) — processDiagramContent in
+// internal/generator/media.go. A grid-cell chart takes the series palette
+// only — generateDiagramCellInserts in shape_grid.go.
+func (t chartTemplateStyle) apply(spec *types.DiagramSpec, gridSurface bool) *types.DiagramSpec {
+	if spec == nil {
+		return nil
+	}
+	ownColors := spec.Style != nil && len(spec.Style.Colors) > 0
+	ownAccents := spec.Style != nil && len(spec.Style.SemanticAccents) > 0
+	setPalette := !ownColors && len(t.dataPalette) > 0
+	setAccents := !gridSurface && !ownAccents && len(t.semanticAccents) > 0
+	if !setPalette && !setAccents {
+		return spec
+	}
+	styled := cloneDiagramSpecForCell(spec)
+	if setPalette {
+		styled.Style.DataPalette = t.dataPalette
+	}
+	if setAccents {
+		styled.Style.SemanticAccents = t.semanticAccents
+	}
+	return styled
 }
 
 func collectChartDryRenderFindingsResolved(
@@ -114,9 +173,14 @@ func collectChartDryRenderFindingsResolved(
 	converterAvailable bool,
 	layouts []types.LayoutMetadata,
 	slideWidth, slideHeight int64,
+	tmplStyle ...chartTemplateStyle,
 ) []patterns.FitFinding {
 	if input == nil || len(input.Slides) == 0 {
 		return nil
+	}
+	var tmpl chartTemplateStyle
+	if len(tmplStyle) > 0 {
+		tmpl = tmplStyle[0]
 	}
 	var findings []patterns.FitFinding
 	viewingMode := tokens.ParseViewingMode(input.ViewingMode)
@@ -138,7 +202,7 @@ func collectChartDryRenderFindingsResolved(
 				if item.ChartValue == nil {
 					continue
 				}
-				spec := generator.WithoutDuplicateChartTitle(chartValueToDiagramSpec(item.ChartValue), slideTitle)
+				spec := tmpl.apply(generator.WithoutDuplicateChartTitle(chartValueToDiagramSpec(item.ChartValue), slideTitle), false)
 				path := slidepath.ContentField(slideIdx, contentIdx, "chart_value")
 				findings = append(findings,
 					dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, false, bounds, viewingMode)...)
@@ -148,7 +212,7 @@ func collectChartDryRenderFindingsResolved(
 				}
 				path := slidepath.ContentField(slideIdx, contentIdx, "diagram_value")
 				findings = append(findings,
-					dryRenderSpecInBounds(generator.WithoutDuplicateChartTitle(item.DiagramValue, slideTitle), themeColors, bodyFont, strictFit, path, false, bounds, viewingMode)...)
+					dryRenderSpecInBounds(tmpl.apply(generator.WithoutDuplicateChartTitle(item.DiagramValue, slideTitle), false), themeColors, bodyFont, strictFit, path, false, bounds, viewingMode)...)
 				// Native diagrams: lay the shapes out in this template's
 				// placeholder and run generation's written-scale scan, so a
 				// refusal generate would raise is an error here first
@@ -171,7 +235,7 @@ func collectChartDryRenderFindingsResolved(
 			result := resolveGridForStructural(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 			findings = append(findings, collectGridDryRenderFindingsResolved(
 				slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), themeColors, bodyFont, strictFit,
-				converterAvailable, result, slideWidth, slideHeight, viewingMode)...)
+				converterAvailable, result, slideWidth, slideHeight, viewingMode, tmpl)...)
 		} else if slide.Pattern != nil {
 			// Named patterns that embed charts (chart-insights-split, ...)
 			// are only expanded at generate time; expand them here so their
@@ -186,7 +250,7 @@ func collectChartDryRenderFindingsResolved(
 			result := resolveGridForStructural(pg, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 			findings = append(findings, collectGridDryRenderFindingsResolved(
 				pg, slidepath.SlideField(slideIdx, "pattern"), themeColors, bodyFont, strictFit,
-				converterAvailable, result, slideWidth, slideHeight, viewingMode)...)
+				converterAvailable, result, slideWidth, slideHeight, viewingMode, tmpl)...)
 		}
 	}
 	return chartFindingsAtAuthoredPaths(input, findings)
@@ -212,6 +276,7 @@ func collectGridDryRenderFindingsResolved(
 	result *shapegrid.ResolveResult,
 	slideWidth, slideHeight int64,
 	viewingMode tokens.ViewingMode,
+	tmpl chartTemplateStyle,
 ) []patterns.FitFinding {
 	if grid == nil {
 		return nil
@@ -235,11 +300,11 @@ func collectGridDryRenderFindingsResolved(
 			diagramBounds := resolvedGridCellBounds(result, ri, col, shapegrid.CellKindDiagram)
 			if cell.Diagram != nil {
 				findings = append(findings, dryRenderGridSpecInBounds(
-					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram", converterAvailable, diagramBounds, viewingMode)...)
+					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram", converterAvailable, diagramBounds, viewingMode, tmpl)...)
 			}
 			if cell.Composite != nil && cell.Composite.SubDiagram != nil {
 				findings = append(findings, dryRenderGridSpecInBounds(
-					cell.Composite.SubDiagram, themeColors, bodyFont, strictFit, cellPath+"/composite/sub_diagram", converterAvailable, diagramBounds, viewingMode)...)
+					cell.Composite.SubDiagram, themeColors, bodyFont, strictFit, cellPath+"/composite/sub_diagram", converterAvailable, diagramBounds, viewingMode, tmpl)...)
 			}
 			if cell.Grid != nil {
 				var nested *shapegrid.ResolveResult
@@ -253,7 +318,7 @@ func collectGridDryRenderFindingsResolved(
 				}
 				findings = append(findings, collectGridDryRenderFindingsResolved(
 					cell.Grid, cellPath+"/grid", themeColors, bodyFont, strictFit,
-					converterAvailable, nested, slideWidth, slideHeight, viewingMode)...)
+					converterAvailable, nested, slideWidth, slideHeight, viewingMode, tmpl)...)
 			}
 		}
 	}
@@ -317,8 +382,9 @@ func dryRenderGridSpecInBounds(
 	converterAvailable bool,
 	bounds types.BoundingBox,
 	viewingMode tokens.ViewingMode,
+	tmpl chartTemplateStyle,
 ) []patterns.FitFinding {
-	findings := dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, true, bounds, viewingMode)
+	findings := dryRenderSpecInBounds(tmpl.apply(spec, true), themeColors, bodyFont, strictFit, path, true, bounds, viewingMode)
 	// A native diagram in a region is laid out at the region's actual size
 	// with the same bounded adapter generate uses; a region too small for
 	// readable text is refused here first (go-slide-creator-3grgs).

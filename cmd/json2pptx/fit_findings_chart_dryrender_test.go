@@ -659,6 +659,9 @@ func TestPlaceholderChartDryRenderRequestMatchesGenerate(t *testing.T) {
 			got.Style.ThemeColors, got.Style.Palette, want.Style.ThemeColors, want.Style.Palette)
 	}
 
+	// go-slide-creator-xlkwt: and the palette a template declares.
+	t.Run("declared data palette", dryRenderRequestUsesTheDeclaredPalette)
+
 	kept := generator.WithoutDuplicateChartTitle(spec, "EMEA leads")
 	if kept != spec {
 		t.Errorf("a title that adds something must be kept unchanged")
