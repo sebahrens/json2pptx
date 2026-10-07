@@ -16,11 +16,11 @@ func openMatrixValues() *Matrix2x2Values {
 	}
 }
 
-// go-slide-creator-jnkiq: the default matrix is two crossing axis lines with
+// go-slide-creator-jnkiq: the open matrix is two crossing axis lines with
 // open quadrants; titles and low / high ends sit in strips along the axes.
-func TestMatrix2x2OpenDefault(t *testing.T) {
+func TestMatrix2x2OpenStyle(t *testing.T) {
 	p := &matrix2x2{}
-	grid, err := p.Expand(testThemeCtx(), openMatrixValues(), nil, nil)
+	grid, err := p.Expand(testThemeCtx(), openMatrixValues(), &Matrix2x2Overrides{Style: "open"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestMatrix2x2OpenHighlight(t *testing.T) {
 	if err := p.Validate(v, nil, nil); err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	grid, err := p.Expand(testThemeCtx(), v, nil, nil)
+	grid, err := p.Expand(testThemeCtx(), v, &Matrix2x2Overrides{Style: "open"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestMatrix2x2OpenHighlight(t *testing.T) {
 func TestMatrix2x2OpenHasMoreRoom(t *testing.T) {
 	ctx := testThemeCtx()
 	v := openMatrixValues()
-	open := layoutMatrix2x2(ctx, v, &Matrix2x2Overrides{})
+	open := layoutMatrix2x2(ctx, v, &Matrix2x2Overrides{Style: "open"})
 	tiles := layoutMatrix2x2(ctx, v, &Matrix2x2Overrides{Style: "tiles"})
 	if open.availPt <= tiles.availPt {
 		t.Errorf("open quadrant height %.0fpt, tiles %.0fpt: removing the containers must not cost room", open.availPt, tiles.availPt)
