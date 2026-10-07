@@ -6,7 +6,9 @@ is how json2pptx draws it on the DeckSpec path (kinds are live:
 `list_slide_kinds`; a few consulting staples are still raw-path patterns and
 say so). Back to the [hub](README.md); the engine's own catalog with budgets
 is [`DECKSPEC.md`](../../skills/generate-deck/DECKSPEC.md); the per-slide
-recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
+recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md),
+and the full menu with every form, pattern, chart and diagram is
+[layout-catalog.md](layout-catalog.md).
 
 ## General
 
@@ -17,9 +19,10 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md).
 | "X grew / fell / crossed a line" | `chart_insight` (chart + `insights[]`) or `regions` when the number sits beside it | Bar for discrete periods, line for 6+ points, waterfall for walks; `highlight` the bar the title argues. |
 | "Here is how the pieces fit" | `architecture` (tiers + `rails`), `pillars` (3–5; a house with `objective` + `foundation`), `framework` (SWOT, Five Forces, BMC) | Draw every canonical part or the kind degrades to bullets. |
 | "A beats B on these criteria" | `option_matrix` (criteria × options, one scale per criterion) | `recommended`, `decisive_criterion`; `rag` for status, `harvey` for fit. |
-| "We recommend option 2" | `decision` (3–6 options) | One `recommended: true`, the ask in `recommendation`. |
-| "Today vs target" | `comparison` (2 aligned columns) | Rows correspond; keep it to ~6. |
-| "This is the sequence" | `process` (3–6 steps with descriptions → numbered rows; 7–8 or bare labels → flow boxes) | A straight sequence, not a branching flowchart. |
+| "We recommend option 2" | `decision` (3–6 options as numbered boxes; exactly 2, or 7–12, each with a `detail`, as cards) | One `recommended: true`, the ask in `recommendation`. |
+| "Today vs target" | `comparison` (2 aligned columns; 3–5 columns → titled panels; 6–12 → cards) | Rows correspond; keep it to ~6; `connectors: true` for the per-row arrow. |
+| "The chapters, and where we are" | `agenda` (2–10 `sections`, `current`) | A real contents page; pair it with `structure.sections` on 12+ slides. |
+| "This is the sequence" | `process` (3–6 steps with descriptions → numbered rows; 7–8 or bare labels → flow chevrons; a step with `type: decision` → a diamond) | One path with at most a yes / no gate, not a branching flowchart; actors in lanes → raw `swimlane`. |
 | "It repeats", "everything relates to the centre", "these contain one another" | `cycle` (3–8 `phases`, one `style`) | One rule picks the style: one ordered loop → `ring` (default; 4–8 segments) or `nodes` (3–8 circles joined by arrows, when the hand-offs matter); one-off steps that feed the loop → `intake` (1–3 `intake` steps); two loops that feed each other, on a full-width slide → `figure_eight` (`left_label` / `right_label`); unordered peers around a centre → `radial` (`center` is the hub); things that contain one another → `concentric` (3–5, innermost first). One `highlight` phase. Not for a sequence that runs once (`process`) or a ranked hierarchy (raw `pyramid`). See "The cycle family" below. |
 | "When things happen" | `timeline` (3–7 dated stops) · `roadmap` (3–6 phases, 0–4 `parallel_tracks`) | An `end_date` turns a timeline into bars. |
 | "Who does what by when" | `next_steps` | 2–6 actions `{action, owner, date}`, 0–3 `decisions`. Always the closer. |
@@ -100,13 +103,30 @@ heading, source on the slide, no legend when one series is labelled.
 
 ## Patterns that still need the raw path
 
-`labeled-rows`, `capability-heatmap`, `roadmap-phased` (dated bars per
-workstream), `swimlane`, `value-chain`, `scqa-summary`,
-`driver-tree`, `journey-maturity-model`, `exec-summary` variants, and the
-svggen diagrams (gantt, venn, org chart). Carry them as a `raw_json2pptx`
-slide inside the DeckSpec — the whole pattern block verbatim from
-`show_pattern` — not as a lowered raw deck; `recommend_visual` returns such a
-slide ready to run for any pattern or diagram candidate.
+Twenty-two patterns have no kind: `labeled-rows` (one structured finding),
+`scqa-summary`, `text-sidebar` (a foreword page), `before-after` and
+`before-after-compact` (two states with a chevron), `framework-grid` (levers
+by dimension), `capability-heatmap`, `driver-tree`, `value-chain`,
+`pyramid`, `horizontal-bar-with-callouts` (ranked bars, one insight each),
+`hero-detail`, `metric-list`, `kpi-inline`, `process-grid-2row` (two lanes),
+`swimlane`, `roadmap-phased` (dated bars per workstream),
+`journey-maturity-model`, `state-shift-hub`, `dual-org-ladder` (engagement /
+JV team), `contact-directory`, `icon-row` — plus every svggen and native
+diagram (gantt, venn, org chart, fishbone, PESTEL, nine-box …). Each is a row
+in [layout-catalog.md](layout-catalog.md) §3. Carry them as a
+`raw_json2pptx` slide inside the DeckSpec — the whole pattern block verbatim
+from `show_pattern` — not as a lowered raw deck; `recommend_visual` returns
+such a slide ready to run for any pattern or diagram candidate. (`exec-summary`
+is *not* raw-only: `executive_summary` compiles to it, and
+`overrides.takeaway_emphasis` is reachable through the kind's `pattern`
+override.)
+
+Three more messages the kinds cover and agents under-use: "the chapters,
+with where we are" → `agenda` (`sections`, `current`); "A or B" → `decision`
+with exactly two detailed options (a pair of cards); "the flow has one
+yes / no gate" → `process` with a step of `type: decision` (the diamond in
+the flow). The forms every kind can take are in
+[layout-catalog.md](layout-catalog.md) §2.
 
 ## The cycle family
 

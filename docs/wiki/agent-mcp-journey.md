@@ -3,9 +3,10 @@
 The path an agent takes from a brief to a reviewed PPTX over `json2pptx mcp`,
 with what each response carries and where agents actually lost time. The
 sequence below is the default `deckspec` tool profile (13 tools); `--tools
-all` adds 35 more and about 200 KB to the first `tools/list` — in four
+all` adds 36 more and about 125 KB to the first `tools/list` — in four
 product-only runs the only extra tool that earned its place was
-`show_pattern`, which is why it is now in the default profile.
+`show_pattern`, which is why it is now in the default profile. Hidden tools
+stay callable by name (see "Hidden tools worth calling" below).
 
 Back to the [wiki hub](README.md). The contract behind this page is
 [`skills/generate-deck/SKILL.md`](../../skills/generate-deck/SKILL.md) and
@@ -45,12 +46,18 @@ tool's full description and schema — use it instead of guessing an argument.
 
 ### 2. Discover, then write the storyline
 
-`list_slide_kinds()` is the catalogue: 27 kinds, one line each. Call it again
+`list_slide_kinds()` is the catalogue: 29 kinds, one line each. Call it again
 with `kinds: [the kinds you will use]` to get a copy-ready example of each, and
 with `fields: ["brief"]` plus your `template` to get the measured title and
 takeaway budgets (titles ≤ ~67 characters on the tightest templates, two lines).
-Write the **ghost deck** — the action titles alone, in order — before any slide
-body ([storyline-and-structure.md](storyline-and-structure.md)).
+`fields` also takes `budgets` (every measured limit), `compositions` (the
+`pattern:` / `layout:` forms a kind can be switched to), `item_schema` and
+`item_schema_full`; `preview: true` with 1–4 kinds returns their renders as
+images. The whole menu — forms per kind, the 58 patterns, 16 charts, 21
+diagrams — is [layout-catalog.md](layout-catalog.md). Pick the skeleton for
+the deliverable from [deck-archetypes.md](deck-archetypes.md), then write the
+**ghost deck** — the action titles alone, in order — before any slide body
+([storyline-and-structure.md](storyline-and-structure.md)).
 
 `plan_deck(format: "deckspec")` drafts slots from a brief. It routes the
 slides a brief names on the kind vocabulary (bridge / walk → `bridge`, photo /
@@ -138,19 +145,39 @@ same `deck_id` with `template: "p-style"` (or the client's `template_path` via
 `examine_template` first): the response forks a new `deck_id`; look at every
 slide again — titles that fit on one template wrap on another, and chrome that
 fit may truncate. Do not restyle content for the second template; fix the
-spec so it holds on both.
+spec so it holds on both. `validate_deck_spec(deck_id, templates: ["p-style",
+"modern-template"])` (or `["all"]`) measures the stored spec on several
+templates in one call and returns `template_results[] {template, ok,
+summary, findings}` — run it before the second render so the budget breaks
+are known in advance.
+
+## Hidden tools worth calling by name
+
+The default profile hides these; `get_started(tool:"<name>")` returns the
+schema and they are called like any other.
+
+| Tool | Call it when | Returns |
+|---|---|---|
+| `explain_deck_spec` (deck_id or spec) | Before the first render, and after a repair round | `slides[] {index, kind, role, visual_family, density, title, takeaway, pattern, layout, alternatives[]}`, `rhythm`, `rhythm_warnings[]`, `layout_coverage` — the ghost deck and the rhythm read back from the spec |
+| `analyze_deck_rhythm` (deck_id) | A run of the same family, or a deck that reads flat | `recommendations[] {code, slide_index, message, recommended_break_patterns}` — `break_run`, `motif_dominant`, `missing_executive_summary`, `missing_next_steps`, `bullets_heavy`, `accent_heavy_slide` |
+| `list_deck_archetypes` | Setting `meta.archetype` | the six archetypes with their default template and `executive` flag |
+| `describe_finding` (code) — in the default profile | Any code you have not seen | `summary`, `blocks_when`, `remediation_steps[]`, `example_before` / `example_after`, `related_codes[]` |
+| `score_deck` (deck_id) — in the default profile | Before `submit_visual_review` | `quality_gate`, `slide_scores`, `deck_findings[]`, `composition.diagnostics[]` |
+| `list_patterns(fields:"full")`, `expand_pattern` | Choosing or testing a raw-only pattern | the 58 patterns with `composes_with` / `role_on_slide`; the expanded grid with `cell_budgets` and `capacity_warnings` |
+| `export_deck(pptx_path, format: "pdf" \| "notes")` | The deliverable is a PDF review copy or a speaker handout | the exported file's path |
+| `compile_deck_spec` | You need the raw deck a DeckSpec compiles to (to hand-edit one slide) | the raw `PresentationInput` |
 
 ## Where the runs lost time (and what to do instead)
 
 | Friction | What happened | Do this |
 |---|---|---|
 | Table refused at 8 rows | The old 7-row cap refused tables that render cleanly and forced two half-empty slides | Fixed: up to 10 logical rows (header included) render, one-line rows past 7 at a compact pitch. Split only at `table_rows_truncated` or when the slide reads dense. |
-| `regions` kind list | The unknown-region-kind error listed slide kinds, so `bridge` looked available | Region kinds are `chart / stat / kpis / table / timeline / image / text`. A bridge beside text is a `chart` region with `type: waterfall` ([split-and-complex-layouts.md](split-and-complex-layouts.md)); `recommend_visual` now says so for "beside" intents. |
+| `regions` kind list | The unknown-region-kind error listed slide kinds, so `bridge` looked available | Region kinds are `chart / stat / kpis / table / timeline / image / text / cycle`. A bridge beside text is a `chart` region with `type: waterfall` ([slide-estate-and-segments.md](slide-estate-and-segments.md)); `recommend_visual` now says so for "beside" intents. |
 | Parallel tracks on a roadmap | `roadmap` had no `parallel_tracks`; agents dropped to a raw `roadmap-phased` slide | Fixed: `roadmap.parallel_tracks` (0–4) and `parallel_label` (`go-slide-creator-ptazs`); [playbook-risk-consulting.md](playbook-risk-consulting.md) uses them. |
 | Before / after with connectors | `comparison` could not pass `connectors` / `highlight_column` | Fixed: `comparison.connectors`, `highlight_column`, `highlight_row`; [playbook-technology-and-data.md](playbook-technology-and-data.md) uses them. The screenshot's `image_case.image_width_pct` landed in the same change. |
 | Footer client name truncated | `meta.chrome.client` plus `project_code` plus date overflowed the footer silently on 11 slides | Fixed: the line drops `project_code`, then the date, before any ellipsis, and `CHROME_TRUNCATED` reports it with the characters that fit (`go-slide-creator-m2tlt`). Still look at the footer on the second template. |
 | Waterfall axis started at 22 | The opening total drew as a stub | Fixed: non-negative bars, lines and waterfalls start at zero; `data.y_min` / `y_max` zoom deliberately (`go-slide-creator-929jm`). |
-| `--tools all` first contact | 224 KB, 48 tools, 11 used | Stay on the default profile; `get_started(tool:"<hidden tool>")` reaches any hidden tool by name. |
+| `--tools all` first contact | 224 KB then; 49 tools and ~148 KB now, 11 used | Stay on the default profile; `get_started(tool:"<hidden tool>")` reaches any hidden tool by name. |
 | Thumbnail bytes | ~2 MB of images across a run | Render all once, then `known_hashes`; `density: 100` only for the slide you cannot read. |
 | Info notes in strict reviews | `table_font_scaled`, `contrast_predicted` are notes | Act on them only when the image shows a problem; a strict standard splits the table instead of accepting 11pt. |
 

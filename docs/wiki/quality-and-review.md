@@ -43,7 +43,12 @@ scored 100 in the journey runs (the footer is now reported: `CHROME_TRUNCATED`).
 
 Record a failed check as `{severity, category, description, location}` on
 that slide; P0/P1 make the deck `changes_requested`. Approve only when all ten
-pass on every slide.
+pass on every slide. The deck-level checks a partner runs before these —
+governing thought, vertical and horizontal logic, the executive summary
+mirroring the body, the ask on the last slide — are in
+[slide-design-rules.md](slide-design-rules.md) §1–2 and §6;
+`explain_deck_spec(deck_id)` (hidden, callable by name) lists every slide's
+title, takeaway and role in order so the chain can be read without a render.
 
 ## What the tools cannot see (look for these yourself)
 
@@ -54,8 +59,10 @@ pass on every slide.
   grid that leaves the lower third of the content area empty is reported
   (`SLIDE_UNDERUSED` with `empty_band_pct`; `VERTICAL_IMBALANCE` for a short
   table; `SPARSE_SINGLE_ROW_FLOW` for a flow of short labels:
-  `go-slide-creator-i7yju`, `-kgfs1`), and a `kpi_snapshot`, a `value-chain`
-  and a `process-flow` of sentence steps are grown to clear it. The check
+  `go-slide-creator-i7yju`, `-kgfs1`), and a pattern alone on a slide that
+  needs under 70% of the area is scaled as a whole — rows up to 1.6×, type up
+  to two steps — to clear it (`go-slide-creator-cyyiy`; compose segments and
+  region cells are never scaled). The check
   measures where the last row ends, not how full the rows are: two bullets
   in a tall column, or a body-placeholder slide of two short lines, still
   pass. Look at them, and give a thin slide its second zone.

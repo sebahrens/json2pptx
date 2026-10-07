@@ -18,11 +18,14 @@ holds one number and a few short lines, never a paragraph.
 
 The most-used consulting split: the exhibit on the left, the headline number
 over two or three bullets on the right. `regions` takes 2–3 typed regions:
-`chart`, `stat`, `kpis`, `table`, `timeline`, `image`, `text`. With
+`chart`, `stat`, `kpis`, `table`, `timeline`, `image`, `text`, `cycle`. With
 `arrangement: main_left`, `regions[0]` is the main region (its `size_pct` is
 its width share, default 60) and `regions[1..2]` stack on the right, splitting
-that side by their own `size_pct`. One title, one `source`, one `takeaway`
-cover the slide.
+that side by their own `size_pct`. The other arrangements — `columns`,
+`rows`, `main_right`, `main_top`, `main_bottom` — the share rules and the
+widths at which each visual still draws are in
+[slide-estate-and-segments.md](slide-estate-and-segments.md). One title, one
+`source`, one `takeaway` cover the slide.
 
 ```yaml
 meta:
@@ -196,11 +199,11 @@ slides:
     takeaway: Operational and cyber are breached; conduct is drifting towards its limit.
 ```
 
-Keep `detail` lines off the options when there are five rows and the template
-is narrow: the first attempt with per-row details was measured at 5–6pt and the
-product's verified fix was to drop the visual (`go-slide-creator-u8orh`);
-removing the details kept it at 12pt. Quote numbers ("37") so YAML keeps them
-as text. A results board that also needs the counts (controls tested,
+One-line `detail`s under the option names fit at five rows on every shipped
+template (`go-slide-creator-dwha2`; the journey runs' 5–6pt measurement
+predates that fix); six rows with details need about 271pt of row height, so
+keep details to one line and drop them on a sixth row rather than accept the
+`layout: content` fallback. Quote numbers ("37") so YAML keeps them as text. A results board that also needs the counts (controls tested,
 exceptions, rating) is the same shape with `text` criteria for the counts — see
 [playbook-risk-assurance.md](playbook-risk-assurance.md).
 
@@ -482,9 +485,14 @@ When a region kind cannot express a part (a KPI column that must be a
 `metric-list`, a timeline footer under a chart), the raw slide `compose`
 envelope places whole patterns and svggen diagrams in segments:
 `direction` (`horizontal` | `vertical`), `segments[]` each with one `pattern`,
-one `diagram` (with `alt`) or a nested `compose`, and `size_pct` shares
-(≤ 8 segments, depth 2). Each segment is fit-checked in its own rectangle
-(`BODY_TOO_LONG` names `segment[i]`); `compose` never paginates. The canonical
+one `diagram` (svggen chart or native diagram, with `alt`) or a nested
+`compose`, and `size_pct` shares (2–8 segments, depth 2, 12 leaves; `gap`
+defaults to the template's gutter; an optional `banner` above and `callout`
+below the segments). Each segment is fit-checked in its own rectangle
+(`BODY_TOO_LONG` names `segments[i]`); `compose` never paginates. The full
+contract, the content-sized-versus-filling rules and two more recipes (a
+figure eight over a KPI band; a ring in legend mode beside a finding) are in
+[slide-estate-and-segments.md](slide-estate-and-segments.md) §3. The canonical
 example — `list_slide_kinds kinds:["raw_json2pptx"]` returns it as
 `composed_example`, rendered as returned:
 
@@ -598,6 +606,10 @@ slides:
 | You need | Use |
 |---|---|
 | Exhibit + number + bullets proving one title | `regions` `main_left` (§1) |
+| KPI strip over the exhibit and its explanation | `regions` `main_top` ([segments](slide-estate-and-segments.md) §2) |
+| Picture beside the number and two lines | `regions` `main_right` with an `image` region ([segments](slide-estate-and-segments.md) §2) |
+| Ranked bars, each with its own insight | raw `horizontal-bar-with-callouts` ([catalog](layout-catalog.md) §3) |
+| A full-width visual (figure eight, two-row flow) with a band under it | raw vertical `compose` ([segments](slide-estate-and-segments.md) §3) |
 | Bridge / walk + its implication | `regions` `columns`, waterfall chart (§2) |
 | Series + saving + the table behind it | `regions` `main_left`, chart + stat + table (§3) |
 | Rows with a coloured status and figures | `option_matrix`, `rag` + `text` criteria (§4) |

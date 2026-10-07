@@ -121,6 +121,38 @@ accountabilities", [People, Data, Technology]]`) when the point is the model.
 | Operational resilience / third-party risk | Important business services `table` → impact tolerances `kpi_snapshot` → scenario heat map (`risk_heatmap`) → gaps `comparison` → `roadmap`. |
 | Model risk / climate risk | Inventory `kpi_snapshot` → tiering `matrix_2x2` → validation plan `timeline` → `next_steps`. |
 
+## Conventions the risk committee expects
+
+- **Heat maps carry their scale.** Likelihood and impact levels are named in
+  words (`likelihood_levels: [Rare, Unlikely, Possible, Likely, Almost
+  certain]`, `impact_levels: [Negligible, Minor, Moderate, Major, Severe]`),
+  the band thresholds are stated once (score = likelihood × impact; e.g. low
+  1–4, medium 5–9, high 10–15, critical 16–25 on a 5 × 5), and the map is
+  always paired with the top-N `table` of owners and mitigations — a heat
+  map alone hides uncertainty and invites "three ambers equal a red". Show
+  inherent → residual as two maps or a before / after `comparison`, not as
+  arrows the engine cannot draw.
+- **RAG has published criteria** (the UK IPA delivery-confidence wording is a
+  safe default: green — on time, budget and quality; amber — feasible with
+  significant issues; red — appears unachievable without action). On an
+  appetite dashboard every row shows the value, the limit and the status —
+  a dot without the figure is an opinion.
+- **The regulatory remediation storyline** runs in a fixed order the
+  regulator will check against the order's articles: findings mapped to
+  articles (`table`) → root causes (`pillars` or `driver-tree`) → scope and
+  affected population (`kpi_snapshot`) → the plan (`roadmap` with the
+  submission date as a `milestone`) → status by workstream (`option_matrix`
+  `rag`) → independent validation and sustainability (`process`) → look-back
+  and redress where customers were harmed. Every status claim names its
+  evidence; regulators now expect access to the validator's work-product.
+- **Three lines of defence** are named the same way on every slide (1st:
+  business and control owners; 2nd: risk and compliance; 3rd: internal
+  audit), and the FTE and reporting lines are numbers, not adjectives.
+- **Options show their cost**, including the do-nothing option's exposure
+  (the expected loss or the regulatory consequence), and the recommended
+  option is argued on the criteria the committee set, not on the ones it
+  wins.
+
 ## Review points for this audience
 
 1. Appetite metrics show value *and* limit; a status dot without the figure

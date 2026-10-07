@@ -71,6 +71,36 @@ the pyramid with the answer in slide 2.
 | 100-day plan | `kpi_snapshot` (day-1 baseline) → workstreams `pillars` → `roadmap` (30/60/100) with parallel tracks (raw `roadmap-phased`) → governance `org` → `next_steps`. |
 | Pitch for a strategy engagement | Same spine; slide 4 becomes the client's own issue tree (`driver-tree`, raw) or a `matrix_2x2` of options, and slide 5 two or three `quote`s from references. |
 
+## Conventions a deal team expects
+
+- **Red-flag report**: short, fast, deal-breakers only. Each flag is one
+  `labeled-rows` slide — ISSUE / EVIDENCE / IMPACT ON PRICE OR SPA / NEXT
+  STEP — and the summary slide is an `option_matrix` with `rag` severity and
+  `text` price-impact columns. A flag without a price or structure consequence
+  is a note for the full report, not a red flag.
+- **Quality of earnings is a bridge.** Reported → normalised run-rate EBITDA
+  as a `bridge` (`type: delta` per adjustment, labelled by cause: one-offs,
+  owner costs, accounting policy, run-rate), with the adjusted figure in the
+  title. Net debt and debt-like items, and the net working capital peg, are
+  `table`s with `totals_row: true`.
+- **Management case vs adjusted case** is a `comparison` whose rows are the
+  same line items in the same order on both sides, with `connectors: true`
+  when the point is the size of each haircut.
+- **An IC paper states the thesis as what must be true**: 2–3 falsifiable
+  claims in the `executive_summary` leads, each tied to a body slide that
+  tests it; returns in base / upside / downside with IRR and MOIC (`table`,
+  or `kpi_snapshot` for the base case); risks tied to data-room evidence
+  (`source` names the document); the recommendation with conditions
+  precedent in `next_steps.decisions`; the 100-day plan as the appendix.
+- **Proposals mirror the client's words.** The "our understanding" slide
+  uses the brief's own terms and numbers (S and C of SCQ), the scope options
+  are scored on the client's criteria, and the fee table reconciles to the
+  number in the title. The team slide names the people who will be in the
+  data room, not the firm's leadership.
+- **Sources are dated and named** ("Information memorandum, August 2026;
+  management accounts FY23–FY25; desk research") — a market number without
+  a base year is challenged first.
+
 ## Review points for this audience
 
 1. Every number in the executive summary appears again on a body slide with a

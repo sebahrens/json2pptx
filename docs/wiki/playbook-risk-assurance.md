@@ -114,6 +114,43 @@ failed; the title states the failure. A one-off remediation path is a
 | Annual audit plan | Risk universe heat map (`risk_heatmap`) → plan `table` (audit, quarter, days) → resourcing `kpi_snapshot` → `decision` (approve plan). |
 | Control design review (pre-implementation) | Process `process` or svggen `swimlane` → control points `table` → gaps `option_matrix` (`rag`) → design actions `next_steps`. |
 
+## Conventions the audit committee expects
+
+- **A finding is written with the five Cs**, in this order and under these
+  labels: Condition (what was observed, with the count), Criteria (what should
+  be, naming the standard or policy), Cause (the root cause, not the symptom),
+  Consequence (the exposure, with its financial-reporting or operational
+  effect), Corrective action (agreed, with owner and date) — then the rating
+  and management's response. The `labeled-rows` slide in §"The
+  assurance-specific visuals" is that structure; keep the labels identical on
+  every finding slide.
+- **Rating ladders are published once**, on a rating-definitions appendix
+  page, and used verbatim everywhere. Findings: High / Medium / Low (or
+  high-risk finding / control weakness / process enhancement). Overall
+  opinion: effective (satisfactory) → partially effective, some improvement
+  needed → partially effective, major improvement needed → ineffective
+  (unsatisfactory). The opinion wording on the summary, the trend slide and
+  the closer must be character-identical.
+- **Deficiency language is regulated** when the work supports an external
+  audit: a *deficiency* (design or operation), a *significant deficiency*
+  ("less severe than a material weakness yet important enough to merit the
+  attention of those charged with governance") and a *material weakness* ("a
+  reasonable possibility that a material misstatement will not be prevented
+  or detected on a timely basis") are distinct terms (PCAOB AS 1305, ISA 265);
+  never promote or soften one for effect, and show the aggregation of
+  deficiencies on a likelihood × magnitude `matrix_2x2`.
+- **RAG has criteria.** Publish them (what makes a domain red, amber, green)
+  on the results board's `source` line or in the appendix; one RAG and one
+  sentence per domain, and every amber or red carries a root cause and a
+  dated action. Never aggregate colours ("three ambers make a red").
+- **The remediation tracker** is a `table` with finding ID, rating, action,
+  owner, due date, status, evidence of closure, validated by — ≤ 9 rows per
+  slide, the rest in the appendix. The re-test date appears on the roadmap,
+  in the tracker and in the `decisions`.
+- **Scope is explicit**: what was tested (controls, samples, period,
+  locations) and what was excluded, on the approach slide and in the appendix
+  statistics; a readout without exclusions reads as a blanket opinion.
+
 ## Review points for this audience
 
 1. The opinion wording is identical on slides 2, 5 and 11.

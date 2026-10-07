@@ -9,22 +9,27 @@ the engine enforces) and the contributor docs in [`docs/`](../) (how the engine
 works). The wiki is the *how to use it well* layer: storyline, visual choice,
 the MCP call path, and four worked decks that validate and render today.
 
-Every YAML block in these pages validates against the current build
-(`TestDocSemanticSnippetsValidateClean`), and the four playbook decks under
-[`examples/semantic/playbooks/`](../../examples/semantic/playbooks/) render on
-their template and on the local `p-style` template
-(`TestBundledSemanticExamplesValidateClean`). If a page and the engine
-disagree, the engine is right and the page has a bug: fix it in the same
-change.
+Every YAML block in these pages that is a whole deck (`meta:` … `slides:`)
+validates against the current build with no error finding
+(`TestDocSemanticSnippetsValidateClean`); the four playbook decks under
+[`examples/semantic/playbooks/`](../../examples/semantic/playbooks/) validate
+the same way (`TestBundledSemanticExamplesValidateClean`) and are rendered
+across `midnight-blue`, `modern-template` and the local `p-style` by the
+cross-template tests in `cmd/json2pptx`. If a page and the engine disagree,
+the engine is right and the page has a bug: fix it in the same change.
 
 ## Reading order
 
 | Page | Read it when |
 |---|---|
-| [Agent journey through the MCP](agent-mcp-journey.md) | First. The exact call sequence from `get_started` to `submit_visual_review`, what each response carries, and the traps four product-only agent runs hit. |
+| [Agent journey through the MCP](agent-mcp-journey.md) | First. The exact call sequence from `get_started` to `submit_visual_review`, what each response carries, the hidden tools worth calling by name, and the traps four product-only agent runs hit. |
+| [Deck archetypes](deck-archetypes.md) | When you know the deliverable: nine canonical skeletons (proposal, strategy recommendation, CDD / IC paper, business case, steering committee, board paper, assurance readout, transformation roadmap, pre-read) mapped slide by slide onto kinds, with ghost decks. |
 | [Storyline and structure](storyline-and-structure.md) | Before writing a single slide. Ghost deck, action titles, pyramid / SCQA, executive summary, the closer, appendix. |
-| [Split and complex layouts](split-and-complex-layouts.md) | When one slide has to carry two or three things: chart beside narrative, bridge beside implication, status boards, before/after, photo with callouts, architecture rails, long tables, raw composites. |
+| [Slide design rules](slide-design-rules.md) | What a partner-level reviewer checks: the Pyramid Principle's tests, dot-dash storyboard, title – exhibit – takeaway, chart choice by comparison, colour and density, the twelve failure modes and where the product catches them. |
+| [Layout catalog](layout-catalog.md) | To see the whole menu: every kind with its forms, all 58 patterns by family with their reach, 16 charts, 21 diagrams, and how to preview each before authoring. |
 | [Visual vocabulary](visual-vocabulary.md) | When choosing how a message should look: message → kind / pattern, by domain. |
+| [The slide estate and segments](slide-estate-and-segments.md) | When one slide must carry two or three things: the six `regions` arrangements, the eight region kinds, raw `compose`, content-sized versus filling blocks, and the width at which each visual still draws. |
+| [Split and complex layouts](split-and-complex-layouts.md) | The recipe book for those slides: chart beside narrative, bridge beside implication, status boards, before/after, photo with callouts, architecture rails, long tables, raw composites, a loop beside the words. |
 | [Quality and review](quality-and-review.md) | Before claiming a deck is done: the gates, the ten-point rubric, the second-template pass, what the tools cannot see. |
 | [Troubleshooting](troubleshooting.md) | When a finding, a refusal or a render surprises you. |
 

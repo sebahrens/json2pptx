@@ -54,6 +54,19 @@ option you want.
 (today vs target, aligned row by row), then `roadmap` / `timeline`, then the
 ask. The improvement must be visible in the comparison, not inferred.
 
+**Answer first, or build up?** Default to answer first. Build up only when
+the audience will reject the answer unheard, when the finding is itself the
+news (an audit, a diagnostic) or when the answer is not known yet (a workshop
+pre-read) — and even then the executive summary leads with the answer. The
+Pyramid Principle's two tests (vertical: every slide answers the *why / how*
+its parent raises; horizontal: slides under one point are the same kind of
+thing, in a deliberate order, with no overlap and no gap) and the dot-dash
+storyboard are in [slide-design-rules.md](slide-design-rules.md) §1–2; the
+canonical skeleton for each deliverable (proposal, strategy recommendation,
+IC paper, business case, steering committee, board paper, assurance readout,
+transformation roadmap, pre-read) is in
+[deck-archetypes.md](deck-archetypes.md).
+
 ## 3. The spine of a 10–14 slide deck
 
 | Position | Kind | Rule |
@@ -69,8 +82,15 @@ ask. The improvement must be visible in the comparison, not inferred.
 | after | appendix | `section` with `appendix: true`, then the backup tables; page numbers read A1, A2 and the main deck's `{total}` excludes them. |
 
 Twelve slides or more: use `structure.sections` with `auto_agenda` and let the
-compiler number the dividers; under twelve, dividers cost more than they give
-and the rhythm checks say so.
+compiler number the dividers, or an `agenda` slide with `current` set per
+chapter; under twelve, dividers cost more than they give and the rhythm
+checks say so.
+
+A slide belongs in the appendix when removing it leaves the title storyline
+intact but you would still need it to defend a number. Appendix slides keep
+an action title and a source, and the body slide that leans on one says so
+("detail in A3") in its `source` or `takeaway`. They are never required
+reading.
 
 ## 4. Every evidence slide carries three things
 

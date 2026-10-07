@@ -139,6 +139,39 @@ slides:
 | AI readiness / use-case prioritisation | Use cases `matrix_2x2` (value × feasibility, `highlight` the first wave) → platform `architecture` → `roadmap` → `decision`. |
 | Vendor selection | Requirements `table` → `option_matrix` (criteria weighted in the title) → TCO `regions` → `decision`. |
 
+## Conventions an investment committee expects
+
+- **The Five Case Model** (HM Treasury Green Book) is the structure finance
+  functions recognise even outside government — strategic (case for change,
+  SMART objectives), economic (options appraisal, NPV / BCR, sensitivity),
+  commercial (can a deal be done), financial (affordability), management
+  (governance, benefits realisation, risk). Map the chapters onto it in
+  [deck-archetypes.md](deck-archetypes.md) §4 and name the stage (SOC /
+  OBC / FBC) on the cover's `eyebrow`.
+- **Options always include the baseline.** The long list → short list
+  `comparison`, then the `option_matrix` with business-as-usual and
+  do-minimum as rows; the recommended option is argued against the baseline's
+  run-rate cost, and the `decisive_criterion` is the one the committee named.
+- **TCO is five years and at least six lines**: licences / subscriptions,
+  implementation, data migration, integration, training and change, run and
+  maintenance, internal labour — a `table` with `totals_row: true` beside the
+  run-cost chart (`regions` `main_left`). Payback, NPV and IRR are three
+  numbers in a `kpi_snapshot`; sensitivity is a `table` or a horizontal
+  `bar` of the two or three assumptions that move the answer (a tornado).
+- **Benefits are a register, not a sentence**: each benefit has a measure, a
+  baseline, a target, a target date, a data source and an owner, and is
+  classed cashable / non-cashable / strategic (`table`, ≤ 9 rows). The
+  benefits that pay for the case reappear in `next_steps` as the re-test
+  point.
+- **Architecture names real components** ("Power BI", "Databricks", "CDC
+  from 14 sources"), tiers top to bottom, cross-cutting concerns as `rails`,
+  and the current and target states are two `architecture` slides or one
+  `comparison`, never one diagram with both.
+- **Delivery risk is shown as a plan**: `roadmap` with `parallel_tracks` for
+  the workstreams that run across every phase, `milestone`s on the decision
+  gates, and the decommissioning date of the system being replaced on the
+  slide.
+
 ## Review points for this audience
 
 1. Every cost figure on slides 7–8 traces to the model named in `source`;

@@ -16,6 +16,32 @@ How to cut a release (tag, archives, container image) is described in
 
 ## [Unreleased]
 
+### Added
+
+- **Agent wiki** (`docs/wiki/`): four new pages — the layout catalog (every
+  kind with its forms, all 58 patterns by family with their DeckSpec reach,
+  16 charts, 21 diagrams, and how to preview each), the slide-estate and
+  segments guide (six `regions` arrangements, eight region kinds, raw
+  `compose`, content-sized versus filling blocks, and the width at which each
+  visual still draws), nine deck archetypes mapped slide by slide onto kinds
+  with ghost decks, and the slide design rules a partner-level reviewer
+  applies (Pyramid Principle tests, dot-dash storyboard, title – exhibit –
+  takeaway, chart choice by comparison, the twelve failure modes and where the
+  product catches them). Each playbook gains a domain-conventions section
+  (five-Cs findings and rating ladders; heat-map scales and remediation
+  storylines; red-flag reports and IC papers; the Five Case Model, TCO and
+  benefits registers).
+
+### Changed
+
+- **Agent wiki** synced to schema 4.175: 29 kinds, `cycle` as the eighth
+  region kind, one-line `detail`s fit at five options, whole-slide scaling
+  under 70%, `exec-summary` reachable from `executive_summary`, the complete
+  raw-only pattern list, multi-template `validate_deck_spec`, and the hidden
+  tools worth calling by name (`explain_deck_spec`, `list_deck_archetypes`,
+  `analyze_deck_rhythm`, `export_deck`). `SKILL.md` points at the wiki from a
+  repository checkout.
+
 ## [1.0.0] - 2026-09-29
 
 First tagged release. Everything below was developed since the initial
