@@ -204,14 +204,14 @@ func TestPorterBandsUseTheWidthOfALandscapeRegion(t *testing.T) {
 // layout measures what the region holds and the readability finding raised on
 // its shapes carries that budget.
 func TestNativeShrinkCarriesAMeasuredBudget(t *testing.T) {
-	spec := porterTestSpec(7, "A factor long enough to wrap onto a second line in any box")
+	spec := porterTestSpec(6, "A factor long enough to wrap onto a second line in any box")
 	bounds := ptBounds(850, 273)
 	group, layout := nativeGroupFor(t, spec, bounds, "Calibri")
 	b := layout.insert.fitBudget
 	if b == nil {
 		t.Fatal("an over-full cross measured no budget")
 	}
-	if b.item != "factor" || b.container != "force" || b.maxItems < 1 || b.maxItems >= 7 || b.maxChars < 10 {
+	if b.item != "factor" || b.container != "force" || b.maxItems < 1 || b.maxItems >= 6 || b.maxChars < 10 {
 		t.Fatalf("budget = %+v", *b)
 	}
 	// The budget is what fits: that many one-line factors are written unshrunk.
