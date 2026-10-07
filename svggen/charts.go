@@ -468,11 +468,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 	if err := bc.prepareValueScale(data); err != nil {
 		return err
 	}
-	// A stack that cannot name its segments beside the last column keeps the
-	// legend, and the layout must reserve its band.
-	if bc.config.Stacked && !bc.stackedDirectLabels(data) {
-		bc.config.PreferDirectLabels = false
-	}
+	stackedDirect := bc.resolveStackedDirectLabels(data)
 	if bc.config.Horizontal {
 		return bc.drawHorizontal(data)
 	}
@@ -483,14 +479,6 @@ func (bc *BarChart) Draw(data ChartData) error {
 	colors := seriesHighlightColors(style.Palette, bc.getColors(style, len(data.Series)), data)
 
 	b.CheckChartCapacity(len(data.Series), len(data.Categories))
-
-	// A stack of a few series names its segments beside the last column
-	// instead of in a legend row: reserve the room for the names
-	// (go-slide-creator-9nk6a).
-	stackedDirect := bc.stackedDirectLabels(data)
-	if stackedDirect {
-		bc.config.MarginRight += measureDirectLabelMargin(b, style, data.Series)
-	}
 
 	// Compute adaptive x-axis labels without thinning named categories.
 	isNarrow := bc.config.Width < 500
@@ -628,9 +616,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 	// keep the legend path because each "series" is a stacked segment or
 	// the log positions break the "above last bar" geometry.
 	directLabels := useDirectLabels(bc.config.ChartConfig, len(data.Series)) && !bc.config.Stacked && bc.logScale == nil
-	if !stackedDirect || !bc.drawStackedDirectLabels(style, displayData, plotArea, colors) {
-		bc.drawLegendOrDirectLabels(directLabels, style, displayData, plotArea, legendHeight, colors)
-	}
+	bc.drawSeriesKey(stackedDirect, directLabels, style, displayData, plotArea, legendHeight, colors)
 
 	// Draw footnote
 	if data.Footnote != "" {
@@ -736,6 +722,32 @@ func (bc *BarChart) drawLegendOrDirectLabels(directLabels bool, style *StyleGuid
 		H: legendHeight,
 	}
 	legend.Draw(legendBounds)
+}
+
+// resolveStackedDirectLabels decides, once per Draw, how a stacked chart names
+// its series. A stack of a few series names its segments beside the last
+// column instead of in a legend row, and reserves the room for the names on
+// the right (go-slide-creator-9nk6a); any other stack keeps the legend, whose
+// band the layout must then reserve.
+func (bc *BarChart) resolveStackedDirectLabels(data ChartData) bool {
+	if !bc.config.Stacked {
+		return false
+	}
+	if !bc.stackedDirectLabels(data) {
+		bc.config.PreferDirectLabels = false
+		return false
+	}
+	bc.config.MarginRight += measureDirectLabelMargin(bc.builder, bc.builder.StyleGuide(), data.Series)
+	return true
+}
+
+// drawSeriesKey names the series: beside the last column of a stack, inline
+// above the bars, or in the legend.
+func (bc *BarChart) drawSeriesKey(stackedDirect, directLabels bool, style *StyleGuide, data ChartData, plotArea Rect, legendHeight float64, colors []Color) {
+	if stackedDirect && bc.drawStackedDirectLabels(style, data, plotArea, colors) {
+		return
+	}
+	bc.drawLegendOrDirectLabels(directLabels, style, data, plotArea, legendHeight, colors)
 }
 
 // stackedDirectLabels reports whether a vertical stacked bar chart names its
