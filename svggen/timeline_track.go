@@ -562,7 +562,7 @@ func trackAssignBarLanes(items []trackItem) int {
 // to let a later leader past. That is what keeps two events a week apart
 // both labelled in full. A block with no lane left is narrowed to the room
 // there is, and its text cut (reported by reportTrackLabels).
-func (tc *TimelineChart) trackPlaceBlocks(items []trackItem, plot Rect, tt trackType, hasBars bool) {
+func (tc *TimelineChart) trackPlaceBlocks(items []trackItem, plot Rect, tt trackType, hasBars bool) { //nolint:gocognit,gocyclo // one greedy pass; the constraints are closures over its state
 	gap := tt.body * trackBlockGap
 	margin := tt.body * 0.5 // a leader lands at least this far inside its block
 	left, right := plot.X, plot.X+plot.W

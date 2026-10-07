@@ -98,12 +98,12 @@ func TestFishboneShowsEveryCauseThatFits(t *testing.T) {
 		{Name: "Technology", Causes: []string{"Outdated tools", "Downtime"}},
 		{Name: "Environment", Causes: []string{"Noise", "Poor layout"}},
 	}
-	for _, size := range [][2]float64{{1199, 420}, {716, 479}, {900, 500}} {
-		bones, _ := fishboneTestBones(t, size[0], size[1], cats)
+	for _, size := range []struct{ w, h float64 }{{1199, 420}, {716, 479}, {900, 500}} {
+		bones, _ := fishboneTestBones(t, size.w, size.h, cats)
 		for _, bn := range bones {
 			if bn.hidden != 0 || len(bn.causes) != 2 {
 				t.Errorf("%vx%v %s: %d causes drawn, %d hidden; want 2 drawn, none hidden",
-					size[0], size[1], cats[bn.catIndex].Name, len(bn.causes), bn.hidden)
+					size.w, size.h, cats[bn.catIndex].Name, len(bn.causes), bn.hidden)
 			}
 		}
 	}
