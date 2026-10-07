@@ -184,14 +184,14 @@ func (gc *GaugeChart) Draw(data GaugeData) error {
 	// the same format (go-slide-creator-e2ck9).
 	gc.config.ResolveValueFormatter([]float64{data.Value, gc.config.MinValue, gc.config.MaxValue}, false)
 
-	// The needle and value arc are clamped to the dial; say so, because the
-	// printed value and the needle then disagree (value 500 on a 0-100 dial
+	// The value bar (the dial's needle and arc) is clamped to the range; say
+	// so, because the printed value and the mark then disagree (value 500 on a 0-100 dial
 	// pinned the needle at 100 with nothing reported — go-slide-creator-7w2ed).
 	if data.Value < gc.config.MinValue || data.Value > gc.config.MaxValue {
 		b.AddFinding(Finding{
 			Field:    "value",
 			Code:     FindingPointOutOfRange,
-			Message:  fmt.Sprintf("gauge: value %g is outside the dial range %g–%g; the needle is pinned at the nearest end while the label shows %g", data.Value, gc.config.MinValue, gc.config.MaxValue, data.Value),
+			Message:  fmt.Sprintf("gauge: value %g is outside the range %g–%g; the value bar is pinned at the nearest end while the label shows %g", data.Value, gc.config.MinValue, gc.config.MaxValue, data.Value),
 			Severity: "warning",
 			Fix: &FixSuggestion{
 				Kind:   FixKindExplicitScale,

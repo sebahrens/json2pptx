@@ -63,10 +63,10 @@ func NeutralInk(p *Palette, share float64) Color {
 }
 
 // waterfallTotalInk is the fill of a waterfall total / subtotal bar: the
-// neutral bar grey, or a darker or lighter grey when the template's accent1 is
+// neutral bar grey, or a darker grey (a lighter one last) when accent1 is
 // itself that grey.
 func waterfallTotalInk(p *Palette) Color {
-	for _, share := range []float64{WaterfallTotalInk, 0.60, 0.22, 0.80} {
+	for _, share := range []float64{WaterfallTotalInk, 0.60, 0.80, 0.22} {
 		if c := NeutralInk(p, share); deltaE76(c, p.Accent1) >= MinSeriesDeltaE {
 			return c
 		}
