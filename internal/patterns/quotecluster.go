@@ -440,6 +440,10 @@ const (
 	// unfilled first-column text onto the title's text line, and only text)
 	// and grows with it.
 	quoteClusterOpenRule = "____"
+	// quoteClusterOpenRuleGapPt is the space between the rule and the
+	// attribution under it. Without it the name sat directly under the
+	// stroke and read as underlined-from-above (owner review, 2026-10-07).
+	quoteClusterOpenRuleGapPt = 6.0
 	// The text margins of an open quote: above the mark, between the quote
 	// and the rule, and under the attribution. They are also the padding of
 	// the highlighted quote's tint panel.
@@ -447,7 +451,7 @@ const (
 	quoteClusterOpenQuoteGapPt   = 4.0
 	quoteClusterOpenAttrBottomPt = 6.0
 	// quoteClusterOpenBandGapPt is the whitespace between two rows of quotes.
-	quoteClusterOpenBandGapPt = 14.0
+	quoteClusterOpenBandGapPt = 8.0
 	// The densest setting (no mark line) gives the height back to the
 	// quotes: no rule line, the margins and the band at these values.
 	quoteClusterDenseMarginPt  = 3.0
@@ -605,7 +609,7 @@ func quoteClusterOpenAttributionText(qt QuoteClusterItem, sc quoteClusterOpenSca
 	paras := []quoteClusterParagraph{{Content: attribution, Size: size, Color: ink, Align: "l"}}
 	bottom := quoteClusterDenseMarginPt
 	if sc.mark > 0 {
-		paras = append([]quoteClusterParagraph{{Content: quoteClusterOpenRule, Size: size, Color: ink, Align: "l"}}, paras...)
+		paras = append([]quoteClusterParagraph{{Content: quoteClusterOpenRule, Size: size, Color: ink, Align: "l", SpaceAfter: quoteClusterOpenRuleGapPt}}, paras...)
 		bottom = quoteClusterOpenAttrBottomPt
 	}
 	data, _ := json.Marshal(quoteClusterTextObj{Paragraphs: paras, Align: "l", VerticalAlign: "t"})
