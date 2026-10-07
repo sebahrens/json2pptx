@@ -3,6 +3,7 @@ package svggen
 import (
 	"fmt"
 	"math"
+	"strings"
 )
 
 // =============================================================================
@@ -424,9 +425,19 @@ func (gc *GaugeChart) drawBullet(data GaugeData, plotArea Rect, unset []bool) {
 	valueFont = math.Max(valueFont, style.Typography.SizeTitle)
 	trackH := bodyFont * gaugeBulletTrackLines
 	gap := style.Spacing.MD
+	trackW := math.Min(plotArea.W, plotArea.H*gaugeBulletMaxAspect)
+	trackX := plotArea.X + (plotArea.W-trackW)/2
+	xOf := func(v float64) float64 {
+		v = math.Max(lo, math.Min(hi, v))
+		return trackX + trackW*(v-lo)/(hi-lo)
+	}
+	// Band labels: each under its band, moved aside rather than cut short
+	// where a band is narrower than its label, on a second row when one row
+	// cannot hold them all (go-slide-creator-u3nl6).
+	bandLabels := gc.placeBandLabels(bands, xOf, trackX, trackW, tickFont)
 	labelsH := tickFont * 1.4
 	if hasBandLabels {
-		labelsH += tickFont * 1.4
+		labelsH += tickFont * 1.4 * float64(bandLabelRows(bandLabels))
 	}
 	// The value stands on its baseline, gaugeBulletValueRise of its size
 	// under the block's top, with a gap and a half down to the track.
@@ -437,13 +448,7 @@ func (gc *GaugeChart) drawBullet(data GaugeData, plotArea Rect, unset []bool) {
 		trackH = math.Max(bodyFont*0.8, plotArea.H-(valueFont*gaugeBulletValueRise+valueGap+gap+labelsH))
 		blockH = valueFont*gaugeBulletValueRise + valueGap + trackH + gap + labelsH
 	}
-	trackW := math.Min(plotArea.W, plotArea.H*gaugeBulletMaxAspect)
-	trackX := plotArea.X + (plotArea.W-trackW)/2
 	y := plotArea.Y + math.Max(0, (plotArea.H-blockH)/2)
-	xOf := func(v float64) float64 {
-		v = math.Max(lo, math.Min(hi, v))
-		return trackX + trackW*(v-lo)/(hi-lo)
-	}
 
 	// The value, large, with its label beside it.
 	valueText := gc.config.ValueFmt.FormatOr(data.Value, gc.config.ValueFormat)
@@ -498,7 +503,10 @@ func (gc *GaugeChart) drawBullet(data GaugeData, plotArea Rect, unset []bool) {
 	}
 	b.Pop()
 
-	// Range labels under the track: min, max and each band bound between.
+	// Range labels under the track: min, max and every band bound between,
+	// each bound marked by a tick on the track's lower edge. A bound close
+	// to an end (95 of 100) keeps its tick where it is and moves its number
+	// aside instead of dropping it.
 	labelY := trackY + trackH + gap + tickFont/2
 	b.Push()
 	b.SetFontSize(tickFont)
@@ -510,7 +518,7 @@ func (gc *GaugeChart) drawBullet(data GaugeData, plotArea Rect, unset []bool) {
 	maxW, _ := b.MeasureText(maxText)
 	b.DrawText(minText, trackX, labelY, TextAlignLeft, TextBaselineMiddle)
 	b.DrawText(maxText, trackX+trackW, labelY, TextAlignRight, TextBaselineMiddle)
-	leftEdge, rightEdge := trackX+minW+style.Spacing.SM, trackX+trackW-maxW-style.Spacing.SM
+	var bounds []spreadLabel
 	for i, bd := range bands {
 		if i == len(bands)-1 || bd.to >= hi {
 			continue
@@ -518,25 +526,108 @@ func (gc *GaugeChart) drawBullet(data GaugeData, plotArea Rect, unset []bool) {
 		text := tick(bd.to)
 		w, _ := b.MeasureText(text)
 		x := xOf(bd.to)
-		if x-w/2 < leftEdge || x+w/2 > rightEdge {
-			continue
-		}
-		b.DrawText(text, x, labelY, TextAlignCenter, TextBaselineMiddle)
-		leftEdge = x + w/2 + style.Spacing.SM
+		bounds = append(bounds, spreadLabel{text: text, center: x, width: w})
+		b.Push()
+		b.SetStrokeColor(style.Palette.TextSecondary)
+		b.SetStrokeWidth(style.Strokes.WidthHairline)
+		b.DrawLine(x, trackY+trackH, x, trackY+trackH+gap*0.6)
+		b.Pop()
 	}
-	if hasBandLabels {
-		bandY := labelY + tickFont*1.4
-		for _, bd := range bands {
-			if bd.label == "" {
-				continue
-			}
-			x0, x1 := xOf(bd.from), xOf(bd.to)
-			if text := b.TruncateToWidth(bd.label, x1-x0-style.Spacing.XS); text != "" {
-				b.DrawText(text, (x0+x1)/2, bandY, TextAlignCenter, TextBaselineMiddle)
-			}
+	if spreadLabels(bounds, trackX+minW+style.Spacing.SM, trackX+trackW-maxW-style.Spacing.SM, style.Spacing.SM) {
+		for _, l := range bounds {
+			b.DrawText(l.text, l.left+l.width/2, labelY, TextAlignCenter, TextBaselineMiddle)
 		}
+	}
+	for _, l := range bandLabels {
+		b.DrawText(l.text, l.left+l.width/2, labelY+tickFont*1.4*float64(l.row+1), TextAlignCenter, TextBaselineMiddle)
 	}
 	b.Pop()
+}
+
+// spreadLabel is one label of a row under the bullet track: where it wants
+// to be centred, how wide it is, and where it ends up.
+type spreadLabel struct {
+	text          string
+	center, width float64
+	left          float64
+	row           int
+}
+
+// spreadLabels places a row of labels as near their centres as it can without
+// two of them closer than gap or any outside [lo, hi]. Labels keep their
+// order. It reports false when the row is too short for them all.
+func spreadLabels(labels []spreadLabel, lo, hi, gap float64) bool {
+	if len(labels) == 0 {
+		return true
+	}
+	edge := lo
+	for i := range labels {
+		labels[i].left = math.Max(labels[i].center-labels[i].width/2, edge)
+		edge = labels[i].left + labels[i].width + gap
+	}
+	edge = hi
+	for i := len(labels) - 1; i >= 0; i-- {
+		labels[i].left = math.Min(labels[i].left, edge-labels[i].width)
+		edge = labels[i].left - gap
+	}
+	return labels[0].left >= lo-0.5
+}
+
+// bandLabelRows is the number of rows the placed band labels take.
+func bandLabelRows(labels []spreadLabel) int {
+	rows := 0
+	for _, l := range labels {
+		rows = max(rows, l.row+1)
+	}
+	return rows
+}
+
+// placeBandLabels lays the band labels out under the track: one row when they
+// fit side by side, two alternating rows when they do not, and only then
+// shortened to what their share of the track holds.
+func (gc *GaugeChart) placeBandLabels(bands []gaugeBand, xOf func(float64) float64, trackX, trackW, font float64) []spreadLabel {
+	b := gc.builder
+	style := b.StyleGuide()
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(font)
+	b.SetFontWeight(style.Typography.WeightNormal)
+	var labels []spreadLabel
+	for _, bd := range bands {
+		if bd.label == "" {
+			continue
+		}
+		w, _ := b.MeasureText(bd.label)
+		labels = append(labels, spreadLabel{text: bd.label, center: (xOf(bd.from) + xOf(bd.to)) / 2, width: w})
+	}
+	if len(labels) == 0 {
+		return nil
+	}
+	gap := style.Spacing.MD
+	lo, hi := trackX, trackX+trackW
+	if spreadLabels(labels, lo, hi, gap) {
+		return labels
+	}
+	// Two rows, alternating, so neighbours no longer compete for width.
+	var rows [2][]spreadLabel
+	for i, l := range labels {
+		l.row = i % 2
+		rows[l.row] = append(rows[l.row], l)
+	}
+	if spreadLabels(rows[0], lo, hi, gap) && spreadLabels(rows[1], lo, hi, gap) {
+		return append(rows[0], rows[1]...)
+	}
+	// Still too many: one row, each label cut to an equal share.
+	share := (trackW - gap*float64(len(labels)-1)) / float64(len(labels))
+	for i := range labels {
+		labels[i].row = 0
+		if labels[i].width > share {
+			labels[i].text = b.TruncateToWidth(labels[i].text, share)
+			labels[i].width, _ = b.MeasureText(labels[i].text)
+		}
+	}
+	spreadLabels(labels, lo, hi, gap)
+	return labels
 }
 
 // applyThemeColors sets needle and pivot colors from the theme palette.
@@ -784,9 +875,10 @@ func (gc *GaugeChart) drawTicks(centerX, centerY, outerRadius, innerRadius, star
 	b.SetStrokeColor(style.Palette.TextPrimary)
 	b.SetStrokeWidth(2)
 
-	// Draw major ticks
-	for i := 0; i <= gc.config.TickCount; i++ {
-		ratio := float64(i) / float64(gc.config.TickCount)
+	// Draw major ticks: at even steps of the range, or, when the dial has
+	// threshold zones, at the ends and at every zone bound, so a zone ending
+	// at 95 of 100 has its tick and number (go-slide-creator-u3nl6).
+	for _, ratio := range gc.majorTickRatios() {
 		angle := startAngle + ratio*totalAngle
 
 		// Calculate tick positions (from just inside outer edge)
@@ -821,9 +913,13 @@ func (gc *GaugeChart) drawTicks(centerX, centerY, outerRadius, innerRadius, star
 		}
 	}
 
-	// Draw minor ticks (between major ticks)
+	// Draw minor ticks (between major ticks); a dial ticked at its zone
+	// bounds has none, since they would not fall between its majors.
 	b.SetStrokeWidth(1)
 	minorTicksPerMajor := 4
+	if len(gc.config.Thresholds) > 0 {
+		minorTicksPerMajor = 0
+	}
 	for i := 0; i < gc.config.TickCount*minorTicksPerMajor; i++ {
 		if i%(minorTicksPerMajor) == 0 {
 			continue // Skip major tick positions
@@ -840,6 +936,28 @@ func (gc *GaugeChart) drawTicks(centerX, centerY, outerRadius, innerRadius, star
 	}
 
 	b.Pop()
+}
+
+// majorTickRatios returns the positions of the dial's major ticks as shares
+// of the range: TickCount even steps, or the ends plus every threshold bound
+// inside the range when the dial has zones.
+func (gc *GaugeChart) majorTickRatios() []float64 {
+	lo, hi := gc.config.MinValue, gc.config.MaxValue
+	if len(gc.config.Thresholds) == 0 {
+		out := make([]float64, 0, gc.config.TickCount+1)
+		for i := 0; i <= gc.config.TickCount; i++ {
+			out = append(out, float64(i)/float64(gc.config.TickCount))
+		}
+		return out
+	}
+	out := []float64{0}
+	for _, t := range gc.config.Thresholds {
+		r := (t.Value - lo) / (hi - lo)
+		if r > out[len(out)-1]+1e-9 && r < 1-1e-9 {
+			out = append(out, r)
+		}
+	}
+	return append(out, 1)
 }
 
 // drawNeedle draws the gauge needle.
@@ -941,12 +1059,23 @@ func (gc *GaugeChart) drawCenterLabel(centerX, centerY, innerRadius float64, dat
 
 	b.DrawText(label, centerX, labelY, TextAlignCenter, TextBaselineMiddle)
 
-	// Draw secondary label if provided
+	// Draw secondary label if provided: wrapped onto two lines, then cut,
+	// where it is wider than the hole it sits in.
 	if data.Label != "" {
-		b.SetFontSize(style.Typography.SizeSmall)
+		size := style.Typography.SizeSmall
+		b.SetFontSize(size)
 		b.SetFontWeight(style.Typography.WeightNormal)
 		b.SetTextColor(style.Palette.TextSecondary)
-		b.DrawText(data.Label, centerX, labelY+style.Typography.SizeTitle, TextAlignCenter, TextBaselineMiddle)
+		holeW := innerRadius * 1.7
+		lines := []string{data.Label}
+		if w, _ := b.MeasureText(data.Label); w > holeW {
+			if wrapped, ok := wrapXLabelsTwoLines(b, lines, holeW, size); ok {
+				lines = strings.Split(wrapped[0], "\n")
+			}
+		}
+		for i, line := range lines {
+			b.DrawText(b.TruncateToWidth(line, holeW), centerX, labelY+style.Typography.SizeTitle+float64(i)*size*1.2, TextAlignCenter, TextBaselineMiddle)
+		}
 	}
 
 	b.Pop()

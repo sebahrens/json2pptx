@@ -931,6 +931,9 @@ func (l *Legend) drawGrid(bounds Rect, itemWidths []float64, fontSize float64, f
 	default: // left
 		startX = bounds.X
 	}
+	// A grid wider than its bounds (one column of long names in a narrow
+	// zone) starts at the left edge: centred, its markers fell off the canvas.
+	startX = math.Max(startX, bounds.X)
 
 	var startY float64
 	switch l.config.VerticalAlign {
