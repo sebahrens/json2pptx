@@ -63,6 +63,7 @@ Then verify these general quality targets:
 - Text and background have adequate contrast (WCAG AA)
 - Content is properly aligned and evenly spaced
 - No elements overlap or extend beyond slide boundaries
+- A title that wraps keeps clear air between its lines: descenders touching or crossing the line below is overlap (P1)
 - Charts/diagrams render correctly with readable labels and legends
 - Tables have clear headers, visible gridlines, and no cell truncation
 - Footer area has adequate clearance from content
@@ -75,6 +76,7 @@ Do NOT invent issues. Only report defects you actually see.`
 var slideTypePrompts = map[string]string{
 	"title": `Inspect this TITLE SLIDE image. Focus on:
 - Title text: readable, properly centered/aligned, appropriate font size (should be large and prominent)
+- A title on two or more lines: the lines must not touch (no descender reaching the line below)
 - Subtitle text: visible, properly positioned below title, smaller than title
 - Author/date metadata: if present, properly positioned and legible
 - Overall visual balance and whitespace distribution
@@ -83,6 +85,7 @@ var slideTypePrompts = map[string]string{
 
 	"section": `Inspect this SECTION DIVIDER SLIDE image. Focus on:
 - Section title: large, prominent, properly aligned (check for excessive right-alignment or whitespace)
+- A section title on two or more lines: the lines must not touch (no descender reaching the line below)
 - Visual weight: should feel like a clear break between sections
 - Text contrast against background
 - Decorative elements (if any) should not obscure text
