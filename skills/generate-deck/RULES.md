@@ -140,7 +140,7 @@ When TDR forces a split, say so ("N logical rows × M columns; per Rule 20 emitt
 
 **Two tables in one grid.** Sibling tables in one `shape_grid` with `row_gap < 4pt` read as one broken table. Use `row_gap` ≥ 6 and a divider row — or better, one table per slide.
 
-**Sparse single-row flow** (`SPARSE_SINGLE_ROW_FLOW`, review). A one-row `process-flow` or `dots` `timeline-horizontal` of 3–6 short cells as the slide's only content is sized to its text and leaves most of the slide empty; a height cap does not resize it. Give the sequence vertical mass: `numbered-step-strip` with per-step detail, `value-chain` for described steps, `phase-roadmap` for dated phases, `process-grid-2row` for two tracks, or a second zone (`compose`). `process-flow` draws one path and no yes/no branches (`FLOW_DIAMOND_NO_CONTENT`): explain a decision in a second zone; keep `timeline-horizontal` for true calendar milestones. Pattern and accent monotony across slides: [WORKFLOW.md](WORKFLOW.md) → Phase 2.
+**Sparse single-row flow** (`SPARSE_SINGLE_ROW_FLOW`, review). A one-row `process-flow` or `dots` `timeline-horizontal` of 3–6 short cells as the slide's only content is sized to its text and leaves most of the slide empty; a height cap does not resize it. Give the sequence vertical mass: `numbered-step-strip` with per-step detail, `value-chain` for described steps, `phase-roadmap` for dated, described phases, `process-grid-2row` for two tracks, or a second zone (`compose`). `process-flow` draws one path and no yes/no branches (`FLOW_DIAMOND_NO_CONTENT`): explain a decision in a second zone; keep `timeline-horizontal` for true calendar milestones. Pattern and accent monotony across slides: [WORKFLOW.md](WORKFLOW.md) → Phase 2.
 
 ---
 

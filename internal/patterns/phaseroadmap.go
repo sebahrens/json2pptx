@@ -377,10 +377,11 @@ func newPhaseRoadmapBuild(ctx ExpandContext, vals *PhaseRoadmapValues, ovr *Phas
 		ovr = &PhaseRoadmapOverrides{}
 	}
 	n := len(vals.Phases)
-	hasMilestones, hasPanels := false, false
+	hasMilestones, hasPanels, hasDescriptions := false, false, false
 	for _, p := range vals.Phases {
 		hasMilestones = hasMilestones || p.Milestone != ""
 		hasPanels = hasPanels || p.DateLabel != "" || p.Description != ""
+		hasDescriptions = hasDescriptions || p.Description != ""
 	}
 
 	// Cell index layout (used by cell_overrides). The indices keep the order
@@ -400,14 +401,15 @@ func newPhaseRoadmapBuild(ctx ExpandContext, vals *PhaseRoadmapValues, ovr *Phas
 	}
 	return phaseRoadmapBuild{
 		ctx: ctx, vals: vals, cellOverrides: cellOverrides,
-		accent:         ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent),
-		headerSize:     ResolveSize(ovr.HeaderSize, scaleSubheadPt),
-		headerAuthored: ovr.HeaderSize > 0,
-		bodySize:       ResolveSize(ovr.BodySize, scaleCaptionPt),
-		bodyAuthored:   ovr.BodySize > 0,
-		hasMilestones:  hasMilestones,
-		hasPanels:      hasPanels,
-		phaseIdx0:      0, dateIdx0: n + 1, milestoneIdx0: 2*n + 1, descIdx0: descIdx0,
+		accent:          ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent),
+		headerSize:      ResolveSize(ovr.HeaderSize, scaleSubheadPt),
+		headerAuthored:  ovr.HeaderSize > 0,
+		bodySize:        ResolveSize(ovr.BodySize, scaleCaptionPt),
+		bodyAuthored:    ovr.BodySize > 0,
+		hasMilestones:   hasMilestones,
+		hasPanels:       hasPanels,
+		hasDescriptions: hasDescriptions,
+		phaseIdx0:       0, dateIdx0: n + 1, milestoneIdx0: 2*n + 1, descIdx0: descIdx0,
 	}
 }
 
@@ -423,6 +425,10 @@ type phaseRoadmapBuild struct {
 	// hasPanels: some phase carries a date range or a description, so the
 	// panel row is drawn.
 	hasPanels bool
+	// hasDescriptions: some phase carries a description. Panels that hold a
+	// date range and nothing else stay at the height of that line: grown,
+	// they stand empty under the dates (go-slide-creator-v6f8j).
+	hasDescriptions bool
 	// headerAuthored / bodyAuthored: overrides.header_size / body_size was
 	// given, so the fit steps keep it.
 	headerAuthored bool
@@ -1085,7 +1091,9 @@ func (b phaseRoadmapBuild) layout() phaseRoadmapLaid {
 // layoutAt pins every row of the roadmap in points at one fit step: the
 // milestone row, the band and the track block at their measured heights, and
 // the panels at the height their tallest text needs, grown — equally — toward
-// phaseRoadmapFillFrac of the content area when it has the room.
+// phaseRoadmapFillFrac of the content area when it has the room and some
+// phase has a description to set in it (panels of date ranges alone are
+// content-sized).
 func (b phaseRoadmapBuild) layoutAt(fit phaseRoadmapFit, descSize float64) phaseRoadmapLaid {
 	ctx := b.ctx
 	_, areaH := sizingAreaPt(ctx)
@@ -1120,7 +1128,7 @@ func (b phaseRoadmapBuild) layoutAt(fit phaseRoadmapFit, descSize float64) phase
 	for _, r := range rows {
 		t.needPt += r.MinHeight
 	}
-	if slack := t.areaPt - t.needPt; panelIdx >= 0 && slack > 0 {
+	if slack := t.areaPt - t.needPt; panelIdx >= 0 && b.hasDescriptions && slack > 0 {
 		want := areaH*phaseRoadmapFillFrac - (t.needPt - t.panelPt)
 		h := math.Floor(math.Min(clampPt(want, t.panelPt, t.panelPt*phaseRoadmapPanelStretch), t.panelPt+slack))
 		rows[panelIdx].MinHeight, rows[panelIdx].MaxHeight = h, h
