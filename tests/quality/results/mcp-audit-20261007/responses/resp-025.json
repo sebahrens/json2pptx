@@ -1,0 +1,358 @@
+{
+  "jsonrpc": "2.0",
+  "id": 26,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"query_understood_as\":\"intent=\\\"compare two vendor options by price, implementation weeks and evidence confidence\\\"\"}"
+      }
+    ],
+    "structuredContent": {
+      "candidates": [
+        {
+          "category": "chart",
+          "name": "bar",
+          "score": 0.85,
+          "rationale": "Bar chart for comparing categories",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "either",
+            "host_strategy": "placeholder_content",
+            "grid_embeddable": true,
+            "render_pipeline": "svg",
+            "composable_with": [
+              "named_pattern"
+            ]
+          },
+          "template_support": {
+            "status": "supported",
+            "reasons": [
+              "chart hosted on the slide content area",
+              "template data_palette (6 colours) will style series"
+            ],
+            "required_layout": "grid base"
+          },
+          "example": {
+            "template_hash": "abc8b0a2ee7d57768367c2096723872de2c264daee5578db09957011373179fe",
+            "metadata_only": true,
+            "layout_id": "slideLayout2",
+            "layout_preview_png_path": "/Users/seb/projects/json2pptx/templates/previews/blue-corporate/slideLayout2.png"
+          },
+          "differs_by": "vs comparison-2col (pattern): this is bar chart for comparing categories; that is two options evaluated side-by-side",
+          "deckspec": {
+            "kind": "chart_insight",
+            "fields": {
+              "required": [
+                "chart"
+              ],
+              "optional": [
+                "title",
+                "insights",
+                "source",
+                "takeaway"
+              ]
+            },
+            "example_path": "next_tool_call.args_template.spec.slides[0]",
+            "differs_from_raw": "the kind takes chart {type, data} beside insights[]; the raw form is a chart content item (chart_value {type, data}) in the body placeholder, or diagram {type, data} inside a compose segment"
+          },
+          "data_contract": {
+            "form": "deckspec_kind",
+            "required_keys": [
+              "categories",
+              "series"
+            ],
+            "optional_keys": [
+              "colors",
+              "x_label",
+              "y_label",
+              "annotations",
+              "data_labels",
+              "highlight",
+              "sort",
+              "orientation",
+              "y_min",
+              "y_max"
+            ],
+            "description": "categories: string array; series: [{name, values: number[]}]. The value axis starts at zero unless a value is negative; y_min / y_max zoom it (the axis is then kept visible; y_min above the smallest bar is rejected, hiding over half of it reports chart.axis_not_zero). Up to 16 bars are labelled by default (value on each bar, no value axis or gridlines; data_labels: false or style.show_values: false opts out). sort: desc|asc|none (default desc for a single series of non-time, non-ordinal categories). orientation: \"horizontal\" for rankings or category names over ~14 characters. highlight: category indices or names painted accent1 (single series). Slide fields: title, chart {type, data}, insights[] (1\u20136 bullets beside the chart), source, takeaway.",
+            "field_path": "slides[0].chart.data"
+          },
+          "next_tool_call": {
+            "tool": "render_deck_spec",
+            "args_template": {
+              "spec": {
+                "meta": {
+                  "template": "blue-corporate",
+                  "title": "Recommended bar"
+                },
+                "slides": [
+                  {
+                    "chart": {
+                      "data": {
+                        "categories": [
+                          "Q1",
+                          "Q2",
+                          "Q3",
+                          "Q4"
+                        ],
+                        "series": [
+                          {
+                            "name": "Revenue ($M)",
+                            "values": [
+                              2.8,
+                              3.1,
+                              3.2,
+                              3.4
+                            ]
+                          }
+                        ]
+                      },
+                      "type": "bar"
+                    },
+                    "insights": [
+                      "Replace with what the chart shows.",
+                      "Replace with why it matters."
+                    ],
+                    "kind": "chart_insight",
+                    "source": "Illustrative sample data; replace with the real source",
+                    "takeaway": "Replace with the one-line takeaway.",
+                    "title": "Replace with the action title this bar chart supports"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "category": "named_pattern",
+          "name": "comparison-2col",
+          "score": 0.85,
+          "rationale": "Two-column comparison with optional headers, ideal for pros/cons or A vs B",
+          "confidence_band": "high",
+          "placement": {
+            "preferred_placement": "placeholder",
+            "host_strategy": "pattern_expansion",
+            "grid_embeddable": false,
+            "render_pipeline": "native_ooxml"
+          },
+          "template_support": {
+            "status": "supported",
+            "reasons": [
+              "pattern expands into a shape_grid overlaid on the slide content area (medium-density pattern; cell budgets are template-independent)"
+            ],
+            "required_layout": "grid base"
+          },
+          "example": {
+            "template_hash": "abc8b0a2ee7d57768367c2096723872de2c264daee5578db09957011373179fe",
+            "capacity": "2 + header",
+            "metadata_only": true,
+            "layout_id": "slideLayout2",
+            "layout_preview_png_path": "/Users/seb/projects/json2pptx/templates/previews/blue-corporate/slideLayout2.png"
+          },
+          "differs_by": "vs bar (chart): this is two options evaluated side-by-side; that is bar chart for comparing categories",
+          "deckspec": {
+            "kind": "comparison",
+            "fields": {
+              "required": [
+                "columns"
+              ],
+              "optional": [
+                "title",
+                "connectors",
+                "highlight_column",
+                "highlight_row",
+                "takeaway"
+              ]
+            },
+            "example_path": "next_tool_call.args_template.spec.slides[0]",
+            "differs_from_raw": "the kind takes columns[{header, items[]}]; the raw pattern takes headers[2] and rows[{left, right}]"
+          },
+          "data_contract": {
+            "form": "deckspec_kind",
+            "required_keys": [
+              "columns"
+            ],
+            "optional_keys": [
+              "title",
+              "connectors",
+              "highlight_column",
+              "highlight_row",
+              "takeaway"
+            ],
+            "description": "columns: Exactly 2 balanced columns {header, items[]} (or {header, pros[], cons[]}) for the row-aligned comparison-2col; 3\u20135 columns are panels, 6\u201312 cards.",
+            "field_path": "slides[0]"
+          },
+          "next_tool_call": {
+            "tool": "render_deck_spec",
+            "args_template": {
+              "spec": {
+                "meta": {
+                  "template": "blue-corporate",
+                  "title": "Recommended comparison-2col"
+                },
+                "slides": [
+                  {
+                    "columns": [
+                      {
+                        "header": "Build",
+                        "items": [
+                          "Full control of roadmap",
+                          "12-month time to market"
+                        ]
+                      },
+                      {
+                        "header": "Buy",
+                        "items": [
+                          "Vendor roadmap dependency",
+                          "3-month time to market"
+                        ]
+                      }
+                    ],
+                    "highlight_column": "Buy",
+                    "kind": "comparison",
+                    "takeaway": "Buying wins on speed; building wins on control.",
+                    "title": "Replace with the action title this comparison 2col supports"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "category": "named_pattern",
+          "name": "horizontal-bar-with-callouts",
+          "score": 0.82,
+          "rationale": "Horizontal bar comparison pattern with per-item insights, preferred over card-grid for ranked or weighted-scoring content",
+          "confidence_band": "medium",
+          "placement": {
+            "preferred_placement": "placeholder",
+            "host_strategy": "pattern_expansion",
+            "grid_embeddable": false,
+            "render_pipeline": "native_ooxml"
+          },
+          "template_support": {
+            "status": "supported",
+            "reasons": [
+              "pattern expands into a shape_grid overlaid on the slide content area (medium-density pattern; cell budgets are template-independent)"
+            ],
+            "required_layout": "grid base"
+          },
+          "example": {
+            "template_hash": "abc8b0a2ee7d57768367c2096723872de2c264daee5578db09957011373179fe",
+            "capacity": "3-8 (rows)",
+            "metadata_only": true,
+            "layout_id": "slideLayout2",
+            "layout_preview_png_path": "/Users/seb/projects/json2pptx/templates/previews/blue-corporate/slideLayout2.png"
+          },
+          "data_contract": {
+            "form": "raw_json2pptx",
+            "required_keys": [
+              "bars"
+            ],
+            "optional_keys": [
+              "highlight",
+              "max_value",
+              "unit"
+            ],
+            "limits": [
+              {
+                "path": "bars",
+                "min_items": 3,
+                "max_items": 8
+              },
+              {
+                "path": "unit",
+                "max_chars": 8
+              },
+              {
+                "path": "bars[].callout",
+                "max_chars": 200
+              },
+              {
+                "path": "bars[].label",
+                "max_chars": 40
+              }
+            ],
+            "description": "Raw-only: no DeckSpec kind compiles to horizontal-bar-with-callouts, so author it as the raw_json2pptx slide in next_tool_call. pattern.values is an object with the keys listed (cells: 3-8 (rows)); limits gives the item counts and character budgets.",
+            "field_path": "slides[0].slide.pattern.values"
+          },
+          "next_tool_call": {
+            "tool": "render_deck_spec",
+            "args_template": {
+              "spec": {
+                "meta": {
+                  "template": "blue-corporate",
+                  "title": "Recommended horizontal bar with callouts"
+                },
+                "slides": [
+                  {
+                    "kind": "raw_json2pptx",
+                    "slide": {
+                      "content": [
+                        {
+                          "placeholder_id": "title",
+                          "text_value": "Replace with the action title this horizontal bar with callouts supports",
+                          "type": "text"
+                        }
+                      ],
+                      "layout_id": "blank-title",
+                      "pattern": {
+                        "name": "horizontal-bar-with-callouts",
+                        "values": {
+                          "bars": [
+                            {
+                              "callout": "Strongest on price; weakest on support SLA.",
+                              "label": "Vendor A",
+                              "value": 87
+                            },
+                            {
+                              "callout": "Preferred for enterprise; long implementation cycles.",
+                              "label": "Vendor B",
+                              "value": 72
+                            },
+                            {
+                              "callout": "Best APIs and ecosystem fit, mid-market focus.",
+                              "label": "Vendor C",
+                              "value": 64
+                            },
+                            {
+                              "callout": "Lagging on security certifications.",
+                              "label": "Vendor D",
+                              "value": 41
+                            }
+                          ],
+                          "unit": "%"
+                        }
+                      },
+                      "slide_type": "content"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "query_understood_as": "intent=\"compare two vendor options by price, implementation weeks and evidence confidence\"",
+      "disambiguating_questions": [
+        "Should this slide show data (chart/diagram) or structured text (pattern/layout)?",
+        "How many items will this slide contain?",
+        "How many data points or categories are in the dataset?"
+      ],
+      "preview_call": {
+        "tool": "recommend_visual",
+        "args_template": {
+          "candidates": [
+            "bar",
+            "comparison-2col",
+            "horizontal-bar-with-callouts"
+          ],
+          "intent": "Compare two vendor options by price, implementation weeks and evidence confidence",
+          "preview": true,
+          "template": "blue-corporate"
+        }
+      },
+      "response_fingerprint": "937227247f6092aec591f18ba50d575846714bd10c3ff15ee9de2571fbdb5060"
+    }
+  }
+}

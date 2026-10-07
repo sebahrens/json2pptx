@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-07",
+  "source_commit": "d142529104d882536dca2e1717f405187ebd77ca",
+  "task": "go-slide-creator-xjrxu",
+  "scope": "Current-source local stdio MCP dogfood: discovery, planning, validation, patch repair, two-template rendering, visual review, changed-slide reporting, stale-review rejection and isolated source controls. Focused audit; not an exhaustive all-template or all-kind certification, and not a blinded first-contact agent run.",
+  "metrics": {
+    "tool_calls": 29,
+    "total_response_bytes": 1243023,
+    "response_bytes_excluding_images": 150151,
+    "errors": 1,
+    "validates_before_first_ready_render": 1,
+    "renders_to_first_ready": 1,
+    "first_ready_render_call": 11,
+    "server_seconds": 11.92,
+    "by_tool": {
+      "get_started": 4,
+      "list_slide_kinds": 3,
+      "list_templates": 1,
+      "plan_deck": 5,
+      "recommend_visual": 1,
+      "render_deck_spec": 6,
+      "render_deck_thumbnails": 6,
+      "submit_visual_review": 2,
+      "tools/list": 1,
+      "validate_deck_spec": 1
+    },
+    "wall_minutes": 8.7
+  },
+  "visual_review": {
+    "full_decks": [
+      "blue-corporate: slides 1-8, call 12",
+      "modern-template: slides 1-8, call 14"
+    ],
+    "focused_views": [
+      "blue bridge at 100 DPI, call 16",
+      "source-default comparison at 100 DPI, call 27",
+      "source-explicit comparison at 100 DPI, call 28",
+      "changed comparison at 100 DPI, call 30"
+    ],
+    "observations": [
+      "No clipping or overlap seen in the 16 full-deck slides; eight fee rows retained.",
+      "Chart values and additive bridge preserve fixture amounts.",
+      "Modern template preserves content while adapting typography and accents.",
+      "Quantitative comparison omits the provided default source on both templates.",
+      "Blue bridge source looked absent at 75 DPI but is visible at 100 DPI; not filed as a missing-source bug.",
+      "Initial blue deck approval was accepted. This records readability review, not a claim of perfect source coverage. Citation omission is separately filed."
+    ]
+  },
+  "findings": [
+    {
+      "id": "go-slide-creator-l3e28",
+      "priority": 1,
+      "title": "Planner outline routing drops assigned facts from the returned slots and reports no unplaced facts",
+      "key": "outline-fact-loss"
+    },
+    {
+      "id": "go-slide-creator-hxcum",
+      "priority": 2,
+      "title": "Planner mistakes chart data after a singular slide label for a deck outline",
+      "key": "chart-as-outline"
+    },
+    {
+      "id": "go-slide-creator-0d9xy",
+      "priority": 2,
+      "title": "Quantitative comparisons omit meta.source and bypass DATA_WITHOUT_SOURCE",
+      "key": "comparison-source"
+    }
+  ],
+  "positive_checks": [
+    "Stored-handle repair reaches deterministic_ready after one validate and one render.",
+    "Structural score explicitly says it is an input heuristic, not visual approval.",
+    "Single title edit reports changed_slides=[4].",
+    "Stale artifact hash rejected before recording visual approval.",
+    "Explicit comparison source renders exactly once."
+  ],
+  "validation": [
+    {
+      "command": "go build -o /tmp/mcp-audit-1007/json2pptx ./cmd/json2pptx",
+      "result": "pass (sandbox module stat-cache write warning; binary produced successfully)"
+    },
+    {
+      "command": "go test ./internal/deckplan",
+      "result": "pass"
+    },
+    {
+      "command": "go test -short ./cmd/json2pptx -run 'Test(DataWithoutSource|DeckSource|.*SourceDefault|.*Comparison.*Source)' -count=1",
+      "result": "pass; existing coverage does not catch the reported cases"
+    }
+  ],
+  "production_changes": false,
+  "reproduction": "Build current source. Start tests/quality/journey/mcpd.py with a fresh output dir. Request arguments are in calls.jsonl params.arguments, with source control args separately saved. Session deck_ids and /tmp paths are historical; replace them with returned handles/paths when replaying. Image payloads are stored separately from responses. Modern PPTX can be reproduced from spec-v2.json with meta.template=modern-template."
+}

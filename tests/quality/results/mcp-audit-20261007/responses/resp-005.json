@@ -1,0 +1,55 @@
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"fields\":[\"tool_detail\"]}"
+      }
+    ],
+    "structuredContent": {
+      "tool_detail": {
+        "tool": "plan_deck",
+        "description": "Plan a deck from a brief \u2014 an ordered slide outline with narrative roles (opening, evidence, comparison, close), a canonical layout per slide (opening \"title\" and closing \"closing\" with no pattern; content slides \"blank-title\" plus a pattern) and content seeds. Rhythm: no 3 consecutive slides with the same pattern; emphasis (stat-hero, pull-quote) only for the brief's own headline number or quote.\n\nformat:\"deckspec\" (recommended) returns deck_spec \u2014 a DeckSpec draft whose kinds follow the brief \u2014 plus slots[] (path, guidance, facts), unplaced_facts[], constraints[] (\"8 slides\", \"on midnight-blue\") and budget / budget_note. A sentence that names a slide in the kind catalogue's own words is drafted as that kind, in brief order, with its facts in the kind's fields (bridge, matrix_2x2, image_case, architecture, team, decision / option_matrix, roadmap, process, table, comparison, kpi_snapshot, chart_insight, regions); the narrative defaults are drafted from what is left, and \"Ask:\" / next steps is the one closer. The cover carries the deck name the brief gives, else __FILL__ \u2014 never a cut fragment; no dividers under 12 slides unless asked. Fill the rest from list_slide_kinds, then validate_deck_spec \u2192 render_deck_spec.\n\nThe plan's slides[] are advisory records, NOT SlideInput objects. For a raw deck, copy each slides[i].skeleton into presentation.slides[], replace its __FILL__ tokens and validate before generating.",
+        "input_schema": {
+          "properties": {
+            "audience": {
+              "description": "Target audience (e.g., 'board of directors', 'engineering team', 'investors'). Influences pattern selection.",
+              "type": "string"
+            },
+            "brief": {
+              "description": "Natural-language description of the deck purpose and content (e.g., 'Pitch our Series B for an AI infra company').",
+              "type": "string"
+            },
+            "format": {
+              "description": "\"raw\" (default): pattern outline with raw SlideInput skeletons for the raw path. \"deckspec\": a DeckSpec draft for validate_deck_spec / render_deck_spec \u2014 the slides the brief names, by kind and in brief order, then the narrative slots drafted from what is left.",
+              "enum": [
+                "raw",
+                "deckspec"
+              ],
+              "type": "string"
+            },
+            "must_include": {
+              "description": "Pattern names that must appear in the plan (e.g., [\"bmc-canvas\", \"kpi-3up\"]).",
+              "type": "array"
+            },
+            "slide_budget": {
+              "description": "Target number of slides (3\u201330). Default: the count the brief states, else 10.",
+              "type": "number"
+            },
+            "template": {
+              "description": "Template name. Every planned slide then carries template_support {status: supported|risky|unsupported, reasons[], required_layout}, and a pattern the template cannot host is replaced with a supported alternative.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "brief"
+          ],
+          "type": "object"
+        },
+        "listed": true
+      }
+    }
+  }
+}

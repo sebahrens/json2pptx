@@ -1,0 +1,147 @@
+{
+  "jsonrpc": "2.0",
+  "id": 16,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"fields\":[\"tool_detail\"]}"
+      }
+    ],
+    "structuredContent": {
+      "tool_detail": {
+        "tool": "submit_visual_review",
+        "description": "Record a host/manual visual review verdict for a rendered PPTX \u2014 the completion path when you or a human inspected the rendered slides.\n\nslides[] must cover EVERY slide exactly once. Partial coverage, a stale pptx_revision or a finding severity/category outside the schema's enums is rejected (INVALID_PARAMETER) and nothing is recorded. Each image must be this server's render of that slide of this PPTX (the path / content_hash render_deck_thumbnails returned); any other is rejected. With no server render to compare, status is reviewed_unverified_images.\n\nstatus is \"visually_reviewed_current_revision\" only when every slide is approved with no P0/P1 finding, the images verify and the render's deterministic gate passed; a failed gate gives \"reviewed_deterministic_blockers\" with blocking_reasons and publishable=false.",
+        "input_schema": {
+          "properties": {
+            "pptx_path": {
+              "description": "Path to the reviewed PPTX file.",
+              "type": "string"
+            },
+            "pptx_revision": {
+              "description": "sha256 (content_hash) of the reviewed PPTX, as the render returned it; must match the current file.",
+              "type": "string"
+            },
+            "reviewer": {
+              "description": "Who reviewed: \"host\" (default, the calling agent) or \"manual\" (a human).",
+              "type": "string"
+            },
+            "revision": {
+              "description": "Optional render_deck_spec revision; must match the deck's authoring manifest.",
+              "type": "string"
+            },
+            "slides": {
+              "description": "One entry per slide, each with the image you inspected.",
+              "items": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "image_path"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "image_sha256"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "findings": {
+                    "description": "Open defects on this slide.",
+                    "items": {
+                      "properties": {
+                        "category": {
+                          "description": "text_overflow: text spills its box; text_truncation: text cut off; contrast: low text contrast; alignment: edges or baselines off; spacing: uneven gaps or margins; overlap: elements collide; missing_content: content absent; font_size: type too small; visual_hierarchy: emphasis unclear; chart_readability: chart hard to read; table_readability: table hard to read; image_quality: picture blurred or badly cropped; layout_balance: lopsided or empty areas; color_consistency: off-palette colour; border_style: stray or uneven outlines; footer_clearance: content crowds the footer; aspect_ratio: distorted proportions.",
+                          "enum": [
+                            "text_overflow",
+                            "text_truncation",
+                            "contrast",
+                            "alignment",
+                            "spacing",
+                            "overlap",
+                            "missing_content",
+                            "font_size",
+                            "visual_hierarchy",
+                            "chart_readability",
+                            "table_readability",
+                            "image_quality",
+                            "layout_balance",
+                            "color_consistency",
+                            "border_style",
+                            "footer_clearance",
+                            "aspect_ratio"
+                          ],
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "severity": {
+                          "description": "P0: unreadable or broken; P1: major defect; P2: minor, cosmetic; P3: nitpick. P0/P1 block approval.",
+                          "enum": [
+                            "P0",
+                            "P1",
+                            "P2",
+                            "P3"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "severity",
+                        "category"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "image_path": {
+                    "description": "The PNG you inspected (render_deck_thumbnails slides[].path), or give image_sha256.",
+                    "type": "string"
+                  },
+                  "image_sha256": {
+                    "description": "Its pixel hash (slides[].content_hash), instead of image_path.",
+                    "type": "string"
+                  },
+                  "index": {
+                    "description": "0-based slide index.",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "role": {
+                    "description": "Optional role label.",
+                    "type": "string"
+                  },
+                  "verdict": {
+                    "enum": [
+                      "approved",
+                      "changes_requested",
+                      "inconclusive"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "index",
+                  "verdict"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "pptx_path",
+            "pptx_revision",
+            "slides"
+          ],
+          "type": "object"
+        },
+        "listed": true
+      }
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"templates_count\":10,\"templates_names\":[\"abstract\",\"blue-corporate\",\"business-template\",\"forest-green\",\"midnight-blue\",\"modern\",\"modern-template\",\"modern-yellow\",\"p-style\",\"warm-coral\"]}"
+      }
+    ],
+    "structuredContent": {
+      "detail": "template:\"<name>\" returns one template's layouts, colour roles and table styles.",
+      "input_formats": [
+        "json"
+      ],
+      "output_formats": [
+        "pptx"
+      ],
+      "page_size": 50,
+      "templates": [
+        {
+          "name": "abstract",
+          "aspect_ratio": "16:9",
+          "layout_count": 7,
+          "title_font": "Tenorite",
+          "body_font": "Tenorite",
+          "primary_fill": "accent1"
+        },
+        {
+          "name": "blue-corporate",
+          "aspect_ratio": "16:9",
+          "layout_count": 7,
+          "title_font": "Aptos",
+          "body_font": "Aptos Light",
+          "primary_fill": "dk2"
+        },
+        {
+          "name": "business-template",
+          "aspect_ratio": "16:9",
+          "layout_count": 7,
+          "title_font": "Calibri Light",
+          "body_font": "Calibri",
+          "primary_fill": "accent3"
+        },
+        {
+          "name": "forest-green",
+          "aspect_ratio": "16:9",
+          "layout_count": 7,
+          "title_font": "Calibri",
+          "body_font": "Calibri",
+          "primary_fill": "accent1"
+        },
+        {
+          "name": "midnight-blue",
+          "aspect_ratio": "16:9",
+          "layout_count": 7,
+          "title_font": "Calibri",
+          "body_font": "Calibri",
+          "primary_fill": "accent1"
+        },
+        {
+          "name": "modern",
+          "aspect_ratio": "16:9",
+          "layout_count": 9,
+          "title_font": "Calibri Light",
+          "body_font": "Calibri",
+          "primary_fill": "accent1"
+        },
+        {
+          "name": "modern-template",
+          "aspect_ratio": "16:9",
+          "layout_count": 7,
+          "title_font": "Lora",
+          "body_font": "Poppins Light",
+          "primary_fill": "accent1"
+        },
+        {
+          "name": "modern-yellow",
+          "aspect_ratio": "16:9",
+          "layout_count": 8,
+          "title_font": "Segoe UI Semibold",
+          "body_font": "Segoe UI",
+          "primary_fill": "accent1"
+        },
+        {
+          "name": "p-style",
+          "aspect_ratio": "16:9",
+          "layout_count": 7,
+          "title_font": "Georgia",
+          "body_font": "Arial",
+          "primary_fill": "accent1"
+        },
+        {
+          "name": "warm-coral",
+          "aspect_ratio": "16:9",
+          "layout_count": 7,
+          "title_font": "Gill Sans",
+          "body_font": "Calibri",
+          "primary_fill": "accent2"
+        }
+      ],
+      "tool": {
+        "name": "json2pptx",
+        "version": "dev"
+      },
+      "total_count": 10
+    }
+  }
+}

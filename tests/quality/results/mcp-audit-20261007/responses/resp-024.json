@@ -1,0 +1,172 @@
+{
+  "jsonrpc": "2.0",
+  "id": 25,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"blocking_reasons\":[\"current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails \u2026\"],\"content_hash\":\"dbdb62b048cc0e5f5c2ee9e18cfe828cfe909b93012b375d6659f5515289b023\",\"deck_id\":\"deck_47fe172deaff963f08b248ac3dbffd48\",\"deterministic_ready\":true,\"diagnostics\":[{\"code\":\"SEMANTIC_TAKEAWAY_REQUIRED\",\"message\":\"comparison slide should carry a one-line takeaway\",\"path\":\"/slides/0\",\"severity\":\"warning\"},{\"action\":\"review\",\"code\":\"pattern_overcrowded\",\"message\":\"comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting\",\"path\":\"/slides/0\",\"severity\":\"info\"}],\"diagnostics_count\":2,\"ok\":true,\"pptx_path\":\"/tmp/mcp-audit-1007/out/source-absent.pptx\",\"publishable\":false,\"success\":true}"
+      },
+      {
+        "type": "resource_link",
+        "uri": "json2pptx://deck/source-absent.pptx",
+        "name": "source-absent.pptx",
+        "description": "The generated presentation (source-absent.pptx). Read this resource for the file itself.",
+        "mimeType": "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+      }
+    ],
+    "structuredContent": {
+      "ok": true,
+      "success": true,
+      "pptx_path": "/tmp/mcp-audit-1007/out/source-absent.pptx",
+      "deterministic_ready": true,
+      "publishable": false,
+      "manual_review_required": true,
+      "blocking_reasons": [
+        "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+      ],
+      "template": "blue-corporate",
+      "slide_count": 1,
+      "content_hash": "dbdb62b048cc0e5f5c2ee9e18cfe828cfe909b93012b375d6659f5515289b023",
+      "duration_ms": 33,
+      "quality_summary": {
+        "score": 95,
+        "basis": "input",
+        "slide_scores": [
+          {
+            "slide_number": 1,
+            "score": 95,
+            "issues": [
+              "pattern_overcrowded"
+            ]
+          }
+        ],
+        "scope": "input_heuristic",
+        "evidence": {
+          "artifact_sha256": "dbdb62b048cc0e5f5c2ee9e18cfe828cfe909b93012b375d6659f5515289b023",
+          "schema_valid": true,
+          "generated": true,
+          "fit_checked": true,
+          "structural_valid": true,
+          "pixels_rendered": false,
+          "visually_inspected": false,
+          "reviewed_slide_ids": [],
+          "total_slides": 1,
+          "approved": false,
+          "needs_review": true,
+          "reasons": [
+            "current artifact was not pixel-rendered",
+            "no explicit visual approval verdict for the current artifact"
+          ]
+        },
+        "structural_score": 95,
+        "quality_gate": {
+          "passed": true,
+          "reasons": [],
+          "criteria": {
+            "min_score": 80,
+            "max_p0_findings": 0,
+            "max_p1_findings": 0,
+            "require_takeaway_on_charts": true,
+            "max_topic_title_pct": 25,
+            "require_storyline": true,
+            "allow_accent_overload": false,
+            "max_problem_slides_pct": 40,
+            "min_composition_score": 65
+          }
+        }
+      },
+      "diagnostics": [
+        {
+          "code": "SEMANTIC_TAKEAWAY_REQUIRED",
+          "severity": "warning",
+          "blocking": false,
+          "message": "comparison slide should carry a one-line takeaway",
+          "path": "/slides/0",
+          "missing_path": "/slides/0/takeaway",
+          "slide_number": 1,
+          "slide_id": "options"
+        },
+        {
+          "code": "pattern_overcrowded",
+          "severity": "info",
+          "blocking": false,
+          "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+          "path": "/slides/0",
+          "slide_number": 1,
+          "slide_id": "options",
+          "action": "review",
+          "debug": {
+            "raw_path": "/slides/0/pattern"
+          }
+        }
+      ],
+      "explanation_summary": {
+        "title": "Scope comparison",
+        "template": "blue-corporate",
+        "rhythm": {
+          "slide_count": 1,
+          "families": {
+            "comparison": 1
+          },
+          "evidence_families": {},
+          "distinct_family_count": 1,
+          "evidence_family_count": 0,
+          "densities": {
+            "medium": 1
+          }
+        },
+        "layout_coverage": {
+          "requested": [],
+          "assigned": [],
+          "missing": []
+        },
+        "slides": [
+          {
+            "index": 0,
+            "kind": "comparison",
+            "role": "analysis",
+            "visual_family": "comparison",
+            "density": "medium",
+            "title": "Scope B tests price risk within four weeks",
+            "pattern": "comparison-2col",
+            "layout": "blank-title",
+            "alternatives": [
+              {
+                "pattern": "comparison-2col",
+                "layout": "blank-title",
+                "reason": "balanced two-column comparison"
+              },
+              {
+                "pattern": "stylish-panels",
+                "layout": "blank-title",
+                "reason": "3-5 columns, each a titled panel with its own bullets"
+              },
+              {
+                "pattern": "card-grid",
+                "layout": "blank-title",
+                "reason": "2-12 columns as titled cards when panels do not fit (7 arranged as 4 + 3)"
+              },
+              {
+                "layout": "content",
+                "reason": "native bullets preserve more than twelve columns, or columns too long for cards"
+              }
+            ]
+          }
+        ]
+      },
+      "deck_id": "deck_47fe172deaff963f08b248ac3dbffd48",
+      "stored": true,
+      "revision": 2,
+      "changed_slides": [],
+      "slides": [
+        {
+          "id": "options",
+          "index": 0,
+          "slide_number": 1,
+          "kind": "comparison"
+        }
+      ]
+    }
+  }
+}

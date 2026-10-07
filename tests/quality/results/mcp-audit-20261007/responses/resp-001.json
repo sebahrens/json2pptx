@@ -1,0 +1,940 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "tools": [
+      {
+        "annotations": {
+          "title": "Describe finding",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Explain one finding or error code: summary, severity, whether it blocks, when it is emitted, remediation steps and a before/after example. Call it for any code you do not recognize (fit and pattern codes, chart.*, SEMANTIC_*, input / template / render errors). An unknown code returns the closest known one.",
+        "inputSchema": {
+          "properties": {
+            "code": {
+              "description": "The finding code, e.g. \"BODY_TOO_LONG\", \"chart.zero_sum_pie\".",
+              "type": "string"
+            }
+          },
+          "required": [
+            "code"
+          ],
+          "type": "object"
+        },
+        "name": "describe_finding"
+      },
+      {
+        "annotations": {
+          "title": "Examine template",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Examine a PPTX template and return its capability report inline (writes no files): theme fonts and colours, canonical layout coverage (title-slide, section-divider, one-content, qa-closing), derivable layouts, each layout's placeholders with capacities, the grid, and findings such as TPL.LAYOUT.MISSING_ROLE. Use it before authoring on a user-provided template. Supply EXACTLY ONE of template_name or template_path.",
+        "inputSchema": {
+          "properties": {
+            "base_dir": {
+              "description": "Absolute directory template_path resolves against and must stay inside. Default: the server CWD.",
+              "type": "string"
+            },
+            "strict": {
+              "default": false,
+              "description": "true: metadata warnings fail validation too.",
+              "type": "boolean"
+            },
+            "template_name": {
+              "description": "Registered template name. This OR template_path.",
+              "type": "string"
+            },
+            "template_path": {
+              "description": "Local .pptx, resolved against base_dir (else the server CWD) and required to stay inside it. This OR template_name.",
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "object"
+        },
+        "name": "examine_template"
+      },
+      {
+        "annotations": {
+          "title": "Get started",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "The recommended workflow for a task, written for the tools this server lists. Call it first.\n\nDefault for content-bearing decks: author real content as a DeckSpec; `list_slide_kinds` \u2192 `validate_deck_spec` \u2192 `render_deck_spec`, then render and inspect every slide: a passing gate is never completion.\n\nThis tools/list is abridged: tool:\"<name>\" returns that tool's full description and input schema.",
+        "inputSchema": {
+          "properties": {
+            "skill_version": {
+              "description": "schema_version of the installed generate-deck skill; an older one returns skill_warning with the refresh command.",
+              "type": "string"
+            },
+            "task": {
+              "default": "brief",
+              "description": "brief (default, a new deck) | revise (deck_id + patch) | validate-only | onboard-template (vet a user-supplied .pptx).",
+              "type": "string"
+            },
+            "tool": {
+              "description": "A tool name: return tool_detail (its full description and input schema) instead of a workflow.",
+              "type": "string"
+            },
+            "verbose": {
+              "description": "true: include quality_workflow, the initialize instructions repeated.",
+              "type": "boolean"
+            }
+          },
+          "required": [],
+          "type": "object"
+        },
+        "name": "get_started"
+      },
+      {
+        "annotations": {
+          "title": "List slide kinds",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Discover DeckSpec slide kinds. Without arguments: one line per kind (what it is for, required_fields). kinds:[\u2026]: each named kind's full summary, typical fields and copy-ready example. fields selects detail instead: brief (one-line field signatures with text budgets), item_schema (fields with descriptions and aliases), budgets (per-field text budgets, measured on template), compositions (pattern / layout overrides), example, item_schema_full (closed JSON Schema). kinds:[\"raw_json2pptx\"] also returns a composed example (several views under one title).",
+        "inputSchema": {
+          "properties": {
+            "fields": {
+              "description": "Detail to include.",
+              "items": {
+                "enum": [
+                  "brief",
+                  "item_schema",
+                  "budgets",
+                  "compositions",
+                  "example",
+                  "item_schema_full"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "kinds": {
+              "description": "Exact kind names to return, e.g. [\"kpi_snapshot\"]. Omit for all.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "preview": {
+              "description": "true: also return an image of each named kind's example (1-4 kinds), rendered on template.",
+              "type": "boolean"
+            },
+            "template": {
+              "description": "Template name; adds budgets measured on it.",
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "object"
+        },
+        "name": "list_slide_kinds"
+      },
+      {
+        "annotations": {
+          "title": "List templates",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "List presentation templates. fields=\"names\": one small row per template (name, aspect ratio, layout count, fonts, primary fill), enough to pick one. The default (compact) adds table styles, canonical layout IDs, colour roles (contrast-safe accents, the ink each accent carries) and body font sizes; fields=\"full\" adds theme colours, grid, layout summaries with placeholders and the supported chart / diagram types. Paginated: cursor + page_size, next_cursor when more remain.",
+        "inputSchema": {
+          "properties": {
+            "base_dir": {
+              "description": "Absolute directory template_path resolves against and must stay inside.",
+              "type": "string"
+            },
+            "cursor": {
+              "description": "next_cursor of the previous page.",
+              "type": "string"
+            },
+            "fields": {
+              "description": "names, compact (default) or full.",
+              "enum": [
+                "names",
+                "compact",
+                "full"
+              ],
+              "type": "string"
+            },
+            "filter": {
+              "description": "Case-insensitive substring of the template name.",
+              "type": "string"
+            },
+            "mode": {
+              "description": "Legacy; prefer fields.",
+              "enum": [
+                "list",
+                "compact",
+                "full"
+              ],
+              "type": "string"
+            },
+            "page_size": {
+              "description": "Templates per page (default 50, 1-200).",
+              "type": "number"
+            },
+            "read_only": {
+              "default": false,
+              "description": "true: write no layout-preview PNGs to the cache.",
+              "type": "boolean"
+            },
+            "template": {
+              "description": "Return this one template.",
+              "type": "string"
+            },
+            "template_path": {
+              "description": "One local .pptx the server has not registered; must stay inside base_dir (else the server CWD). Not with template.",
+              "type": "string"
+            }
+          },
+          "required": [],
+          "type": "object"
+        },
+        "name": "list_templates"
+      },
+      {
+        "annotations": {
+          "title": "Plan deck",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Plan a deck from a brief: an ordered slide outline with a narrative role, layout, pattern and content seeds per slide. format:\"deckspec\" (recommended) returns deck_spec, a DeckSpec draft whose kinds follow the brief, plus slots[] (path, guidance, facts): fill it using list_slide_kinds, then validate_deck_spec \u2192 render_deck_spec. A brief that lists its slides gets one slide per item, in order; deck instructions (\"8 slides\", \"with an agenda\") return as constraints[]; every other clause is routed to a slide or listed in unplaced_facts. With format \"raw\", slides[] are advisory records, not slide inputs.",
+        "inputSchema": {
+          "properties": {
+            "audience": {
+              "description": "Target audience, e.g. \"board of directors\"; influences pattern choice.",
+              "type": "string"
+            },
+            "brief": {
+              "description": "What the deck is for and what it must say, in natural language.",
+              "type": "string"
+            },
+            "format": {
+              "description": "\"deckspec\": a DeckSpec draft for validate_deck_spec / render_deck_spec. \"raw\" (default): a pattern outline with raw slide skeletons.",
+              "enum": [
+                "raw",
+                "deckspec"
+              ],
+              "type": "string"
+            },
+            "must_include": {
+              "description": "Pattern names the plan must use, e.g. [\"kpi-3up\"].",
+              "type": "array"
+            },
+            "slide_budget": {
+              "description": "Target slide count (3-30). Default: the count the brief states, else 10.",
+              "type": "number"
+            },
+            "template": {
+              "description": "Template name: each slide then carries template_support, and a pattern the template cannot host is replaced.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "brief"
+          ],
+          "type": "object"
+        },
+        "name": "plan_deck"
+      },
+      {
+        "annotations": {
+          "title": "Recommend visual",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Rank visuals for a slide intent across layouts, named patterns, charts, diagrams, raw shape_grid and the regions kind. Every candidate carries data_contract (keys, limits) and a runnable next_tool_call (render_deck_spec with a complete DeckSpec: the kind that compiles to it, else a raw_json2pptx slide); also_as names other forms of the same visual, differs_by what separates near ties. Compose candidates put several views on one slide. A visual with no renderer (Sankey) returns unsupported_visual. With candidates, ONLY those names are scored and all are returned.",
+        "inputSchema": {
+          "properties": {
+            "candidates": {
+              "description": "Shortlist to rank instead: layout, pattern, chart or diagram names, raw_shape_grid, or a compose:<a>+<b> name this tool returned.",
+              "type": "array"
+            },
+            "content_hints": {
+              "description": "Optional hints that refine ranking.",
+              "properties": {
+                "audience": {
+                  "type": "string"
+                },
+                "columns": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "data_points": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "density_hint": {
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ],
+                  "type": "string"
+                },
+                "has_chart": {
+                  "type": "boolean"
+                },
+                "has_metrics": {
+                  "type": "boolean"
+                },
+                "item_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "series_count": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "type": "object"
+            },
+            "intent": {
+              "description": "What the slide should show, e.g. \"compare 3 vendors on 5 dimensions\".",
+              "type": "string"
+            },
+            "prefer_variety": {
+              "description": "true: penalize patterns named in recent_patterns.",
+              "type": "boolean"
+            },
+            "preview": {
+              "description": "true: also return an image of each leading candidate (max 4).",
+              "type": "boolean"
+            },
+            "recent_patterns": {
+              "description": "Pattern names on the preceding slides, in order.",
+              "type": "array"
+            },
+            "slide_index": {
+              "description": "0-based index of the slide being built.",
+              "type": "number"
+            },
+            "template": {
+              "description": "Template name: candidates carry template_support and ones it cannot host are demoted; previews render on it.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "intent"
+          ],
+          "type": "object"
+        },
+        "name": "recommend_visual"
+      },
+      {
+        "annotations": {
+          "title": "Render deck spec",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Compile a DeckSpec and render it to a .pptx: the one-call path for a NEW deck. Returns pptx_path, deck_id, diagnostics[] (validate_deck_spec's findings, at JSON Pointer paths), deterministic_ready, publishable and blocking_reasons[]. success means the file was WRITTEN; deterministic_ready means no blocking diagnostic remains; publishable also needs an approved all-slide visual verdict and is false on a fresh render: render every slide with render_deck_thumbnails, inspect the images, then record the verdict with submit_visual_review. quality_summary is an input heuristic, not a visual verdict.",
+        "inputSchema": {
+          "dependentRequired": {
+            "patch": [
+              "deck_id"
+            ]
+          },
+          "oneOf": [
+            {
+              "required": [
+                "spec"
+              ]
+            },
+            {
+              "required": [
+                "deck_id"
+              ]
+            }
+          ],
+          "properties": {
+            "base_dir": {
+              "description": "Absolute directory that relative asset paths in the spec and template_path resolve against and must stay inside. Default: the deck_id's last render root, else the server CWD.",
+              "type": "string"
+            },
+            "deck_id": {
+              "description": "Handle a validate_deck_spec or render_deck_spec response returned, sent INSTEAD of spec; add patch to edit. The stored spec after patches: validate_deck_spec {deck_id, read:\"spec\"}. Per-process, expires after 1 hour: then send the spec again.",
+              "type": "string"
+            },
+            "dry_run": {
+              "description": "true: run without storing anything.",
+              "type": "boolean"
+            },
+            "fork": {
+              "description": "true: store the result under a NEW deck_id; this one stays as it is.",
+              "type": "boolean"
+            },
+            "output_filename": {
+              "description": "Name of the .pptx inside the server's output directory. Default: derived from meta.title and a digest of the spec.",
+              "type": "string"
+            },
+            "output_validation": {
+              "description": "Post-generation output validation (default strict: refuses to emit a deck with text overflow).",
+              "enum": [
+                "off",
+                "warn",
+                "strict"
+              ],
+              "type": "string"
+            },
+            "patch": {
+              "description": "Edits to deck_id's spec, applied first: [{op, path, value | from}]. path is a JSON Pointer; a slide is named by index or id (/slides/3/title, /slides/s4/title); add at /slides/6 inserts, \"-\" appends. All ops apply or none; the response lists changed_slides.",
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "op": {
+                    "enum": [
+                      "replace",
+                      "add",
+                      "remove",
+                      "move",
+                      "copy"
+                    ],
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "value": {}
+                },
+                "required": [
+                  "op",
+                  "path"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "restore": {
+              "description": "Revision of deck_id to start from; patch applies on top.",
+              "type": "number"
+            },
+            "spec": {
+              "description": "The DeckSpec to render: a JSON object ({meta:{title, template}, slides:[{kind, \u2026}]}) or a YAML/JSON string. Send this OR deck_id; sent again with the same title, template and slide ids it is the next revision of its deck_id.",
+              "oneOf": [
+                {
+                  "not": {
+                    "required": [
+                      "structure"
+                    ]
+                  },
+                  "required": [
+                    "slides"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "not": {
+                    "required": [
+                      "slides"
+                    ]
+                  },
+                  "required": [
+                    "structure"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ],
+              "type": [
+                "object",
+                "string"
+              ]
+            },
+            "strict": {
+              "description": "Advisory-rule strictness: off, warn (default), or strict.",
+              "enum": [
+                "off",
+                "warn",
+                "strict"
+              ],
+              "type": "string"
+            },
+            "template": {
+              "description": "Template for this call; overrides meta.template. list_templates lists names.",
+              "type": "string"
+            },
+            "template_path": {
+              "description": "Local .pptx to render with; must stay inside base_dir. Not with template. Check it with examine_template first.",
+              "type": "string"
+            },
+            "verbose": {
+              "description": "true: full summaries on a patch render (default: changed slides only).",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        },
+        "name": "render_deck_spec"
+      },
+      {
+        "annotations": {
+          "title": "Render deck thumbnails",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Render a PPTX's slides as MCP image blocks (one JPEG per slide, in order) you can look at, plus slides[].index, path (the PNG submit_visual_review verifies) and content_hash. Needs LibreOffice and ImageMagick. 15 slides are ~600KB at density 50; after a repair, pass only render_deck_spec's changed_slides as slide_indices.",
+        "inputSchema": {
+          "properties": {
+            "density": {
+              "description": "DPI, 25-150 (default 50).",
+              "type": "number"
+            },
+            "force": {
+              "description": "true: bypass the render cache and re-convert.",
+              "type": "boolean"
+            },
+            "include_base64_json": {
+              "description": "Legacy: base64 in the JSON instead of image blocks.",
+              "type": "boolean"
+            },
+            "known_hashes": {
+              "description": "content_hash values you already hold: those slides return unchanged:true and no image.",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "max_slides": {
+              "description": "First N slides (default 50). Not with slide_indices.",
+              "type": "number"
+            },
+            "pptx_path": {
+              "description": "Path to the PPTX to render: render_deck_spec returns pptx_path.",
+              "type": "string"
+            },
+            "slide_indices": {
+              "description": "ONLY these slides, by 0-based index or slide id, e.g. [4, \"costs\"]. Not with max_slides.",
+              "items": {
+                "minimum": 0,
+                "type": [
+                  "integer",
+                  "string"
+                ]
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "pptx_path"
+          ],
+          "type": "object"
+        },
+        "name": "render_deck_thumbnails"
+      },
+      {
+        "annotations": {
+          "title": "Score deck",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Score a deck's STRUCTURAL quality with deterministic rules: overall_score (0-100, basis=\"structural\"), per-slide scores and findings with fix suggestions. It generates the deck into a temporary directory and scores the generated structure; it never looks at rendered pixels, so it cannot visually approve a deck (use render_deck_thumbnails and look). Send a DeckSpec deck_id, or a raw presentation.",
+        "inputSchema": {
+          "oneOf": [
+            {
+              "required": [
+                "presentation"
+              ]
+            },
+            {
+              "required": [
+                "deck_id"
+              ]
+            }
+          ],
+          "properties": {
+            "allow_degraded_scoring": {
+              "description": "true: score on static analysis when the render pass fails. Default: a render failure is a blocking RENDER_EVIDENCE_INCOMPLETE finding.",
+              "type": "boolean"
+            },
+            "base_dir": {
+              "description": "Absolute directory relative asset paths (images, backgrounds, icons) resolve against. Default: the server CWD.",
+              "type": "string"
+            },
+            "deck_id": {
+              "description": "Stored deck handle from validate_deck_spec / render_deck_spec. This OR presentation.",
+              "type": "string"
+            },
+            "mode": {
+              "description": "Only 'deterministic' (default) is implemented.",
+              "enum": [
+                "deterministic",
+                "with_heuristics"
+              ],
+              "type": "string"
+            },
+            "presentation": {
+              "description": "A raw json2pptx presentation ({template, slides[]}). Not a DeckSpec: send its deck_id instead.",
+              "properties": {
+                "slides": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "template": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "slide_indices": {
+              "description": "0-based slides to score; the rest are skipped.",
+              "items": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "template": {
+              "description": "Template override. Default: the presentation's own.",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "score_deck"
+      },
+      {
+        "annotations": {
+          "title": "Show pattern",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Show full details for a named pattern, including its authoritative JSON Schema for values, overrides, and cell_overrides.",
+        "inputSchema": {
+          "properties": {
+            "name": {
+              "description": "Pattern name (e.g., kpi-3up, bmc-canvas, card-grid).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "type": "object"
+        },
+        "name": "show_pattern"
+      },
+      {
+        "annotations": {
+          "title": "Submit visual review",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Record the visual review verdict for a rendered PPTX: the completion step once you (or a human) have inspected the rendered slides. slides[] must cover EVERY slide exactly once, each with the image render_deck_thumbnails returned for it (path or content_hash); partial coverage, a stale pptx_revision or any other image is rejected and nothing is recorded. status is \"visually_reviewed_current_revision\" only when every slide is approved with no P0/P1 finding and the render's deterministic gate passed.",
+        "inputSchema": {
+          "properties": {
+            "pptx_path": {
+              "description": "Path to the reviewed PPTX file.",
+              "type": "string"
+            },
+            "pptx_revision": {
+              "description": "sha256 (content_hash) of the reviewed PPTX, as the render returned it.",
+              "type": "string"
+            },
+            "reviewer": {
+              "description": "Who reviewed: \"host\" (default, the calling agent) or \"manual\" (a human).",
+              "type": "string"
+            },
+            "revision": {
+              "description": "Optional render_deck_spec revision; must match the deck's authoring manifest.",
+              "type": "string"
+            },
+            "slides": {
+              "description": "One entry per slide, each with the image you inspected.",
+              "items": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "image_path"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "image_sha256"
+                    ]
+                  }
+                ],
+                "properties": {
+                  "findings": {
+                    "description": "Open defects on this slide.",
+                    "items": {
+                      "properties": {
+                        "category": {
+                          "enum": [
+                            "text_overflow",
+                            "text_truncation",
+                            "contrast",
+                            "alignment",
+                            "spacing",
+                            "overlap",
+                            "missing_content",
+                            "font_size",
+                            "visual_hierarchy",
+                            "chart_readability",
+                            "table_readability",
+                            "image_quality",
+                            "layout_balance",
+                            "color_consistency",
+                            "border_style",
+                            "footer_clearance",
+                            "aspect_ratio"
+                          ],
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "severity": {
+                          "description": "P0 unreadable or broken, P1 major, P2 minor, P3 nitpick. P0/P1 block approval.",
+                          "enum": [
+                            "P0",
+                            "P1",
+                            "P2",
+                            "P3"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "severity",
+                        "category"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "image_path": {
+                    "description": "The PNG you inspected (render_deck_thumbnails slides[].path), or give image_sha256.",
+                    "type": "string"
+                  },
+                  "image_sha256": {
+                    "description": "Its pixel hash (slides[].content_hash), instead of image_path.",
+                    "type": "string"
+                  },
+                  "index": {
+                    "description": "0-based slide index.",
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "role": {
+                    "description": "Optional role label.",
+                    "type": "string"
+                  },
+                  "verdict": {
+                    "enum": [
+                      "approved",
+                      "changes_requested",
+                      "inconclusive"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "index",
+                  "verdict"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "pptx_path",
+            "pptx_revision",
+            "slides"
+          ],
+          "type": "object"
+        },
+        "name": "submit_visual_review"
+      },
+      {
+        "annotations": {
+          "title": "Validate deck spec",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "description": "Validate a DeckSpec by running its render into a scratch directory: the same findings render_deck_spec reports for that spec and template. template echoes the template measured on. A finding blocks only when severity is error (blocking:true); ok=false means one does. patch_verified:true: the finding's next_tool_call patch was tried and clears it. Also reads a stored deck (read, find).",
+        "inputSchema": {
+          "dependentRequired": {
+            "patch": [
+              "deck_id"
+            ]
+          },
+          "oneOf": [
+            {
+              "required": [
+                "spec"
+              ]
+            },
+            {
+              "required": [
+                "deck_id"
+              ]
+            }
+          ],
+          "properties": {
+            "base_dir": {
+              "description": "Root for relative asset paths, as on render_deck_spec.",
+              "type": "string"
+            },
+            "deck_id": {
+              "description": "Stored spec handle, sent INSTEAD of spec; see render_deck_spec.",
+              "type": "string"
+            },
+            "dry_run": {
+              "description": "Store nothing.",
+              "type": "boolean"
+            },
+            "find": {
+              "description": "Text or number to locate anywhere in the spec; alone it returns hits[{path, slide_id, index, excerpt}] instead of validating.",
+              "type": "string"
+            },
+            "fork": {
+              "description": "Store under a new deck_id.",
+              "type": "boolean"
+            },
+            "patch": {
+              "description": "Edits to deck_id's spec, applied before the call acts and stored when the result parses; see render_deck_spec.",
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "op": {
+                    "enum": [
+                      "replace",
+                      "add",
+                      "remove",
+                      "move",
+                      "copy"
+                    ],
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "value": {}
+                },
+                "required": [
+                  "op",
+                  "path"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "read": {
+              "description": "Return the stored deck instead of validating: \"spec\", \"history\" (revisions and each slide's last change), \"diff:2..5\" (changes between two revisions), or a slide id / index.",
+              "type": "string"
+            },
+            "replace": {
+              "description": "With find: rewrite every hit as one stored patch, then validate.",
+              "type": "string"
+            },
+            "restore": {
+              "description": "Revision to start from.",
+              "type": "number"
+            },
+            "spec": {
+              "description": "The DeckSpec to validate: a JSON object ({meta:{title, template, \u2026}, slides:[{kind, \u2026}]}; structure:{sections[]} instead of slides generates agenda and dividers) or a YAML/JSON string. Send this OR deck_id. list_slide_kinds lists the kinds (kinds:[chosen] returns examples, fields:[brief] or [item_schema] a kind's fields); get_started tool:\"validate_deck_spec\" returns the meta and structure outline. Unknown fields report SEMANTIC_UNKNOWN_FIELD.",
+              "oneOf": [
+                {
+                  "not": {
+                    "required": [
+                      "structure"
+                    ]
+                  },
+                  "required": [
+                    "slides"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "not": {
+                    "required": [
+                      "slides"
+                    ]
+                  },
+                  "required": [
+                    "structure"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ],
+              "type": [
+                "object",
+                "string"
+              ]
+            },
+            "strict": {
+              "description": "Advisory-rule strictness (default warn): whether rhythm/density advisories are info, warnings, or errors.",
+              "enum": [
+                "off",
+                "warn",
+                "strict"
+              ],
+              "type": "string"
+            },
+            "template": {
+              "description": "Template to measure on; overrides meta.template for this call.",
+              "type": "string"
+            },
+            "templates": {
+              "description": "Also measure on these, or [\"all\"]: template_results[{template, ok, summary, findings}].",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
+        "name": "validate_deck_spec"
+      }
+    ]
+  }
+}

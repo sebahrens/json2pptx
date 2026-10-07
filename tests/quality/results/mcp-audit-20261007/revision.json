@@ -1,0 +1,111 @@
+{
+ "ok": true,
+ "success": true,
+ "pptx_path": "/tmp/mcp-audit-1007/out/revision-check.pptx",
+ "deterministic_ready": true,
+ "publishable": false,
+ "manual_review_required": true,
+ "blocking_reasons": [
+  "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+ ],
+ "template": "blue-corporate",
+ "slide_count": 8,
+ "content_hash": "0eee328e4a77fb1e06438c0500660adf4e45dffe8bc70f65e47313d34fbc97e3",
+ "duration_ms": 221,
+ "diagnostics": [
+  {
+   "code": "SEMANTIC_TAKEAWAY_REQUIRED",
+   "severity": "warning",
+   "blocking": false,
+   "message": "regions slide should carry a one-line takeaway \u2014 5 like this in the deck",
+   "path": "/slides/2",
+   "missing_path": "/slides/2/takeaway",
+   "occurrences": 5,
+   "paths": [
+    "/slides/2",
+    "/slides/3",
+    "/slides/4",
+    "/slides/5",
+    "/slides/6"
+   ]
+  },
+  {
+   "code": "pattern_overcrowded",
+   "severity": "info",
+   "blocking": false,
+   "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+   "path": "/slides/4",
+   "slide_number": 5,
+   "slide_id": "options",
+   "action": "review",
+   "debug": {
+    "raw_path": "/slides/4/pattern"
+   }
+  }
+ ],
+ "diagnostics_omitted": 1,
+ "deck_id": "deck_7a4860d8ec4073905b0c3be56a4b2774",
+ "stored": true,
+ "revision": 3,
+ "changed_slides": [
+  4
+ ],
+ "slide_changes": [
+  {
+   "id": "options",
+   "index": 4,
+   "slide_number": 5,
+   "change": "edited"
+  }
+ ],
+ "next_tool_call": {
+  "tool": "render_deck_thumbnails",
+  "args_template": {
+   "density": 75,
+   "known_hashes": [
+    "7cb87a49c4f90bd36f1dc552bf9e7445852b4a1383a65a86c0b5b2d9c54ff420",
+    "0be4353811da0a979050961d8b06efcb62a5933383e051e6369aa402261379f0",
+    "a01347d6062ef39cfd16495dc4f4665fc470400b7aa3ebfbef6e34120153ffeb",
+    "189234971e43475e682fffdae204dd970714346d620dd06d08f8377c0c13a13f",
+    "dd5bc53d05c2b616c468c643bb4d2fc0636ad91f16ae5105adb46dfeba7fd161",
+    "f02e57294309314b768e4699d9634a811af74728231ef2e581265302ce04b102",
+    "cfeca1934f92a493b3edd73a67f138100b9bbc6284a9b20aaeddac4a305aa801",
+    "c7474b348f40adac27ae264df4ed1511acf2e7cc4229361587e9401dce6c01ee"
+   ],
+   "pptx_path": "/tmp/mcp-audit-1007/out/revision-check.pptx"
+  }
+ },
+ "quality_summary": {
+  "score": 99,
+  "basis": "input",
+  "slide_scores": [
+   {
+    "slide_number": 5,
+    "score": 95,
+    "issues": [
+     "pattern_overcrowded"
+    ]
+   }
+  ],
+  "scope": "input_heuristic",
+  "structural_score": 99,
+  "quality_gate": {
+   "passed": true,
+   "reasons": []
+  }
+ },
+ "explanation_summary": {
+  "slides": [
+   {
+    "index": 4,
+    "kind": "comparison",
+    "role": "analysis",
+    "visual_family": "comparison",
+    "density": "medium",
+    "title": "Scope B tests price risk for \u20ac320k",
+    "pattern": "comparison-2col",
+    "layout": "blank-title"
+   }
+  ]
+ }
+}

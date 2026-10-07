@@ -1,0 +1,451 @@
+{
+ "ok": true,
+ "success": true,
+ "pptx_path": "/tmp/mcp-audit-1007/out/nordbolt-diligence-3b4254b2.pptx",
+ "deterministic_ready": true,
+ "publishable": false,
+ "manual_review_required": true,
+ "blocking_reasons": [
+  "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it"
+ ],
+ "template": "blue-corporate",
+ "slide_count": 8,
+ "content_hash": "192813460bcbeb6f4e684b991713a058b91cfb358d1d76d123b50a2eb7f3f235",
+ "duration_ms": 227,
+ "quality_summary": {
+  "score": 99,
+  "basis": "input",
+  "slide_scores": [
+   {
+    "slide_number": 1,
+    "score": 100
+   },
+   {
+    "slide_number": 2,
+    "score": 100
+   },
+   {
+    "slide_number": 3,
+    "score": 100
+   },
+   {
+    "slide_number": 4,
+    "score": 100
+   },
+   {
+    "slide_number": 5,
+    "score": 95,
+    "issues": [
+     "pattern_overcrowded"
+    ]
+   },
+   {
+    "slide_number": 6,
+    "score": 100
+   },
+   {
+    "slide_number": 7,
+    "score": 100
+   },
+   {
+    "slide_number": 8,
+    "score": 100
+   }
+  ],
+  "scope": "input_heuristic",
+  "evidence": {
+   "artifact_sha256": "192813460bcbeb6f4e684b991713a058b91cfb358d1d76d123b50a2eb7f3f235",
+   "schema_valid": true,
+   "generated": true,
+   "fit_checked": true,
+   "structural_valid": true,
+   "pixels_rendered": false,
+   "visually_inspected": false,
+   "reviewed_slide_ids": [],
+   "total_slides": 8,
+   "approved": false,
+   "needs_review": true,
+   "reasons": [
+    "current artifact was not pixel-rendered",
+    "no explicit visual approval verdict for the current artifact"
+   ]
+  },
+  "structural_score": 99,
+  "quality_gate": {
+   "passed": true,
+   "reasons": [],
+   "criteria": {
+    "min_score": 80,
+    "max_p0_findings": 0,
+    "max_p1_findings": 0,
+    "require_takeaway_on_charts": true,
+    "max_topic_title_pct": 25,
+    "require_storyline": true,
+    "allow_accent_overload": false,
+    "max_problem_slides_pct": 40,
+    "min_composition_score": 65
+   }
+  }
+ },
+ "diagnostics": [
+  {
+   "code": "SEMANTIC_TAKEAWAY_REQUIRED",
+   "severity": "warning",
+   "blocking": false,
+   "message": "regions slide should carry a one-line takeaway \u2014 5 like this in the deck",
+   "path": "/slides/2",
+   "missing_path": "/slides/2/takeaway",
+   "occurrences": 5,
+   "paths": [
+    "/slides/2",
+    "/slides/3",
+    "/slides/4",
+    "/slides/5",
+    "/slides/6"
+   ]
+  },
+  {
+   "code": "pattern_overcrowded",
+   "severity": "info",
+   "blocking": false,
+   "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+   "path": "/slides/4",
+   "slide_number": 5,
+   "slide_id": "options",
+   "action": "review",
+   "debug": {
+    "raw_path": "/slides/4/pattern"
+   }
+  },
+  {
+   "code": "cell_underfilled",
+   "severity": "info",
+   "blocking": false,
+   "message": "1 of 1 text cells fill under 35% of their box height (slide fill 22%, sparsest cell 32%) \u2014 the grid may be larger than the content needs",
+   "path": "/slides/2",
+   "slide_number": 3,
+   "slide_id": "market",
+   "action": "info",
+   "debug": {
+    "raw_path": "/slides/2/shape_grid"
+   }
+  }
+ ],
+ "explanation_summary": {
+  "title": "Nordbolt diligence",
+  "template": "blue-corporate",
+  "rhythm": {
+   "slide_count": 8,
+   "families": {
+    "chart": 2,
+    "comparison": 1,
+    "list": 1,
+    "structural": 1,
+    "table": 1,
+    "text": 1,
+    "timeline": 1
+   },
+   "evidence_families": {
+    "chart": 2,
+    "table": 1
+   },
+   "distinct_family_count": 6,
+   "evidence_family_count": 2,
+   "densities": {
+    "heavy": 2,
+    "light": 1,
+    "medium": 5
+   }
+  },
+  "layout_coverage": {
+   "requested": [],
+   "assigned": [],
+   "missing": []
+  },
+  "slides": [
+   {
+    "index": 0,
+    "kind": "title",
+    "role": "opening",
+    "visual_family": "structural",
+    "density": "light",
+    "title": "Nordbolt diligence",
+    "layout": "title",
+    "alternatives": [
+     {
+      "layout": "title",
+      "reason": "the template's own title layout"
+     }
+    ]
+   },
+   {
+    "index": 1,
+    "kind": "executive_summary",
+    "role": "summary",
+    "visual_family": "text",
+    "density": "medium",
+    "title": "Scope B answers the bid question for \u20ac320k",
+    "pattern": "exec-summary",
+    "layout": "blank-title",
+    "alternatives": [
+     {
+      "pattern": "exec-summary",
+      "layout": "blank-title",
+      "reason": "3-5 lead-in statements, each with one supporting sentence"
+     },
+     {
+      "layout": "content",
+      "reason": "native bullets preserve more or fewer points, or longer ones"
+     }
+    ]
+   },
+   {
+    "index": 2,
+    "kind": "regions",
+    "role": "evidence",
+    "visual_family": "chart",
+    "density": "heavy",
+    "title": "Nordbolt holds 2.3% of a growing market",
+    "layout": "blank-title",
+    "alternatives": [
+     {
+      "layout": "blank-title",
+      "reason": "2\u20133 typed regions in one shape grid under the slide title, arranged by the arrangement field"
+     }
+    ]
+   },
+   {
+    "index": 3,
+    "kind": "bridge",
+    "role": "evidence",
+    "visual_family": "chart",
+    "density": "medium",
+    "title": "Price explains most of the \u20ac7m EBITDA gain",
+    "pattern": "waterfall-bridge",
+    "layout": "blank-title",
+    "alternatives": [
+     {
+      "pattern": "waterfall-bridge",
+      "layout": "blank-title",
+      "reason": "3\u201310 ordered additive components with totals and deltas"
+     },
+     {
+      "layout": "content",
+      "reason": "bullets preserve a walk outside the visual's count or text budgets"
+     }
+    ]
+   },
+   {
+    "index": 4,
+    "kind": "comparison",
+    "role": "analysis",
+    "visual_family": "comparison",
+    "density": "medium",
+    "title": "Scope B tests price risk within four weeks",
+    "pattern": "comparison-2col",
+    "layout": "blank-title",
+    "alternatives": [
+     {
+      "pattern": "comparison-2col",
+      "layout": "blank-title",
+      "reason": "balanced two-column comparison"
+     },
+     {
+      "pattern": "stylish-panels",
+      "layout": "blank-title",
+      "reason": "3-5 columns, each a titled panel with its own bullets"
+     },
+     {
+      "pattern": "card-grid",
+      "layout": "blank-title",
+      "reason": "2-12 columns as titled cards when panels do not fit (7 arranged as 4 + 3)"
+     },
+     {
+      "layout": "content",
+      "reason": "native bullets preserve more than twelve columns, or columns too long for cards"
+     }
+    ]
+   },
+   {
+    "index": 5,
+    "kind": "table",
+    "role": "evidence",
+    "visual_family": "table",
+    "density": "heavy",
+    "title": "Scope B costs \u20ac320k across eight activities",
+    "layout": "blank-title",
+    "alternatives": [
+     {
+      "layout": "blank-title",
+      "reason": "a native table in the template's own table style, under the same title as every other content kind"
+     },
+     {
+      "layout": "content",
+      "reason": "bullets preserve rows without a header row"
+     }
+    ]
+   },
+   {
+    "index": 6,
+    "kind": "roadmap",
+    "role": "plan",
+    "visual_family": "timeline",
+    "density": "medium",
+    "title": "The investment committee pack arrives in week 4",
+    "pattern": "phase-roadmap",
+    "layout": "blank-title",
+    "alternatives": [
+     {
+      "pattern": "phase-roadmap",
+      "layout": "blank-title",
+      "reason": "3-6 phases"
+     },
+     {
+      "layout": "content",
+      "reason": "native bullets preserve dense roadmaps"
+     }
+    ]
+   },
+   {
+    "index": 7,
+    "kind": "next_steps",
+    "role": "closing",
+    "visual_family": "list",
+    "density": "medium",
+    "title": "Approval starts the four-week diligence",
+    "pattern": "next-steps",
+    "layout": "blank-title",
+    "alternatives": [
+     {
+      "pattern": "next-steps",
+      "layout": "blank-title",
+      "reason": "2-6 actions with owner and date, plus up to 3 decisions requested"
+     },
+     {
+      "layout": "content",
+      "reason": "bullets preserve more actions or longer copy"
+     }
+    ]
+   }
+  ]
+ },
+ "deck_id": "deck_7a4860d8ec4073905b0c3be56a4b2774",
+ "stored": true,
+ "revision": 2,
+ "changed_slides": [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7
+ ],
+ "slide_changes": [
+  {
+   "id": "cover",
+   "index": 0,
+   "slide_number": 1,
+   "change": "inserted"
+  },
+  {
+   "id": "economics",
+   "index": 1,
+   "slide_number": 2,
+   "change": "inserted"
+  },
+  {
+   "id": "market",
+   "index": 2,
+   "slide_number": 3,
+   "change": "inserted"
+  },
+  {
+   "id": "margin",
+   "index": 3,
+   "slide_number": 4,
+   "change": "inserted"
+  },
+  {
+   "id": "options",
+   "index": 4,
+   "slide_number": 5,
+   "change": "inserted"
+  },
+  {
+   "id": "fees",
+   "index": 5,
+   "slide_number": 6,
+   "change": "inserted"
+  },
+  {
+   "id": "workplan",
+   "index": 6,
+   "slide_number": 7,
+   "change": "inserted"
+  },
+  {
+   "id": "ask",
+   "index": 7,
+   "slide_number": 8,
+   "change": "inserted"
+  }
+ ],
+ "slides": [
+  {
+   "id": "cover",
+   "index": 0,
+   "slide_number": 1,
+   "kind": "title"
+  },
+  {
+   "id": "economics",
+   "index": 1,
+   "slide_number": 2,
+   "kind": "executive_summary"
+  },
+  {
+   "id": "market",
+   "index": 2,
+   "slide_number": 3,
+   "kind": "regions"
+  },
+  {
+   "id": "margin",
+   "index": 3,
+   "slide_number": 4,
+   "kind": "bridge"
+  },
+  {
+   "id": "options",
+   "index": 4,
+   "slide_number": 5,
+   "kind": "comparison"
+  },
+  {
+   "id": "fees",
+   "index": 5,
+   "slide_number": 6,
+   "kind": "table"
+  },
+  {
+   "id": "workplan",
+   "index": 6,
+   "slide_number": 7,
+   "kind": "roadmap"
+  },
+  {
+   "id": "ask",
+   "index": 7,
+   "slide_number": 8,
+   "kind": "next_steps"
+  }
+ ],
+ "next_tool_call": {
+  "tool": "render_deck_thumbnails",
+  "args_template": {
+   "pptx_path": "/tmp/mcp-audit-1007/out/nordbolt-diligence-3b4254b2.pptx"
+  }
+ }
+}

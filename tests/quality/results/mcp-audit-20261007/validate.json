@@ -1,0 +1,257 @@
+{
+  "spec": {
+    "meta": {
+      "title": "Nordbolt diligence",
+      "template": "blue-corporate",
+      "date": "7 October 2026",
+      "source": "Fictional audit fixture"
+    },
+    "slides": [
+      {
+        "id": "cover",
+        "kind": "title",
+        "title": "Nordbolt diligence",
+        "subtitle": "Scope and investment decision"
+      },
+      {
+        "id": "economics",
+        "kind": "kpi_snapshot",
+        "title": "Nordbolt earns a 14.6% EBITDA margin",
+        "kpis": [
+          {
+            "label": "Revenue",
+            "value": "\u20ac212m"
+          },
+          {
+            "label": "EBITDA",
+            "value": "\u20ac31m"
+          },
+          {
+            "label": "EBITDA margin",
+            "value": "14.6%"
+          }
+        ]
+      },
+      {
+        "id": "market",
+        "kind": "regions",
+        "title": "Nordbolt holds 2.3% of a growing market",
+        "arrangement": "main_left",
+        "regions": [
+          {
+            "kind": "chart",
+            "size_pct": 65,
+            "heading": "European fastener market",
+            "unit": "EUR bn",
+            "chart": {
+              "type": "bar",
+              "data": {
+                "categories": [
+                  "2021",
+                  "2025",
+                  "2028F"
+                ],
+                "series": [
+                  {
+                    "name": "Market",
+                    "values": [
+                      8.1,
+                      9.4,
+                      10.6
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "kind": "stat",
+            "value": "2.3%",
+            "label": "Nordbolt market share",
+            "size_pct": 45
+          },
+          {
+            "kind": "text",
+            "heading": "Position",
+            "bullets": [
+              "Sixth in Europe",
+              "2028 estimate is a forecast"
+            ],
+            "size_pct": 55
+          }
+        ]
+      },
+      {
+        "id": "margin",
+        "kind": "bridge",
+        "title": "Price explains most of the \u20ac7m EBITDA gain",
+        "unit": "\u20acm",
+        "columns": [
+          {
+            "label": "2023",
+            "type": "total",
+            "value": 24
+          },
+          {
+            "label": "Price",
+            "type": "delta",
+            "value": 6.5
+          },
+          {
+            "label": "Volume",
+            "type": "delta",
+            "value": 3.2
+          },
+          {
+            "label": "Materials",
+            "type": "delta",
+            "value": -4.1
+          },
+          {
+            "label": "OpEx",
+            "type": "delta",
+            "value": 1.4
+          },
+          {
+            "label": "2025",
+            "type": "total",
+            "value": 31
+          }
+        ]
+      },
+      {
+        "id": "options",
+        "kind": "comparison",
+        "title": "Scope B tests price risk within four weeks",
+        "highlight_column": "Scope B",
+        "columns": [
+          {
+            "header": "Scope B",
+            "items": [
+              "25 customer interviews",
+              "\u20ac320k fee",
+              "4 weeks",
+              "Tests price risk before bid"
+            ]
+          },
+          {
+            "header": "Scope C",
+            "items": [
+              "25 interviews plus survey",
+              "\u20ac410k fee",
+              "5 weeks",
+              "Adds channel evidence"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fees",
+        "kind": "table",
+        "title": "Scope B costs \u20ac320k across eight activities",
+        "headers": [
+          "Activity",
+          "Days",
+          "Fee (\u20ack)"
+        ],
+        "column_alignments": [
+          "left",
+          "right",
+          "right"
+        ],
+        "rows": [
+          [
+            "Data room",
+            5,
+            30
+          ],
+          [
+            "Market sizing",
+            8,
+            50
+          ],
+          [
+            "Competition",
+            6,
+            40
+          ],
+          [
+            "Interview design",
+            4,
+            25
+          ],
+          [
+            "Interviews",
+            14,
+            90
+          ],
+          [
+            "Synthesis",
+            5,
+            35
+          ],
+          [
+            "Risk report",
+            4,
+            30
+          ],
+          [
+            "IC pack",
+            3,
+            20
+          ]
+        ]
+      },
+      {
+        "id": "workplan",
+        "kind": "roadmap",
+        "title": "The investment committee pack arrives in week 4",
+        "phases": [
+          {
+            "name": "Market model",
+            "date_label": "Week 1",
+            "description": "Data room and market sizing"
+          },
+          {
+            "name": "Interviews",
+            "date_label": "Week 2",
+            "description": "25 customers"
+          },
+          {
+            "name": "Synthesis",
+            "date_label": "Week 3",
+            "description": "Price and volume risks"
+          },
+          {
+            "name": "IC pack",
+            "date_label": "Week 4",
+            "description": "Red flags and bid implications"
+          }
+        ],
+        "parallel_tracks": [
+          "Weekly partner review"
+        ]
+      },
+      {
+        "id": "ask",
+        "kind": "next_steps",
+        "title": "Approval starts the four-week diligence",
+        "actions": [
+          {
+            "action": "Confirm scope B",
+            "owner": "CFO",
+            "date": "9 Oct 2026"
+          },
+          {
+            "action": "Sign engagement letter",
+            "owner": "Partner",
+            "date": "12 Oct 2026"
+          }
+        ],
+        "decisions": [
+          "Approve the \u20ac320k scope B fee"
+        ]
+      }
+    ]
+  }
+}

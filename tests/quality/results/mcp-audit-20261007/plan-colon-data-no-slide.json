@@ -1,0 +1,145 @@
+{
+ "format": "deckspec",
+ "brief": "Create an 8-slide board proposal named Nordbolt diligence. Revenue EUR 212m and EBITDA EUR 31m imply a 14.6% margin. A chart shows the market: 2021 EUR 8.1bn, 2025 EUR 9.4bn, 2028 forecast EUR 10.6bn. Ask: CFO approves scope on Friday.",
+ "slide_budget": 8,
+ "constraints": [
+  {
+   "kind": "slide_count",
+   "text": "8-slide",
+   "value": "8"
+  }
+ ],
+ "deck_spec": {
+  "meta": {
+   "chrome": {
+    "page_numbers": {
+     "enabled": true
+    }
+   },
+   "date": "__FILL__",
+   "template": "blue-corporate",
+   "title": "Create an board proposal named Nordbolt diligence"
+  },
+  "slides": [
+   {
+    "kind": "title",
+    "subtitle": "__FILL__",
+    "title": "Create an board proposal named Nordbolt diligence"
+   },
+   {
+    "kind": "executive_summary",
+    "title": "__FILL__"
+   },
+   {
+    "kind": "stat",
+    "title": "__FILL__"
+   },
+   {
+    "chart": {
+     "data": {
+      "categories": [
+       "2021",
+       "2025"
+      ],
+      "series": [
+       {
+        "name": "A chart shows the market",
+        "values": [
+         8.1,
+         9.4
+        ]
+       }
+      ]
+     },
+     "title": "A chart shows the market (EUR BN)",
+     "type": "bar"
+    },
+    "kind": "chart_insight",
+    "title": "__FILL__"
+   },
+   {
+    "kind": "decision",
+    "title": "__FILL__"
+   },
+   {
+    "decisions": [
+     "CFO approves scope on Friday"
+    ],
+    "kind": "next_steps",
+    "title": "__FILL__"
+   }
+  ]
+ },
+ "slots": [
+  {
+   "slide_index": 0,
+   "path": "slides[0]",
+   "slot": "cover",
+   "kind": "title",
+   "guidance": "Deck title and a subtitle naming audience and date.",
+   "facts": [
+    "Create an board proposal named Nordbolt diligence"
+   ]
+  },
+  {
+   "slide_index": 1,
+   "path": "slides[1]",
+   "slot": "answer",
+   "kind": "executive_summary",
+   "guidance": "The whole answer up front: 3-5 points, each a conclusion a later slide proves; the title is the single-sentence answer."
+  },
+  {
+   "slide_index": 2,
+   "path": "slides[2]",
+   "slot": "context",
+   "kind": "stat",
+   "guidance": "Where things stand, in the brief's own numbers; the title states the headline as a sentence carrying its number.",
+   "facts": [
+    "Revenue EUR 212m and EBITDA EUR 31m imply a 14.6% margin"
+   ]
+  },
+  {
+   "slide_index": 3,
+   "path": "slides[3]",
+   "slot": "evidence",
+   "kind": "chart_insight",
+   "guidance": "One chart from the series the brief gives \u2014 categories and values as written, never invented \u2014 with the insights beside it; the title states the claim with its number.",
+   "facts": [
+    "A chart shows the market",
+    "2021 EUR 8.1bn",
+    "2025 EUR 9.4bn",
+    "2028 forecast EUR 10.6bn"
+   ]
+  },
+  {
+   "slide_index": 4,
+   "path": "slides[4]",
+   "slot": "ask",
+   "kind": "decision",
+   "guidance": "The decision needed now: the options, the recommended one, and the ask with owner and date."
+  },
+  {
+   "slide_index": 5,
+   "path": "slides[5]",
+   "slot": "closing",
+   "kind": "next_steps",
+   "guidance": "Close on next steps, not \"Thank you\": 2-6 actions, each with an owner and a date, and the decisions requested. A plain closing kind stays available for a Q&A page.",
+   "facts": [
+    "Ask: CFO approves scope on Friday"
+   ]
+  }
+ ],
+ "unplaced_facts": [],
+ "budget": {
+  "requested": 8,
+  "planned": 6,
+  "content": 5,
+  "structural": 1,
+  "structural_slides": [
+   "cover"
+  ],
+  "cut": []
+ },
+ "budget_note": "Planned 6 of 8 slides: 5 content, 1 structural (cover). Nothing was cut. The storyline is not padded with repeated evidence slides to reach the budget: add a slide only for a claim the brief can prove. No agenda or section dividers under 12 slides unless the brief asks for them.",
+ "response_fingerprint": "30c7cbaa283334b27311042d95083abc932edde07a5f403446a890c184286253"
+}

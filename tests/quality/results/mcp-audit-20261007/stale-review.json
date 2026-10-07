@@ -1,0 +1,28 @@
+{
+ "schema_version": "1.0",
+ "tool": "json2pptx",
+ "subcommand": "mcp",
+ "ok": false,
+ "summary": "1 error",
+ "findings": [
+  {
+   "id": "input-1",
+   "code": "INPUT.INVALID_PARAMETER",
+   "severity": "error",
+   "category": "INPUT",
+   "message": "pptx_revision 192813460bcbeb6f4e684b991713a058b91cfb358d1d76d123b50a2eb7f3f235 is not the current file's sha256 0eee328e4a77fb1e06438c0500660adf4e45dffe8bc70f65e47313d34fbc97e3: the PPTX changed since it was reviewed (or the hash is not its content_hash); re-render the thumbnails of the current file and resubmit with pptx_revision 0eee328e4a77fb1e06438c0500660adf4e45dffe8bc70f65e47313d34fbc97e3",
+   "evidence": {
+    "expected_revision": "0eee328e4a77fb1e06438c0500660adf4e45dffe8bc70f65e47313d34fbc97e3",
+    "expected_type": "string",
+    "path": "pptx_revision"
+   },
+   "next_tool_call": {
+    "tool": "submit_visual_review",
+    "args_template": {
+     "pptx_revision": "<provide value>"
+    }
+   },
+   "describe_command": "json2pptx describe-finding INVALID_PARAMETER"
+  }
+ ]
+}

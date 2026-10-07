@@ -1,0 +1,233 @@
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"brief\":\"Create an 8-slide board proposal named Nordbolt diligence. All data is fictional for testing. Revenue EUR 212m and EB\u2026\",\"budget_note\":\"Planned 8 of 8 slides: 7 content, 1 structural (cover). Nothing was cut. One slot per item of the brief's outline, in\u2026\"}"
+      }
+    ],
+    "structuredContent": {
+      "format": "deckspec",
+      "brief": "Create an 8-slide board proposal named Nordbolt diligence. All data is fictional for testing. Revenue EUR 212m and EBITDA EUR 31m imply a 14.6% margin. A regions slide shows a bar chart of the market: 2021 EUR 8.1bn, 2025 EUR 9.4bn, 2028 forecast EUR 10.6bn on the left and our 2.3% share on the right. A bridge slide shows EBITDA 2023 EUR 24m, price +6.5m, volume +3.2m, materials -4.1m, opex +1.4m, EBITDA 2025 EUR 31m. Compare scope B (25 interviews, EUR 320k, 4 weeks) with scope C (25 interviews plus survey, EUR 410k, 5 weeks). Recommend B because it tests price risk before the bid deadline. Include an eight-row fee table totaling EUR 320k. A roadmap has weeks 1 to 4: market model, interviews, synthesis, investment committee pack. Ask: CFO confirms scope B on 2026-10-09; partner signs the engagement letter on 2026-10-12.",
+      "slide_budget": 8,
+      "constraints": [
+        {
+          "kind": "slide_count",
+          "text": "8-slide",
+          "value": "8"
+        }
+      ],
+      "deck_spec": {
+        "meta": {
+          "chrome": {
+            "page_numbers": {
+              "enabled": true
+            }
+          },
+          "date": "__FILL__",
+          "template": "blue-corporate",
+          "title": "Create an board proposal named Nordbolt diligence"
+        },
+        "slides": [
+          {
+            "kind": "title",
+            "subtitle": "__FILL__",
+            "title": "Create an board proposal named Nordbolt diligence"
+          },
+          {
+            "kind": "stat",
+            "title": "__FILL__"
+          },
+          {
+            "kind": "stat",
+            "title": "__FILL__"
+          },
+          {
+            "kind": "chart_insight",
+            "title": "__FILL__"
+          },
+          {
+            "kind": "bridge",
+            "title": "__FILL__"
+          },
+          {
+            "headers": [
+              "__FILL__",
+              "__FILL__"
+            ],
+            "kind": "table",
+            "rows": [
+              [
+                "__FILL__",
+                "__FILL__"
+              ],
+              [
+                "__FILL__",
+                "__FILL__"
+              ],
+              [
+                "__FILL__",
+                "__FILL__"
+              ],
+              [
+                "__FILL__",
+                "__FILL__"
+              ],
+              [
+                "__FILL__",
+                "__FILL__"
+              ],
+              [
+                "__FILL__",
+                "__FILL__"
+              ],
+              [
+                "__FILL__",
+                "__FILL__"
+              ],
+              [
+                "__FILL__",
+                "__FILL__"
+              ]
+            ],
+            "title": "__FILL__"
+          },
+          {
+            "kind": "roadmap",
+            "phases": [
+              {
+                "name": "market model"
+              },
+              {
+                "name": "interviews"
+              },
+              {
+                "name": "synthesis"
+              },
+              {
+                "name": "investment committee pack"
+              }
+            ],
+            "title": "__FILL__"
+          },
+          {
+            "decisions": [
+              "CFO confirms scope B on 2026-10-09; partner signs the engagement letter on 2026-10-12"
+            ],
+            "kind": "next_steps",
+            "title": "__FILL__"
+          }
+        ]
+      },
+      "slots": [
+        {
+          "slide_index": 0,
+          "path": "slides[0]",
+          "slot": "cover",
+          "kind": "title",
+          "guidance": "Deck title and a subtitle naming audience and date.",
+          "facts": [
+            "Create an board proposal named Nordbolt diligence"
+          ]
+        },
+        {
+          "slide_index": 1,
+          "path": "slides[1]",
+          "slot": "context",
+          "kind": "stat",
+          "guidance": "Outline item 1 of 3, in the brief's words: \"2021 EUR 8.1bn\". One number on its own slide; the title says what the number means.",
+          "facts": [
+            "2021 EUR 8.1bn"
+          ]
+        },
+        {
+          "slide_index": 2,
+          "path": "slides[2]",
+          "slot": "context",
+          "kind": "stat",
+          "guidance": "Outline item 2 of 3, in the brief's words: \"2025 EUR 9.4bn\". One number on its own slide; the title says what the number means.",
+          "facts": [
+            "2025 EUR 9.4bn"
+          ]
+        },
+        {
+          "slide_index": 3,
+          "path": "slides[3]",
+          "slot": "evidence",
+          "kind": "chart_insight",
+          "guidance": "Outline item 3 of 3, in the brief's words: \"2028 forecast EUR 10.6bn on the left and our 2.3% share on the right\". One chart that proves one claim: the title states the claim with its number; set takeaway and source; never invent data.",
+          "facts": [
+            "2028 forecast EUR 10.6bn on the left and our 2.3% share on the right"
+          ]
+        },
+        {
+          "slide_index": 4,
+          "path": "slides[4]",
+          "slot": "bridge",
+          "kind": "bridge",
+          "guidance": "Not in the brief's outline, but the brief names it: The walk the brief gives, as waterfall columns: the opening total, each delta with its sign, the closing total; the title states what moved the number.",
+          "facts": [
+            "A bridge slide shows EBITDA 2023 EUR 24m",
+            "price +6.5m",
+            "volume +3.2m",
+            "materials -4.1m",
+            "opex +1.4m",
+            "EBITDA 2025 EUR 31m"
+          ]
+        },
+        {
+          "slide_index": 5,
+          "path": "slides[5]",
+          "slot": "table",
+          "kind": "table",
+          "guidance": "Not in the brief's outline, but the brief names it: One row per item, the brief's columns as headers; rows the brief leaves to you stay __FILL__. Over 7 rows the density rules ask for a split \u2014 do not drop rows.",
+          "facts": [
+            "Include an eight-row fee table totaling EUR 320k"
+          ]
+        },
+        {
+          "slide_index": 6,
+          "path": "slides[6]",
+          "slot": "roadmap",
+          "kind": "roadmap",
+          "guidance": "Not in the brief's outline, but the brief names it: The phases with their dates and what each delivers; parallel tracks are listed in the facts \u2014 show them as a last phase row or in the takeaway, the roadmap kind has no track lanes.",
+          "facts": [
+            "A roadmap has weeks 1 to 4",
+            "market model, interviews, synthesis",
+            "investment committee pack"
+          ]
+        },
+        {
+          "slide_index": 7,
+          "path": "slides[7]",
+          "slot": "closing",
+          "kind": "next_steps",
+          "guidance": "Close on next steps, not \"Thank you\": 2-6 actions, each with an owner and a date, and the decisions requested. A plain closing kind stays available for a Q&A page.",
+          "facts": [
+            "partner signs the engagement letter on 2026-10-12"
+          ]
+        }
+      ],
+      "unplaced_facts": [
+        "All data is fictional for testing",
+        "Compare scope B (25 interviews, EUR 320k, 4 weeks) with scope C (25 interviews plus survey, EUR 410k, 5 weeks)",
+        "Recommend B because it tests price risk before the bid deadline",
+        "Ask: CFO confirms scope B on 2026-10-09"
+      ],
+      "budget": {
+        "requested": 8,
+        "planned": 8,
+        "content": 7,
+        "structural": 1,
+        "structural_slides": [
+          "cover"
+        ],
+        "cut": []
+      },
+      "budget_note": "Planned 8 of 8 slides: 7 content, 1 structural (cover). Nothing was cut. One slot per item of the brief's outline, in its order (3 items). 4 brief fact(s) found no slot and are in unplaced_facts: add a slide for them or fold them into one.",
+      "response_fingerprint": "63fb43235eb079ede37dc3edf81c444f8630c0220479db67e376fb0c84f046c7"
+    }
+  }
+}

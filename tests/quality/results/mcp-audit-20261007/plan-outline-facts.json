@@ -1,0 +1,112 @@
+{
+ "format": "deckspec",
+ "brief": "Create 5 slides. Slides: title, executive summary, market chart, recommendation, next steps. Revenue is EUR 212m. EBITDA is EUR 31m. Margin is 14.6%.",
+ "slide_budget": 5,
+ "constraints": [
+  {
+   "kind": "slide_count",
+   "text": "5 slides",
+   "value": "5"
+  }
+ ],
+ "deck_spec": {
+  "meta": {
+   "chrome": {
+    "page_numbers": {
+     "enabled": true
+    }
+   },
+   "date": "__FILL__",
+   "template": "blue-corporate",
+   "title": "Create"
+  },
+  "slides": [
+   {
+    "kind": "title",
+    "subtitle": "__FILL__",
+    "title": "Create"
+   },
+   {
+    "kind": "executive_summary",
+    "title": "__FILL__"
+   },
+   {
+    "kind": "chart_insight",
+    "title": "__FILL__"
+   },
+   {
+    "kind": "decision",
+    "title": "__FILL__"
+   },
+   {
+    "kind": "next_steps",
+    "title": "__FILL__"
+   }
+  ]
+ },
+ "slots": [
+  {
+   "slide_index": 0,
+   "path": "slides[0]",
+   "slot": "cover",
+   "kind": "title",
+   "guidance": "Deck title and a subtitle naming audience and date.",
+   "facts": [
+    "Create"
+   ]
+  },
+  {
+   "slide_index": 1,
+   "path": "slides[1]",
+   "slot": "answer",
+   "kind": "executive_summary",
+   "guidance": "Outline item 2 of 5, in the brief's words: \"executive summary\". The whole answer up front: 3-5 points, each a conclusion a later slide proves; the title is the single-sentence answer.",
+   "facts": [
+    "executive summary"
+   ]
+  },
+  {
+   "slide_index": 2,
+   "path": "slides[2]",
+   "slot": "evidence",
+   "kind": "chart_insight",
+   "guidance": "Outline item 3 of 5, in the brief's words: \"market chart\". One chart that proves one claim: the title states the claim with its number; set takeaway and source; never invent data.",
+   "facts": [
+    "market chart"
+   ]
+  },
+  {
+   "slide_index": 3,
+   "path": "slides[3]",
+   "slot": "ask",
+   "kind": "decision",
+   "guidance": "Outline item 4 of 5, in the brief's words: \"recommendation\". The decision needed now: the options, the recommended one, and the ask with owner and date.",
+   "facts": [
+    "recommendation"
+   ]
+  },
+  {
+   "slide_index": 4,
+   "path": "slides[4]",
+   "slot": "closing",
+   "kind": "next_steps",
+   "guidance": "Outline item 5 of 5, in the brief's words: \"next steps\". Close on next steps, not \"Thank you\": 2-6 actions, each with an owner and a date, and the decisions requested. A plain closing kind stays available for a Q&A page.",
+   "facts": [
+    "next steps"
+   ]
+  }
+ ],
+ "unplaced_facts": [],
+ "budget": {
+  "requested": 5,
+  "planned": 5,
+  "content": 4,
+  "structural": 1,
+  "structural_slides": [
+   "cover"
+  ],
+  "cut": []
+ },
+ "budget_note": "Planned 5 of 5 slides: 4 content, 1 structural (cover). Nothing was cut. One slot per item of the brief's outline, in its order (4 items).",
+ "response_fingerprint": "0c062d0af35bfd055e4a4ffb2f751c1c8fa8e55763cf80b13c1210556f307895"
+}

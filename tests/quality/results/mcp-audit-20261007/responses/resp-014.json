@@ -1,0 +1,167 @@
+{
+  "jsonrpc": "2.0",
+  "id": 15,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"next_tool_call\":{\"tool\":\"submit_visual_review\"}}"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/jpeg",
+        "audit_image_file": "../images/n014-01.jpeg"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/jpeg",
+        "audit_image_file": "../images/n014-02.jpeg"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/jpeg",
+        "audit_image_file": "../images/n014-03.jpeg"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/jpeg",
+        "audit_image_file": "../images/n014-04.jpeg"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/jpeg",
+        "audit_image_file": "../images/n014-05.jpeg"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/jpeg",
+        "audit_image_file": "../images/n014-06.jpeg"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/jpeg",
+        "audit_image_file": "../images/n014-07.jpeg"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/jpeg",
+        "audit_image_file": "../images/n014-08.jpeg"
+      }
+    ],
+    "structuredContent": {
+      "slides": [
+        {
+          "index": 0,
+          "id": "cover",
+          "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-c303bfb6c1e6e6e7627e3a77f99677d3c2c926af8b848eb56ff2d44f07b058d2.png",
+          "width": 1000,
+          "height": 563,
+          "content_hash": "c303bfb6c1e6e6e7627e3a77f99677d3c2c926af8b848eb56ff2d44f07b058d2",
+          "image_content_index": 1,
+          "image_width": 1000,
+          "image_height": 563
+        },
+        {
+          "index": 1,
+          "id": "economics",
+          "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-d6bfbaf7ed1696e920807ff78c39ee815247d93230504c6c0ecaf73a77443cb4.png",
+          "width": 1000,
+          "height": 563,
+          "content_hash": "d6bfbaf7ed1696e920807ff78c39ee815247d93230504c6c0ecaf73a77443cb4",
+          "image_content_index": 2,
+          "image_width": 1000,
+          "image_height": 563
+        },
+        {
+          "index": 2,
+          "id": "market",
+          "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-760e32801a7bb21229d7f4a507f3877cd879eddfb08470a933da0a1e853bbae8.png",
+          "width": 1000,
+          "height": 563,
+          "content_hash": "760e32801a7bb21229d7f4a507f3877cd879eddfb08470a933da0a1e853bbae8",
+          "image_content_index": 3,
+          "image_width": 1000,
+          "image_height": 563
+        },
+        {
+          "index": 3,
+          "id": "margin",
+          "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-a7aa115210157ec3be477fdcfcfa1527781c914870ee33136939bdf9006054c1.png",
+          "width": 1000,
+          "height": 563,
+          "content_hash": "a7aa115210157ec3be477fdcfcfa1527781c914870ee33136939bdf9006054c1",
+          "image_content_index": 4,
+          "image_width": 1000,
+          "image_height": 563
+        },
+        {
+          "index": 4,
+          "id": "options",
+          "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-686d62ae26d631713b2e867bf42acff0c653bed4728ed1e4352c7f4bf75efb33.png",
+          "width": 1000,
+          "height": 563,
+          "content_hash": "686d62ae26d631713b2e867bf42acff0c653bed4728ed1e4352c7f4bf75efb33",
+          "image_content_index": 5,
+          "image_width": 1000,
+          "image_height": 563
+        },
+        {
+          "index": 5,
+          "id": "fees",
+          "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-1b2c1279498d84a732eb44f0261be729c5008c424f7bf01b4fe448cb65a473bd.png",
+          "width": 1000,
+          "height": 563,
+          "content_hash": "1b2c1279498d84a732eb44f0261be729c5008c424f7bf01b4fe448cb65a473bd",
+          "image_content_index": 6,
+          "image_width": 1000,
+          "image_height": 563
+        },
+        {
+          "index": 6,
+          "id": "workplan",
+          "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-f1fa1fdc9839bb7cc78c5a2013cc8d61dfdf0bdd7e977eb84cee260f1c90b6b1.png",
+          "width": 1000,
+          "height": 563,
+          "content_hash": "f1fa1fdc9839bb7cc78c5a2013cc8d61dfdf0bdd7e977eb84cee260f1c90b6b1",
+          "image_content_index": 7,
+          "image_width": 1000,
+          "image_height": 563
+        },
+        {
+          "index": 7,
+          "id": "ask",
+          "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-728d1780a5759de8ea4d05aead87c8f6b31cc7f3e7334545ed94b82db202a8a2.png",
+          "width": 1000,
+          "height": 563,
+          "content_hash": "728d1780a5759de8ea4d05aead87c8f6b31cc7f3e7334545ed94b82db202a8a2",
+          "image_content_index": 8,
+          "image_width": 1000,
+          "image_height": 563
+        }
+      ],
+      "truncated": false,
+      "delivery": "image_content",
+      "slide_count": 8,
+      "source_hash": "c917e1ec801e2ab22bd21c6df14384da9b13eb2e10ea5680f1346f3b207de457",
+      "cleanup": "content-addressed; path is stable while the file exists and is never overwritten with different content; evicted after 24h unused, or oldest-first once the cache exceeds 500 MiB, swept on render; get_capabilities().runtime.render_cache_bytes reports current usage",
+      "image_mime_type": "image/jpeg",
+      "next_tool_call": {
+        "tool": "submit_visual_review",
+        "args_template": {
+          "pptx_path": "/tmp/mcp-audit-1007/out/nordbolt-diligence-2b6491ae.pptx",
+          "pptx_revision": "c917e1ec801e2ab22bd21c6df14384da9b13eb2e10ea5680f1346f3b207de457",
+          "slides": "<one {index, verdict, image_sha256} per slide: verdict = approved | changes_requested | inconclusive; image_sha256 = slides[].content_hash from render_deck_thumbnails>"
+        }
+      },
+      "larger_render": {
+        "when": "text of 12pt or less cannot be read at this size: render that slide larger before judging it",
+        "tool": "render_deck_thumbnails",
+        "args_template": {
+          "density": 100,
+          "pptx_path": "/tmp/mcp-audit-1007/out/nordbolt-diligence-2b6491ae.pptx",
+          "slide_indices": "<[index or id] of the slide to read>"
+        }
+      }
+    }
+  }
+}

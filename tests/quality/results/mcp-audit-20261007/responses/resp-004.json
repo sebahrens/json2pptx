@@ -1,0 +1,332 @@
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"slide_kinds_count\":29,\"slide_kinds_names\":[\"agenda\",\"architecture\",\"bridge\",\"chart_insight\",\"closing\",\"comparison\",\"cycle\",\"decision\",\"executive_summary\",\"framework\",\"image_case\",\"kpi_snapshot\",\"matrix_2x2\",\"next_steps\",\"option_matrix\",\"org\",\"pillars\",\"process\",\"quote\",\"raw_json2pptx\"]}"
+      }
+    ],
+    "structuredContent": {
+      "detail": "One line per kind. kinds:[<chosen kinds>] returns each kind's full summary (count bounds, what it degrades to), typical_fields and copy-ready example; fields:[\"brief\"] its field signatures and text budgets, fields:[\"item_schema\"] descriptions and aliases.",
+      "slide_kinds": [
+        {
+          "kind": "agenda",
+          "summary": "The deck's contents page: the sections it covers, in order, optionally marking the one the deck is at.",
+          "required_fields": [
+            "sections"
+          ],
+          "required_aliases": {
+            "sections": [
+              "items",
+              "agenda"
+            ]
+          }
+        },
+        {
+          "kind": "architecture",
+          "summary": "A tiered architecture or platform stack \u2014 the layers of a system, top to bottom, with optional cross-cutting\u2026",
+          "required_fields": [
+            "tiers"
+          ],
+          "required_aliases": {
+            "tiers": [
+              "layers"
+            ]
+          }
+        },
+        {
+          "kind": "bridge",
+          "summary": "An additive P&L or cost walk: 3\u201310 ordered total, delta, and subtotal columns render as waterfall-bridge.",
+          "required_fields": [
+            "columns"
+          ]
+        },
+        {
+          "kind": "chart_insight",
+          "summary": "A chart paired with an interpretive insight.",
+          "required_fields": [
+            "chart"
+          ]
+        },
+        {
+          "kind": "closing",
+          "summary": "Plain closing slide on the template's closing layout (a short display title and a subtitle), or a content\u2026",
+          "required_fields": [
+            "title"
+          ]
+        },
+        {
+          "kind": "comparison",
+          "summary": "Side-by-side comparison of two or more options.",
+          "required_fields": [
+            "columns"
+          ]
+        },
+        {
+          "kind": "cycle",
+          "summary": "A loop, flywheel or lifecycle, a hub with spokes, or nested rings: the phases in order and a style.",
+          "required_fields": [
+            "phases"
+          ],
+          "required_aliases": {
+            "phases": [
+              "steps",
+              "items"
+            ]
+          }
+        },
+        {
+          "kind": "decision",
+          "summary": "The ask: the options considered and the one (or ones) recommended.",
+          "required_fields": [
+            "title"
+          ],
+          "required_aliases": {
+            "options": [
+              "choices",
+              "alternatives"
+            ]
+          }
+        },
+        {
+          "kind": "executive_summary",
+          "summary": "High-level summary of the deck's key messages.",
+          "required_fields": [
+            "title"
+          ]
+        },
+        {
+          "kind": "framework",
+          "summary": "A named framework with fixed parts: swot (4 quadrants), porters_five_forces (5 forces) or bmc\u2026",
+          "required_fields": [
+            "framework",
+            "sections"
+          ],
+          "required_aliases": {
+            "framework": [
+              "type",
+              "model"
+            ]
+          }
+        },
+        {
+          "kind": "image_case",
+          "summary": "A photo or screenshot beside the words about it \u2014 the case study or customer story slide; callouts point\u2026",
+          "required_fields": [
+            "body"
+          ],
+          "required_aliases": {
+            "body": [
+              "text",
+              "story",
+              "description",
+              "bullets"
+            ]
+          }
+        },
+        {
+          "kind": "kpi_snapshot",
+          "summary": "Snapshot of big-number key performance indicators.",
+          "required_fields": [
+            "kpis"
+          ],
+          "required_aliases": {
+            "kpis": [
+              "metrics"
+            ]
+          }
+        },
+        {
+          "kind": "matrix_2x2",
+          "summary": "Two axes and four quadrants \u2014 impact against effort, reach against cost.",
+          "required_fields": [
+            "quadrants",
+            "x_axis",
+            "y_axis"
+          ],
+          "required_aliases": {
+            "quadrants": [
+              "cells",
+              "boxes",
+              "top_left"
+            ],
+            "x_axis": [
+              "x_axis_label"
+            ],
+            "y_axis": [
+              "y_axis_label"
+            ]
+          }
+        },
+        {
+          "kind": "next_steps",
+          "summary": "The closer a consulting deck ends on: 2\u20136 actions, each with an owner and a date, and 0\u20133 decisions requested.",
+          "required_fields": [
+            "actions"
+          ],
+          "required_aliases": {
+            "actions": [
+              "next_steps",
+              "steps"
+            ]
+          }
+        },
+        {
+          "kind": "option_matrix",
+          "summary": "Options scored against shared criteria \u2014 the evaluation matrix a recommendation is argued on.",
+          "required_fields": [
+            "criteria",
+            "options"
+          ],
+          "required_aliases": {
+            "criteria": [
+              "columns"
+            ],
+            "options": [
+              "rows"
+            ]
+          }
+        },
+        {
+          "kind": "org",
+          "summary": "A reporting or governance tree.",
+          "required_fields": [
+            "nodes"
+          ]
+        },
+        {
+          "kind": "pillars",
+          "summary": "Three to five named pillars render as stylish-panels, or as strategy-house\u2026",
+          "required_fields": [
+            "pillars"
+          ]
+        },
+        {
+          "kind": "process",
+          "summary": "Sequential process or flow with ordered steps.",
+          "required_fields": [
+            "steps"
+          ]
+        },
+        {
+          "kind": "quote",
+          "summary": "One attributed quote renders as pull-quote; 3\u20138 render as quote-cluster.",
+          "required_fields": [
+            "quotes"
+          ],
+          "required_aliases": {
+            "quotes": [
+              "testimonials",
+              "voices",
+              "quote",
+              "text"
+            ]
+          }
+        },
+        {
+          "kind": "raw_json2pptx",
+          "summary": "Escape hatch carrying a raw json2pptx slide payload verbatim.",
+          "required_fields": [
+            "slide"
+          ]
+        },
+        {
+          "kind": "regions",
+          "summary": "One slide, one title, 2\u20133 typed regions: the chart on the left with the KPI and the timeline stacked\u2026",
+          "required_fields": [
+            "regions"
+          ]
+        },
+        {
+          "kind": "risk_heatmap",
+          "summary": "The risk heat map: 1\u201320 named risks placed by likelihood and impact on a 3 \u00d7 3 grid (size: 5 for 5 \u00d7 5)\u2026",
+          "required_fields": [
+            "items"
+          ]
+        },
+        {
+          "kind": "roadmap",
+          "summary": "Phased roadmap: 3\u20136 named phases on one timeline bar (date range, description or items, optional milestone)\u2026",
+          "required_fields": [
+            "phases"
+          ]
+        },
+        {
+          "kind": "section",
+          "summary": "Section divider introducing the next group of slides.",
+          "required_fields": [
+            "title"
+          ]
+        },
+        {
+          "kind": "stat",
+          "summary": "One number, made the whole slide: the value, the words beneath it, and optionally a line of context\u2026",
+          "required_fields": [
+            "value"
+          ],
+          "required_aliases": {
+            "value": [
+              "stat",
+              "number",
+              "metric"
+            ]
+          }
+        },
+        {
+          "kind": "table",
+          "summary": "A native data table \u2014 the financials / P&L, the segment split, the price list, a risk register\u2026",
+          "required_fields": [
+            "headers",
+            "rows"
+          ],
+          "required_aliases": {
+            "headers": [
+              "columns"
+            ]
+          }
+        },
+        {
+          "kind": "team",
+          "summary": "The people on the engagement: 1\u20138 cards with a name, a role and an optional short bio.",
+          "required_fields": [
+            "members"
+          ],
+          "required_aliases": {
+            "members": [
+              "people",
+              "team"
+            ]
+          }
+        },
+        {
+          "kind": "timeline",
+          "summary": "Dated milestones on a line: 3\u20137 stops, each a label with an optional date and a line of detail.",
+          "required_fields": [
+            "milestones"
+          ],
+          "required_aliases": {
+            "milestones": [
+              "stops",
+              "events",
+              "timeline"
+            ]
+          }
+        },
+        {
+          "kind": "title",
+          "summary": "Opening title slide with a headline and optional subtitle.",
+          "required_fields": [
+            "title"
+          ]
+        }
+      ],
+      "takeaway_budget": {
+        "font_pt": 14,
+        "max_lines": 1,
+        "note": "Keep takeaway (or chart insight) to one 14pt line in the template's chrome band. Width varies by template; validate_deck_spec reports BODY_TOO_LONG at slides[i].takeaway when measured text wraps."
+      }
+    }
+  }
+}

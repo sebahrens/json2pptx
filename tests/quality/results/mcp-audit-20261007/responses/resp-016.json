@@ -1,0 +1,49 @@
+{
+  "jsonrpc": "2.0",
+  "id": 17,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"next_tool_call\":{\"tool\":\"submit_visual_review\"}}"
+      },
+      {
+        "type": "image",
+        "mimeType": "image/jpeg",
+        "audit_image_file": "../images/n016-01.jpeg"
+      }
+    ],
+    "structuredContent": {
+      "slides": [
+        {
+          "index": 3,
+          "id": "margin",
+          "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-278b6c3cba4c5ff3ab1111f716facd5152c8aa8e12e8d630b97289002e8d2a8a.png",
+          "width": 1333,
+          "height": 750,
+          "content_hash": "278b6c3cba4c5ff3ab1111f716facd5152c8aa8e12e8d630b97289002e8d2a8a",
+          "image_content_index": 1,
+          "image_width": 1280,
+          "image_height": 720
+        }
+      ],
+      "truncated": false,
+      "delivery": "image_content",
+      "slide_count": 8,
+      "selected": [
+        3
+      ],
+      "source_hash": "192813460bcbeb6f4e684b991713a058b91cfb358d1d76d123b50a2eb7f3f235",
+      "cleanup": "content-addressed; path is stable while the file exists and is never overwritten with different content; evicted after 24h unused, or oldest-first once the cache exceeds 500 MiB, swept on render; get_capabilities().runtime.render_cache_bytes reports current usage",
+      "image_mime_type": "image/jpeg",
+      "next_tool_call": {
+        "tool": "submit_visual_review",
+        "args_template": {
+          "pptx_path": "/tmp/mcp-audit-1007/out/nordbolt-diligence-3b4254b2.pptx",
+          "pptx_revision": "192813460bcbeb6f4e684b991713a058b91cfb358d1d76d123b50a2eb7f3f235",
+          "slides": "<one {index, verdict, image_sha256} per slide: verdict = approved | changes_requested | inconclusive; image_sha256 = slides[].content_hash from render_deck_thumbnails>"
+        }
+      }
+    }
+  }
+}

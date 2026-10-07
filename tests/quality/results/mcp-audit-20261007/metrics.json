@@ -1,0 +1,23 @@
+{
+ "tool_calls": 29,
+ "total_response_bytes": 1243023,
+ "response_bytes_excluding_images": 150151,
+ "errors": 1,
+ "validates_before_first_ready_render": 1,
+ "renders_to_first_ready": 1,
+ "first_ready_render_call": 11,
+ "server_seconds": 11.92,
+ "by_tool": {
+  "get_started": 4,
+  "list_slide_kinds": 3,
+  "list_templates": 1,
+  "plan_deck": 5,
+  "recommend_visual": 1,
+  "render_deck_spec": 6,
+  "render_deck_thumbnails": 6,
+  "submit_visual_review": 2,
+  "tools/list": 1,
+  "validate_deck_spec": 1
+ },
+ "wall_minutes": 8.7
+}

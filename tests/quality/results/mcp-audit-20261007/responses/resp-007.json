@@ -1,0 +1,685 @@
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"slide_kinds_count\":8,\"slide_kinds_names\":[\"bridge\",\"comparison\",\"kpi_snapshot\",\"next_steps\",\"regions\",\"roadmap\",\"table\",\"title\"]}"
+      }
+    ],
+    "structuredContent": {
+      "brief_note": "Every kind also takes id, notes and source (strings) and a pattern / layout override (fields:[\"compositions\"]). brief lists canonical fields only; fields:[\"item_schema\"] adds their descriptions and accepted aliases.",
+      "budget_basis": {
+        "templates": [
+          "abstract",
+          "blue-corporate",
+          "business-template",
+          "forest-green",
+          "midnight-blue",
+          "modern",
+          "modern-template",
+          "modern-yellow",
+          "warm-coral"
+        ],
+        "note": "measured budgets (title, subtitle, takeaway) are the tightest across these templates; pass template for one template's own."
+      },
+      "slide_kinds": [
+        {
+          "kind": "bridge",
+          "summary": "An additive P&L or cost walk: 3\u201310 ordered total, delta, and subtotal columns render as waterfall-bridge. Outside the visual's count or text budgets, every component becomes a bullet with a degradation finding.",
+          "required_fields": [
+            "columns"
+          ],
+          "typical_fields": [
+            "title",
+            "unit",
+            "caption",
+            "takeaway"
+          ],
+          "example": {
+            "caption": "FY26, USD millions",
+            "columns": [
+              {
+                "label": "Revenue",
+                "type": "total",
+                "value": 120
+              },
+              {
+                "label": "COGS",
+                "type": "delta",
+                "value": -45
+              },
+              {
+                "label": "Gross profit",
+                "type": "subtotal"
+              },
+              {
+                "label": "OpEx",
+                "type": "delta",
+                "value": -30
+              },
+              {
+                "label": "EBITDA",
+                "type": "total",
+                "value": 45
+              }
+            ],
+            "kind": "bridge",
+            "source": "FY26 management accounts",
+            "takeaway": "EBITDA closes at $45m after cost deductions.",
+            "title": "Revenue growth flowed through to EBITDA",
+            "unit": "$m"
+          },
+          "brief": {
+            "caption": "string",
+            "columns": "list of {label, type, value?}; required",
+            "takeaway": "string",
+            "title": "string",
+            "unit": "string"
+          },
+          "budgets": [
+            {
+              "field": "title",
+              "max_chars": 67,
+              "max_chars_per_line": 24,
+              "max_lines": 2,
+              "basis": "measured"
+            },
+            {
+              "field": "takeaway",
+              "max_chars": 98,
+              "max_lines": 1,
+              "basis": "measured"
+            },
+            {
+              "field": "columns",
+              "min_items": 3,
+              "max_items": 10,
+              "basis": "fixed"
+            },
+            {
+              "field": "columns[].label",
+              "max_chars": 40,
+              "basis": "fixed"
+            },
+            {
+              "field": "unit",
+              "max_chars": 8,
+              "basis": "fixed"
+            },
+            {
+              "field": "caption",
+              "max_chars": 60,
+              "basis": "fixed"
+            }
+          ]
+        },
+        {
+          "kind": "comparison",
+          "summary": "Side-by-side comparison of two or more options. Two balanced columns render row-aligned (comparison-2col) and take connectors: true (per-row today \u2192 target badge), highlight_column or highlight_row. 3\u20135 columns are panels, 6\u201312 cards.",
+          "required_fields": [
+            "columns"
+          ],
+          "typical_fields": [
+            "title",
+            "connectors",
+            "highlight_column",
+            "highlight_row",
+            "takeaway"
+          ],
+          "example": {
+            "columns": [
+              {
+                "header": "Build",
+                "items": [
+                  "Full control of roadmap",
+                  "12-month time to market"
+                ]
+              },
+              {
+                "header": "Buy",
+                "items": [
+                  "Vendor roadmap dependency",
+                  "3-month time to market"
+                ]
+              }
+            ],
+            "highlight_column": "Buy",
+            "kind": "comparison",
+            "takeaway": "Buying wins on speed; building wins on control.",
+            "title": "Build versus buy"
+          },
+          "brief": {
+            "columns": "list of {cons?, header?, items?, pros?}; required",
+            "connectors": "boolean",
+            "highlight_column": "string",
+            "highlight_row": "string | integer",
+            "takeaway": "string",
+            "title": "string"
+          },
+          "budgets": [
+            {
+              "field": "title",
+              "max_chars": 67,
+              "max_chars_per_line": 24,
+              "max_lines": 2,
+              "basis": "measured"
+            },
+            {
+              "field": "takeaway",
+              "max_chars": 98,
+              "max_lines": 1,
+              "basis": "measured"
+            }
+          ]
+        },
+        {
+          "kind": "kpi_snapshot",
+          "summary": "Snapshot of big-number key performance indicators.",
+          "required_fields": [
+            "kpis"
+          ],
+          "typical_fields": [
+            "title",
+            "takeaway"
+          ],
+          "example": {
+            "kind": "kpi_snapshot",
+            "kpis": [
+              {
+                "delta": "+41%",
+                "label": "Annual revenue",
+                "value": "$48M"
+              },
+              {
+                "label": "Net retention",
+                "value": "118%"
+              },
+              {
+                "delta": "-6d",
+                "label": "Sales cycle",
+                "value": "41d"
+              }
+            ],
+            "source": "Q4 board pack",
+            "takeaway": "Growth and efficiency both improved.",
+            "title": "Q4 at a glance"
+          },
+          "brief": {
+            "kpis": "list of {comparator?, delta?, label?, trend?, value?}; required",
+            "takeaway": "string",
+            "title": "string"
+          },
+          "budgets": [
+            {
+              "field": "title",
+              "max_chars": 67,
+              "max_chars_per_line": 24,
+              "max_lines": 2,
+              "basis": "measured"
+            },
+            {
+              "field": "takeaway",
+              "max_chars": 98,
+              "max_lines": 1,
+              "basis": "measured"
+            },
+            {
+              "field": "kpis",
+              "min_items": 2,
+              "max_items": 6,
+              "basis": "fixed"
+            },
+            {
+              "field": "kpis[].value",
+              "max_chars": 12,
+              "max_lines": 1,
+              "basis": "measured",
+              "note": "digits on one line; 11 with 5 KPIs, 9 with 6 KPIs \u2014 capitals run wider. Past it the value is reported as BODY_TOO_LONG: shorten it or show fewer KPIs"
+            },
+            {
+              "field": "kpis[].delta",
+              "max_chars": 12,
+              "basis": "fixed"
+            },
+            {
+              "field": "kpis[].comparator",
+              "max_chars": 24,
+              "basis": "fixed"
+            }
+          ]
+        },
+        {
+          "kind": "next_steps",
+          "summary": "The closer a consulting deck ends on: 2\u20136 actions, each with an owner and a date, and 0\u20133 decisions requested. Renders as the next-steps pattern \u2014 numbered action rows separated by rules over a 'Decisions requested' band; outside those bounds it degrades to bullets. Prefer it to a plain closing ('Thank you').",
+          "required_fields": [
+            "actions"
+          ],
+          "typical_fields": [
+            "title",
+            "decisions",
+            "decisions_label"
+          ],
+          "example": {
+            "actions": [
+              {
+                "action": "Confirm pilot scope and success metrics",
+                "date": "15 Oct",
+                "owner": "COO"
+              },
+              {
+                "action": "Hire the four-person SMB success pod",
+                "date": "31 Oct",
+                "owner": "VP Customer"
+              },
+              {
+                "action": "Report first retention read-out to the board",
+                "date": "Jan board",
+                "owner": "CFO"
+              }
+            ],
+            "decisions": [
+              "Approve the \u20ac1.2M pod budget for FY27"
+            ],
+            "kind": "next_steps",
+            "title": "Three actions start the SMB pilot in October"
+          },
+          "brief": {
+            "actions": "list of string | {action?, date?, owner?}; required",
+            "decisions": "list of string | {description?, title?}",
+            "decisions_label": "string",
+            "takeaway": "string",
+            "title": "string"
+          },
+          "budgets": [
+            {
+              "field": "title",
+              "max_chars": 67,
+              "max_chars_per_line": 24,
+              "max_lines": 2,
+              "basis": "measured"
+            },
+            {
+              "field": "takeaway",
+              "max_chars": 98,
+              "max_lines": 1,
+              "basis": "measured"
+            },
+            {
+              "field": "actions",
+              "min_items": 2,
+              "max_items": 6,
+              "basis": "fixed"
+            },
+            {
+              "field": "actions[].action",
+              "max_chars": 90,
+              "basis": "fixed"
+            },
+            {
+              "field": "actions[].owner",
+              "max_chars": 30,
+              "basis": "fixed"
+            },
+            {
+              "field": "actions[].date",
+              "max_chars": 20,
+              "basis": "fixed"
+            },
+            {
+              "field": "decisions",
+              "max_items": 3,
+              "basis": "fixed"
+            },
+            {
+              "field": "decisions[]",
+              "max_chars": 120,
+              "basis": "fixed"
+            }
+          ]
+        },
+        {
+          "kind": "regions",
+          "summary": "One slide, one title, 2\u20133 typed regions: the chart on the left with the KPI and the timeline stacked on the right. arrangement is columns or rows (2\u20133 regions; size_pct is each one's width / height) or main_left / main_right / main_top / main_bottom (exactly 3: regions[0] is the main region and its size_pct its share, default 60; regions[1..2] stack beside it and split that side by their own size_pct). Each region is {kind, size_pct?, heading?, source?, \u2026} with kind chart (chart, unit), stat (value, label, unit, context), kpis (2\u20134 kpis), table (headers, rows; \u22644 columns \u00d7 5 rows), timeline (3\u20137 milestones), image (image, caption), cycle (phases, style) or text (body, bullets) \u2014 the fields of the like-named slide kind. Region sources join the slide's source line. Use it only when the content types must be read together; one kind per slide stays the default.",
+          "required_fields": [
+            "regions"
+          ],
+          "typical_fields": [
+            "title",
+            "arrangement",
+            "takeaway",
+            "source"
+          ],
+          "example": {
+            "arrangement": "main_left",
+            "kind": "regions",
+            "regions": [
+              {
+                "chart": {
+                  "data": {
+                    "categories": [
+                      "Q1",
+                      "Q2",
+                      "Q3",
+                      "Q4"
+                    ],
+                    "series": [
+                      {
+                        "name": "Revenue",
+                        "values": [
+                          12,
+                          14,
+                          17,
+                          21
+                        ]
+                      }
+                    ]
+                  },
+                  "type": "line"
+                },
+                "heading": "Quarterly revenue",
+                "kind": "chart",
+                "size_pct": 65,
+                "unit": "\u20acm"
+              },
+              {
+                "kind": "stat",
+                "label": "Gross margin, Q4",
+                "size_pct": 50,
+                "value": "32%"
+              },
+              {
+                "heading": "Launch plan, Oct\u2013Dec",
+                "kind": "timeline",
+                "milestones": [
+                  {
+                    "label": "Design"
+                  },
+                  {
+                    "label": "Pilot"
+                  },
+                  {
+                    "label": "Rollout"
+                  }
+                ],
+                "size_pct": 50
+              }
+            ],
+            "source": "Finance ledger, FY26",
+            "takeaway": "Revenue nearly doubled in a year; the margin pays for the rollout.",
+            "title": "Revenue growth funds the launch at a 32% gross margin"
+          },
+          "brief": {
+            "arrangement": "columns | rows | main_left | main_right | main_top | main_bottom",
+            "regions": "list of {chart, kind: chart, alt?, heading?, size_pct?, source?, unit?} | {kind: stat, value, context?, heading?, label?, size_pct?, source?, unit?} | {kind: kpis, kpis, heading?, size_pct?, source?} | {headers, kind: table, column_alignments?, heading?, rows?, size_pct?, source?} | {kind: timeline, milestones, heading?, size_pct?, source?} | {image, kind: image, caption?, heading?, size_pct?, source?} | any | {kind: cycle, phases, center?, heading?, highlight?, intake?, left_count?, left_label?, right_label?, size_pct?, source?, style?}; required",
+            "takeaway": "string",
+            "title": "string"
+          },
+          "budgets": [
+            {
+              "field": "title",
+              "max_chars": 67,
+              "max_chars_per_line": 24,
+              "max_lines": 2,
+              "basis": "measured"
+            },
+            {
+              "field": "takeaway",
+              "max_chars": 98,
+              "max_lines": 1,
+              "basis": "measured"
+            }
+          ]
+        },
+        {
+          "kind": "roadmap",
+          "summary": "Phased roadmap: 3\u20136 named phases on one timeline bar (date range, description or items, optional milestone) plus 0\u20134 parallel_tracks drawn as bars under them. Outside those counts or budgets it degrades to bullets. Dated stops without descriptions: timeline.",
+          "required_fields": [
+            "phases"
+          ],
+          "typical_fields": [
+            "title",
+            "parallel_tracks",
+            "parallel_label",
+            "takeaway"
+          ],
+          "example": {
+            "kind": "roadmap",
+            "parallel_tracks": [
+              "Data and reporting platform",
+              "Training for 1,200 control owners"
+            ],
+            "phases": [
+              {
+                "date_label": "Q1",
+                "description": "Two lighthouse customers",
+                "name": "Pilot"
+              },
+              {
+                "date_label": "Q2",
+                "description": "All EMEA accounts",
+                "name": "Expand"
+              },
+              {
+                "date_label": "Q3",
+                "description": "Global availability",
+                "name": "Scale"
+              }
+            ],
+            "takeaway": "Global availability by Q3.",
+            "title": "Rollout plan"
+          },
+          "brief": {
+            "parallel_label": "string",
+            "parallel_tracks": "list of string",
+            "phases": "list of string | {active?, date_label?, description?, items?, milestone?, name?}; required",
+            "takeaway": "string",
+            "title": "string"
+          },
+          "budgets": [
+            {
+              "field": "title",
+              "max_chars": 67,
+              "max_chars_per_line": 24,
+              "max_lines": 2,
+              "basis": "measured"
+            },
+            {
+              "field": "takeaway",
+              "max_chars": 98,
+              "max_lines": 1,
+              "basis": "measured"
+            },
+            {
+              "field": "phases",
+              "min_items": 3,
+              "max_items": 6,
+              "basis": "fixed"
+            },
+            {
+              "field": "phases[].name",
+              "max_chars": 40,
+              "basis": "fixed"
+            },
+            {
+              "field": "phases[].date_label",
+              "max_chars": 30,
+              "basis": "fixed"
+            },
+            {
+              "field": "phases[].description",
+              "max_chars": 160,
+              "basis": "fixed",
+              "note": "together with the phase's items, which render as bullets under it"
+            },
+            {
+              "field": "phases[].milestone",
+              "max_chars": 60,
+              "basis": "fixed"
+            },
+            {
+              "field": "parallel_tracks",
+              "max_items": 4,
+              "basis": "fixed"
+            },
+            {
+              "field": "parallel_tracks[]",
+              "max_chars": 90,
+              "basis": "fixed"
+            },
+            {
+              "field": "parallel_label",
+              "max_chars": 24,
+              "basis": "fixed"
+            }
+          ]
+        },
+        {
+          "kind": "table",
+          "summary": "A native data table \u2014 the financials / P&L, the segment split, the price list, a risk register (risk, likelihood, impact, mitigation, owner). Renders with the template's own table style; up to 6 columns \u00d7 10 logical rows before the density rules ask for a split.",
+          "required_fields": [
+            "headers",
+            "rows"
+          ],
+          "typical_fields": [
+            "title",
+            "column_alignments",
+            "highlight_column",
+            "totals_row",
+            "takeaway"
+          ],
+          "example": {
+            "column_alignments": [
+              "left",
+              "right",
+              "right",
+              "right"
+            ],
+            "headers": [
+              "Segment",
+              "FY25 revenue",
+              "FY26 revenue",
+              "Change"
+            ],
+            "highlight_column": "FY26 revenue",
+            "kind": "table",
+            "rows": [
+              [
+                "Enterprise",
+                "$28.4M",
+                "$41.2M",
+                "+45%"
+              ],
+              [
+                "Mid-market",
+                "$12.1M",
+                "$14.8M",
+                "+22%"
+              ],
+              [
+                "Public sector",
+                "$6.3M",
+                "$8.1M",
+                "+29%"
+              ],
+              [
+                "Channel partners",
+                "$4.9M",
+                "$5.6M",
+                "+14%"
+              ],
+              [
+                "Self-serve",
+                "$2.2M",
+                "$2.4M",
+                "+9%"
+              ],
+              [
+                "SMB",
+                "$9.6M",
+                "$8.9M",
+                "-7%"
+              ],
+              [
+                "Total",
+                "$63.5M",
+                "$81.0M",
+                "+28%"
+              ]
+            ],
+            "source": "Finance segment reporting, FY25-FY26",
+            "takeaway": "Enterprise added $12.8M; SMB gave back $0.7M.",
+            "title": "Enterprise carried the year; SMB did not",
+            "totals_row": true
+          },
+          "brief": {
+            "column_alignments": "list of string | {description?, title?}",
+            "column_types": "list of string | {description?, title?}",
+            "headers": "list of string | {description?, title?}; required",
+            "highlight_column": "string",
+            "rows": "list; required",
+            "takeaway": "string",
+            "title": "string",
+            "totals_row": "boolean"
+          },
+          "budgets": [
+            {
+              "field": "title",
+              "max_chars": 67,
+              "max_chars_per_line": 24,
+              "max_lines": 2,
+              "basis": "measured"
+            },
+            {
+              "field": "takeaway",
+              "max_chars": 98,
+              "max_lines": 1,
+              "basis": "measured"
+            }
+          ]
+        },
+        {
+          "kind": "title",
+          "summary": "Opening title slide with a headline and optional subtitle.",
+          "required_fields": [
+            "title"
+          ],
+          "typical_fields": [
+            "subtitle",
+            "eyebrow"
+          ],
+          "example": {
+            "kind": "title",
+            "subtitle": "Board update, March 2026",
+            "title": "FY26 Growth Plan"
+          },
+          "brief": {
+            "eyebrow": "string",
+            "subtitle": "string",
+            "title": "string; required"
+          },
+          "budgets": [
+            {
+              "field": "title",
+              "max_chars": 42,
+              "max_chars_per_line": 14,
+              "max_lines": 3,
+              "basis": "measured"
+            },
+            {
+              "field": "subtitle",
+              "max_chars": 44,
+              "basis": "measured"
+            }
+          ]
+        }
+      ],
+      "takeaway_budget": {
+        "font_pt": 14,
+        "max_chars": 98,
+        "max_lines": 1
+      }
+    }
+  }
+}

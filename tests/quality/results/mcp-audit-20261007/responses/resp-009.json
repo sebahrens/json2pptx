@@ -1,0 +1,113 @@
+{
+  "jsonrpc": "2.0",
+  "id": 10,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"slide_kinds_count\":1,\"slide_kinds_names\":[\"executive_summary\"]}"
+      }
+    ],
+    "structuredContent": {
+      "brief_note": "Every kind also takes id, notes and source (strings) and a pattern / layout override (fields:[\"compositions\"]). brief lists canonical fields only; fields:[\"item_schema\"] adds their descriptions and accepted aliases.",
+      "budget_basis": {
+        "templates": [
+          "abstract",
+          "blue-corporate",
+          "business-template",
+          "forest-green",
+          "midnight-blue",
+          "modern",
+          "modern-template",
+          "modern-yellow",
+          "warm-coral"
+        ],
+        "note": "measured budgets (title, subtitle, takeaway) are the tightest across these templates; pass template for one template's own."
+      },
+      "slide_kinds": [
+        {
+          "kind": "executive_summary",
+          "summary": "High-level summary of the deck's key messages. 3\u20135 points render as the exec-summary pattern \u2014 numbered bold conclusions, each with its supporting sentence, over an optional bottom-line bar; any other count degrades to a bullet list.",
+          "required_fields": [
+            "title"
+          ],
+          "typical_fields": [
+            "points",
+            "takeaways",
+            "bottom_line",
+            "takeaway"
+          ],
+          "example": {
+            "bottom_line": "Fund an SMB retention pod in Q3 and hold the enterprise motion as is.",
+            "kind": "executive_summary",
+            "points": [
+              {
+                "lead": "Growth is ahead of plan.",
+                "support": "Revenue grew 41% year over year to $48M, against a 30% plan."
+              },
+              {
+                "lead": "Enterprise is carrying the mix.",
+                "support": "It now drives 55% of new bookings, up from 38% last year."
+              },
+              {
+                "lead": "SMB retention is the one real risk.",
+                "support": "Monthly churn rose to 3.1%, concentrated in the sub-50-seat tier."
+              }
+            ],
+            "title": "Growth is on plan; retention needs a fix"
+          },
+          "brief": {
+            "bottom_line": "string",
+            "points": "list of string | {lead?, support?}",
+            "takeaway": "string",
+            "title": "string; required"
+          },
+          "budgets": [
+            {
+              "field": "title",
+              "max_chars": 67,
+              "max_chars_per_line": 24,
+              "max_lines": 2,
+              "basis": "measured"
+            },
+            {
+              "field": "takeaway",
+              "max_chars": 98,
+              "max_lines": 1,
+              "basis": "measured"
+            },
+            {
+              "field": "points",
+              "min_items": 3,
+              "max_items": 5,
+              "basis": "fixed"
+            },
+            {
+              "field": "points[].lead",
+              "max_chars": 90,
+              "basis": "fixed",
+              "note": "3 points, or 4 without a bottom line; 57 with 4 points and a bottom line, 52 with 5 points"
+            },
+            {
+              "field": "points[].support",
+              "max_chars": 200,
+              "basis": "fixed",
+              "note": "3 points and no bottom line; 193 beside a bottom line (182 when it is over 40 characters), 128 with 4 points (65 with a bottom line), 60 with 5 points"
+            },
+            {
+              "field": "bottom_line",
+              "max_chars": 160,
+              "basis": "fixed",
+              "note": "3 points; 102 with 4 or 5 points"
+            }
+          ]
+        }
+      ],
+      "takeaway_budget": {
+        "font_pt": 14,
+        "max_chars": 98,
+        "max_lines": 1
+      }
+    }
+  }
+}

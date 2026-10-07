@@ -1,0 +1,100 @@
+{
+  "jsonrpc": "2.0",
+  "id": 9,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"deck_id\":\"deck_7a4860d8ec4073905b0c3be56a4b2774\",\"findings\":[{\"code\":\"INPUT.SEMANTIC_TAKEAWAY_REQUIRED\",\"message\":\"kpi_snapshot slide should carry a one-line takeaway \u2014 6 like this in the deck\",\"path\":\"/slides/1\",\"severity\":\"warning\"},{\"code\":\"INPUT.NO_EXECUTIVE_SUMMARY\",\"message\":\"deck of 8 slides has no executive summary \u2014 open with the whole answer (3-5 lead-in statements) right after the tit\u2026\",\"next_tool_call\":{\"args_template\":{\"code\":\"INPUT.NO_EXECUTIVE_SUMMARY\"},\"tool\":\"describe_finding\"},\"path\":\"/slides/1\",\"severity\":\"error\"},{\"code\":\"GRID.pattern_overcrowded\",\"message\":\"comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting\",\"path\":\"/slides/4\",\"severity\":\"info\"}],\"findings_count\":4,\"ok\":false,\"summary\":\"1 error, 1 warning, 2 infos\"}"
+      }
+    ],
+    "structuredContent": {
+      "schema_version": "1.0",
+      "tool": "json2pptx",
+      "subcommand": "validate_deck_spec",
+      "input_sha256": "2d147a1ffb814c5ba5157762160b5a20ca4444d28264848fa40352aea13e961f",
+      "template": "blue-corporate",
+      "ok": false,
+      "summary": "1 error, 1 warning, 2 infos",
+      "findings": [
+        {
+          "id": "input-1",
+          "code": "INPUT.SEMANTIC_TAKEAWAY_REQUIRED",
+          "severity": "warning",
+          "blocking": false,
+          "path": "/slides/1",
+          "missing_path": "/slides/1/takeaway",
+          "occurrences": 6,
+          "paths": [
+            "/slides/1",
+            "/slides/2",
+            "/slides/3",
+            "/slides/4",
+            "/slides/5",
+            "/slides/6"
+          ],
+          "message": "kpi_snapshot slide should carry a one-line takeaway \u2014 6 like this in the deck"
+        },
+        {
+          "id": "input-2",
+          "code": "INPUT.NO_EXECUTIVE_SUMMARY",
+          "severity": "error",
+          "blocking": true,
+          "path": "/slides/1",
+          "slide_number": 2,
+          "message": "deck of 8 slides has no executive summary \u2014 open with the whole answer (3-5 lead-in statements) right after the title slide",
+          "evidence": {
+            "pattern": "kpi-3up",
+            "slide_id": "economics"
+          },
+          "next_tool_call": {
+            "tool": "describe_finding",
+            "args_template": {
+              "code": "INPUT.NO_EXECUTIVE_SUMMARY"
+            }
+          },
+          "debug": {
+            "raw_path": "/slides/1"
+          }
+        },
+        {
+          "id": "grid-3",
+          "code": "GRID.pattern_overcrowded",
+          "severity": "info",
+          "blocking": false,
+          "path": "/slides/4",
+          "slide_number": 5,
+          "message": "comparison-2col: 10 cells exceeds recommended max of 8 \u2014 consider splitting",
+          "evidence": {
+            "overflow_ratio": 1.25,
+            "pattern": "comparison-2col",
+            "slide_id": "options"
+          },
+          "debug": {
+            "raw_path": "/slides/4/pattern"
+          }
+        },
+        {
+          "id": "grid-4",
+          "code": "GRID.cell_underfilled",
+          "severity": "info",
+          "blocking": false,
+          "path": "/slides/2",
+          "slide_number": 3,
+          "message": "1 of 1 text cells fill under 35% of their box height (slide fill 22%, sparsest cell 32%) \u2014 the grid may be larger than the content needs",
+          "evidence": {
+            "slide_id": "market"
+          },
+          "debug": {
+            "raw_path": "/slides/2/shape_grid"
+          }
+        }
+      ],
+      "template_source": "meta.template",
+      "deck_id": "deck_7a4860d8ec4073905b0c3be56a4b2774",
+      "stored": true,
+      "revision": 1,
+      "changed_slides": []
+    }
+  }
+}

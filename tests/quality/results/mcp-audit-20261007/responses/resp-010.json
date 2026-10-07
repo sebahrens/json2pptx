@@ -1,0 +1,161 @@
+{
+  "jsonrpc": "2.0",
+  "id": 11,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"fields\":[\"tool_detail\"]}"
+      }
+    ],
+    "structuredContent": {
+      "tool_detail": {
+        "tool": "render_deck_spec",
+        "description": "Compile a DeckSpec and render it to a .pptx \u2014 the recommended one-call path for a NEW deck. Returns {success, pptx_path, deterministic_ready, publishable, blocking_reasons[], quality_summary, diagnostics[], waivers[], explanation_summary}. success/ok mean the artifact was WRITTEN; deterministic_ready means no blocking diagnostic (severity error, blocking:true) remains, and deterministic_blocking_reasons names each by code and path. publishable also needs an approved all-slide visual verdict and is false on a fresh render: render every slide with render_deck_thumbnails, inspect the images, then record the verdict with submit_visual_review. diagnostics are validate_deck_spec's findings for the same spec and template, at JSON Pointer paths; quality_summary is an input heuristic (0-100, basis=\"input\"; not a visual verdict). Parse/template errors use a finding envelope; other failures use success=false.",
+        "input_schema": {
+          "dependentRequired": {
+            "patch": [
+              "deck_id"
+            ]
+          },
+          "oneOf": [
+            {
+              "required": [
+                "spec"
+              ]
+            },
+            {
+              "required": [
+                "deck_id"
+              ]
+            }
+          ],
+          "properties": {
+            "base_dir": {
+              "description": "Absolute directory relative paths resolve against: asset references in the spec (image.path, photos, raw_json2pptx images / icons / backgrounds), with the same guards as raw deck generation, and template_path, which must stay inside it. Defaults to the deck_id's last render root, else the server CWD. The deck_id remembers it along with a template_path, so later deck_id-only calls reuse the same template file and root.",
+              "type": "string"
+            },
+            "deck_id": {
+              "description": "Handle of a spec this server holds: the deck_id a validate_deck_spec or render_deck_spec response returned. Send it INSTEAD of spec; add patch to edit part of the deck. Per-process, expires after 1 hour; an unknown or expired id is an error, so send the spec again.",
+              "type": "string"
+            },
+            "dry_run": {
+              "description": "true: run without storing anything.",
+              "type": "boolean"
+            },
+            "fork": {
+              "description": "true: store the result under a NEW deck_id; this one stays as it is.",
+              "type": "boolean"
+            },
+            "output_filename": {
+              "description": "Filename for the rendered .pptx inside the server's output directory. Path components are stripped and a .pptx suffix is added if missing. Omit it and the name derives from meta.title plus a short digest of the spec: different specs never collide and re-rendering one is idempotent. overwrote:true reports a replaced file.",
+              "type": "string"
+            },
+            "output_validation": {
+              "description": "Post-generation output validation (default strict: refuses to emit a deck with text overflow).",
+              "enum": [
+                "off",
+                "warn",
+                "strict"
+              ],
+              "type": "string"
+            },
+            "patch": {
+              "description": "Edits to deck_id's spec, applied before the call acts: [{op, path, value | from}]. move and copy read from. path is a JSON Pointer; a slide is named by index or id (/slides/3/title, /slides/s4/title, /meta/template); add at /slides/6 inserts, \"-\" appends. All ops apply or none. The response has stored, revision, changed_slides (slides that look different) and slide_changes (edited | inserted | restyled | moved | renumbered | notes_only | removed). A refused render stores nothing.",
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "from": {
+                    "type": "string"
+                  },
+                  "op": {
+                    "enum": [
+                      "replace",
+                      "add",
+                      "remove",
+                      "move",
+                      "copy"
+                    ],
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  },
+                  "value": {}
+                },
+                "required": [
+                  "op",
+                  "path"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "restore": {
+              "description": "Revision of deck_id to start from (validate_deck_spec read:\"history\" lists them); patch applies on top and the result is a new revision.",
+              "type": "number"
+            },
+            "spec": {
+              "description": "The semantic DeckSpec to render, as a JSON object or a YAML/JSON string: the shape validate_deck_spec's spec documents. Send this OR deck_id, not both.",
+              "oneOf": [
+                {
+                  "not": {
+                    "required": [
+                      "structure"
+                    ]
+                  },
+                  "required": [
+                    "slides"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "not": {
+                    "required": [
+                      "slides"
+                    ]
+                  },
+                  "required": [
+                    "structure"
+                  ],
+                  "type": "object"
+                },
+                {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              ],
+              "type": [
+                "object",
+                "string"
+              ]
+            },
+            "strict": {
+              "description": "Advisory-rule strictness: off, warn (default), or strict.",
+              "enum": [
+                "off",
+                "warn",
+                "strict"
+              ],
+              "type": "string"
+            },
+            "template": {
+              "description": "Template for this call; overrides meta.template (patch /meta/template to keep it). list_templates lists names. The first one named binds the deck_id.",
+              "type": "string"
+            },
+            "template_path": {
+              "description": "Local .pptx to render with (a template the server does not have); resolved against base_dir and MUST stay inside it. Not with template; meta.template wins over it. Run examine_template(template_path=...) first to check its layouts.",
+              "type": "string"
+            },
+            "verbose": {
+              "description": "true: full summaries on a patch render (default: changed slides only).",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        },
+        "listed": true
+      }
+    }
+  }
+}

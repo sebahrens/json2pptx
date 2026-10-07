@@ -1,0 +1,29 @@
+{
+ "slides": [
+  {
+   "index": 0,
+   "id": "options",
+   "path": "/var/folders/06/wh3xd5fj2jb6bbhsb8624fx80000gn/T/json2pptx-render-cache/artifacts/slide-b8fde6f5a259b3fa4759dcb94a2347d3515af93663af2302d775048958385b59.png",
+   "width": 1333,
+   "height": 750,
+   "content_hash": "b8fde6f5a259b3fa4759dcb94a2347d3515af93663af2302d775048958385b59",
+   "image_content_index": 1,
+   "image_width": 1280,
+   "image_height": 720
+  }
+ ],
+ "truncated": false,
+ "delivery": "image_content",
+ "slide_count": 1,
+ "source_hash": "30e3b80a1fb2cb9a63102b207b0e57d8504c06d27c44ee0c1f4a83fde808805d",
+ "cleanup": "content-addressed; path is stable while the file exists and is never overwritten with different content; evicted after 24h unused, or oldest-first once the cache exceeds 500 MiB, swept on render; get_capabilities().runtime.render_cache_bytes reports current usage",
+ "image_mime_type": "image/jpeg",
+ "next_tool_call": {
+  "tool": "submit_visual_review",
+  "args_template": {
+   "pptx_path": "/tmp/mcp-audit-1007/out/source-default.pptx",
+   "pptx_revision": "30e3b80a1fb2cb9a63102b207b0e57d8504c06d27c44ee0c1f4a83fde808805d",
+   "slides": "<one {index, verdict, image_sha256} per slide: verdict = approved | changes_requested | inconclusive; image_sha256 = slides[].content_hash from render_deck_thumbnails>"
+  }
+ }
+}

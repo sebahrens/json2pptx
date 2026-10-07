@@ -1,0 +1,22 @@
+{
+ "jsonrpc": "2.0",
+ "id": 1,
+ "result": {
+  "protocolVersion": "2025-06-18",
+  "capabilities": {
+   "experimental": {
+    "compact_responses": {}
+   },
+   "logging": {},
+   "prompts": {},
+   "resources": {},
+   "tools": {},
+   "completions": {}
+  },
+  "serverInfo": {
+   "name": "json2pptx",
+   "version": "dev"
+  },
+  "instructions": "json2pptx quality workflow:\n1. Call get_started first (task: brief | revise | validate-only | onboard-template) for the recommended path.\n2. New deck from a brief: author a DeckSpec (list_slide_kinds lists the kinds; kinds:[chosen] returns copy-ready examples, fields:[brief] field signatures and budgets), check it with validate_deck_spec, then render it with render_deck_spec.\n3. A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.\n4. Fix what you see or what diagnostics report at their path in the DeckSpec, then re-render and re-inspect.\n5. Never ship exemplar or placeholder content (uses_exemplar_content=true, an \"exemplar_content\" blocking reason, __FILL__ tokens, SEMANTIC_WEAK_CONTENT).\nUnknown tool arguments are rejected with UNKNOWN_PARAMETER and a did_you_mean hint; unknown DeckSpec fields are reported as SEMANTIC_UNKNOWN_FIELD."
+ }
+}

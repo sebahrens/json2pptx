@@ -1,0 +1,109 @@
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"fast_path_tool\":\"render_deck_spec\",\"next_tools\":[\"plan_deck\",\"list_templates\",\"list_slide_kinds\",\"validate_deck_spec\"],\"task\":\"brief\"}"
+      }
+    ],
+    "structuredContent": {
+      "task": "brief",
+      "skill_schema_version": "4.175.0",
+      "fast_path": {
+        "tool": "render_deck_spec",
+        "when_to_call": "A new deck from a brief: write a DeckSpec ({meta:{title, template}, slides:[{kind, \u2026}]}) carrying the user's real content and render it \u2014 follow `sequence`. About 30 lines yield a six-slide deck; the compiler picks patterns, layouts and rhythm.",
+        "falls_back_to": []
+      },
+      "sequence": [
+        {
+          "tool": "plan_deck",
+          "when_to_call": "Optional for 1-4 slides. Drafts deck_spec (a kind per narrative slot, __FILL__ titles), slots[] with guidance and the brief's facts, and unplaced_facts. Rewrite every title as a full-sentence action title of at most 15 words that carries its number.",
+          "args_template": {
+            "brief": "<the user's brief>",
+            "format": "deckspec"
+          }
+        },
+        {
+          "tool": "list_templates",
+          "when_to_call": "Pick a template name.",
+          "args_template": {
+            "fields": "names"
+          }
+        },
+        {
+          "tool": "list_slide_kinds",
+          "when_to_call": "Choose a kind per slide from the catalogue, then call it again with kinds:[<chosen>] for each kind's copy-ready example; fields:[\"brief\"] returns field signatures and text budgets, fields:[\"item_schema\"] descriptions and aliases. An unknown field is reported as SEMANTIC_UNKNOWN_FIELD. For a visual no kind draws (swimlane, pyramid, gantt, \u2026) recommend_visual returns a runnable slide."
+        },
+        {
+          "tool": "validate_deck_spec",
+          "when_to_call": "Check the spec on the template you will render on. Fix every finding with blocking:true at its path (a JSON Pointer into the spec); send a next_tool_call marked patch_verified as given. Keep the deck_id: later edits are deck_id + patch.",
+          "args_template": {
+            "spec": "<DeckSpec>",
+            "strict": "warn",
+            "template": "<template name from list_templates>"
+          }
+        },
+        {
+          "tool": "render_deck_spec",
+          "when_to_call": "Render the stored spec to a .pptx; it reports the findings validate did. deterministic_ready is a precondition for review, not approval.",
+          "args_template": {
+            "deck_id": "<deck_id from the validate/render response>"
+          }
+        },
+        {
+          "tool": "render_deck_thumbnails",
+          "when_to_call": "Render ALL slides of this revision and look at every image: action title of at most two lines, body proves the title, readable text, aligned edges, no orphans, balanced whitespace, meaningful accents, chart units and a source. Text too small to judge? Send the response's larger_render (that slide, density:100). Repair with deck_id + patch and re-render, at most three rounds: the re-render's next_tool_call carries known_hashes, so only changed slides return an image.",
+          "args_template": {
+            "pptx_path": "<pptx_path from render_deck_spec>"
+          }
+        },
+        {
+          "tool": "submit_visual_review",
+          "when_to_call": "Record a verdict for every slide of the current revision with the image_path or image_sha256 render_deck_thumbnails returned and each open defect as a finding (P0/P1 blocks approval). Only an all-slide, current-revision approval completes the deck.",
+          "args_template": {
+            "pptx_path": "<path from the render/generate response>",
+            "pptx_revision": "<content_hash from that same response>"
+          }
+        }
+      ],
+      "available_tasks": [
+        "brief",
+        "onboard-template",
+        "revise",
+        "validate-only"
+      ],
+      "notes": [
+        "ONE SLIDE OR TWO? Views that prove the SAME title (a trend, its KPIs, the dated plan) may share a slide: kind regions. An unrelated conclusion gets its own slide.",
+        "CHROME AND SECTIONS: page numbers (title and closing skipped), the meta.date footer and, with sections, the tracker are on by default; meta.chrome {confidentiality, client_name, project_code, footer_date, section_crumb, tracker, page_numbers:{enabled, format, skip}} adjusts them. structure {cover, auto_agenda, sections:[{title, slides[]}], closing} instead of flat slides generates the agenda and sequential dividers. Every kind takes notes and source; meta.source is the deck default.",
+        "Never ship placeholder copy (__FILL__, a recipe's \"Replace with \u2026\"): it is a blocking SEMANTIC_WEAK_CONTENT."
+      ],
+      "hidden_tools": {
+        "names": [
+          "validate_input",
+          "generate_presentation",
+          "repair_slide",
+          "list_patterns",
+          "show_pattern",
+          "expand_pattern",
+          "analyze_deck_rhythm",
+          "explain_deck_spec",
+          "get_capabilities"
+        ],
+        "note": "Not in this server's tools/list, but callable by name; `json2pptx mcp --tools core` (or --tools all) lists them. The DeckSpec path needs none of them."
+      },
+      "completion_protocol": {
+        "draft_status": "draft_needs_visual_review",
+        "complete_status": "visually_reviewed_current_revision",
+        "rule": "A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen."
+      },
+      "runtime": {
+        "render_available": true,
+        "templates_dir": "/Users/seb/projects/json2pptx/templates",
+        "output_dir": "/tmp/mcp-audit-1007/out",
+        "settings_write_enabled": false
+      }
+    }
+  }
+}

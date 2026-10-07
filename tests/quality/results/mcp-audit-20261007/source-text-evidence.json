@@ -1,0 +1,46 @@
+{
+  "default": [
+    "Scope B",
+    "Scope C",
+    "25 customer interviews",
+    "25 interviews plus survey",
+    "\u20ac320k fee",
+    "\u20ac410k fee",
+    "4 weeks",
+    "5 weeks",
+    "Tests price risk before bid",
+    "Adds channel evidence",
+    "Scope B tests price risk within four weeks",
+    "\u2039#\u203a"
+  ],
+  "explicit": [
+    "Scope B",
+    "Scope C",
+    "25 customer interviews",
+    "25 interviews plus survey",
+    "\u20ac320k fee",
+    "\u20ac410k fee",
+    "4 weeks",
+    "5 weeks",
+    "Tests price risk before bid",
+    "Adds channel evidence",
+    "Scope B tests price risk within four weeks",
+    "Source: Illustrative procurement estimates",
+    "\u2039#\u203a"
+  ],
+  "absent": [
+    "Scope B",
+    "Scope C",
+    "25 customer interviews",
+    "25 interviews plus survey",
+    "\u20ac320k fee",
+    "\u20ac410k fee",
+    "4 weeks",
+    "5 weeks",
+    "Tests price risk before bid",
+    "Adds channel evidence",
+    "Scope B tests price risk within four weeks",
+    "Source: Illustrative procurement estimates",
+    "\u2039#\u203a"
+  ]
+}
