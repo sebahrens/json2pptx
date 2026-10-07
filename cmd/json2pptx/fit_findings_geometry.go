@@ -393,7 +393,7 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 		case shapegrid.CellKindImage, shapegrid.CellKindDiagram, shapegrid.CellKindComposite:
 			a.addInk(cell.Bounds)
 		case shapegrid.CellKindSubGrid:
-			a.subGrid(input, cell, cellPath, depth)
+			a.subGrid(input, cell, cellPath, depth, result.SubGridPeers)
 		}
 	}
 	// A row band (result.Bands) is a backdrop, not content: a lane band with
@@ -470,7 +470,7 @@ func tableInk(cell shapegrid.ResolvedCell) pptx.RectEmu {
 // subGrid resolves a nested grid inside its placeholder bounds (same inset as
 // renderNestedSubGrids) and walks it; when it cannot be resolved the
 // placeholder rectangle counts as ink so SLIDE_UNDERUSED stays conservative.
-func (a *geomAccumulator) subGrid(input *ShapeGridInput, cell shapegrid.ResolvedCell, cellPath string, depth int) {
+func (a *geomAccumulator) subGrid(input *ShapeGridInput, cell shapegrid.ResolvedCell, cellPath string, depth int, peers *shapegrid.PeerScope) {
 	var src *GridCellInput
 	if input != nil && cell.RowIdx >= 0 && cell.RowIdx < len(input.Rows) {
 		src = gridCellAtResolved(input, cell.RowIdx, cell.ColIdx)
@@ -483,7 +483,7 @@ func (a *geomAccumulator) subGrid(input *ShapeGridInput, cell shapegrid.Resolved
 	if inset.CX <= 0 || inset.CY <= 0 {
 		inset = cell.Bounds
 	}
-	sub := resolveGridForStructural(src.Grid, &inset, nil, a.slideWidth, a.slideHeight)
+	sub := resolveGridForStructural(src.Grid, &inset, nil, a.slideWidth, a.slideHeight, peers)
 	if sub == nil {
 		a.addInk(cell.Bounds)
 		return

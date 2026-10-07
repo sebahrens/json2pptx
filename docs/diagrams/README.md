@@ -2,6 +2,8 @@
 
 The `svggen` package provides built-in diagram types for creating professional business graphics. This guide helps you choose the right diagram for your data.
 
+> **Every chart is headed as an exhibit.** `title` is set bold at the left edge with `subtitle` (the unit or period) lighter under it, over one rule; a slide whose own title already carries the chart title drops it and keeps the `subtitle` line. Stacked bars, stacked areas and lines of two to four series name their series beside the last column or at the line ends instead of in a legend (`style.show_legend: true` keeps the legend).
+
 > **These pages document the svggen request envelope, not a json2pptx slide.**
 > A deck reaches these renderers through `chart_value` / `diagram_value`, whose
 > envelope is narrower: `type`, `title`, `data`, `width`, `height`, `scale`,

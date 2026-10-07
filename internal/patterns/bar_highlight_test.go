@@ -124,8 +124,8 @@ func TestWaterfallBridge_AccentLabelsBold(t *testing.T) {
 	if !strings.Contains(out, "−$8.5") {
 		t.Fatalf("decrease label should carry a true minus sign: %s", out)
 	}
-	// Only the accent (decrease) label is bold.
-	if n := strings.Count(out, `\"bold\":true`) + strings.Count(out, `"bold":true`); n != 1 {
-		t.Errorf("want exactly one bold value label (the decrease), got %d", n)
+	// The delta labels (accent and its tint) are bold; the totals are not.
+	if n := strings.Count(out, `\"bold\":true`) + strings.Count(out, `"bold":true`); n != 2 {
+		t.Errorf("want exactly two bold value labels (the deltas), got %d", n)
 	}
 }

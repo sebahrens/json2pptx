@@ -26,6 +26,17 @@ import "github.com/sebahrens/json2pptx/internal/pptx"
 // a peer of the cards beside it. A shape that does not grow (its pattern
 // pinned it "compact", or its text already fills its box) holds its whole
 // group at the size it was given.
+//
+// Peers across sibling sub-grids (go-slide-creator-7ophx). A nested sub-grid
+// is resolved by its own Resolve call, so the labels of a ranked bar list
+// (one sub-grid per bar) or the tiers of a stack (one per tier) are peers no
+// single call sees. The caller that owns the parent runs the siblings twice:
+// once with Grid.MeasurePeers, handing the results to NewPeerScope, and once
+// with that scope as Grid.Peers. The scope applies the same relation to the
+// cells of all the siblings at their absolute frames and holds each cell at
+// the smallest growth its group measured. Generation and every preflight
+// walker build the scope the same way (cmd/json2pptx nestedPeerScope), so
+// they write the same sizes.
 
 // peerGrowth is one resolved cell's own answer to "how far may this text
 // grow": the scale and the paragraphs it was measured with.
@@ -175,6 +186,94 @@ func sharePeerGrowth(cells []ResolvedCell, growth []peerGrowth) {
 		}
 		if s := least[g]; s < growth[i].scale {
 			growth[i].scale = s
+		}
+	}
+}
+
+// PeerScope is the growth peer groups agreed on across sibling grids that
+// are resolved separately: per text cell, identified by its peer key and its
+// absolute frame, the smallest growth its group measured.
+type PeerScope struct {
+	least map[peerScopeKey]float64
+}
+
+type peerScopeKey struct {
+	key    peerKey
+	bounds pptx.RectEmu
+}
+
+// recordPeerGrowth notes each text cell's peer key and settled growth on the
+// cell, before the growth is written and the sizes the key reads change.
+func recordPeerGrowth(cells []ResolvedCell, growth []peerGrowth) {
+	for i := range cells {
+		cells[i].peer, cells[i].peered = peerKeyOf(&cells[i])
+		cells[i].peerGrow = growth[i].scale
+	}
+}
+
+// NewPeerScope groups the text cells of sibling grids, each resolved with
+// Grid.MeasurePeers, into peer groups across the grids and returns the growth
+// each group may take. It returns nil when no cell of any sibling would be
+// held below its own growth, so a caller can skip the second pass.
+func NewPeerScope(siblings ...*ResolveResult) *PeerScope {
+	var cells []ResolvedCell
+	for _, sib := range siblings {
+		if sib == nil {
+			continue
+		}
+		for i := range sib.Cells {
+			if sib.Cells[i].peered {
+				cells = append(cells, sib.Cells[i])
+			}
+		}
+	}
+	set := newDisjointSet(len(cells))
+	for i := range cells {
+		for j := i + 1; j < len(cells); j++ {
+			if cells[i].peer == cells[j].peer && peerAligned(cells[i].Bounds, cells[j].Bounds) {
+				set.union(i, j)
+			}
+		}
+	}
+	groupLeast := map[int]float64{}
+	for i := range cells {
+		g := set.find(i)
+		if cur, ok := groupLeast[g]; !ok || cells[i].peerGrow < cur {
+			groupLeast[g] = cells[i].peerGrow
+		}
+	}
+	scope := &PeerScope{least: map[peerScopeKey]float64{}}
+	held := false
+	for i := range cells {
+		least := groupLeast[set.find(i)]
+		held = held || least < cells[i].peerGrow
+		k := peerScopeKey{key: cells[i].peer, bounds: cells[i].Bounds}
+		if cur, ok := scope.least[k]; !ok || least < cur {
+			scope.least[k] = least
+		}
+	}
+	if !held {
+		return nil
+	}
+	return scope
+}
+
+// hold lowers each cell's growth to what its peer group across the scope's
+// grids measured. A nil scope holds nothing.
+func (s *PeerScope) hold(cells []ResolvedCell, growth []peerGrowth) {
+	if s == nil {
+		return
+	}
+	for i := range cells {
+		if growth[i].scale <= 1 {
+			continue
+		}
+		key, ok := peerKeyOf(&cells[i])
+		if !ok {
+			continue
+		}
+		if least, ok := s.least[peerScopeKey{key: key, bounds: cells[i].Bounds}]; ok && least < growth[i].scale {
+			growth[i].scale = least
 		}
 	}
 }

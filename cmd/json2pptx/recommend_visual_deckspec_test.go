@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -594,8 +596,14 @@ const recommendVisualMaxResponseBytes = 16 * 1024
 
 // TestRecommendVisualResponseSizeStaysInCheck: every candidate is authorable
 // from the response, and the response is still one an agent can afford.
+//
+// The size is measured with the checkout directory taken out of the preview
+// paths (example.layout_preview_png_path is absolute and repeats on every
+// candidate), so the verdict is the same in a short path, a long worktree
+// path, a symlinked /tmp checkout and on CI (go-slide-creator-jequz).
 func TestRecommendVisualResponseSizeStaysInCheck(t *testing.T) {
 	mc := semanticTestConfig(t)
+	roots := checkoutRootPrefixes(t)
 	total, n, largest := 0, 0, 0
 	for _, tc := range recommendVisualEvalCases(t) {
 		args := map[string]any{"intent": tc.Intent, "template": "midnight-blue"}
@@ -607,6 +615,12 @@ func TestRecommendVisualResponseSizeStaysInCheck(t *testing.T) {
 			t.Fatalf("%q: %v %s", tc.Intent, err, resultText(res))
 		}
 		raw, _ := json.Marshal(res.StructuredContent)
+		for _, root := range roots {
+			raw = bytes.ReplaceAll(raw, []byte(root), nil)
+		}
+		if bytes.Contains(raw, []byte(`_png_path":"/`)) {
+			t.Fatalf("%q: a preview path is still absolute after the checkout root was removed, so the measurement depends on the checkout path: %s", tc.Intent, raw)
+		}
 		if len(raw) > recommendVisualMaxResponseBytes {
 			t.Errorf("%q: response is %d bytes, over the %d budget", tc.Intent, len(raw), recommendVisualMaxResponseBytes)
 		}
@@ -616,5 +630,32 @@ func TestRecommendVisualResponseSizeStaysInCheck(t *testing.T) {
 			largest = len(raw)
 		}
 	}
-	t.Logf("recommend_visual response size over %d intents: mean %d B, largest %d B", n, total/n, largest)
+	t.Logf("recommend_visual response size over %d intents, checkout root removed: mean %d B, largest %d B", n, total/n, largest)
+	// Headroom, not a photo finish: the largest response used to sit within
+	// 30 bytes of the budget on CI, so any added word failed an unrelated
+	// change.
+	if headroom := recommendVisualMaxResponseBytes - largest; headroom < recommendVisualMinHeadroomBytes {
+		t.Errorf("largest response is %d bytes, %d under the %d budget; keep at least %d bytes of headroom", largest, headroom, recommendVisualMaxResponseBytes, recommendVisualMinHeadroomBytes)
+	}
+}
+
+// recommendVisualMinHeadroomBytes is the slack the largest evaluation
+// response keeps under recommendVisualMaxResponseBytes.
+const recommendVisualMinHeadroomBytes = 256
+
+// checkoutRootPrefixes returns the repository root as a path prefix (with a
+// trailing separator), both as the working directory spells it and with
+// symlinks resolved (/tmp is /private/tmp on macOS), longest first.
+func checkoutRootPrefixes(t *testing.T) []string {
+	t.Helper()
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefixes := []string{root + string(filepath.Separator)}
+	if resolved, err := filepath.EvalSymlinks(root); err == nil && resolved != root {
+		prefixes = append(prefixes, resolved+string(filepath.Separator))
+	}
+	sort.Slice(prefixes, func(i, j int) bool { return len(prefixes[i]) > len(prefixes[j]) })
+	return prefixes
 }

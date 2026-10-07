@@ -80,8 +80,8 @@ func TestFunnelShowsStageToStageConversion(t *testing.T) {
 			t.Errorf("the rendered funnel does not carry %q", want)
 		}
 	}
-	// Every stage's own label is inside the chart, including the smallest.
-	for _, want := range []string{"Visitors: 12,400", "MQL: 3,100", "SQL: 890", "Won: 212"} {
+	// Every stage's name and value are in the chart, including the smallest.
+	for _, want := range []string{"Visitors", "12,400", ">MQL<", "3,100", ">SQL<", "890", "Won", "212"} {
 		if !strings.Contains(svg, want) {
 			t.Errorf("the rendered funnel lost the label %q", want)
 		}

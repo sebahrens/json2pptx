@@ -122,12 +122,7 @@ func (bc *BarChart) drawHorizontal(data ChartData) error {
 	b.DrawLine(zeroX, plot.Y, zeroX, plot.Y+plot.H)
 	b.Pop()
 
-	if bc.config.ShowTitle && data.Title != "" {
-		titleConfig := DefaultTitleConfig()
-		titleConfig.Text = data.Title
-		titleConfig.Subtitle = data.Subtitle
-		NewTitle(b, titleConfig).Draw(Rect{X: 0, Y: 0, W: bc.config.Width, H: lay.header + bc.config.MarginTop})
-	}
+	drawChartHeader(b, bc.config.Width, bc.config.ShowTitle, data.Title, data.Subtitle)
 	if lay.legend > 0 {
 		bc.drawHorizontalLegend(data, colors, Rect{
 			X: plot.X, Y: plot.Y + plot.H + lay.axisH + style.Spacing.SM, W: plot.W, H: lay.legend,
@@ -150,12 +145,7 @@ func (bc *BarChart) horizontalLayout(data ChartData, labelled bool) hbarLayout {
 	if labelled {
 		lay.valueFont = labelledValueFont(style)
 	}
-	if bc.config.ShowTitle && data.Title != "" {
-		lay.header = style.Typography.SizeTitle + style.Spacing.MD
-		if data.Subtitle != "" {
-			lay.header += style.Typography.SizeSubtitle + style.Spacing.XS
-		}
-	}
+	lay.header = chartHeaderHeight(style, bc.config.ShowTitle, data.Title, data.Subtitle)
 	if data.Footnote != "" {
 		lay.footer = FootnoteReservedHeight(style)
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -594,5 +595,37 @@ func TestDryRender_NormalizesAuthoredChartShorthand(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// go-slide-creator-no0bx: the dry render of a placeholder chart measures the
+// chart generate draws: at the deck's viewing mode, and without a title the
+// slide title already carries.
+func TestPlaceholderChartDryRenderRequestMatchesGenerate(t *testing.T) {
+	spec := &types.DiagramSpec{
+		Type:  "bar_chart",
+		Title: "Revenue by region",
+		Data:  map[string]any{"categories": []string{"A", "B"}, "values": []float64{1, 2}},
+	}
+	bounds := types.BoundingBox{Width: 9_000_000, Height: 4_000_000}
+
+	onSlide := generator.WithoutDuplicateChartTitle(spec, "Revenue by region: EMEA leads")
+	if onSlide == spec || !onSlide.TitleOnSlide || spec.TitleOnSlide {
+		t.Fatalf("a repeated title must be marked on a copy: got %+v (input %+v)", onSlide, spec)
+	}
+	req := dryRenderRequest(onSlide, nil, "", "warn", false, bounds, tokens.ViewingModePresentation)
+	if req.Title != "" {
+		t.Errorf("title the slide carries is still measured: %q", req.Title)
+	}
+	if req.Style.ViewingMode != string(tokens.ViewingModePresentation) {
+		t.Errorf("placeholder chart viewing mode = %q, want %q", req.Style.ViewingMode, tokens.ViewingModePresentation)
+	}
+
+	kept := generator.WithoutDuplicateChartTitle(spec, "EMEA leads")
+	if kept != spec {
+		t.Errorf("a title that adds something must be kept unchanged")
+	}
+	if req := dryRenderRequest(kept, nil, "", "warn", false, bounds, tokens.ViewingModePresentation); req.Title != spec.Title {
+		t.Errorf("kept title = %q, want %q", req.Title, spec.Title)
 	}
 }

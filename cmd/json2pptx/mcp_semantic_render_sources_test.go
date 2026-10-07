@@ -271,6 +271,17 @@ func TestRenderDeckSpec_HonorsServerSVGStrategyLikeRaw(t *testing.T) {
 	}
 }
 
+// resolvedDir is dir with symlinks resolved, so two spellings of one
+// directory compare equal; a directory that cannot be resolved is returned
+// cleaned.
+func resolvedDir(t *testing.T, dir string) string {
+	t.Helper()
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		return resolved
+	}
+	return filepath.Clean(dir)
+}
+
 const fourByThreeSldSz = `<p:sldSz cx="9144000" cy="6858000"`
 
 // go-slide-creator-b7qqg.8: a bring-your-own template rendered through
@@ -340,8 +351,12 @@ func TestRenderDeckSpec_BYOTemplateSurvivesDeckID(t *testing.T) {
 			map[string]any{"op": "remove", "path": "/slides/1"},
 		},
 	})
-	if h, _ := mc.deckHandles.Load(first.DeckID); h == nil || h.TemplatePath == "" || h.BaseDir != repoRoot {
-		t.Fatalf("handle lost its BYO template after validate: %+v", h)
+	// Compared with symlinks resolved on both sides: the handle may store the
+	// resolved directory while the test reached the checkout through a link
+	// (/tmp is /private/tmp on macOS; go-slide-creator-jequz).
+	h, _ := mc.deckHandles.Load(first.DeckID)
+	if h == nil || h.TemplatePath == "" || resolvedDir(t, h.BaseDir) != resolvedDir(t, repoRoot) {
+		t.Fatalf("handle lost its BYO template after validate (want base_dir %s): %+v", repoRoot, h)
 	}
 
 	// Score by deck_id alone.
@@ -370,7 +385,7 @@ func TestRenderDeckSpec_BYOTemplateSurvivesDeckID(t *testing.T) {
 	if len(third.Warnings) == 0 || !strings.Contains(third.Warnings[0], "stays bound") {
 		t.Errorf("one-off template render did not say the deck_id keeps its template: %v", third.Warnings)
 	}
-	if h, _ := mc.deckHandles.Load(first.DeckID); h == nil || h.TemplatePath == "" || h.Template != "" || h.BaseDir != repoRoot {
+	if h, _ := mc.deckHandles.Load(first.DeckID); h == nil || h.TemplatePath == "" || h.Template != "" || resolvedDir(t, h.BaseDir) != resolvedDir(t, repoRoot) {
 		t.Errorf("a template argument rebound the handle: %+v", h)
 	}
 

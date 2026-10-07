@@ -703,6 +703,8 @@ The title does not fit its title placeholder even at the minimum autofit size (6
 
 Emitted at render time (generate) and predicted by preflight (`validate --fit-report`, `validate_input`, preview), which share the same measurement. When the title fits by shrinking, the generator writes the reduced size (and any line-spacing reduction) explicitly into the title runs instead of relying on `<a:normAutofit fontScale>` — LibreOffice ignores the stored scale and re-shrinks by compressing line spacing, which made long title lines collide.
 
+**Leading of a wrapped title (go-slide-creator-vxnfu).** A mixed-case title that wraps to more than one line is measured and written at no less than 90% of single spacing (`<a:lnSpc><a:spcPct val="90000"/>` on the paragraph), whatever the layout declares. Display layouts often ship 75–80% for one short line at 66–80pt; an authored two- or three-line closing statement set at that leading puts the descenders of one line on the ascenders of the next. A one-line title keeps the template's leading, and so does an all-caps title, which has no descenders (a line-spacing reduction is floored at 85% there, at 90% for mixed case). Where the floor is above the template's leading, a large display title may shrink to its comfort size (32pt for a 66pt title) instead of stopping at 60% and spilling out of its box. Preflight builds its measurement through the same params (`generator.applyWrappedTitleLeading`, `textfit.Params.WrappedLineSpacing`), as does the measured title bottom that starts the content zone.
+
 `fix.params`: `current_chars`, `max_chars` (longest word-prefix length that fits at the minimum size), `font_pt` (template size), `min_font_pt`.
 
 ```json
@@ -1267,7 +1269,7 @@ A funnel stage is larger than the stage above it. A funnel reads as progressive 
 }
 ```
 
-A gauge whose `value` lies outside `[min, max]` reports the existing `chart.point_out_of_range` (fix kind `explicit_scale`, params `value`, `min`, `max`): the needle is pinned at the nearest end of the dial while the label prints the real value. A timeline `date` string that neither parses nor serves as the item's label reports `chart.invalid_time_format` (fix kind `replace_value`, params `invalid_dates`); when no item has a parseable date the items are spaced evenly in authored order and no date axis is drawn.
+A gauge whose `value` lies outside `[min, max]` reports the existing `chart.point_out_of_range` (fix kind `explicit_scale`, params `value`, `min`, `max`): the value bar (the needle, with `style: "dial"`) is pinned at the nearest end of the range while the label prints the real value. A timeline `date` string that neither parses nor serves as the item's label reports `chart.invalid_time_format` (fix kind `replace_value`, params `invalid_dates`); when no item has a parseable date the items are spaced evenly in authored order and no date axis is drawn.
 
 A timeline event label is never shortened while it can be shown whole (go-slide-creator-ze6qs). The svggen timeline places labels on one line above their markers, then staggers them above / below, then wraps onto two lines, then steps the one shared label size down to the small size; only when all of those fail is a label cut with an ellipsis. That cut is source loss, so it is reported as `chart.label_truncated` (`diagram.label_truncated` in a fit report) with severity `shrink_or_split` rather than the advisory `info` other label truncations carry, at the item's own path (`…/diagram_value/data/items/2` from validate; the render pass keeps renderer findings on the content item), with `fix.kind: "truncate_or_split"` and `fix.params: {original, truncated, font_size, diagram_type: "timeline"}`. Validate (dry render) and render report the same labels. The `left` / `right` / `below` `label_position` values keep their per-label fit and report a truncation at the same severity.
 
@@ -1551,7 +1553,7 @@ Triggers when **all** of the following hold:
 
 The verb test is biased toward false negatives: a title with a verb the check does not know keeps its nudge, which is the old behaviour, while a wrong suppression silently removes the signal.
 
-It never blocks generation, but it fails `score_deck`'s quality gate (reason `N chart/matrix slide(s) missing takeaway (require_takeaway_on_charts)`) while `require_takeaway_on_charts` is true, the default. Add a one-sentence `takeaway` to the slide; it renders as the takeaway band — a flush 3pt accent bar beside 14pt bold `dk1` text, no fill, no outline — in the layout-derived band above the footer placeholders, above the source note row, with 16pt of air above and 12pt below (see `chrome_band_no_fit`).
+It never blocks generation, but it fails `score_deck`'s quality gate (reason `N chart/matrix slide(s) missing takeaway (require_takeaway_on_charts)`) while `require_takeaway_on_charts` is true, the default. Add a one-sentence `takeaway` to the slide; it renders as the takeaway band — a dark neutral band the width of the body column carrying 14pt bold text in measured ink, no outline — in the layout-derived band above the footer placeholders, above the source note row, with 16pt of air above and 12pt below (see `chrome_band_no_fit`).
 
 ```json
 {
@@ -2754,7 +2756,7 @@ Body text in adjacent grid cells of a sibling pattern (`card-grid`, `kpi-*`, `co
 
 **Severity:** `info`
 
-A slide carrying a chart or 2×2 matrix is missing a visually-distinct takeaway / "so what" line (the engine's takeaway band: a 3pt accent bar beside bold dark text near the bottom of the slide). Without this band the audience has to derive the argument from the chart, which they rarely do correctly.
+A slide carrying a chart or 2×2 matrix is missing a visually-distinct takeaway / "so what" line (the engine's takeaway band: a dark neutral band with bold light text near the bottom of the slide). Without this band the audience has to derive the argument from the chart, which they rarely do correctly.
 
 Engine has a parallel `takeaway_missing` (lowercase, action `review`) that fires when `slide.takeaway` is empty on chart/matrix slides; the visual-qa code catches cases where the takeaway text is present but the band is invisible (rendered with low contrast, off-slide, etc.).
 

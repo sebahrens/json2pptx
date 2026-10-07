@@ -749,7 +749,7 @@ func appendResolvedGridCells(cells []resolvedShapeGridCell, grid *ShapeGridInput
 		if inset.CX <= 0 || inset.CY <= 0 {
 			inset = rc.Bounds
 		}
-		sub := resolveGridForStructural(src.Grid, &inset, nil, slideWidth, slideHeight)
+		sub := resolveGridForStructural(src.Grid, &inset, nil, slideWidth, slideHeight, result.SubGridPeers)
 		if sub != nil {
 			cells = appendResolvedGridCells(cells, src.Grid, sub, slideWidth, slideHeight, depth+1)
 		}

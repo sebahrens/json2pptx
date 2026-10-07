@@ -828,7 +828,7 @@ func checkGridCellsStructural(grid *ShapeGridInput, result *shapegrid.ResolveRes
 			if bounds.CX <= 0 || bounds.CY <= 0 {
 				bounds = rc.Bounds
 			}
-			if sub := resolveGridForStructural(cell.Grid, &bounds, nil, slideWidth, slideHeight); sub != nil {
+			if sub := resolveGridForStructural(cell.Grid, &bounds, nil, slideWidth, slideHeight, result.SubGridPeers); sub != nil {
 				findings = append(findings, checkGridCellsStructural(cell.Grid, sub, slideIdx, slideWidth, slideHeight, path+"/grid", ctx, depth+1)...)
 			}
 		}
@@ -879,7 +879,31 @@ func checkGridDiagramPreflightPath(diagram *types.DiagramSpec, diagPath string, 
 // so passing overrideBounds/zone yields the SAME geometry generation renders;
 // passing nil/nil reduces to the legacy "explicit bounds or DefaultBounds"
 // behavior. Returns nil if resolution fails.
-func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) *shapegrid.ResolveResult {
+//
+// peers, when given, is the peer scope the grid's parent agreed on for its
+// nested grids (the parent result's SubGridPeers): a walker passes it when it
+// descends into a sub-grid cell, as generation does, so nested text is read
+// at the size it is written (go-slide-creator-7ophx). The result carries the
+// scope of this grid's own nested grids in turn.
+func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64, peers ...*shapegrid.PeerScope) *shapegrid.ResolveResult {
+	sgGrid := structuralGrid(grid, overrideBounds, zone, slideWidth, slideHeight)
+	if sgGrid == nil {
+		return nil
+	}
+	if len(peers) > 0 {
+		sgGrid.Peers = peers[0]
+	}
+	result, err := shapegrid.Resolve(sgGrid, pptx.NewShapeIDAllocator(nil))
+	if err != nil {
+		return nil
+	}
+	result.SubGridPeers = nestedPeerScope(grid, result.Cells, slideWidth, slideHeight)
+	return result
+}
+
+// structuralGrid builds the shapegrid.Grid resolveGridForStructural resolves,
+// or nil when the DTO does not make a valid grid.
+func structuralGrid(grid *ShapeGridInput, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64) *shapegrid.Grid {
 	colWidths, err := resolveColumnsDTO(grid.Columns, grid.Rows)
 	if err != nil {
 		return nil
@@ -929,13 +953,81 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 	if vErr := shapegrid.Validate(sgGrid); vErr != nil {
 		return nil
 	}
+	return sgGrid
+}
 
-	alloc := pptx.NewShapeIDAllocator(nil)
-	result, err := shapegrid.Resolve(sgGrid, alloc)
-	if err != nil {
+// subGridBounds is the frame a nested grid is resolved in: its host cell
+// less subGridInsetEMU on every side, or the whole cell when it is too small
+// for the inset.
+func subGridBounds(cell pptx.RectEmu) pptx.RectEmu {
+	inset := pptx.RectEmu{X: cell.X + subGridInsetEMU, Y: cell.Y + subGridInsetEMU, CX: cell.CX - 2*subGridInsetEMU, CY: cell.CY - 2*subGridInsetEMU}
+	if inset.CX <= 0 || inset.CY <= 0 {
+		return cell
+	}
+	return inset
+}
+
+// nestedPeerScope measures the grids nested in a resolved grid's sub-grid
+// cells and returns the peer scope they share (shapegrid.NewPeerScope): the
+// bars of a ranked list or the tiers of a stack are one sub-grid each, and
+// their labels are peers that must grow together or not at all
+// (go-slide-creator-7ophx). cells are the parent's resolved cells. It returns
+// nil — nothing to hold, no second pass — unless at least two nested grids
+// exist and one of them carries text that may grow, so a deck without
+// type_scale pays nothing.
+func nestedPeerScope(input *ShapeGridInput, cells []shapegrid.ResolvedCell, slideWidth, slideHeight int64) *shapegrid.PeerScope {
+	if input == nil {
 		return nil
 	}
-	return result
+	type nested struct {
+		grid   *ShapeGridInput
+		bounds pptx.RectEmu
+	}
+	var children []nested
+	grows := false
+	for _, rc := range cells {
+		if rc.Kind != shapegrid.CellKindSubGrid {
+			continue
+		}
+		src := gridCellAtResolved(input, rc.RowIdx, rc.ColIdx)
+		if src == nil || src.Grid == nil {
+			continue
+		}
+		children = append(children, nested{grid: src.Grid, bounds: subGridBounds(rc.Bounds)})
+		grows = grows || gridTextMayGrow(src.Grid)
+	}
+	if len(children) < 2 || !grows {
+		return nil
+	}
+	measured := make([]*shapegrid.ResolveResult, 0, len(children))
+	for i := range children {
+		sg := structuralGrid(children[i].grid, &children[i].bounds, nil, slideWidth, slideHeight)
+		if sg == nil {
+			continue
+		}
+		sg.MeasurePeers = true
+		if res, err := shapegrid.Resolve(sg, pptx.NewShapeIDAllocator(nil)); err == nil {
+			measured = append(measured, res)
+		}
+	}
+	return shapegrid.NewPeerScope(measured...)
+}
+
+// gridTextMayGrow reports whether a grid's own cells can take grow-to-fill:
+// the grid or one of its shapes asks for a type scale other than compact.
+func gridTextMayGrow(grid *ShapeGridInput) bool {
+	grows := func(mode string) bool { return mode != "" && mode != "compact" }
+	if grows(grid.TypeScale) {
+		return true
+	}
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil && cell.Shape != nil && grows(cell.Shape.TypeScale) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // hasAuthorSizedCell reports whether a grid holds a cell whose content the
@@ -1038,7 +1130,7 @@ func measuredGridContentHeightEMU(grid *ShapeGridInput, resolved *shapegrid.Reso
 				if childBounds.CX <= 0 || childBounds.CY <= 0 {
 					childBounds = cell.Bounds
 				}
-				child := resolveGridForStructural(authored.Grid, &childBounds, nil, 0, 0)
+				child := resolveGridForStructural(authored.Grid, &childBounds, nil, 0, 0, resolved.SubGridPeers)
 				childH := measuredGridContentHeightEMU(authored.Grid, child, childBounds, depth+1)
 				childVisible := clippedGridCellBounds(childBounds, bounds)
 				paintedArea += float64(childVisible.CX) * float64(sparseMin64(childVisible.CY, childH))
@@ -1761,7 +1853,7 @@ func collectGridTablePreflightResolved(grid *ShapeGridInput, result *shapegrid.R
 			if bounds.CX <= 0 || bounds.CY <= 0 {
 				bounds = rc.Bounds
 			}
-			if sub := resolveGridForStructural(cell.Grid, &bounds, nil, 0, 0); sub != nil {
+			if sub := resolveGridForStructural(cell.Grid, &bounds, nil, 0, 0, result.SubGridPeers); sub != nil {
 				findings = append(findings, collectGridTablePreflightResolved(cell.Grid, sub, path+"/grid", depth+1)...)
 			}
 		}

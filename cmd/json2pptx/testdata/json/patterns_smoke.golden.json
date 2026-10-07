@@ -24,12 +24,16 @@
   },
   {
     "pattern_name": "matrix-2x2",
-    "row_count": 4,
+    "row_count": 8,
     "cell_counts": [
+      5,
+      3,
+      3,
+      2,
       4,
-      2,
-      2,
-      2
+      3,
+      1,
+      4
     ]
   },
   {
@@ -322,13 +326,11 @@
   },
   {
     "pattern_name": "framework-grid",
-    "row_count": 5,
+    "row_count": 3,
     "cell_counts": [
-      4,
-      1,
-      4,
-      1,
-      4
+      5,
+      5,
+      5
     ]
   },
   {

@@ -157,8 +157,9 @@ func TestResolveChromeFrameAcrossAspectRatios(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := ResolveChromeFrame(nil, nil, tc.w, tc.h, true, true)
 			// A bare hasTakeaway reserves the one-line band: the two-line
-			// band (7.5% of the slide height) less one 17pt line.
-			if want := max(tc.h*750/10000, 300000) - 17*12700; f.Takeaway.CY != want {
+			// band (9.65% of the slide height, at least the 52pt two lines
+			// need) less one 17pt line.
+			if want := max(tc.h*takeawayBandHeightPer10k/10000, TakeawayTextHeightEMU(2)) - 17*12700; f.Takeaway.CY != want {
 				t.Errorf("one-line takeaway band = %.1fpt, want %.1fpt", float64(f.Takeaway.CY)/12700, float64(want)/12700)
 			}
 			for name, r := range map[string]ChromeRect{"content": f.Content, "takeaway": f.Takeaway, "source": f.Source} {
@@ -360,12 +361,13 @@ func TestChromeFrameReservesTheTakeawayItsTextNeeds(t *testing.T) {
 			if !none.Takeaway.IsZero() {
 				t.Errorf("no takeaway reserved a band: %+v", none.Takeaway)
 			}
-			// Two lines keep the band every takeaway used to get.
-			if want := max(p.SlideHeight*750/10000, 300000); two.Takeaway.CY != want {
+			// Two lines take the band's share of the slide height, and never
+			// less than the two lines need.
+			if want := max(p.SlideHeight*takeawayBandHeightPer10k/10000, TakeawayTextHeightEMU(2)); two.Takeaway.CY != want {
 				t.Errorf("two-line takeaway band = %.1fpt, want %.1fpt", float64(two.Takeaway.CY)/12700, float64(want)/12700)
 			}
 			if one.Takeaway.CY < TakeawayTextHeightEMU(1) {
-				t.Errorf("one-line takeaway band = %.1fpt, under the 23pt its text needs", float64(one.Takeaway.CY)/12700)
+				t.Errorf("one-line takeaway band = %.1fpt, under the 35pt its text needs", float64(one.Takeaway.CY)/12700)
 			}
 			if gain := float64(one.Content.CY-two.Content.CY) / 12700; gain != 17 {
 				t.Errorf("a one-line takeaway leaves the content %.1fpt more than a two-line one, want 17pt", gain)
@@ -408,10 +410,14 @@ func TestTakeawayLinesReservesTheSecondLineNearTheEdge(t *testing.T) {
 		t.Errorf("half-width band: %d lines, want a wrap", got)
 	}
 	const h = int64(6858000)
-	if one, two, five := TakeawayBandHeightEMU(1, h), TakeawayBandHeightEMU(2, h), TakeawayBandHeightEMU(5, h); one != 298450 || two != 514350 || five != two {
-		t.Errorf("band heights on a 7.5in slide = %d / %d / %d EMU, want 23.5pt / 40.5pt / 40.5pt", one, two, five)
+	if one, two, five := TakeawayBandHeightEMU(1, h), TakeawayBandHeightEMU(2, h), TakeawayBandHeightEMU(5, h); one != 445897 || two != 661797 || five != two {
+		t.Errorf("band heights on a 7.5in slide = %d / %d / %d EMU, want 35.1pt / 52.1pt / 52.1pt", one, two, five)
 	}
-	if TakeawayTextHeightEMU(1) != 23*12700 || TakeawayTextHeightEMU(2) != 40*12700 {
-		t.Errorf("text heights = %d / %d EMU, want 23pt / 40pt", TakeawayTextHeightEMU(1), TakeawayTextHeightEMU(2))
+	if TakeawayTextHeightEMU(1) != 35*12700 || TakeawayTextHeightEMU(2) != 52*12700 {
+		t.Errorf("text heights = %d / %d EMU, want 35pt / 52pt", TakeawayTextHeightEMU(1), TakeawayTextHeightEMU(2))
+	}
+	// A short slide still reserves what two lines need.
+	if short := TakeawayBandHeightEMU(2, 5143500); short != TakeawayTextHeightEMU(2) {
+		t.Errorf("two-line band on a 5.6in slide = %.1fpt, want the 52pt the text needs", float64(short)/12700)
 	}
 }

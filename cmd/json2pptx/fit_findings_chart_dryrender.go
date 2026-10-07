@@ -124,6 +124,11 @@ func collectChartDryRenderFindingsResolved(
 	rhythmGrid := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 	for slideIdx, slide := range input.Slides {
 		layout := predictedLayouts[slideIdx]
+		// A placeholder chart is rendered at the deck's viewing mode and
+		// without a title the slide title already carries; the dry render
+		// measures that chart, not one with reading-mode labels under a title
+		// band generate never draws (go-slide-creator-no0bx).
+		_, slideTitle := extractTitleText(slide)
 		// Placeholder content charts/diagrams use the same JSON Pointer
 		// grammar as shape-grid findings and repair_slide.
 		for contentIdx, item := range slide.Content {
@@ -133,17 +138,17 @@ func collectChartDryRenderFindingsResolved(
 				if item.ChartValue == nil {
 					continue
 				}
-				spec := chartValueToDiagramSpec(item.ChartValue)
+				spec := generator.WithoutDuplicateChartTitle(chartValueToDiagramSpec(item.ChartValue), slideTitle)
 				path := slidepath.ContentField(slideIdx, contentIdx, "chart_value")
 				findings = append(findings,
-					dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, false, bounds)...)
+					dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, false, bounds, viewingMode)...)
 			case "diagram":
 				if item.DiagramValue == nil {
 					continue
 				}
 				path := slidepath.ContentField(slideIdx, contentIdx, "diagram_value")
 				findings = append(findings,
-					dryRenderSpecInBounds(item.DiagramValue, themeColors, bodyFont, strictFit, path, false, bounds)...)
+					dryRenderSpecInBounds(generator.WithoutDuplicateChartTitle(item.DiagramValue, slideTitle), themeColors, bodyFont, strictFit, path, false, bounds, viewingMode)...)
 				// Native diagrams: lay the shapes out in this template's
 				// placeholder and run generation's written-scale scan, so a
 				// refusal generate would raise is an error here first
@@ -244,7 +249,7 @@ func collectGridDryRenderFindingsResolved(
 					if inset.CX <= 0 || inset.CY <= 0 {
 						inset = pptx.RectEmu{X: parent.X, Y: parent.Y, CX: parent.Width, CY: parent.Height}
 					}
-					nested = resolveGridForStructural(cell.Grid, &inset, nil, slideWidth, slideHeight)
+					nested = resolveGridForStructural(cell.Grid, &inset, nil, slideWidth, slideHeight, result.SubGridPeers)
 				}
 				findings = append(findings, collectGridDryRenderFindingsResolved(
 					cell.Grid, cellPath+"/grid", themeColors, bodyFont, strictFit,
@@ -380,15 +385,69 @@ func dryRenderSpecInBounds(
 	if generator.IsNativeDiagramType(spec) {
 		return generator.NativeDiagramPreflight(spec, bodyFont, path)
 	}
+	req := dryRenderRequest(spec, themeColors, bodyFont, strictFit, gridSurface, bounds, viewingModes...)
+	dryFindings, renderErr := svggen.DryRender(req)
+	out := colorFindings
+	if renderErr != nil {
+		// Both outcomes lose the visual, so both refuse. A grid/pattern surface
+		// aborts generation outright; a content placeholder degrades to a
+		// slide-sized grey "Data unavailable" box, which used to be predicted
+		// nowhere at all — validate said clean and the deck shipped the
+		// placeholder (go-slide-creator-rrjj).
+		outcome := "render as a \"Data unavailable\" placeholder instead of the chart"
+		if gridSurface {
+			outcome = "fail to render and abort generation"
+		}
+		out = append(out, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Pattern: spec.Type,
+				Path:    path,
+				Code:    patterns.ErrCodeDiagramRenderFailed,
+				Message: fmt.Sprintf("diagram would %s: %v", outcome, renderErr),
+				Fix: &patterns.FixSuggestion{
+					Kind:   "review",
+					Params: map[string]any{"diagram_type": spec.Type, "reason": renderErr.Error()},
+				},
+			},
+			Action: "refuse",
+		})
+	}
+	if len(dryFindings) == 0 {
+		return out
+	}
+	// One conversion, shared with the render path, so a dry-run finding and the
+	// same finding raised while actually drawing agree on code, path and action.
+	return append(out, generator.SvggenFindingsToFit(dryFindings, spec.Type, path)...)
+}
+
+// dryRenderRequest builds the svggen request the dry render measures: the
+// chart generate will draw, at its size, viewing mode, title and palette.
+func dryRenderRequest(
+	spec *types.DiagramSpec,
+	themeColors []types.ThemeColor,
+	bodyFont, strictFit string,
+	gridSurface bool,
+	bounds types.BoundingBox,
+	viewingModes ...tokens.ViewingMode,
+) *svggen.RequestEnvelope {
 	// Build a minimal RequestEnvelope. The full diagramSpecToSVGGen converter
 	// in internal/generator pulls in too many dependencies (and is render-path
 	// specific); for dry-run we only need geometry + palette routing so the
 	// labeling pass produces correct findings.
+	title := spec.Title
+	if spec.TitleOnSlide {
+		title = ""
+	}
 	req := &svggen.RequestEnvelope{
 		Type:     spec.Type,
-		Title:    spec.Title,
+		Title:    title,
 		Subtitle: spec.Subtitle,
 		Data:     spec.Data,
+	}
+	if !gridSurface && len(viewingModes) > 0 {
+		// The placeholder render sets the viewing mode and nothing else of
+		// the placement (renderDiagramSpecFull with a nil placement).
+		req.Style.ViewingMode = string(viewingModes[0])
 	}
 	req.Output.Width, req.Output.Height, _ = generator.ResolveDiagramRenderDimensions(spec, bounds)
 	req.Output.StrictFit = strictFit
@@ -427,36 +486,5 @@ func dryRenderSpecInBounds(
 	} else if bodyFont != "" {
 		req.Style.FontFamily = bodyFont
 	}
-	dryFindings, renderErr := svggen.DryRender(req)
-	out := colorFindings
-	if renderErr != nil {
-		// Both outcomes lose the visual, so both refuse. A grid/pattern surface
-		// aborts generation outright; a content placeholder degrades to a
-		// slide-sized grey "Data unavailable" box, which used to be predicted
-		// nowhere at all — validate said clean and the deck shipped the
-		// placeholder (go-slide-creator-rrjj).
-		outcome := "render as a \"Data unavailable\" placeholder instead of the chart"
-		if gridSurface {
-			outcome = "fail to render and abort generation"
-		}
-		out = append(out, patterns.FitFinding{
-			ValidationError: patterns.ValidationError{
-				Pattern: spec.Type,
-				Path:    path,
-				Code:    patterns.ErrCodeDiagramRenderFailed,
-				Message: fmt.Sprintf("diagram would %s: %v", outcome, renderErr),
-				Fix: &patterns.FixSuggestion{
-					Kind:   "review",
-					Params: map[string]any{"diagram_type": spec.Type, "reason": renderErr.Error()},
-				},
-			},
-			Action: "refuse",
-		})
-	}
-	if len(dryFindings) == 0 {
-		return out
-	}
-	// One conversion, shared with the render path, so a dry-run finding and the
-	// same finding raised while actually drawing agree on code, path and action.
-	return append(out, generator.SvggenFindingsToFit(dryFindings, spec.Type, path)...)
+	return req
 }
