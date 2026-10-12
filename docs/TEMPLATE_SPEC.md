@@ -42,6 +42,23 @@ Every template must contain **all** of the following layouts. Layout names are m
 - The engine can synthesize `Two Content` and `Blank + Title` from other layouts when missing, but native layouts are always preferred. Synthesis logs a `WARN` ("template missing layout capabilities, synthesizing").
 - Layout order within the PPTX file does not matter — layouts are matched by name and tag.
 
+### Blank layout and full-slide images
+
+The existing **Blank** layout also hosts complete SVG/PNG slides through a raw
+`shape_grid` image cell; it needs no picture placeholder or additional layout.
+For an image-only grid, explicit slide-relative bounds
+`{"x": 0, "y": 0, "width": 100, "height": 100}` use the package's actual slide
+extent and bypass the content-area clamp. Every non-null cell must contain an
+image; mixed content and content-relative pattern bounds retain their normal
+limits. This placement rule adds no template conformance requirement.
+
+Leave cell `fit` unset for a rectangular frame; nested `image.fit` selects
+`contain` (complete centred source) or `cover` (centred crop). Cell-level
+`fit: "contain"` retains the square-frame behavior. See the
+[full-slide input specification and runnable SVG/PNG example](INPUT_FORMAT.md#full-slide-svg-or-png-images)
+for SVG fallback requirements and verification. When checking a template,
+render the example and inspect the complete source border on all four sides.
+
 ## Optional Layouts
 
 These layouts are recognized and utilized when present but are not required:

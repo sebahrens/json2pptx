@@ -336,7 +336,7 @@ or `columns` region is therefore ~400–410pt after the gap and insets; 60% is
 | `process-flow`, 3–6 steps | one row | one row, short labels | 3–4 steps | `process-flow-compact` band |
 | `process-flow`, 7–8 steps | two rows | avoid | avoid | avoid |
 | `labeled-rows`, `metric-list`, `hero-detail` | fine | fine | fine (3 rows / 3–4 metrics) | 2–3 items |
-| `image` | — | the picture's home | a square crop | a thumbnail; use `image_case` instead |
+| `image` | full-width picture; raw full-slide recipe below | the picture's home | rectangular frame; `image.fit` selects cover or contain | a thumbnail; check source-label readability |
 
 Two consequences worth remembering: a loop beside words is always a legend
 layout (give the ring 50–60%, not less, and keep the words to one block); and
@@ -356,3 +356,54 @@ position, data_contract}}` and a runnable `next_tool_call`.
 [`examples/semantic/playbooks/`](../../examples/semantic/playbooks/) and
 [`examples/circular-layouts.json`](../../examples/circular-layouts.json)
 (slides 3, 7, 9, 11) are validated splits to copy from.
+
+
+## 7. A complete slide supplied as SVG or PNG
+
+When the source already contains the whole slide, use the raw
+`PresentationInput` path with a `blank` layout and a one-cell image grid.
+This is a raw slide object, not a new DeckSpec kind or an `image_case` option:
+
+```json
+{
+  "layout_id": "blank",
+  "shape_grid": {
+    "bounds": {"x": 0, "y": 0, "width": 100, "height": 100},
+    "columns": 1,
+    "rows": [{"cells": [{
+      "image": {"path": "images/full-slide.svg", "alt": "Complete source slide", "fit": "contain"}
+    }]}]
+  }
+}
+```
+
+Bounds are percentages of the template's actual slide dimensions. Explicit
+slide-relative bounds on an image-only grid bypass the content-area clamp;
+every non-null cell must contain an image. Mixed content and content-relative
+pattern bounds keep their normal limits. Omit title/content items when the
+source supplies them already. PNG uses the same recipe.
+
+Leave the cell's `fit` unset for the full rectangular frame. The nested
+`image.fit: "contain"` preserves and centres the whole source, leaving space
+if its aspect differs from the slide. `image.fit: "cover"` (the default) fills
+the frame with a centred crop. Cell-level `fit: "contain"` instead selects the
+historical square frame; it is appropriate for a square portrait treatment,
+not for preserving a widescreen slide.
+
+With SVG strategy `native`, the package carries the original SVG plus a real
+rendered PNG fallback. Non-native strategies use PNG for these grid images.
+Rendering the SVG requires `rsvg-convert` or `resvg`; a failed fallback render
+fails generation instead of leaving an invisible picture. PNG sources need
+neither converter. Full details are in the
+[input specification](../INPUT_FORMAT.md#full-slide-svg-or-png-images).
+
+Run the [two-slide SVG/PNG example](../../examples/full-slide-images.json):
+
+```bash
+go run ./cmd/json2pptx generate -json examples/full-slide-images.json -output /tmp/full-slide-images
+```
+
+Render both output pages and inspect all four sides of the white border and
+all three panels. They should span the widescreen canvas without clipping or
+shrinking into a square. For your own source, inspect edge labels and source
+text too: `contain` preserves them but cannot guarantee readability.

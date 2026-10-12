@@ -1,0 +1,30 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "full-slide-images.pptx",
+  "slides": [
+    {
+      "layout_id": "blank",
+      "shape_grid": {
+        "bounds": {"x": 0, "y": 0, "width": 100, "height": 100},
+        "columns": 1,
+        "rows": [{"cells": [{"image": {
+          "path": "images/full-slide.svg",
+          "alt": "Widescreen illustration with a white border and three coloured panels, embedded as SVG",
+          "fit": "contain"
+        }}]}]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "shape_grid": {
+        "bounds": {"x": 0, "y": 0, "width": 100, "height": 100},
+        "columns": 1,
+        "rows": [{"cells": [{"image": {
+          "path": "images/full-slide.png",
+          "alt": "Widescreen illustration with a white border and three coloured panels, embedded as PNG",
+          "fit": "contain"
+        }}]}]
+      }
+    }
+  ]
+}

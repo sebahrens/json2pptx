@@ -367,6 +367,7 @@ type nativeSVGInsert struct {
 	offsetX, offsetY   int64
 	extentCX, extentCY int64
 	crop               *pptx.SrcRect
+	geometry           string
 
 	// Shape ID (allocated during writeOutput)
 	shapeID uint32

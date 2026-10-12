@@ -60,7 +60,7 @@ func TestFindingCatalogCodesAreDocumented(t *testing.T) {
 			if d.IsDir() || !strings.HasSuffix(path, ".md") || filepath.Clean(path) == filepath.Clean(appendixPath) {
 				return nil
 			}
-			body, err := os.ReadFile(path) // #nosec G304 -- walking the repository's own doc trees.
+			body, err := os.ReadFile(path) // #nosec G304 G122 -- walking the repository's own doc trees.
 			if err != nil {
 				return err
 			}

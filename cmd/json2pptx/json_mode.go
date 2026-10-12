@@ -231,7 +231,7 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 	if jsonPath == "-" {
 		inputData, err = io.ReadAll(os.Stdin)
 	} else {
-		inputData, err = os.ReadFile(jsonPath)
+		inputData, err = os.ReadFile(jsonPath) // #nosec G703 -- the local CLI intentionally reads the user-selected deck file.
 	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read JSON input: %w", err)
@@ -753,7 +753,7 @@ func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templat
 	// "warnings" field. Without this, --partial could drop slides with no message
 	// (e.g. 44 inputs -> 41 outputs and nothing explaining the 3 that vanished).
 	for _, w := range allWarnings {
-		slog.Warn(w)
+		slog.Warn("generation warning", slog.String("detail", w))
 	}
 
 	// A hard content drop (a block whose placeholder is missing or already
@@ -2574,7 +2574,7 @@ func writeJSONDocument(path string, output any) error {
 		_, err = os.Stdout.Write(data)
 		_, _ = os.Stdout.WriteString("\n")
 	} else {
-		err = os.WriteFile(path, append(data, '\n'), 0644)
+		err = os.WriteFile(path, append(data, '\n'), 0644) // #nosec G703 -- local CLI output path is explicitly selected by the user.
 	}
 
 	return err

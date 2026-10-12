@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
@@ -86,17 +87,33 @@ func TestInstalledSkillReferencesAreSelfContained(t *testing.T) {
 			t.Fatalf("installed source evidence changed or missing: %s: %v", resource, err)
 		}
 	}
+	installedExamples := filepath.Join(destination, "generate-deck", "references", "repository", "examples")
+	for _, resource := range []string{"full-slide-images.json", "images/full-slide.svg", "images/full-slide.png"} {
+		original, err := os.ReadFile(filepath.Join(testutil.RepoRoot(), "examples", resource))
+		if err != nil {
+			t.Fatal(err)
+		}
+		copy, err := os.ReadFile(filepath.Join(installedExamples, resource))
+		if err != nil || !bytes.Equal(copy, original) {
+			t.Fatalf("installed full-slide asset changed or missing: %s: %v", resource, err)
+		}
+	}
 	for _, example := range []struct {
 		name   string
 		slides int
+		dir    string
 	}{
-		{"source-aware-evidence-route.json", 2},
-		{"readable-source-companion-route.json", 3},
+		{"source-aware-evidence-route.json", 2, installed},
+		{"readable-source-companion-route.json", 3, installed},
+		{"full-slide-images.json", 2, installedExamples},
 	} {
 		t.Run(example.name, func(t *testing.T) {
+			if example.name == "full-slide-images.json" && !generator.NewSVGConverter().IsPNGAvailable() {
+				t.Skip("SVG fallback needs rsvg-convert or resvg")
+			}
 			dir := t.TempDir()
 			report := filepath.Join(dir, "result.json")
-			if err := runJSONMode(filepath.Join(installed, example.name), report, testutil.TemplatesDir(), dir, "", false, false, "", "strict", true, "strict", "", false); err != nil {
+			if err := runJSONMode(filepath.Join(example.dir, example.name), report, testutil.TemplatesDir(), dir, "", false, false, "", "strict", true, "strict", "", false); err != nil {
 				t.Fatal(err)
 			}
 			data, err := os.ReadFile(report)

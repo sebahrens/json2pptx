@@ -416,7 +416,7 @@ func staleSkillWarning(dir string) string {
 		}
 	}
 	for _, p := range paths {
-		if os.MkdirAll(filepath.Dir(p), 0o750) == nil && os.WriteFile(p, []byte(key+"\n"), 0o600) == nil {
+		if os.MkdirAll(filepath.Dir(p), 0o750) == nil && os.WriteFile(p, []byte(key+"\n"), 0o600) == nil { // #nosec G703 -- fixed state filenames under the local skill install directory or user cache.
 			break
 		}
 	}

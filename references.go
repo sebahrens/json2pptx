@@ -19,6 +19,7 @@ import (
 //
 //go:embed docs/INPUT_FORMAT.md docs/INPUT_FORMAT_ADVANCED.md docs/FIT_FINDINGS.md docs/SEMANTIC_COMPILER.md docs/TEMPLATE_SPEC.md docs/PATH_GRAMMAR.md docs/PATTERNS.md docs/TEMPLATE_ANALYSIS.md
 //go:embed all:examples/semantic all:internal/tokens
+//go:embed examples/full-slide-images.json examples/images/full-slide.svg examples/images/full-slide.png
 //go:embed tests/quality/evidence/connectors/midnight-blue/source-aware-evidence-route.json
 //go:embed tests/quality/evidence/connectors/midnight-blue/readable-source-companion-route.json
 //go:embed tests/quality/evidence/connectors/midnight-blue/powerpoint-slide-4.png

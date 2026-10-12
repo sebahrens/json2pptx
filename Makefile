@@ -344,7 +344,7 @@ install-git-hooks:
 # raises G602 on a literal slice index that v2.12.2 accepts — so linting with
 # whatever happens to be on PATH both hides and invents findings, and the
 # disagreement is only discovered after a push (go-slide-creator-rc9y).
-GOLANGCI_LINT_VERSION ?= $(shell cat .golangci-version 2>/dev/null || echo v2.8.0)
+GOLANGCI_LINT_VERSION ?= $(shell cat .golangci-version 2>/dev/null || echo v2.12.2)
 GOLANGCI_LINT         := $(CURDIR)/bin/golangci-lint-$(GOLANGCI_LINT_VERSION)
 
 $(GOLANGCI_LINT):

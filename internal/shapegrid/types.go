@@ -397,11 +397,11 @@ type IconSpec struct {
 
 // ImageSpec defines an image to embed in a grid cell.
 type ImageSpec struct {
-	Path string // File path to the image (PNG, JPG, etc.)
+	Path string // File path to the image (SVG, PNG, JPG, etc.)
 	Alt  string // Alt text / description for accessibility
 	// Geometry is the picture frame's preset shape: "" / "rect" or "ellipse".
 	Geometry string
-	// Fit is the raster placement inside the frame: "" / "cover" or
+	// Fit is the image placement inside the frame: "" / "cover" or
 	// "contain" (whole picture, centred).
 	Fit     string
 	Overlay *OverlaySpec // Optional semi-transparent overlay on top of image

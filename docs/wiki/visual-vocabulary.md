@@ -29,6 +29,7 @@ and the full menu with every form, pattern, chart and diagram is
 | "Who we are" | `team` (1–8, `photo` or initials `photo_label`) | Role on every card. |
 | "What a stakeholder said" | `quote` (1 → pull quote, 3–8 → cluster) | Two quotes degrade to bullets. |
 | "Look at this" | `image_case` (picture + body + `callouts`) | For a comparable, a screenshot, a site. |
+| "Use this complete SVG or PNG as the slide" | Raw `PresentationInput`: `blank` + one-cell `shape_grid` | Explicit bounds `0, 0, 100, 100`; nested `image.fit: "contain"`; leave cell `fit` unset. [Full-slide recipe](slide-estate-and-segments.md#7-a-complete-slide-supplied-as-svg-or-png). |
 | "The numbers in full" | `table` (≤ 6 columns, ≤ 9 data rows) | Right-align numbers; `totals_row: true`; backup detail to an appendix. |
 | "The walk from A to B" | `bridge` (3–10 columns) or a waterfall `chart` region beside text | Totals must sum (0.5% tolerance). |
 | "Where things sit on two axes" | `matrix_2x2` | Four named quadrants; both axes labelled. |

@@ -34,6 +34,11 @@ How to cut a release (tag, archives, container image) is described in
 
 ### Changed
 
+- **Security baseline:** require Go 1.26.9 for builds and container images,
+  update `golang.org/x/net` to v0.60.0 and its required dependencies, and pin
+  golangci-lint v2.12.2 for Go 1.26 compatibility. These updates address the
+  October 2026 Go HTTP/2, HTTP, TLS, and textproto vulnerabilities.
+
 - **Agent wiki** synced to schema 4.175: 29 kinds, `cycle` as the eighth
   region kind, one-line `detail`s fit at five options, whole-slide scaling
   under 70%, `exec-summary` reachable from `executive_summary`, the complete
@@ -43,6 +48,12 @@ How to cut a release (tag, archives, container image) is described in
   repository checkout.
 
 ### Fixed
+
+- **Full-slide images**: SVG image cells now use the whole rectangular cell,
+  matching PNG images, and honor `image.fit` cover/contain without distortion.
+  Native SVG pictures include a visible PNG fallback. Use grid bounds
+  `{x: 0, y: 0, width: 100, height: 100}` for edge-to-edge images; explicit
+  cell-level `fit` still selects a square frame.
 
 - **`plan_deck`** (`format: "deckspec"`): facts routed to the items of an
   enumerated outline are returned in `slots[].facts` instead of being dropped

@@ -308,7 +308,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Install govulncheck
-        # v1.8.0 requires Go 1.26; keep this aligned with the patched Go 1.25 baseline.
+        # Pin the scanner to match make vulncheck; scan with the patched Go baseline.
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
 
       - name: Scan root module

@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"math"
+	"os"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -19,13 +21,27 @@ import (
 // this, so a callout endpoint is computed with exactly the transform that
 // places the picture.
 func GridImagePlacement(path string, frame types.BoundingBox, fit string) utils.ImagePlacement {
-	w, h, err := utils.ImagePixelSize(path)
-	if err != nil {
-		return utils.PlaceImage(0, 0, frame, utils.PlaceStretch)
-	}
 	mode := utils.PlaceCover
 	if strings.EqualFold(fit, utils.PlaceContain) {
 		mode = utils.PlaceContain
+	}
+	w, h, err := utils.ImagePixelSize(path)
+	if err != nil && IsSVGFile(path) {
+		data, readErr := os.ReadFile(path)
+		if readErr == nil {
+			sw, sh, sizeErr := svgImageDimensions(data)
+			if sizeErr == nil {
+				// Fit using proportional integers to preserve fractional SVG
+				// units while exposing natural pixels to px-space anchors.
+				scale := 1000000 / math.Max(sw, sh)
+				p := utils.PlaceImage(max(1, int(math.Round(sw*scale))), max(1, int(math.Round(sh*scale))), frame, mode)
+				p.PixelW, p.PixelH = sw, sh
+				return p
+			}
+		}
+	}
+	if err != nil {
+		return utils.PlaceImage(0, 0, frame, utils.PlaceStretch)
 	}
 	return utils.PlaceImage(w, h, frame, mode)
 }

@@ -307,6 +307,20 @@ Image embedded in a placeholder. Value: `ImageInput` (via `image_value`; the unt
 
 Supports `path` (local file) or `url` (HTTP/HTTPS download).
 
+For an SVG or PNG that already contains the entire slide, use a `blank` layout
+and a one-cell `shape_grid` with `bounds: {"x": 0, "y": 0, "width": 100, "height": 100}`.
+Leave the cell's `fit` unset: its image frame then spans the actual template slide,
+including rectangular widescreen canvases. Put `"fit": "contain"` **inside the
+`image` object** to preserve the entire source, or use `"cover"` to fill the slide
+with a centred crop. A cell-level `fit: "contain"` deliberately creates a square
+frame and is unsuitable for a full-slide image. With SVG strategy `native`, SVG sources remain vector images
+with a rendered PNG fallback (requires `rsvg-convert` or `resvg`); non-native
+strategies embed PNG for grid images. Omit title/content
+items when the source already contains the complete slide. See the
+[full-slide example and fit explanation](../../docs/INPUT_FORMAT.md#full-slide-svg-or-png-images)
+and [runnable SVG/PNG deck](../../examples/full-slide-images.json).
+
+
 With no `fit`, a native **picture** placeholder cover-crops the image to its
 frame: the image keeps its aspect ratio but may lose its outer edges, and a crop
 that discards more than 30% of an axis reports `IMAGE_HEAVY_CROP`. A **body /
