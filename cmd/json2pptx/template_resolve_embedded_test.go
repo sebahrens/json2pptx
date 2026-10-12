@@ -16,6 +16,7 @@ import (
 // keyed by template name, resolved to nothing on a server started without
 // --templates-dir.
 func TestEmbeddedTemplateKeepsItsName(t *testing.T) {
+	withClearedTemplateEnv(t)
 	path, cleanup, err := resolveTemplatePath("midnight-blue", filepath.Join(t.TempDir(), "absent"))
 	if err != nil {
 		t.Fatalf("resolve embedded template: %v", err)
@@ -45,6 +46,7 @@ func TestEmbeddedTemplateKeepsItsName(t *testing.T) {
 
 // TestEmbeddedTemplateCleanupRemovesTheDir: the temp dir must not leak.
 func TestEmbeddedTemplateCleanupRemovesTheDir(t *testing.T) {
+	withClearedTemplateEnv(t)
 	path, cleanup, err := resolveTemplatePath("forest-green", filepath.Join(t.TempDir(), "absent"))
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
