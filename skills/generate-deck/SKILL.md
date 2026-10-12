@@ -109,7 +109,7 @@ repairs from advice.
 - [FINDINGS.md](FINDINGS.md): reading and repairing a finding (DeckSpec,
   raw).
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):
-  template/layout fields and raw slide structure.
+  layout fields and full-slide SVG/PNG images.
 
 Examples: [semantic specs](../../examples/semantic/),
 [raw skeletons](examples/skeletons/README.md), and the
