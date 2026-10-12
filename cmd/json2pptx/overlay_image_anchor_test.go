@@ -394,3 +394,75 @@ func TestAnchorImage_PixelUnitsUseIntrinsicSize(t *testing.T) {
 		t.Errorf("(100,50)px of 400x200 in a matching frame -> (%d,%d), want (1000000,500000)", x, y)
 	}
 }
+
+// SVG anchors use the source viewport and the same rectangular cover/contain
+// placement as the picture, including points hidden by a cover crop.
+func TestAnchorImageSVGPlacement(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "wide.svg")
+	if err := os.WriteFile(path, []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900"><rect width="1600" height="900" fill="blue"/></svg>`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	frame := pptx.RectEmu{X: 100000, Y: 200000, CX: 8000000, CY: 8000000}
+	for _, tc := range []struct {
+		name, fit    string
+		u, v         float64
+		wantX, wantY int64
+		cropped      bool
+	}{
+		{"contain corner", "contain", 0, 0, 100000, 1950000, false},
+		{"contain bottom", "contain", 1, 1, 8100000, 6450000, false},
+		{"cover centre", "cover", .5, .5, 4100000, 4200000, false},
+		{"cover cropped edge", "cover", 0, .5, 0, 0, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, units := range []string{"fraction", "px"} {
+				x, y := tc.u, tc.v
+				if units == "px" {
+					x *= 1600
+					y *= 900
+				}
+				frags, findings, err := resolveOverlays([]*OverlayShapeInput{{Kind: "arrow", From: &OverlayPointInput{X: 90, Y: 10}, To: &OverlayPointInput{AnchorImage: &OverlayAnchorImageInput{X: x, Y: y, Units: units}}}}, []shapegrid.ResolvedCell{imageCell(path, tc.fit, frame)}, newAllocFrom(400), 0, 0, overlayEnv{})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if tc.cropped {
+					if len(frags) != 0 || len(findings) != 1 || findings[0].Code != "OVERLAY_TARGET_CROPPED" {
+						t.Fatalf("cropped target: fragments=%d findings=%v", len(frags), findings)
+					}
+					continue
+				}
+				if len(frags) != 1 || len(findings) != 0 {
+					t.Fatalf("fragments=%d findings=%v", len(frags), findings)
+				}
+				if gotX, gotY := connectorEnd(t, frags[0]); !near(gotX, tc.wantX, 2) || !near(gotY, tc.wantY, 2) {
+					t.Errorf("%s endpoint=(%d,%d), want (%d,%d)", units, gotX, gotY, tc.wantX, tc.wantY)
+				}
+			}
+		})
+	}
+}
+
+func TestAnchorImageFractionalSVGPixelCoordinates(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "fractional.svg")
+	if err := os.WriteFile(path, []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="1.6" height="0.9"/>`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	frame := pptx.RectEmu{CX: 1600000, CY: 900000}
+	for _, tc := range []struct {
+		name         string
+		x, y         float64
+		wantX, wantY int64
+	}{
+		{"centre", .8, .45, 800000, 450000}, {"bottom right", 1.6, .9, 1600000, 900000},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			frags, findings, err := resolveOverlays([]*OverlayShapeInput{{Kind: "arrow", From: &OverlayPointInput{X: 0, Y: 0}, To: &OverlayPointInput{AnchorImage: &OverlayAnchorImageInput{X: tc.x, Y: tc.y, Units: "px"}}}}, []shapegrid.ResolvedCell{imageCell(path, "contain", frame)}, newAllocFrom(400), 0, 0, overlayEnv{})
+			if err != nil || len(findings) != 0 || len(frags) != 1 {
+				t.Fatalf("fragments=%d findings=%v err=%v", len(frags), findings, err)
+			}
+			if x, y := connectorEnd(t, frags[0]); !near(x, tc.wantX, 2) || !near(y, tc.wantY, 2) {
+				t.Errorf("endpoint=(%d,%d) want (%d,%d)", x, y, tc.wantX, tc.wantY)
+			}
+		})
+	}
+}

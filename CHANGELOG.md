@@ -44,6 +44,12 @@ How to cut a release (tag, archives, container image) is described in
 
 ### Fixed
 
+- **Full-slide images**: SVG image cells now use the whole rectangular cell,
+  matching PNG images, and honor `image.fit` cover/contain without distortion.
+  Native SVG pictures include a visible PNG fallback. Use grid bounds
+  `{x: 0, y: 0, width: 100, height: 100}` for edge-to-edge images; explicit
+  cell-level `fit` still selects a square frame.
+
 - **`plan_deck`** (`format: "deckspec"`): facts routed to the items of an
   enumerated outline are returned in `slots[].facts` instead of being dropped
   with an empty `unplaced_facts`; a data list after a label about one slide

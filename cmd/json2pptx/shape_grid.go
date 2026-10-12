@@ -787,8 +787,9 @@ func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone
 			return alignRelativeBounds(b, contentBounds, input, anchorY, zone != nil)
 		}
 		bounds := shapegrid.BoundsFromPercentages(input.Bounds.X, input.Bounds.Y, input.Bounds.Width, input.Bounds.Height, slideWidth, slideHeight)
-		// Clamp explicit bounds against ContentZone to prevent overlapping chrome.
-		if zone != nil {
+		// Image-only grids may intentionally cover the slide chrome (for example
+		// a complete slide exported as SVG). Other grids retain chrome protection.
+		if zone != nil && !imageOnlyGrid(input) {
 			bounds = shapegrid.ClampBoundsToZone(bounds, *zone)
 			if zone.SideDecor {
 				if bounds.X < zone.LeftMargin {
@@ -1119,7 +1120,7 @@ func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, ove
 		slideIdx = diagCtx.SlideNum - 1
 	}
 
-	// Raster image cells without an explicit fit fill their whole cell (the
+	// Image cells without an explicit fit fill their whole cell (the
 	// generator cover-crops them) instead of shapegrid's centred square.
 	fillDefaultFitImages(result, defaultFitImageSpecs(input.Rows, rows))
 

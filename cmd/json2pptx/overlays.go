@@ -666,13 +666,13 @@ func (ctx *overlayCtx) resolveImageAnchor(ai *OverlayAnchorImageInput) (resolved
 		}
 	case "px":
 		if place.PixelW <= 0 || place.PixelH <= 0 {
-			return resolvedPoint{}, fmt.Errorf("anchor_image units \"px\" need a raster image whose pixel size can be read; use units \"fraction\"")
+			return resolvedPoint{}, fmt.Errorf("anchor_image units \"px\" need an image whose intrinsic pixel size can be read; use units \"fraction\"")
 		}
-		if u < 0 || u > float64(place.PixelW) || v < 0 || v > float64(place.PixelH) {
-			return resolvedPoint{}, fmt.Errorf("anchor_image x=%g y=%g px outside the %dx%d image", ai.X, ai.Y, place.PixelW, place.PixelH)
+		if u < 0 || u > place.PixelW || v < 0 || v > place.PixelH {
+			return resolvedPoint{}, fmt.Errorf("anchor_image x=%g y=%g px outside the %gx%g image", ai.X, ai.Y, place.PixelW, place.PixelH)
 		}
-		u /= float64(place.PixelW)
-		v /= float64(place.PixelH)
+		u /= place.PixelW
+		v /= place.PixelH
 	default:
 		return resolvedPoint{}, fmt.Errorf("anchor_image units %q invalid; use \"fraction\" (default) or \"px\"", ai.Units)
 	}

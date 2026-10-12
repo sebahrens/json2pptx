@@ -525,27 +525,10 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 				ctx.reportUnavailableImage("shape_grid image", img.Path, src, problem)
 				continue
 			}
-			// Route SVG images through native SVG embedding (asvg:svgBlip)
 			if IsSVGFile(img.Path) {
-				svgData, err := os.ReadFile(img.Path)
-				if err != nil {
-					ctx.warnings = append(ctx.warnings, fmt.Sprintf("shape_grid image: failed to read SVG file: %v", err))
-					continue
+				if err := ctx.registerGridSVGImage(slideNum, imgIdx, img); err != nil {
+					return err
 				}
-				sourceID := fmt.Sprintf("gridsvg-s%d-i%d", slideNum, imgIdx)
-				svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(sourceID)
-				ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
-					svgData:        svgData,
-					pngData:        transparentPNG1x1,
-					svgMediaFile:   svgMediaFile,
-					pngMediaFile:   pngMediaFile,
-					description:    img.Alt,
-					offsetX:        img.OffsetX,
-					offsetY:        img.OffsetY,
-					extentCX:       img.ExtentCX,
-					extentCY:       img.ExtentCY,
-					placeholderIdx: -1, // No placeholder to remove — injected as new p:pic
-				})
 				continue
 			}
 			mediaFileName := ctx.allocateMediaSlot(img.Path)

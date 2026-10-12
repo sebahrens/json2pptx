@@ -97,10 +97,10 @@ func TestFillDefaultFitImages(t *testing.T) {
 	}}}
 	rows := convertGridRows(input)
 	specs := defaultFitImageSpecs(input, rows)
-	if len(specs) != 1 || !specs[rows[0].Cells[0].Image] {
-		t.Fatalf("only the default-fit raster image should be widened, got %v", specs)
+	if len(specs) != 2 || !specs[rows[0].Cells[0].Image] || !specs[rows[0].Cells[2].Image] {
+		t.Fatalf("default-fit SVG and raster images should be widened, got %v", specs)
 	}
-	grid := &shapegrid.Grid{Bounds: pptx.RectEmu{CX: 3000000, CY: 1000000}, Columns: []float64{33.3, 33.3, 33.4}, Rows: rows}
+	grid := &shapegrid.Grid{Bounds: pptx.RectEmu{CX: 6000000, CY: 1000000}, Columns: []float64{33.3, 33.3, 33.4}, Rows: rows}
 	res, err := shapegrid.Resolve(grid, pptx.NewShapeIDAllocator(nil))
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +109,7 @@ func TestFillDefaultFitImages(t *testing.T) {
 	for _, c := range res.Cells {
 		wide := c.Bounds == c.CellBounds
 		switch c.ImageSpec.Path {
-		case "a.png":
+		case "a.png", "c.svg":
 			if !wide {
 				t.Errorf("default-fit image should fill its cell: %+v vs %+v", c.Bounds, c.CellBounds)
 			}

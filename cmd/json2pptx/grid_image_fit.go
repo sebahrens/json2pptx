@@ -1,11 +1,6 @@
 package main
 
-import (
-	"path/filepath"
-	"strings"
-
-	"github.com/sebahrens/json2pptx/internal/shapegrid"
-)
+import "github.com/sebahrens/json2pptx/internal/shapegrid"
 
 // defaultFitImageSpecs returns the converted image specs of cells that set no
 // explicit `fit`. rows must be convertGridRows(inputRows) (same order).
@@ -20,8 +15,8 @@ func defaultFitImageSpecs(inputRows []GridRowInput, rows []shapegrid.Row) map[*s
 				continue
 			}
 			spec := rows[i].Cells[j].Image
-			if spec == nil || strings.EqualFold(filepath.Ext(spec.Path), ".svg") {
-				continue // SVG pictures cannot be cropped; keep the square frame
+			if spec == nil {
+				continue
 			}
 			if out == nil {
 				out = map[*shapegrid.ImageSpec]bool{}
@@ -32,13 +27,10 @@ func defaultFitImageSpecs(inputRows []GridRowInput, rows []shapegrid.Row) map[*s
 	return out
 }
 
-// fillDefaultFitImages lets raster image cells without an explicit `fit`
-// occupy their whole cell. shapegrid places every image in a centred square
-// (contain) because it cannot know the picture's aspect ratio; the generator
-// now cover-crops pictures to their frame (a:srcRect), so the full cell can be
-// used without distortion — a photo panel fills its panel instead of shrinking
-// to a square in the middle of it. Explicit fit modes keep their square frame
-// (and are cover-cropped into it).
+// fillDefaultFitImages lets image cells without an explicit cell.fit occupy
+// their whole cell. The generator preserves the SVG or raster source aspect
+// ratio using image.fit (cover by default, or contain). Explicit cell.fit modes
+// retain their square frame, useful for headshots and other square treatments.
 func fillDefaultFitImages(result *shapegrid.ResolveResult, specs map[*shapegrid.ImageSpec]bool) {
 	if result == nil || len(specs) == 0 {
 		return
@@ -49,4 +41,22 @@ func fillDefaultFitImages(result *shapegrid.ResolveResult, specs map[*shapegrid.
 			c.Bounds = c.CellBounds
 		}
 	}
+}
+
+// imageOnlyGrid identifies an image composition whose explicit slide-relative
+// bounds take priority over the template's title, footer and side decoration.
+func imageOnlyGrid(input *ShapeGridInput) bool {
+	hasImage := false
+	for _, row := range input.Rows {
+		for _, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			if cell.Image == nil {
+				return false
+			}
+			hasImage = true
+		}
+	}
+	return hasImage
 }

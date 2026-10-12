@@ -199,10 +199,10 @@ type GridImageInput struct {
 	// An ellipse clips the cover-cropped picture to a circle when the frame is
 	// square (headshots), without editing the image itself.
 	Geometry string `json:"geometry,omitempty"`
-	// Fit places a raster picture in its frame (the whole cell, or the
+	// Fit places an SVG or raster picture in its frame (the whole cell, or the
 	// centred square a cell-level fit selects): "cover" (default) fills the
 	// frame and centre-crops the long axis, "contain" keeps the whole picture
-	// centred in it. SVG pictures are always drawn to the frame.
+	// centred in it.
 	Fit     string              `json:"fit,omitempty"`
 	Overlay *GridOverlayInput   `json:"overlay,omitempty"` // Semi-transparent overlay on top of image
 	Text    *GridImageTextInput `json:"text,omitempty"`    // Text label on top of image

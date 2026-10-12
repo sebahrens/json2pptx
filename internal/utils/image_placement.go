@@ -28,9 +28,9 @@ const (
 type ImagePlacement struct {
 	Bounds types.BoundingBox // picture frame on the slide, in EMU
 	Crop   CropRect          // source share trimmed from each edge
-	// PixelW / PixelH are the intrinsic image size; zero when it could not
+	// PixelW / PixelH are intrinsic dimensions in pixels (fractional for SVG); zero when they could not
 	// be read (the picture is then stretched to Bounds).
-	PixelW, PixelH int
+	PixelW, PixelH float64
 }
 
 // ImagePixelSize returns the intrinsic pixel size of a raster image file.
@@ -51,7 +51,7 @@ func ImagePixelSize(path string) (int, int, error) {
 // (PlaceCover, PlaceContain, PlaceContainStart or PlaceStretch; any other
 // value stretches). An unknown image size stretches.
 func PlaceImage(imgW, imgH int, frame types.BoundingBox, fit string) ImagePlacement {
-	p := ImagePlacement{Bounds: frame, PixelW: imgW, PixelH: imgH}
+	p := ImagePlacement{Bounds: frame, PixelW: float64(imgW), PixelH: float64(imgH)}
 	if imgW <= 0 || imgH <= 0 {
 		p.PixelW, p.PixelH = 0, 0
 		return p
