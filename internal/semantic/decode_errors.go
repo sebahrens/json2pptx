@@ -68,7 +68,7 @@ func lookupDecodedPath(root any, path string) (any, bool) {
 // describeExpectedType names a Go decode target in JSON terms; an object lists
 // its fields so the author can see the shape without the schema.
 func describeExpectedType(t reflect.Type) string {
-	for t != nil && t.Kind() == reflect.Ptr {
+	for t != nil && t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if t == nil {
@@ -112,7 +112,7 @@ func jsonFieldNames(t reflect.Type) []string {
 // didYouMeanForType suggests the object form of a boolean written where an
 // on/off object is expected (page_numbers: true → {"enabled": true}).
 func didYouMeanForType(t reflect.Type, got any) string {
-	for t != nil && t.Kind() == reflect.Ptr {
+	for t != nil && t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	b, isBool := got.(bool)

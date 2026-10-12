@@ -64,7 +64,7 @@ func prepareBlindReviewPacket(reportPath, out string) error {
 				return err
 			}
 			item.Sheet = "sheets/" + id + ".png"
-			if err = os.WriteFile(filepath.Join(packet, item.Sheet), pixels, 0o600); err != nil {
+			if err = os.WriteFile(filepath.Join(packet, item.Sheet), pixels, 0o600); err != nil { // #nosec G703 -- sheet name is a fixed prefix plus locally generated hex bytes.
 				return err
 			}
 			ev.ContactSheet = filepath.Join(packet, item.Sheet)

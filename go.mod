@@ -1,6 +1,6 @@
 module github.com/sebahrens/json2pptx
 
-go 1.25.14
+go 1.26.9
 
 require (
 	github.com/google/uuid v1.6.0
@@ -40,9 +40,9 @@ require (
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	github.com/yuin/goldmark v1.7.17 // indirect
-	golang.org/x/net v0.56.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
-	golang.org/x/text v0.41.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/text v0.42.0 // indirect
 	modernc.org/knuth v0.5.5 // indirect
 	modernc.org/token v1.1.0 // indirect
 	star-tex.org/x/tex v0.7.1 // indirect

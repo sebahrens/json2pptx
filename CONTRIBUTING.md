@@ -6,7 +6,7 @@ Thank you for your interest in contributing to json2pptx! This document provides
 
 ### Prerequisites
 
-- Go 1.25.14 or later
+- Go 1.26.9 or later
 - Go toolchain (`make lint` installs the pinned golangci-lint itself, into `bin/`)
 - librsvg or resvg (for SVG-to-PNG chart conversion)
 

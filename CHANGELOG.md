@@ -34,6 +34,11 @@ How to cut a release (tag, archives, container image) is described in
 
 ### Changed
 
+- **Security baseline:** require Go 1.26.9 for builds and container images,
+  update `golang.org/x/net` to v0.60.0 and its required dependencies, and pin
+  golangci-lint v2.12.2 for Go 1.26 compatibility. These updates address the
+  October 2026 Go HTTP/2, HTTP, TLS, and textproto vulnerabilities.
+
 - **Agent wiki** synced to schema 4.175: 29 kinds, `cycle` as the eighth
   region kind, one-line `detail`s fit at five options, whole-slide scaling
   under 70%, `exec-summary` reachable from `executive_summary`, the complete

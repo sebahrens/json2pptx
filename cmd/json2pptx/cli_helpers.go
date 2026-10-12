@@ -208,7 +208,7 @@ func readJSONInput(path string) (string, error) {
 		}
 		return string(data), nil
 	}
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G703 -- local CLI input explicitly selects a file; no server root restriction applies.
 	if err != nil {
 		return "", fmt.Errorf("failed to read %s: %w", path, err)
 	}
