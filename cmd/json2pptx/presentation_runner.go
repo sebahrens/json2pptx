@@ -187,10 +187,12 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	}
 	cleanup = templateCleanup
 	res.TemplatePath = templatePath
-	if profileReader, openErr := template.OpenTemplate(templatePath); openErr == nil {
-		res.TemplateHash = profileReader.Hash()
-		_ = profileReader.Close()
+	styleReader, openErr := template.OpenTemplate(templatePath)
+	if openErr != nil {
+		return res, cleanup, fmt.Errorf("open template for table styles: %w", openErr)
 	}
+	defer styleReader.Close()
+	res.TemplateHash = styleReader.Hash()
 
 	// Analyze template for layout metadata, synthetic files, and dimensions.
 	templateLayouts, syntheticFiles, slideWidth, slideHeight, templateMetadata, templateTheme, synthesisFindings := analyzeTemplateLayouts(templatePath)
@@ -263,11 +265,12 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	// Convert typed slides to generator specs.
 	dataPalette := resolveDataPalette(templateMetadata, templateTheme.Colors)
 	diagCtx := &GridDiagramContext{
-		ThemeColors: templateTheme.Colors,
-		DataPalette: dataPalette,
-		FontFamily:  templateTheme.BodyFont,
-		TitleFont:   templateTheme.TitleFont,
-		ViewingMode: tokens.ParseViewingMode(input.ViewingMode),
+		TableStyleResolver: styleReader,
+		ThemeColors:        templateTheme.Colors,
+		DataPalette:        dataPalette,
+		FontFamily:         templateTheme.BodyFont,
+		TitleFont:          templateTheme.TitleFont,
+		ViewingMode:        tokens.ParseViewingMode(input.ViewingMode),
 	}
 	slideSpecs, gridDiagWarnings, gridVisualFindings, convErr := convertPresentationSlides(
 		input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata,

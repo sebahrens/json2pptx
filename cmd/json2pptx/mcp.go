@@ -485,11 +485,12 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	// Convert slides
 	mcpDiagCtx := &GridDiagramContext{
-		ThemeColors: theme.Colors,
-		DataPalette: resolveDataPalette(templateMetadata, theme.Colors),
-		FontFamily:  theme.BodyFont,
-		TitleFont:   theme.TitleFont,
-		ViewingMode: tokens.ParseViewingMode(input.ViewingMode),
+		TableStyleResolver: reader,
+		ThemeColors:        theme.Colors,
+		DataPalette:        resolveDataPalette(templateMetadata, theme.Colors),
+		FontFamily:         theme.BodyFont,
+		TitleFont:          theme.TitleFont,
+		ViewingMode:        tokens.ParseViewingMode(input.ViewingMode),
 	}
 	slideSpecs, gridDiagWarnings, gridVisualFindings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), mcpDiagCtx, false)
 	// The structural verdict validate_input reports: generation refuses what

@@ -29,7 +29,7 @@ type TablePreflightInput struct {
 	Bounds types.BoundingBox
 	// DefaultSize is the configured font size in hundredths of a point
 	// (e.g. 1800 = 18pt). When 0, the renderer's base size for Style is
-	// used (TableBaseFontSize: 12pt for the engine default, 18pt otherwise).
+	// used (TableBaseFontSize: 12pt regardless of style selection).
 	DefaultSize int
 	// Style is the authored (unresolved) table style. It selects the base
 	// font size and header geometry the renderer will use.
@@ -61,11 +61,12 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 		fontSize = TableBaseFontSize(input.Style)
 	}
 	originalFontSize := fontSize
+	compactTypography := fontSize <= engineDefaultRowFontSize
 
 	var findings []patterns.FitFinding
 
 	// Column-count scaling (columnScaledFontSize): wider than 4 columns shrinks toward 18pt*4/numCols, floor at MinTableFontSize.
-	if scaled, changed := columnScaledFontSize(fontSize, numCols, IsEngineDefaultTableStyle(input.Style)); changed {
+	if scaled, changed := columnScaledFontSize(fontSize, numCols, compactTypography); changed {
 		fontSize = scaled
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
@@ -97,13 +98,13 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 			rowScale := float64(maxVisibleRows) / float64(numRows)
 			scaled := int(float64(fontSize) * rowScale)
 			floor := minFontSizeForTable
-			if IsEngineDefaultTableStyle(input.Style) {
+			if compactTypography {
 				floor = engineDefaultRowFontSize
 			}
 			if scaled < floor {
 				scaled = floor
 			}
-			fontSize = scaled
+			fontSize = min(scaled, preFontSize)
 			findings = append(findings, patterns.FitFinding{
 				ValidationError: patterns.ValidationError{
 					Path: input.Path,
@@ -125,10 +126,10 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 		// preflight and the generated <a:tr h> values cannot disagree.
 		colWidths := calculateColumnWidths(len(input.Headers), input.Bounds.Width, input.Headers, input.Rows, fontSize)
 		plan := planTableRows(&types.TableSpec{Headers: input.Headers, Rows: input.Rows}, colWidths, TableRenderConfig{
-			Bounds:        input.Bounds,
-			DefaultFont:   defaultFontFamily,
-			DefaultSize:   fontSize,
-			engineDefault: IsEngineDefaultTableStyle(input.Style),
+			Bounds:            input.Bounds,
+			DefaultFont:       defaultFontFamily,
+			DefaultSize:       fontSize,
+			compactTypography: compactTypography,
 		})
 		if plan.HiddenRows > 0 {
 			overflow := plan.HiddenRows
@@ -201,7 +202,7 @@ func TableColumnWidths(headers []string, rows [][]types.TableCell, widthEMU int6
 		return nil
 	}
 	if fontSizeHPt <= 0 {
-		fontSizeHPt = defaultFontSize
+		fontSizeHPt = engineDefaultRowFontSize
 	}
 	return calculateColumnWidths(len(headers), widthEMU, headers, rows, fontSizeHPt)
 }

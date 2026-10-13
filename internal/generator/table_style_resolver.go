@@ -21,7 +21,7 @@ type TableStyleResolver interface {
 	//   - "@template-default"                    → template's declared default GUID, or engine-default
 	//   - "{GUID}" present in template index     → returned as-is
 	//   - non-empty but unresolvable             → returned verbatim (downstream may warn)
-	//   - ""                                     → engine-default (types.DefaultTableStyleID)
+	//   - ""                                     → template default, or engine-default
 	ResolveTableStyleID(authored string) string
 }
 
@@ -49,6 +49,33 @@ func (defaultTableStyleResolver) ResolveTableStyleID(authored string) string {
 	return authored
 }
 
+// resolveTableAppearance preserves the author's style selection and overrides.
+// Only a real definition may replace the explicit engine fallback.
+func resolveTableAppearance(config *TableRenderConfig) {
+	resolver := config.StyleResolver
+	if resolver == nil {
+		config.Style.StyleID = defaultTableStyleResolver{}.ResolveTableStyleID(config.Style.StyleID)
+		config.templateStyle = config.Style.UseTableStyle
+		return
+	}
+	config.Style.StyleID = resolver.ResolveTableStyleID(config.Style.StyleID)
+	definitionKnown := false
+	if checker, ok := resolver.(TableStyleDefinitionChecker); ok {
+		definitionKnown = true
+		config.templateStyle = checker.HasTableStyleDefinition(config.Style.StyleID)
+	} else if _, standalone := resolver.(defaultTableStyleResolver); !standalone {
+		config.templateStyle = config.Style.UseTableStyle
+	} else {
+		definitionKnown = true
+	}
+	if config.templateStyle {
+		config.engineDefault = false
+	} else if definitionKnown || config.Style.UseTableStyle || config.Style.StyleID == resolver.ResolveTableStyleID("") {
+		config.Style.UseTableStyle = false
+		config.engineDefault = true
+	}
+}
+
 // templateTableStyleResolver reads the same open ZIP used to build the deck,
 // only when a table needs template style resolution or definition lookup.
 // This prevents a concurrent template replacement from changing its style.
@@ -61,4 +88,12 @@ func (ctx *singlePassContext) templateTableStyleResolver() (TableStyleResolver, 
 	}
 	ctx.tableStyleReader = template.BorrowOpenZIP(ctx.templatePath, ctx.templateReader)
 	return ctx.tableStyleReader, nil
+}
+
+// emittedTableStyleID excludes invalid authored IDs from output bookkeeping.
+func emittedTableStyleID(id string) string {
+	if types.IsValidTableStyleID(id) {
+		return id
+	}
+	return ""
 }

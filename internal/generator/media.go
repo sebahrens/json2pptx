@@ -10,7 +10,6 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
-	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
@@ -267,8 +266,7 @@ func (ctx *singlePassContext) prepareImages() error {
 				ctx.processImageContent(slideNum, contentIdx, item, shape, shapeIdx)
 			case ContentTable:
 				var tableStyleResolver TableStyleResolver
-				if tableSpec, ok := item.Value.(*types.TableSpec); ok && tableSpec != nil &&
-					(tableSpec.Style.StyleID == template.TemplateDefaultSentinel || tableSpec.Style.UseTableStyle) {
+				if tableSpec, ok := item.Value.(*types.TableSpec); ok && tableSpec != nil {
 					var err error
 					tableStyleResolver, err = ctx.templateTableStyleResolver()
 					if err != nil {

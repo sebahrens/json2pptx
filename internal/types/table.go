@@ -177,12 +177,12 @@ func IsValidTableStyleID(id string) bool {
 }
 
 // DefaultTableStyle is the style of a table authored without a style block.
-// HeaderBackground and Borders are intentionally empty so the renderer draws
-// its consulting default (no header fill, hairline row rules, no zebra;
-// go-slide-creator-1iiej); set them explicitly to override.
+// StyleID and appearance properties stay empty until the template is known.
+// A defined template default controls appearance; otherwise the renderer draws
+// its consulting fallback. Set properties explicitly to override.
 var DefaultTableStyle = TableStyle{
 	HeaderBackground: "",
 	Borders:          "",
 	Striped:          nil,
-	StyleID:          DefaultTableStyleID,
+	StyleID:          "",
 }

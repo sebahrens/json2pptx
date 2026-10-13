@@ -76,10 +76,6 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 		if t.Style.HeaderBackground != nil {
 			spec.Style.HeaderBackground = *t.Style.HeaderBackground
 		}
-		// Default StyleID when not explicitly set
-		if spec.Style.StyleID == "" {
-			spec.Style.StyleID = types.DefaultTableStyleID
-		}
 	} else {
 		spec.Style = types.DefaultTableStyle
 	}

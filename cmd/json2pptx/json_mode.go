@@ -1209,12 +1209,13 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		var slideDiagCtx *GridDiagramContext
 		if diagCtx != nil {
 			slideDiagCtx = &GridDiagramContext{
-				ThemeColors: diagCtx.ThemeColors,
-				DataPalette: diagCtx.DataPalette,
-				FontFamily:  diagCtx.FontFamily,
-				TitleFont:   diagCtx.TitleFont,
-				ViewingMode: diagCtx.ViewingMode,
-				SlideNum:    i + 1,
+				TableStyleResolver: diagCtx.TableStyleResolver,
+				ThemeColors:        diagCtx.ThemeColors,
+				DataPalette:        diagCtx.DataPalette,
+				FontFamily:         diagCtx.FontFamily,
+				TitleFont:          diagCtx.TitleFont,
+				ViewingMode:        diagCtx.ViewingMode,
+				SlideNum:           i + 1,
 			}
 		}
 		gridResult, err := resolveShapeGrid(slide.ShapeGrid, alloc, overrideBounds, contentZone, slideWidth, slideHeight, slideDiagCtx)

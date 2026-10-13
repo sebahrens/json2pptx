@@ -2544,7 +2544,7 @@ func TestGenerateTableXML_StyleIDAllowlist(t *testing.T) {
 	}{
 		{name: "engine default GUID", styleID: types.DefaultTableStyleID, wantEmit: true},
 		{name: "custom GUID", styleID: "{ABCDEF01-1234-5678-9ABC-DEF012345678}", wantEmit: true},
-		{name: "empty drops", styleID: "", wantEmit: false},
+		{name: "empty resolves to fallback", styleID: "", wantEmit: true},
 		{name: "xml injection drops", styleID: `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"/><a:evil/>`, wantEmit: false},
 		{name: "raw metacharacters drop", styleID: `bad"&<>`, wantEmit: false},
 		{name: "non-guid typo drops", styleID: "MyStyle", wantEmit: false},

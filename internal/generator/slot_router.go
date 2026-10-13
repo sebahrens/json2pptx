@@ -211,7 +211,6 @@ func BuildSlotContentItems(
 
 		result.ContentItems = append(result.ContentItems, items...)
 	}
-
 	return result, nil
 }
 
@@ -232,30 +231,8 @@ func PopulateTableInShape(
 	if table == nil {
 		return nil, fmt.Errorf("table spec is nil")
 	}
-
-	style := table.Style
 	if resolver == nil {
 		resolver = defaultTableStyleResolver{}
-	}
-	style.StyleID = resolver.ResolveTableStyleID(style.StyleID)
-	// Some templates declare a default GUID but ship no formatting rule for it.
-	// Keep the resolved GUID for OOXML compatibility while rendering the header
-	// explicitly — in the engine-default look (go-slide-creator-1iiej; a
-	// header_background only adds the header fill, go-slide-creator-87eu0) —
-	// so it remains visible in PowerPoint and LibreOffice.
-	engineDefault := false
-	if style.UseTableStyle {
-		defined := true
-		switch checker := resolver.(type) {
-		case TableStyleDefinitionChecker:
-			defined = checker.HasTableStyleDefinition(style.StyleID)
-		case defaultTableStyleResolver:
-			defined = false // standalone rendering has no template style rules
-		}
-		if !defined {
-			style.UseTableStyle = false
-			engineDefault = true
-		}
 	}
 
 	// Build render config from placeholder bounds
@@ -267,12 +244,12 @@ func PopulateTableInShape(
 			Height: placeholder.Bounds.Height,
 		},
 		Theme:            theme,
-		Style:            style,
+		Style:            table.Style,
+		StyleResolver:    resolver,
 		DefaultFont:      placeholder.FontFamily,
 		DefaultSize:      placeholder.FontSize,
 		ColumnAlignments: table.ColumnAlignments,
 		AlignTop:         alignTop,
-		engineDefault:    engineDefault,
 	}
 
 	// Generate table XML
@@ -280,6 +257,5 @@ func PopulateTableInShape(
 	if err != nil {
 		return nil, err
 	}
-	result.ResolvedStyleID = style.StyleID
 	return result, nil
 }

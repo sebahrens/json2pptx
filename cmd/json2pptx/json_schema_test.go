@@ -198,22 +198,27 @@ func TestTableInput_ToTableSpec_UseTableStyle(t *testing.T) {
 	}
 }
 
-func TestTableInput_ToTableSpec_UseTableStyleDefaultStyleID(t *testing.T) {
-	input := TableInput{
-		Headers: []string{"A"},
-		Rows: [][]TableCellInput{
-			{{Content: "1", ColSpan: 1, RowSpan: 1}},
-		},
-		Style: &TableStyleInput{
-			UseTableStyle: true,
-		},
-	}
-
-	spec := input.ToTableSpec()
-	// When StyleID is not set, it should default to the standard table style GUID
-	wantStyleID := "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"
-	if spec.Style.StyleID != wantStyleID {
-		t.Errorf("Style.StyleID = %q, want default %q", spec.Style.StyleID, wantStyleID)
+func TestTableInput_ToTableSpec_DefersDefaultStyleID(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		style *TableStyleInput
+	}{
+		{"omitted style", nil},
+		{"empty style", &TableStyleInput{}},
+		{"template appearance", &TableStyleInput{UseTableStyle: true}},
+		{"local borders", &TableStyleInput{Borders: "horizontal"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input := TableInput{Headers: []string{"A"}, Rows: [][]TableCellInput{{{Content: "1", ColSpan: 1, RowSpan: 1}}}, Style: tc.style}
+			spec := input.ToTableSpec()
+			// Preserve omission until the selected template can resolve its default.
+			if spec.Style.StyleID != "" {
+				t.Errorf("Style.StyleID = %q, want deferred default", spec.Style.StyleID)
+			}
+			if tc.style != nil && spec.Style.UseTableStyle != tc.style.UseTableStyle {
+				t.Error("appearance policy lost")
+			}
+		})
 	}
 }
 

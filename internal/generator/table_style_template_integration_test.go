@@ -34,7 +34,7 @@ func TestGenerateTableUsesTemplateDefaultStyle(t *testing.T) {
 				ExcludeTemplateSlides: true,
 				Slides: []SlideSpec{{
 					LayoutID: layoutID,
-					Content:  []ContentItem{{PlaceholderID: "body", Type: ContentTable, Value: tableTestSpec("")}},
+					Content:  []ContentItem{{PlaceholderID: "body", Type: ContentTable, Value: &types.TableSpec{Headers: []string{"Region", "Revenue"}, Rows: [][]types.TableCell{{{Content: "North"}, {Content: "$10M"}}}, Style: types.DefaultTableStyle}}},
 				}},
 			})
 			if err != nil {

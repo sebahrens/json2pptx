@@ -4,6 +4,7 @@ package generator
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -181,6 +182,21 @@ func mergeTemplateWithStubs(templateXML []byte, missingIDs []string) []byte {
 // Called from writeOutput before writeTemplateFiles. A no-op when no tables
 // rendered.
 func (ctx *singlePassContext) installTableStylesOverride() {
+	// Grid tables arrive as raw graphic frames, outside processTableContent.
+	// Include their references so fallback and explicit IDs are portable too.
+	for _, slide := range ctx.slideContentMap {
+		for _, shape := range slide.RawShapeXML {
+			for _, match := range rawTableStyleIDRE.FindAllSubmatch(shape, -1) {
+				id := strings.TrimSpace(string(match[1]))
+				if types.IsValidTableStyleID(id) {
+					if ctx.tableStyleIDsUsed == nil {
+						ctx.tableStyleIDsUsed = make(map[string]bool)
+					}
+					ctx.tableStyleIDsUsed[id] = true
+				}
+			}
+		}
+	}
 	if len(ctx.tableStyleIDsUsed) == 0 {
 		return
 	}
@@ -227,3 +243,5 @@ func (ctx *singlePassContext) installTableStylesOverride() {
 	}
 	ctx.syntheticFiles[PathTableStyles] = []byte(buildTableStylesXML(ctx.tableStyleIDsUsed))
 }
+
+var rawTableStyleIDRE = regexp.MustCompile(`<a:tableStyleId>\s*([^<]+)\s*</a:tableStyleId>`)

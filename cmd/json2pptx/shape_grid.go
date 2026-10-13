@@ -52,12 +52,13 @@ type ShapeGridResult struct {
 // in a shape_grid. Without this context, grid diagrams render with default colors
 // instead of inheriting the template's theme palette.
 type GridDiagramContext struct {
-	ThemeColors []types.ThemeColor // Template theme colors for chart styling
-	DataPalette []string           // Ordered hex palette for chart series (from TemplateMetadata)
-	FontFamily  string             // Template body font, injected when a diagram omits style.font_family
-	TitleFont   string             // Template title font for generated canvas headlines
-	ViewingMode tokens.ViewingMode // Deck-level readability policy for embedded SVG text
-	SlideNum    int                // 1-based slide number for warning messages
+	TableStyleResolver generator.TableStyleResolver // Template table defaults and definitions
+	ThemeColors        []types.ThemeColor           // Template theme colors for chart styling
+	DataPalette        []string                     // Ordered hex palette for chart series (from TemplateMetadata)
+	FontFamily         string                       // Template body font, injected when a diagram omits style.font_family
+	TitleFont          string                       // Template title font for generated canvas headlines
+	ViewingMode        tokens.ViewingMode           // Deck-level readability policy for embedded SVG text
+	SlideNum           int                          // 1-based slide number for warning messages
 	// ShapesOnly asks for the grid's shape list without its media: diagram
 	// cells are not rendered to images and icons are not resolved. Neither
 	// contributes a shape, so Shapes and ShapeSources are exactly what
@@ -1540,7 +1541,7 @@ func collectDiagramCellFindings(cell shapegrid.ResolvedCell, slideIdx int) []pat
 // themeColors are the template's theme colours: the highlight column is a
 // tint of the template's primary fill, as in a placeholder table
 // (go-slide-creator-290o9).
-func generateTableCell(cell shapegrid.ResolvedCell, slideIdx int, themeColors []types.ThemeColor) ([]byte, []patterns.FitFinding, error) {
+func generateTableCell(cell shapegrid.ResolvedCell, slideIdx int, themeColors []types.ThemeColor, resolvers ...generator.TableStyleResolver) ([]byte, []patterns.FitFinding, error) {
 	if len(themeColors) > 0 && cell.TableSpec.Style.HighlightColumn > 0 {
 		themed := *cell.TableSpec
 		themed.Style.HighlightAccent = patterns.PrimaryFill(themeColors)
@@ -1555,6 +1556,12 @@ func generateTableCell(cell shapegrid.ResolvedCell, slideIdx int, themeColors []
 		},
 		Style:            cell.TableSpec.Style,
 		ColumnAlignments: cell.TableSpec.ColumnAlignments,
+	}
+	if len(resolvers) > 0 {
+		cfg.StyleResolver = resolvers[0]
+	}
+	if len(themeColors) > 0 {
+		cfg.Theme = &types.ThemeInfo{Colors: themeColors}
 	}
 	tblResult, err := generator.GenerateTableXML(cell.TableSpec, cfg)
 	if err != nil {
@@ -1611,7 +1618,11 @@ func generateGridCell(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocator,
 		// A layer's shape is addressed under its cell: layers/<i>/shape/text.
 		out.shapes, out.fields, out.icons = s, []string{strings.TrimPrefix(cell.PathSuffix()+"/shape/text", "/")}, icons
 	case shapegrid.CellKindTable:
-		xml, findings, err := generateTableCell(cell, slideIdx, overlayThemeColors(diagCtx))
+		var resolver generator.TableStyleResolver
+		if diagCtx != nil {
+			resolver = diagCtx.TableStyleResolver
+		}
+		xml, findings, err := generateTableCell(cell, slideIdx, overlayThemeColors(diagCtx), resolver)
 		if err != nil {
 			return out, err
 		}

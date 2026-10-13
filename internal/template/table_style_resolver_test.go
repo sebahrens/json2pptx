@@ -3,8 +3,6 @@ package template
 import (
 	"archive/zip"
 	"testing"
-
-	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestBorrowOpenZIPCloseLeavesOwnerOpen(t *testing.T) {
@@ -36,8 +34,9 @@ func TestResolveTableStyleID_Empty(t *testing.T) {
 	defer reader.Close()
 
 	got := reader.ResolveTableStyleID("")
-	if got != types.DefaultTableStyleID {
-		t.Errorf("empty → %q, want %q", got, types.DefaultTableStyleID)
+	want := reader.ResolveTableStyleID(TemplateDefaultSentinel)
+	if got != want {
+		t.Errorf("empty → %q, want template default %q", got, want)
 	}
 }
 

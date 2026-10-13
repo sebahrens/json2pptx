@@ -255,3 +255,13 @@ func buildZipIndex(t *testing.T, files map[string][]byte) utils.ZipIndex {
 	}
 	return utils.BuildZipIndex(r)
 }
+
+func TestGridTableReferencesAreDeclared(t *testing.T) {
+	guid := "{073A0DAA-6AF3-43AB-8588-CEC1D06C72B9}"
+	ctx := &singlePassContext{}
+	ctx.slideContentMap = map[int]SlideSpec{1: {RawShapeXML: [][]byte{[]byte(`<p:graphicFrame><a:tableStyleId>` + guid + `</a:tableStyleId></p:graphicFrame>`)}}}
+	ctx.installTableStylesOverride()
+	if !strings.Contains(string(ctx.syntheticFiles[PathTableStyles]), `styleId="`+guid+`"`) {
+		t.Fatal("grid table's style reference was not declared")
+	}
+}

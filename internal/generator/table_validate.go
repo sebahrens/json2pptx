@@ -35,17 +35,7 @@ func WarnTableCellOverflow(table *types.TableSpec, slideIdx int) []TableCellOver
 	}
 
 	numCols := len(table.Headers)
-	fontSize := defaultFontSize
-
-	// Apply the same column-count font scaling as GenerateTableXML.
-	if numCols > 4 {
-		scale := 4.0 / float64(numCols)
-		scaled := int(float64(fontSize) * scale)
-		if scaled < minFontSizeForTable {
-			scaled = minFontSizeForTable
-		}
-		fontSize = scaled
-	}
+	fontSize := TableColumnScaledFontSize(table.Style, TableBaseFontSize(table.Style), numCols)
 	fontPt := float64(fontSize) / 100.0
 
 	// Use default slide width (~90% for body placeholder) split evenly.

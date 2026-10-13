@@ -100,7 +100,9 @@ If a table has **no** `style` object at all, the entire default is adopted as a 
 
 ## Engine Table Defaults (no style authored)
 
-Independent of the `defaults` block, the renderer applies a consulting table look whenever the author leaves the style unset (go-slide-creator-weaq, restyled by go-slide-creator-1iiej). Only theme scheme colors are used, so the look follows the template. The **engine default** applies when `use_table_style` is false and `style_id` is unset or the engine default GUID (a `header_background` does not leave it — see below) — and as the fallback for `use_table_style` / `"@template-default"` when the template ships no formatting for its table style (see below):
+An omitted `style_id` inherits the template's declared default table style. A non-empty definition controls header and body colors, fills, borders and boldness, without engine formatting drawn over it. An explicit GUID selects that style instead. This applies to placeholder tables, grid tables and nested grids, including deck-level defaults.
+
+When the selected style has no formatting definition, the renderer draws the consulting fallback below using theme colors. `header_background`, `borders` and `striped` override only their own appearance property; `use_table_style: true` suppresses these local appearance overrides when the template defines the style.
 
 | Aspect | Default | Opt out |
 |--------|---------|---------|
@@ -112,7 +114,7 @@ Independent of the `defaults` block, the renderer applies a consulting table loo
 | Total row | bold with a 1pt `dk1` top rule | first cell is `Total` / `Totals` / `Grand total` / `Sum` / `Subtotal` (case-insensitive) — in addition to `totals_row: true` for the last row; rename the label to opt out |
 | Row height | content-driven minimum (one line at the table font plus insets, with a 0.4in floor); when the rows would overflow the frame at that floor the table drops to the compact pitch (line height plus insets, about 0.3in at 12pt; see `table_rows_truncated` in [FIT_FINDINGS.md](FIT_FINDINGS.md)) before any row is hidden; rows are never stretched to fill the placeholder, and the table is top-anchored under the title | — |
 
-Type size: the engine default starts at 12pt rows / 11pt header (a template `style_id` / `use_table_style` that opts out keeps the legacy 18pt start). Wide tables are capped at the 18pt-equivalent width budget (18pt × 4 / columns), so a default table stays at 12pt up to six columns and shrinks from seven, never below the 10pt table readability floor; the `table_font_scaled` finding and the validate-time preflight predict the same sizes. TDR density limits (rows ≤ 7, cols ≤ 6) are unchanged.
+Type size: all styles start at 12pt rows / 11pt header. Selecting a template style changes appearance without increasing text size or row height. Wide tables are capped at the 18pt-equivalent width budget (18pt × 4 / columns), so a default table stays at 12pt up to six columns and shrinks from seven, never below the 10pt table readability floor; the `table_font_scaled` finding and the validate-time preflight predict the same sizes. TDR density limits (header plus data rows ≤ 10, cols ≤ 6) are unchanged.
 
 **`header_background`, `borders` and `striped` are additive** (go-slide-creator-87eu0): each changes only its own aspect on top of the engine default. A `header_background` alone fills the header row and keeps the 12pt / 11pt type, the horizontal rules (no vertical rules, no outer frame) and the unbanded rows; `borders: "all"` or `striped: true` opt in to the grid or zebra stripes individually. Header text on a filled header is `lt1` or `dk1`, whichever contrasts more with the resolved fill (scheme names resolve through the template theme, hex values directly); without a theme, dark scheme names (`accent1`–`accent6`, `dk1`, `dk2`, `tx1`, `tx2`) get `lt1`.
 
@@ -140,7 +142,7 @@ The `style_id` field accepts the special value `"@template-default"`, which reso
 Resolution rules:
 - `"@template-default"` → template's `tableStyles.xml` `def` attribute, falling back to the engine default GUID if the template declares none
 - `"{GUID}"` present in the template → returned as-is (validated)
-- Empty string → engine default GUID
+- Empty string → template default, the same resolution as `"@template-default"`
 
 The `@template-default` sentinel lives in a separate namespace from user-authored style IDs — there is no collision risk with OOXML GUIDs.
 

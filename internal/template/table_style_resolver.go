@@ -14,17 +14,13 @@ const TemplateDefaultSentinel = "@template-default"
 //     falling back to types.DefaultTableStyleID if the template has none.
 //   - "{GUID}" present in the template's index → returned as-is (validated).
 //   - Non-empty but unresolvable → returned verbatim so downstream can warn.
-//   - "" → types.DefaultTableStyleID (engine-default).
+//   - "" → the same default as "@template-default".
 func (r *Reader) ResolveTableStyleID(authored string) string {
-	if authored == "" {
-		return types.DefaultTableStyleID
-	}
-
 	if r.tblStyles == nil {
 		r.tblStyles = newTableStyleIndex(r)
 	}
 
-	if authored == TemplateDefaultSentinel {
+	if authored == "" || authored == TemplateDefaultSentinel {
 		if guid, ok := r.tblStyles.declaredDefault(); ok {
 			return guid
 		}

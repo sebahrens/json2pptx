@@ -9,33 +9,10 @@ import (
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
-// Default table styling (go-slide-creator-weaq, go-slide-creator-1iiej).
-//
-// Without an explicit style, tables referenced the built-in "Medium Style 2 -
-// Accent 1" GUID and deferred the header look to it — but most templates do
-// not ship that style in ppt/tableStyles.xml. The engine therefore draws its
-// own consulting default explicitly, using only theme scheme colors so it
-// stays template-driven:
-//
-//   - header row: NO fill, 11pt bold text-color (dk1) type over a 1pt
-//     text-color rule — never a solid black or accent header bar
-//   - data rows: 12pt, separated by 0.5pt dk1-at-15% hairline rules, no
-//     zebra stripes and no vertical rules; the first column is bold
-//   - numeric columns (detected from the data) right-aligned, header included
-//   - rows labelled Total / Sum / Grand total: bold with a 1pt top rule
-//   - row heights are content-driven minimums, never stretched to fill the
-//     placeholder; the table is anchored at the top of its content area
-//
-// The default applies when the author left the style unset (no
-// use_table_style, style_id empty or the engine default GUID) and as the
-// fallback for use_table_style / "@template-default" when the template ships
-// no formatting for its declared table style. An authored style_id that the
-// template defines is still honoured. header_background, borders and striped
-// are additive on top of the default (go-slide-creator-87eu0): a
-// header_background only fills the header row (header text flips to lt1 or
-// dk1 by contrast) and keeps the 12pt / 11pt type, the horizontal rules and
-// the unbanded rows; explicit borders / striped values opt in to grid lines
-// or zebra stripes individually.
+// Tables inherit a defined template default (or an explicit style GUID).
+// The engine draws the consulting fallback only when no formatting definition
+// is available. Appearance overrides are additive; typography is independent
+// of style selection so switching templates cannot inflate a dense table.
 
 // Engine-default type scale (go-slide-creator-1iiej): 12pt rows, 11pt header.
 // The shrink chain below never takes either under the 10pt table
@@ -52,7 +29,7 @@ const (
 )
 
 // IsEngineDefaultTableStyle reports whether an (unresolved) authored table
-// style leaves the look to the engine's consulting default: no
+// style is a candidate for the engine fallback before template resolution: no
 // use_table_style and a style_id that is empty or the engine-default GUID.
 // header_background does not leave the default (go-slide-creator-87eu0): it
 // only adds a header fill on top of it.
@@ -63,14 +40,10 @@ func IsEngineDefaultTableStyle(st types.TableStyle) bool {
 
 // TableBaseFontSize is the unscaled body font size (hundredths of a point)
 // the renderer starts its shrink chain from for a table with this style when
-// no placeholder size is configured: 12pt for the engine default, the legacy
-// 18pt otherwise. The preflight and fit-report predictors use it so their
-// predictions match the render.
-func TableBaseFontSize(st types.TableStyle) int {
-	if IsEngineDefaultTableStyle(st) {
-		return engineDefaultRowFontSize
-	}
-	return defaultFontSize
+// no placeholder size is configured: 12pt for every appearance. Preflight and
+// fit-report predictors use it so their predictions match the render.
+func TableBaseFontSize(_ types.TableStyle) int {
+	return engineDefaultRowFontSize
 }
 
 // columnScaledFontSize applies the wide-table shrink: a standard slide fits
@@ -78,19 +51,19 @@ func TableBaseFontSize(st types.TableStyle) int {
 // 10pt readability floor. Legacy tables scale their size by 4/numCols; an
 // engine-default table (already 12pt) is only capped at the 18pt-equivalent
 // size, so it keeps 12pt up to six columns. Reports whether it shrank.
-func columnScaledFontSize(size, numCols int, engineDefault bool) (int, bool) {
+func columnScaledFontSize(size, numCols int, compactTypography bool) (int, bool) {
 	if numCols <= 4 {
 		return size, false
 	}
 	base := size
-	if engineDefault {
+	if compactTypography {
 		base = defaultFontSize
 	}
 	scaled := int(float64(base) * 4.0 / float64(numCols))
 	if scaled < minFontSizeForTable {
 		scaled = minFontSizeForTable
 	}
-	if engineDefault && scaled >= size {
+	if compactTypography && scaled >= size {
 		return size, false
 	}
 	return scaled, true
@@ -98,8 +71,8 @@ func columnScaledFontSize(size, numCols int, engineDefault bool) (int, bool) {
 
 // TableColumnScaledFontSize is columnScaledFontSize for the fit-report
 // walker, keyed by the authored table style.
-func TableColumnScaledFontSize(st types.TableStyle, size, numCols int) int {
-	scaled, _ := columnScaledFontSize(size, numCols, IsEngineDefaultTableStyle(st))
+func TableColumnScaledFontSize(_ types.TableStyle, size, numCols int) int {
+	scaled, _ := columnScaledFontSize(size, numCols, size <= engineDefaultRowFontSize)
 	return scaled
 }
 
@@ -107,7 +80,7 @@ func TableColumnScaledFontSize(st types.TableStyle, size, numCols int) int {
 // column types. Explicit author choices always win: use_table_style, a
 // non-default style_id, column_types, or a per-column alignment.
 func applyDefaultTableStyling(table *types.TableSpec, config *TableRenderConfig) {
-	if IsEngineDefaultTableStyle(config.Style) {
+	if !config.templateStyle && IsEngineDefaultTableStyle(config.Style) {
 		config.engineDefault = true
 	}
 	if len(config.Style.ColumnTypes) == 0 {
@@ -126,10 +99,10 @@ func tableStriped(config TableRenderConfig) bool {
 }
 
 // headerFontSize is the header-row font size for a table rendered at the
-// given body size: 11/12 of the body for the engine default (never below the
+// given body size: 11/12 of the body for compact typography (never below the
 // readability floor, never above the body), 110% of the body otherwise.
 func headerFontSize(config TableRenderConfig, bodySize int) int {
-	if !config.engineDefault {
+	if !config.compactTypography {
 		return int(float64(bodySize) * 1.1)
 	}
 	h := bodySize * engineDefaultHeaderFontSize / engineDefaultRowFontSize
