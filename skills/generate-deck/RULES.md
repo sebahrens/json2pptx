@@ -122,15 +122,15 @@ Input JSON is validated with `additionalProperties: false` at every level: unkno
 
 | # | Rule | Rationale |
 |---|---|---|
-| 20 | **MUST split** if rows > 7 OR cols > 6 OR font_size < 9pt. No exceptions. | Larger tables overflow, clip, or become unreadable at viewing distance. Emit `split_slide` instead of cramming |
+| 20 | **MUST split** if logical rows (header included) > 10 OR cols > 6 OR font_size < 9pt. No exceptions. | Protect legibility and source: emit `split_slide` |
 
 **Row width.** `headers` defines the columns. A shorter row (counting `col_span`) is padded; a wider one is rejected with `INVALID_PARAMETER` at `...table_value.rows` (grid cells: `.../cells/N/table.rows`).
 
-**Multiline cells.** A cell with `\n`, or a comma-list of ≥3 items in a cell of 48+ characters, counts as N logical rows (N = max(line_count, comma_items)); apply this BEFORE the rows > 10 check (header included; past 7 the rows render at a compact pitch). 8 rows where 3 cells hold 2 lines = 12 logical rows → split.
+**Multiline cells.** A cell with `\n`, or a comma-list of ≥3 items in a cell of 48+ characters, counts as N logical rows (N = max(line_count, comma_items)); apply this BEFORE the rows > 10 check (header included). 8 rows where 3 cells hold 2 lines = 12 logical rows → split.
 
 When TDR forces a split, say so ("N logical rows × M columns; per Rule 20 emitting split_slide") and never shrink fonts below 9pt to avoid it.
 
-**Default look.** A table with no `style` renders as a consulting table: no header fill, 11pt bold header over a rule, 12pt rows separated by hairlines, no zebra, bold first column, numeric columns right-aligned, content-height rows. Prefer it. Opt-ins are additive: `header_background` only fills the header (text flips by contrast; type, rules and unbanded rows stay); `borders` / `striped` add grid lines / zebra; `style.highlight_column` (1-based) tints a column with the template's `color_roles.primary_fill`.
+**Default look.** Omit `style` to inherit defined template fills, borders, colours and boldness at 12pt body / 11pt headers. Empty definitions use the unfilled, hairline fallback. `header_background`, `borders`, `striped` and `highlight_column` override only their property; `use_table_style: true` leaves appearance to the style. `style_id` selects another GUID (case-insensitive), keeping text sizes.
 
 `table_density_guide` (MCP) or `json2pptx tables guide` (CLI, `--json` for the envelope) gives font-size and row-count guidance; scope with `{template}` / `--template <name>`, and `style_id` (requires `template`) narrows to one of its `table_styles[]`.
 

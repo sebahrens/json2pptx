@@ -101,8 +101,8 @@ repairs from advice.
   output validation, repair, images, assets, SVG/diagram integration.
 - [TOOLS.md](TOOLS.md): phase map, tool-profile discovery, MCP-only
   operations, composition recipes.
-- [RULES.md](RULES.md): shape-grid, chart, table, content, contrast,
-  typography, anti-pattern rules.
+- [RULES.md](RULES.md): shape-grid, chart, content and contrast rules; native
+  tables inherit template styles at 12pt body / 11pt headers without resizing.
 - [PATTERNS.md](PATTERNS.md): pattern selection, placement, text capacity,
   accent defaults; live catalog and schemas: `list_patterns` /
   `show_pattern`.

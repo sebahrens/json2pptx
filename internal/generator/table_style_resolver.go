@@ -19,7 +19,7 @@ type TableStyleResolver interface {
 	//
 	// Contract:
 	//   - "@template-default"                    → template's declared default GUID, or engine-default
-	//   - "{GUID}" present in template index     → returned as-is
+	//   - "{GUID}" present in template index     → declared spelling (case-insensitive)
 	//   - non-empty but unresolvable             → returned verbatim (downstream may warn)
 	//   - ""                                     → template default, or engine-default
 	ResolveTableStyleID(authored string) string

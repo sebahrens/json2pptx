@@ -354,14 +354,29 @@ func newTableStyleIndex(r *Reader) *tableStyleIndex {
 // "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}".  If the GUID is not declared in
 // the template (or the XML is missing/malformed), ok is false.
 func (idx *tableStyleIndex) lookup(id string) (name string, ok bool) {
-	idx.once.Do(idx.parse)
+	id = idx.canonicalID(id)
 	name, ok = idx.styles[id]
 	return
 }
 
 func (idx *tableStyleIndex) hasDefinition(id string) bool {
-	idx.once.Do(idx.parse)
+	id = idx.canonicalID(id)
 	return idx.definitions[id]
+}
+
+// canonicalID preserves the template's spelling while matching GUIDs without
+// regard to hex-letter case. Unknown IDs retain their authored spelling.
+func (idx *tableStyleIndex) canonicalID(id string) string {
+	idx.once.Do(idx.parse)
+	if _, ok := idx.styles[id]; ok {
+		return id
+	}
+	for declared := range idx.styles {
+		if strings.EqualFold(id, declared) {
+			return declared
+		}
+	}
+	return id
 }
 
 // TableStyleEntry is an {ID, Name} pair from ppt/tableStyles.xml.

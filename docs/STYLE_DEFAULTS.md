@@ -141,7 +141,7 @@ The `style_id` field accepts the special value `"@template-default"`, which reso
 
 Resolution rules:
 - `"@template-default"` → template's `tableStyles.xml` `def` attribute, falling back to the engine default GUID if the template declares none
-- `"{GUID}"` present in the template → returned as-is (validated)
+- `"{GUID}"` present in the template → template spelling (GUID hex-letter case is ignored)
 - Empty string → template default, the same resolution as `"@template-default"`
 
 The `@template-default` sentinel lives in a separate namespace from user-authored style IDs — there is no collision risk with OOXML GUIDs.

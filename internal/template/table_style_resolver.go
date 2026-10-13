@@ -12,7 +12,7 @@ const TemplateDefaultSentinel = "@template-default"
 // Resolution rules:
 //   - "@template-default" → declared default from tableStyles.xml def attr,
 //     falling back to types.DefaultTableStyleID if the template has none.
-//   - "{GUID}" present in the template's index → returned as-is (validated).
+//   - "{GUID}" present in the template's index → declared spelling (case-insensitive).
 //   - Non-empty but unresolvable → returned verbatim so downstream can warn.
 //   - "" → the same default as "@template-default".
 func (r *Reader) ResolveTableStyleID(authored string) string {
@@ -22,7 +22,7 @@ func (r *Reader) ResolveTableStyleID(authored string) string {
 
 	if authored == "" || authored == TemplateDefaultSentinel {
 		if guid, ok := r.tblStyles.declaredDefault(); ok {
-			return guid
+			return r.tblStyles.canonicalID(guid)
 		}
 		return types.DefaultTableStyleID
 	}
@@ -30,7 +30,7 @@ func (r *Reader) ResolveTableStyleID(authored string) string {
 	// GUID-shaped or arbitrary value: return as-is.
 	// The index validates that declared GUIDs exist, but we don't reject
 	// unknown values — they may still render correctly in PowerPoint.
-	return authored
+	return r.tblStyles.canonicalID(authored)
 }
 
 // HasTableStyleDefinition reports whether a GUID has a non-empty tblStyle

@@ -28,6 +28,8 @@ func TestTemplateTableInheritanceAcrossGenerationSurfaces(t *testing.T) {
 		{"deck defaults", `{"slide_type":"content","content":[` + title + `],"shape_grid":` + grid + `}`, `,"defaults":{"table_style":{"style_id":"@template-default","use_table_style":true}}`},
 		{"explicit brand", `{"slide_type":"content","content":[` + title + `,{"placeholder_id":"body","type":"table","table_value":` + strings.TrimSuffix(table, `}`) + `,"style":{"style_id":"` + testutil.BrandTableStyleID + `","use_table_style":true}}}]}`, ``},
 	}
+	cases = append(cases, struct{ name, slide, defaults string }{"lowercase brand GUID", strings.ReplaceAll(cases[4].slide, testutil.BrandTableStyleID, strings.ToLower(testutil.BrandTableStyleID)), ""})
+
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			raw := fmt.Sprintf(`{"template":"brand-table","output_filename":"table.pptx","slides":[%s]%s}`, tc.slide, tc.defaults)
@@ -137,5 +139,14 @@ func TestGridTemplateDefaultWithoutDefinitionUsesFallback(t *testing.T) {
 	slide := slideXMLParts(t, result.OutputPath)["ppt/slides/slide1.xml"]
 	if !strings.Contains(slide, `<a:tableStyleId>`+testutil.BrandTableStyleID+`</a:tableStyleId>`) || !strings.Contains(slide, `<a:lnB w="12700"`) || !strings.Contains(slide, `sz="1200"`) || !strings.Contains(slide, `sz="1100" b="1"`) {
 		t.Fatal("undefined grid style did not get compact readable fallback")
+	}
+}
+
+func TestValidateTableStyleIDAcceptsGUIDCaseVariants(t *testing.T) {
+	for _, id := range []string{testutil.BrandTableStyleID, strings.ToLower(testutil.BrandTableStyleID)} {
+		table := &TableInput{Style: &TableStyleInput{StyleID: id}}
+		if finding := validateTableStyleID(table, "/slides/0/content/0/table_value", 0, map[string]string{testutil.BrandTableStyleID: "Brand Table 3"}, []string{testutil.BrandTableStyleID}); finding != nil {
+			t.Errorf("valid GUID variant %s warned: %+v", id, finding)
+		}
 	}
 }

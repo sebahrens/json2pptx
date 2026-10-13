@@ -209,13 +209,12 @@ Grouped bullets with per-group headers and body text. Useful for structured cont
 
 ### table
 
-Data table with optional styling.
+Tables inherit the template’s defined default style at 12pt body / 11pt headers. Omit styling to keep it; empty definitions use the consulting fallback.
 
 ```json
 {"placeholder_id": "body", "type": "table", "table_value": {
   "headers": ["Metric", "Q1", "Q2"],
   "rows": [["Revenue", "$10M", "$12M"], ["Growth", "8%", "15%"]],
-  "style": {"header_background": "accent1", "borders": "horizontal", "striped": true},
   "column_alignments": ["l", "r", "r"]
 }}
 ```
@@ -224,7 +223,7 @@ Data table with optional styling.
 |---|---|---|
 | `headers` | `string[]` | Column headers |
 | `rows` | `(string \| {content, col_span, row_span})[][]` | Row data — cells can be plain strings or objects for spanning |
-| `style` | `object` | `header_background` (scheme colour; hex only with `design_mode: "free"`), `borders` (`"horizontal"`, `"all"`, `"none"`), `striped` (bool). Omit `style` for the engine default: unfilled 11pt bold header over a 1pt rule, 12pt rows with hairline rules, no zebra, bold first column, numbers right-aligned (see `docs/STYLE_DEFAULTS.md`) |
+| `style` | `object` | `header_background` (scheme colour; hex only with `design_mode: "free"`), `borders` (`"horizontal"`, `"all"`, `"none"`), `striped` (bool). Omit `style` to inherit the template default. `style_id` (GUID, case-insensitive, or `"@template-default"`) selects a style; `use_table_style: true` suppresses local appearance overrides. Style choice keeps compact typography (see `docs/STYLE_DEFAULTS.md`) |
 | `column_alignments` | `string[]` | Per-column alignment: `"l"`, `"c"`, `"r"` |
 
 ### chart

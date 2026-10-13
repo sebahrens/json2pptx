@@ -2,6 +2,8 @@ package template
 
 import (
 	"archive/zip"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+	"strings"
 	"testing"
 )
 
@@ -155,5 +157,24 @@ func TestHasTableStyleDefinitionIgnoresEmptyStub(t *testing.T) {
 				t.Errorf("HasTableStyleDefinition = %t, want %t", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestTableStyleGUIDCasingResolvesToDeclaredDefinition(t *testing.T) {
+	reader, err := OpenTemplate(testutil.TableStyleTemplate(t, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	authored := strings.ToLower(testutil.BrandTableStyleID)
+	if got := reader.ResolveTableStyleID(authored); got != testutil.BrandTableStyleID {
+		t.Errorf("resolved %q, want declared %q", got, testutil.BrandTableStyleID)
+	}
+	if !reader.HasTableStyleDefinition(authored) {
+		t.Error("valid GUID case variant missed its definition")
+	}
+	name, ok := reader.tblStyles.lookup(authored)
+	if !ok || name != "Brand Table 3" {
+		t.Errorf("case variant lookup: %q, %v", name, ok)
 	}
 }

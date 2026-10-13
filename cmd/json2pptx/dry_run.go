@@ -1528,6 +1528,11 @@ func validateTableStyleID(table *TableInput, tablePath string, slideIdx int, sty
 	if _, ok := styleByID[styleID]; ok {
 		return nil
 	}
+	for declared := range styleByID {
+		if strings.EqualFold(styleID, declared) {
+			return nil
+		}
+	}
 
 	path := tableStyleIDPath(table, tablePath)
 	msg := fmt.Sprintf("slide %d: style_id %q not found in template table styles; use list_templates to see available table_styles",
