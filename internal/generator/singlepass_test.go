@@ -2644,39 +2644,32 @@ func TestPopulateTextInSlide_PlaceholderNotFound_EmitsValidationError(t *testing
 // TestProcessChartContent_FailedRendering tests chart rendering failure handling
 func TestProcessChartContent_FailedRendering(t *testing.T) {
 	ctx := newSinglePassContext("", nil, nil, false, nil)
-
-	shape := &shapeXML{
-		NonVisualProperties: nonVisualPropertiesXML{
-			NvPr: nvPrXML{Placeholder: &placeholderXML{Type: "chart"}},
-		},
-		TextBody: &textBodyXML{},
-	}
-
-	// Invalid DiagramSpec that will fail rendering
-	item := ContentItem{
-		PlaceholderID: "chart1",
-		Type:          ContentDiagram,
-		Value:         &types.DiagramSpec{Type: "bar_chart"}, // Minimal spec should fail
-	}
-
+	bounds := types.BoundingBox{X: 914400, Y: 914400, Width: 4 * 914400, Height: 3 * 914400}
+	shape := &shapeXML{NonVisualProperties: nonVisualPropertiesXML{NvPr: nvPrXML{Placeholder: &placeholderXML{Type: "chart"}}}, TextBody: &textBodyXML{}, ShapeProperties: shapePropertiesXML{Transform: &transformXML{Offset: offsetXML{X: bounds.X, Y: bounds.Y}, Extent: extentXML{CX: bounds.Width, CY: bounds.Height}}}}
+	item := ContentItem{PlaceholderID: "chart1", Type: ContentDiagram, Value: &types.DiagramSpec{Type: "bar_chart"}}
 	ctx.processDiagramContent(1, 0, item, shape, 0, newPlaceholderResolver([]shapeXML{*shape}))
-
-	// Should have a warning about failed chart rendering
-	if len(ctx.warnings) == 0 {
-		t.Error("expected warning for failed chart rendering")
+	if len(ctx.warnings) == 0 || !strings.Contains(strings.Join(ctx.warnings, "\n"), "chart1") {
+		t.Fatalf("missing located chart-render warning: %v", ctx.warnings)
 	}
-
-	// A placeholder image should be inserted for graceful degradation
-	// (the insertDiagramPlaceholder feature adds a styled PNG so slides
-	// don't show blank areas when chart rendering fails)
-	if len(ctx.slideRelUpdates[1]) != 1 {
-		t.Errorf("expected 1 placeholder media relationship, got %d", len(ctx.slideRelUpdates[1]))
+	if len(ctx.mediaFailures) != 1 {
+		t.Fatalf("lost structured media failure: %+v", ctx.mediaFailures)
 	}
-	if len(ctx.slideRelUpdates[1]) == 1 {
-		rel := ctx.slideRelUpdates[1][0]
-		if len(rel.data) == 0 {
-			t.Error("placeholder image data should not be empty")
+	failure := ctx.mediaFailures[0]
+	if failure.SlideNum != 1 || failure.PlaceholderID != "chart1" || failure.ContentType != "diagram" || failure.DiagramType != "bar_chart" || failure.Reason == "" || failure.Fallback != "placeholder_image" {
+		t.Fatalf("failure provenance changed: %+v", failure)
+	}
+	refused := false
+	for _, finding := range ctx.fitFindings {
+		if finding.Code == patterns.ErrCodeDiagramRenderFailed && finding.Path == "/slides/0/content/0" && finding.Action == "refuse" && finding.Fix != nil && finding.Fix.Params["reason"] == failure.Reason {
+			refused = true
 		}
+	}
+	if !refused {
+		t.Fatalf("missing content-loss refusal with original error: %+v", ctx.fitFindings)
+	}
+	assertNativeFallback(t, ctx, bounds, 0, "Data unavailable")
+	if !strings.Contains(ctx.panelShapeInserts[1][0].groupXML, "Bar Chart") {
+		t.Fatal("fallback lost failed diagram type")
 	}
 }
 
@@ -3148,47 +3141,40 @@ func TestWriteNewSlideRelationships_RequestedLayout(t *testing.T) {
 
 // TestConvertSVGToRaster_UnavailableConverter tests SVG conversion when converter is unavailable
 func TestConvertSVGToRaster_UnavailableConverter(t *testing.T) {
-	ctx := newSinglePassContext("", nil, nil, false, nil)
-	// Create a converter that reports as unavailable
-	ctx.svgConverter = &SVGConverter{
-		Strategy: SVGStrategyPNG,
-		Scale:    2.0,
-	}
-
-	// Set up placeholder bounds for the fallback image (4x3 inches in EMUs)
-	placeholderBounds := types.BoundingBox{
-		X:      914400,
-		Y:      914400,
-		Width:  914400 * 4,
-		Height: 914400 * 3,
-	}
-	slideNum := 1
-	shapeIdx := 0
-
-	// Mock unavailability by not having rsvg-convert installed
-	// The actual test depends on system state, so we check the warning behavior
-	convertedPath, ok := ctx.convertSVGToRaster("/path/to/test.svg", placeholderBounds, slideNum, shapeIdx)
-
-	// If converter is available, we can't really test this
-	// But we can verify the function returns expected values
-	if ok && convertedPath == "" {
-		t.Error("if conversion succeeded, path should not be empty")
-	}
-	if !ok && convertedPath != "" {
-		t.Error("if conversion failed, path should be empty")
-	}
-
-	// If conversion failed, verify that fallback image was inserted
-	if !ok {
-		rels := ctx.slideRelUpdates[slideNum]
-		if len(rels) == 0 {
-			t.Error("expected fallback image to be inserted when conversion fails")
-		} else {
-			// Verify the fallback image has valid data
-			if len(rels[0].data) == 0 {
-				t.Error("expected fallback image data to be non-empty")
+	for _, tc := range []struct {
+		name    string
+		attempt bool
+		warning string
+	}{{"tools unavailable", false, "not available"}, {"converter execution fails", true, "SVG conversion failed"}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := newSinglePassContext("", nil, nil, false, nil)
+			ctx.ctx = t.Context()
+			ctx.svgConverter = &SVGConverter{Strategy: SVGStrategyPNG, Scale: 2.0}
+			if tc.attempt {
+				ctx.svgConverter.rsvgConvertPath = filepath.Join(t.TempDir(), "missing-rsvg-convert")
 			}
-		}
+			// Freeze discovery so neither the installed tools nor PATH affect this test.
+			markToolsFound(ctx.svgConverter)
+			imagePath := filepath.Join(t.TempDir(), "source.svg")
+			if err := os.WriteFile(imagePath, []byte(testSVGContent), 0600); err != nil {
+				t.Fatal(err)
+			}
+			bounds := types.BoundingBox{X: 914400, Y: 914400, Width: 4 * 914400, Height: 3 * 914400}
+			converted, ok := ctx.convertSVGToRaster(imagePath, bounds, 1, 0)
+			if ok || converted != "" {
+				t.Fatalf("failed conversion returned usable media: %q %t", converted, ok)
+			}
+			if len(ctx.warnings) != 1 || !strings.Contains(ctx.warnings[0], imagePath) || !strings.Contains(ctx.warnings[0], tc.warning) {
+				t.Fatalf("lost original SVG failure provenance: %v", ctx.warnings)
+			}
+			if tc.attempt && !strings.Contains(ctx.warnings[0], "rsvg-convert") {
+				t.Fatalf("converter execution error missing: %v", ctx.warnings)
+			}
+			if len(ctx.svgCleanupFuncs) != 0 {
+				t.Fatal("failed conversion registered a successful output cleanup")
+			}
+			assertNativeFallback(t, ctx, bounds, 0, "SVG Unavailable")
+		})
 	}
 }
 

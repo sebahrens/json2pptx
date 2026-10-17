@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/utils"
@@ -115,7 +116,8 @@ func splitOnNewlines(text string) []string {
 // control characters (see pptx.IsIllegalXMLChar). Tab, newline, and carriage
 // return are preserved.
 func xmlEscapeString(s string) string {
-	return pptx.EscapeXMLText(s)
+	// Preserve all five legacy entities while sharing the XML 1.0 sanitizer.
+	return strings.ReplaceAll(pptx.EscapeXMLAttr(s), "'", "&apos;")
 }
 
 // generateNotesSlideRels creates the relationships file for a notes slide.

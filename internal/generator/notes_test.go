@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"encoding/xml"
 	"strings"
 	"testing"
 )
@@ -162,5 +163,27 @@ func TestNotesSlideXMLPaths(t *testing.T) {
 	}
 	if got := NotesSlideRelsPath(1); got != "ppt/notesSlides/_rels/notesSlide1.xml.rels" {
 		t.Errorf("NotesSlideRelsPath(1) = %q", got)
+	}
+}
+
+func TestGenerateNotesSlideXMLQuotesAndControlsRoundTrip(t *testing.T) {
+	raw := generateNotesSlideXML("A\x00\x0b\ufffe\uffff<&>\"'Z")
+	if !strings.Contains(string(raw), "A&lt;&amp;&gt;&quot;&apos;Z") {
+		t.Fatalf("legacy five-entity encoding changed: %s", raw)
+	}
+	var notes struct {
+		Shapes []struct {
+			Text []string `xml:"txBody>p>r>t"`
+		} `xml:"cSld>spTree>sp"`
+	}
+	if err := xml.Unmarshal(raw, &notes); err != nil {
+		t.Fatalf("notes part is invalid XML: %v", err)
+	}
+	var got string
+	for _, shape := range notes.Shapes {
+		got += strings.Join(shape.Text, "")
+	}
+	if got != "A<&>\"'Z" {
+		t.Fatalf("notes content changed during sanitized round trip: %q", got)
 	}
 }

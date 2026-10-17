@@ -2,6 +2,7 @@ package generator
 
 import (
 	"bytes"
+	"encoding/xml"
 	"image"
 	"image/png"
 	"strings"
@@ -193,6 +194,23 @@ func assertNativeFallback(t *testing.T, ctx *singlePassContext, bounds types.Bou
 		t.Fatalf("placeholder geometry lost %+v", ins)
 	}
 	ctx.finalizePanelGroupXML()
+	nativeXML := ctx.panelShapeInserts[1][0].groupXML
+	var shape shapeXML
+	if err := xml.Unmarshal([]byte(nativeXML), &shape); err != nil {
+		t.Fatalf("invalid native fallback XML: %v", err)
+	}
+	transform := shape.ShapeProperties.Transform
+	if transform == nil || transform.Offset.X != bounds.X || transform.Offset.Y != bounds.Y || transform.Extent.CX != bounds.Width || transform.Extent.CY != bounds.Height {
+		t.Fatalf("written fallback geometry changed: %+v", transform)
+	}
+	for _, want := range []string{`<p:sp>`, `schemeClr val="lt2"`, `schemeClr val="dk2"`, `typeface="+mn-lt"`} {
+		if !strings.Contains(nativeXML, want) {
+			t.Errorf("fallback missing native themed content %q", want)
+		}
+	}
+	if len(ctx.media.AllocatedPaths()) != 0 || len(ctx.usedExtensions) != 0 || len(ctx.mediaFiles) != 0 || strings.Contains(nativeXML, "blip") || strings.Contains(nativeXML, "r:embed") {
+		t.Fatal("fallback left allocated or dangling media")
+	}
 	if !strings.Contains(ctx.panelShapeInserts[1][0].groupXML, text) {
 		t.Fatal("native fallback has no visible text")
 	}
