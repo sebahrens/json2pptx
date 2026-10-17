@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log/slog"
 	"math"
 	"strings"
 
@@ -100,7 +101,12 @@ func rebalanceRegionsStack(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandC
 	}
 	total := grid.Rows[textRow].Height + grid.Rows[visualRow].Height
 	visual := grid.Rows[visualRow].Cells[0]
-	visualMin := math.Min(grid.Rows[visualRow].Height, regionVisualMinPct(visual)*total/100)
+	minPct, err := regionVisualMinPct(visual)
+	if err != nil {
+		slog.Warn("cannot rebalance malformed region pattern", "error", err)
+		return
+	}
+	visualMin := math.Min(grid.Rows[visualRow].Height, minPct*total/100)
 	// The slack is the first thing a tight stack gives up.
 	share := math.Min(math.Ceil((text.needPt+regionsStackTextSlackPt)/availPt*total*10)/10, total-visualMin)
 	if share <= 0 || math.Abs(share-grid.Rows[textRow].Height) < regionsStackMinChangePct {
@@ -171,7 +177,7 @@ func regionPatternFits(cell *jsonschema.GridCellInput, ctx patterns.ExpandContex
 }
 
 // regionVisualMinPct is the least share of the stack a pattern region reads in.
-func regionVisualMinPct(cell *jsonschema.GridCellInput) float64 {
+func regionVisualMinPct(cell *jsonschema.GridCellInput) (float64, error) {
 	raw, heading := cell.Pattern, 0.0
 	if len(raw) == 0 && cell.Grid != nil {
 		heading = regionsStackHeadingPct
@@ -183,17 +189,17 @@ func regionVisualMinPct(cell *jsonschema.GridCellInput) float64 {
 			}
 		}
 	}
-	var p struct {
-		Name string `json:"name"`
+	name, err := patternName(raw)
+	if err != nil {
+		return 0, err
 	}
-	_ = json.Unmarshal(raw, &p)
-	if pct, ok := regionsStackVisualMinPct[p.Name]; ok {
-		return pct + heading
+	if pct, ok := regionsStackVisualMinPct[name]; ok {
+		return pct + heading, nil
 	}
-	if strings.HasPrefix(p.Name, "kpi-") {
-		return regionsStackKPIMinPct + heading
+	if strings.HasPrefix(name, "kpi-") {
+		return regionsStackKPIMinPct + heading, nil
 	}
-	return regionsStackOtherMinPct + heading
+	return regionsStackOtherMinPct + heading, nil
 }
 
 // regionCellHasPattern reports whether a region's cell is a named pattern,

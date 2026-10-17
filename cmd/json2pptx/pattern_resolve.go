@@ -39,7 +39,10 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// Size content against the rectangle it will actually render into. Author
 	// bounds used to replace only grid.Bounds after expansion, so card heights
 	// and text fit had already been chosen from the full content area.
-	expandCtx := patternAccentContext(ctx, p)
+	expandCtx, err := patternAccentContext(ctx, p)
+	if err != nil {
+		return nil, nil, err
+	}
 	if b, relative := resolvePatternBounds(p); b != nil {
 		expandCtx.LayoutBounds = patternExpansionBounds(ctx, b, relative)
 	}
@@ -179,12 +182,16 @@ func stampPatternMeasureFonts(grid *jsonschema.ShapeGridInput, fonts jsonschema.
 	}
 }
 
-func patternAccentContext(ctx patterns.ExpandContext, p *PatternInput) patterns.ExpandContext {
+func patternAccentContext(ctx patterns.ExpandContext, p *PatternInput) (patterns.ExpandContext, error) {
 	var authored struct {
 		Accent         string `json:"accent"`
 		SemanticAccent string `json:"semantic_accent"`
 	}
-	_ = json.Unmarshal(p.Overrides, &authored)
+	if len(p.Overrides) > 0 {
+		if err := json.Unmarshal(p.Overrides, &authored); err != nil {
+			return ctx, cliPatternError("pattern %q: invalid overrides: %w", p.Name, err)
+		}
+	}
 	semanticResolved := false
 	if ctx.Metadata != nil {
 		semanticResolved = ctx.Metadata.SemanticAccents[authored.SemanticAccent] != ""
@@ -194,7 +201,7 @@ func patternAccentContext(ctx patterns.ExpandContext, p *PatternInput) patterns.
 	}
 	ctx.AutoAccent = authored.Accent == "" && !semanticResolved
 	if ctx.AccentStrategy != patterns.AccentStrategyRotate {
-		return ctx
+		return ctx, nil
 	}
 	// Canonical JSON is stable across whitespace and object-key order, unlike
 	// deck position. Repeated identical patterns intentionally share a colour,
@@ -202,7 +209,7 @@ func patternAccentContext(ctx patterns.ExpandContext, p *PatternInput) patterns.
 	// apart.
 	if key, ok := patterns.SharedRotationKey(p.Name); ok {
 		ctx.RotationKey = key
-		return ctx
+		return ctx, nil
 	}
 	var canonical any
 	if err := json.Unmarshal(p.Values, &canonical); err == nil {
@@ -210,7 +217,7 @@ func patternAccentContext(ctx patterns.ExpandContext, p *PatternInput) patterns.
 			ctx.RotationKey = p.Name + ":" + string(data)
 		}
 	}
-	return ctx
+	return ctx, nil
 }
 
 func collectExpansionWarnings(pat patterns.Pattern, ctx patterns.ExpandContext, p *PatternInput, values, overrides any) []string {

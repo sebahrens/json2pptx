@@ -953,7 +953,9 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	// them: a contrast repair inside one is reported at the pattern.
 	nestedCells := nestedPatternCells{}
 	if slide.ShapeGrid != nil {
-		collectNestedPatternCells(slide.ShapeGrid, slidepath.ShapeGrid(i), nestedCells, 0)
+		if err := collectNestedPatternCells(slide.ShapeGrid, slidepath.ShapeGrid(i), nestedCells, 0); err != nil {
+			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "shape_grid", "nested pattern", err)
+		}
 		// Expansion rewrites the cells it expands, and an authored grid is
 		// the caller's: expand a copy, so the same parsed input generates the
 		// same deck a second time (go-slide-creator-8jp05).

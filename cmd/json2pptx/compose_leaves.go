@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
@@ -22,13 +23,11 @@ func composeNativeLeafCount(s SegmentInput) int {
 func composeHasNativeLeaf(s SegmentInput) bool { return composeNativeLeafCount(s) > 0 }
 func composeNativeLeaf(s SegmentInput) *jsonschema.ShapeGridInput {
 	if s.ShapeGrid != nil {
-		var clone jsonschema.ShapeGridInput
-		raw, _ := json.Marshal(s.ShapeGrid)
-		_ = json.Unmarshal(raw, &clone)
+		clone := s.ShapeGrid.Clone()
 		if len(clone.Columns) == 0 {
-			clone.Columns, _ = json.Marshal(inferColumnCount(&clone))
+			clone.Columns = json.RawMessage(strconv.Itoa(inferColumnCount(clone)))
 		}
-		return &clone
+		return clone
 	}
 	cell := &jsonschema.GridCellInput{Table: s.Table, Image: s.Image}
 	if s.Text != nil {
@@ -39,10 +38,12 @@ func composeNativeLeaf(s SegmentInput) *jsonschema.ShapeGridInput {
 		for _, b := range s.Text.Bullets {
 			paras = append(paras, map[string]any{"content": b, "size": 12, "align": "l", "bullet": true})
 		}
+		// This local object contains only strings, integers, and booleans;
+		// unlike caller-owned RawMessages, its JSON encoding cannot fail.
 		text, _ := json.Marshal(map[string]any{"paragraphs": paras, "vertical_align": "top"})
 		cell.Shape = &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: text}
 	}
-	return &jsonschema.ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []jsonschema.GridRowInput{{Cells: []*jsonschema.GridCellInput{cell}}}, VerticalAlign: "top"}
+	return (&jsonschema.ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []jsonschema.GridRowInput{{Cells: []*jsonschema.GridCellInput{cell}}}, VerticalAlign: "top"}).Clone()
 }
 func validateComposeOptions(c *ComposeInput) error {
 	if math.IsNaN(c.Gap) || math.IsInf(c.Gap, 0) || c.Gap < 0 {

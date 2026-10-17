@@ -368,13 +368,15 @@ func expandNestedPatternsForReadability(grid *ShapeGridInput, base string, g nes
 		return grid, nil, err
 	}
 	nested := nestedPatternCells{}
-	collectNestedPatternCells(grid, base, nested, 0)
+	if err := collectNestedPatternCells(grid, base, nested, 0); err != nil {
+		return grid, nil, err
+	}
 	return cloned, nested, nil
 }
 
-func collectNestedPatternCells(grid *ShapeGridInput, base string, out nestedPatternCells, depth int) {
+func collectNestedPatternCells(grid *ShapeGridInput, base string, out nestedPatternCells, depth int) error {
 	if grid == nil || depth > maxGeomNestingDepth {
-		return
+		return nil
 	}
 	for ri, row := range grid.Rows {
 		for ci, cell := range row.Cells {
@@ -383,15 +385,18 @@ func collectNestedPatternCells(grid *ShapeGridInput, base string, out nestedPatt
 			}
 			path := fmt.Sprintf("%s/rows/%d/cells/%d", base, ri, ci)
 			if len(cell.Pattern) > 0 {
-				var p struct {
-					Name string `json:"name"`
+				name, err := patternName(cell.Pattern)
+				if err != nil {
+					return fmt.Errorf("%s/pattern: %w", path, err)
 				}
-				_ = json.Unmarshal(cell.Pattern, &p)
-				out[path] = p.Name
+				out[path] = name
 			}
-			collectNestedPatternCells(cell.Grid, path+"/grid", out, depth+1)
+			if err := collectNestedPatternCells(cell.Grid, path+"/grid", out, depth+1); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
 // readabilityGridCell is one resolved grid cell with its JSON-pointer path.
