@@ -1301,6 +1301,9 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			if !ok {
 				return nil, cliSlideErrorAt(slidepath.ContentIndex(slideNum-1, j), "slide %d, content %d: bullet_groups resolved to %T, want *BulletGroupsInput", slideNum, j+1, resolved)
 			}
+			if len(input.Groups) == 0 && strings.TrimSpace(input.Body) == "" && strings.TrimSpace(input.TrailingBody) == "" {
+				return nil, cliSlideErrorAt(contentValuePath(&ci, slideNum-1, j)+"/groups", "bullet_groups requires at least one group or non-empty body/trailing_body")
+			}
 			item.Value = convertBulletGroupsInput(input)
 
 		case "table":
