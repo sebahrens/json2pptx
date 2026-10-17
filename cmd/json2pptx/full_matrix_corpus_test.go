@@ -65,6 +65,7 @@ var shortSensitiveTests = map[string]func(*testing.T){
 	"TestSemanticKindExamplesValidate":                    TestSemanticKindExamplesValidate,
 
 	// Skipped under -short.
+	"TestMCPWorkflowRenderLiveOutputSchemas":                          TestMCPWorkflowRenderLiveOutputSchemas,
 	"TestAppendixPageLabelsRawStructure":                              TestAppendixPageLabelsRawStructure,
 	"TestAppendixPageLabelsRawFlat":                                   TestAppendixPageLabelsRawFlat,
 	"TestAppendixPageLabelsDeckSpec":                                  TestAppendixPageLabelsDeckSpec,

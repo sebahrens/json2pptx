@@ -604,7 +604,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y fonts-liberation fonts-dejavu-core fonts-crosextra-carlito \
-            libreoffice-impress libreoffice-common librsvg2-bin imagemagick
+            libreoffice-impress libreoffice-common librsvg2-bin imagemagick poppler-utils
           if ! command -v magick >/dev/null; then printf '#!/bin/sh\nexec convert "$@"\n' | sudo tee /usr/local/bin/magick >/dev/null; sudo chmod +x /usr/local/bin/magick; fi
 
       - name: Run corpus headless round-trip
@@ -637,7 +637,7 @@ jobs:
           # draws Calibri in — the render-truth check below reads back what
           # LibreOffice does to text set in it.
           sudo apt-get install -y fonts-liberation fonts-dejavu-core fonts-crosextra-carlito \
-            libreoffice-impress libreoffice-common librsvg2-bin imagemagick
+            libreoffice-impress libreoffice-common librsvg2-bin imagemagick poppler-utils
 
       - name: Build json2pptx
         run: go build -o ./bin/json2pptx ./cmd/json2pptx

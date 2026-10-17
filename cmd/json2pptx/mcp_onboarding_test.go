@@ -9,8 +9,6 @@ import (
 	"regexp"
 	"strings"
 	"testing"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -487,25 +485,6 @@ func TestSlideKindLookupIsCompact(t *testing.T) {
 			t.Errorf("a spec written with aliases is refused: %s %s", f.Code, f.Message)
 		}
 	}
-}
-
-// endsOnWholeWord reports whether a catalogue line is its full summary's
-// sentence, or a cut of it that stops at the end of a word.
-func endsOnWholeWord(line, full string) bool {
-	kept, cut := strings.CutSuffix(line, "…")
-	if !cut {
-		return true
-	}
-	full = strings.Join(strings.Fields(full), " ")
-	rest, ok := strings.CutPrefix(full, kept)
-	if !ok || kept == "" {
-		return false
-	}
-	last, _ := utf8.DecodeLastRuneInString(kept)
-	next, _ := utf8.DecodeRuneInString(rest)
-	wordRune := func(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }
-	return (wordRune(last) || last == ')') && !wordRune(next) &&
-		!danglingWords[strings.ToLower(kept[strings.LastIndex(kept, " ")+1:])]
 }
 
 // TestCatalogueLineEndsOnAWholeWord: a summary longer than the listing's line

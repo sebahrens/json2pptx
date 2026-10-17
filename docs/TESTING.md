@@ -298,3 +298,10 @@ The semantic example corpus now runs the same scratch-render evaluation as
 `semantic validate`, preserving each pinned template (midnight-blue for an
 unpinned example). Input-only checks in `internal/semantic` remain useful but
 are not the render-stage quality gate.
+
+The live MCP output-contract guard covers the registered tool inventory:
+`TestMCPDiscoveryLiveOutputSchemas` and `TestMCPWorkflowLiveOutputSchemas` call
+real JSON-RPC handlers and validate successful structured responses against their
+registered output schemas. `TestMCPLiveOutputSchemaFixturesCoverRegistry` fails
+when a tool has no executable fixture. The five external-render workflows run in
+`TestMCPWorkflowRenderLiveOutputSchemas`, also registered in corpus-headless.
