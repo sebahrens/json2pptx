@@ -31,6 +31,11 @@ func runGenerate() error {
 	designMode := fs.String("design-mode", "", "Override the deck's design_mode field: constrained (default, enforces scheme colors and template-managed sizes) or free (allows raw hex colors and absolute sizes). Empty preserves the JSON setting.")
 	strictUnknownKeys := fs.Bool("strict-unknown-keys", false, "Fail-fast on misspelled/unknown JSON keys: when true, unknown keys are errors that block generation; when false (default), they are reported as warnings. Mirrors MCP generate_presentation strict_unknown_keys.")
 
+	fitReport := fs.Bool("fit-report", false, "Include full preflight and render findings in the JSON result")
+	verboseFit := fs.Bool("verbose-fit", false, "Return all fit findings without the per-slide budget")
+	placeholderPolicy := fs.String("placeholder-policy", "warn", "Unresolved skeleton-copy policy: off, warn, or strict")
+	baseDir := fs.String("base-dir", "", "Absolute asset/template root; defaults to the input file directory, or CWD for stdin")
+
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx generate [options] --json <file.json>\n\n")
 		fmt.Fprintf(os.Stderr, "Convert JSON slide descriptions to PowerPoint presentations.\n\n")
@@ -110,6 +115,12 @@ func runGenerate() error {
 		return cliInvalidArg("invalid --design-mode value %q: must be constrained or free", *designMode)
 	}
 
+	switch *placeholderPolicy {
+	case "off", "warn", "strict":
+	default:
+		return cliInvalidArg("invalid --placeholder-policy %q: must be off, warn, or strict", *placeholderPolicy)
+	}
+
 	// JSON input is required
 	if *jsonInput == "" {
 		fs.Usage()
@@ -125,7 +136,7 @@ func runGenerate() error {
 	if *dryRun {
 		return runJSONDryRun(*jsonInput, *templateName, effTemplatesDir, *configPath, *designMode, *strictUnknownKeys)
 	}
-	deck, runErr := runJSONModeDeck(*jsonInput, resolvedJSONOutput, effTemplatesDir, effOutputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
+	deck, runErr := runJSONModeDeck(*jsonInput, resolvedJSONOutput, effTemplatesDir, effOutputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys, generationOptions{FitReport: *fitReport, VerboseFit: *verboseFit, PlaceholderPolicy: *placeholderPolicy, BaseDir: *baseDir})
 	if runErr != nil && resolvedJSONOutput == "" {
 		// Without a report destination the failure used to be a stderr line
 		// only; the result shape is the same on stdout either way.

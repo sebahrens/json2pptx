@@ -21,7 +21,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/placeholderrole"
-	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -335,21 +334,26 @@ func analyzeTemplateLayouts(templatePath string) (*types.TemplateAnalysis, error
 }
 
 // runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool) error {
-	_, err := runJSONModeDeck(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath, verbose, chartPNG, templateOverride, strictFit, partial, outputValidation, designModeOverride, strictUnknownKeys)
+func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool, options ...generationOptions) error {
+	_, err := runJSONModeDeck(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath, verbose, chartPNG, templateOverride, strictFit, partial, outputValidation, designModeOverride, strictUnknownKeys, options...)
 	return err
 }
 
 // runJSONModeDeck is runJSONMode returning the decoded deck beside the error
 // (nil when the input did not decode): the caller that reports the failure
 // itself addresses its findings to that deck (authoredPaths).
-func runJSONModeDeck(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool) (*PresentationInput, error) {
+func runJSONModeDeck(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool, options ...generationOptions) (*PresentationInput, error) {
 	var deck *PresentationInput
-	err := runJSONModeInto(&deck, jsonPath, jsonOutputPath, templatesDir, outputDir, configPath, verbose, chartPNG, templateOverride, strictFit, partial, outputValidation, designModeOverride, strictUnknownKeys)
+	err := runJSONModeInto(&deck, jsonPath, jsonOutputPath, templatesDir, outputDir, configPath, verbose, chartPNG, templateOverride, strictFit, partial, outputValidation, designModeOverride, strictUnknownKeys, options...)
 	return deck, err
 }
 
-func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool) error { //nolint:gocognit,gocyclo
+func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool, options ...generationOptions) error { //nolint:gocognit,gocyclo
+	opts := effectiveGenerationOptions(options)
+	if jsonOutputPath == "" && (opts.FitReport || opts.VerboseFit) {
+		jsonOutputPath = "-"
+	}
+
 	startTime := time.Now()
 
 	// If --output looks like a .pptx file path (e.g. "/tmp/deck.pptx"), split
@@ -398,64 +402,48 @@ func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templat
 		}
 	}
 
-	// Check structural grammar (e.g. missing closing slide) and collect warnings.
-	structureWarnings := validateStructure(input)
-	inputWarnings = append(inputWarnings, structureWarnings...)
-
-	// Enforce design mode constraints — reject raw hex colors and absolute font sizes.
-	// In partial mode, drop slides that have violations and emit per-slide warnings
-	// instead of aborting the entire run.
-	if effectiveDesignMode(input) == designModeConstrained {
-		if partial {
-			// The slides that remain keep the address the author gave them
-			// (go-slide-creator-i8nwl).
-			deckinput.KeepSlideAddresses(input.Slides)
-			kept := make([]SlideInput, 0, len(input.Slides))
-			for i := range input.Slides {
-				slideNum := i + 1
-				violations := validateSlideDesignMode(&input.Slides[i], slideNum, input.Defaults)
-				if len(violations) == 0 {
-					kept = append(kept, input.Slides[i])
-					continue
-				}
-				msgs := make([]string, 0, len(violations))
-				for _, v := range violations {
-					msgs = append(msgs, v.Message)
-				}
-				inputWarnings = append(inputWarnings, fmt.Sprintf(
-					"slide %d: skipped (partial mode): design_mode violation(s): %s",
-					slideNum, strings.Join(msgs, "; ")))
+	// Partial mode drops only invalid design-mode slides before the shared
+	// boundary checks; retained slides keep their authored addresses.
+	if partial && effectiveDesignMode(input) == designModeConstrained {
+		deckinput.KeepSlideAddresses(input.Slides)
+		kept := make([]SlideInput, 0, len(input.Slides))
+		for i := range input.Slides {
+			violations := validateSlideDesignMode(&input.Slides[i], i+1, input.Defaults)
+			if len(violations) == 0 {
+				kept = append(kept, input.Slides[i])
+				continue
 			}
-			input.Slides = kept
-		} else if violations := validateDesignMode(input); len(violations) > 0 {
-			msgs := make([]string, 0, len(violations))
+			messages := make([]string, 0, len(violations))
 			for _, v := range violations {
-				msg := v.Message
-				if v.Fix != nil {
-					if text, ok := v.Fix.Params["message"].(string); ok {
-						msg += " — fix: " + text
-					}
-				}
-				msgs = append(msgs, msg)
+				messages = append(messages, v.Message)
 			}
-			return writeJSONError(*deck, jsonOutputPath, newDeckRefusal(fmt.Sprintf(
-				"design_mode %q violation(s):\n  %s\n\n"+
-					"To allow raw hex colors and absolute font sizes, rerun with --design-mode=free "+
-					"or set \"design_mode\": \"free\" in the JSON input",
-				effectiveDesignMode(input), strings.Join(msgs, "\n  ")), designModeDiagnostics(violations)))
+			inputWarnings = append(inputWarnings, fmt.Sprintf("slide %d: skipped (partial mode): design_mode violation(s): %s", i+1, strings.Join(messages, "; ")))
+		}
+		input.Slides = kept
+	}
+	boundary, structureWarnings := deckBoundaryDiagnostics(input, opts.PlaceholderPolicy, partial)
+	if diagnostics.HasErrors(boundary) {
+		messages := make([]string, 0, len(boundary))
+		for _, d := range boundary {
+			if d.Severity == diagnostics.SeverityError {
+				messages = append(messages, d.Message)
+			}
+		}
+		return writeJSONError(*deck, jsonOutputPath, newDeckRefusal(strings.Join(messages, "; "), boundary))
+	}
+	inputWarnings = append(inputWarnings, structureWarnings...)
+	for _, d := range boundary {
+		if d.Severity == diagnostics.SeverityWarning {
+			inputWarnings = append(inputWarnings, d.Message)
 		}
 	}
-
-	// No-emoji policy — applies regardless of design mode. Emoji codepoints
-	// in any user-supplied text are a hard error so authors switch to the
-	// bundled SVG icon set or user-provided icons.
-	if emojiViolations := emoji.ValidateNoEmojiInText(input); len(emojiViolations) > 0 {
-		msgs := make([]string, 0, len(emojiViolations))
-		for _, v := range emojiViolations {
-			msgs = append(msgs, v.Message)
-		}
-		return writeJSONError(*deck, jsonOutputPath, newDeckRefusal(
-			"no_emoji policy violation(s):\n  "+strings.Join(msgs, "\n  "), noEmojiDiagnostics(emojiViolations)))
+	baseRoot := opts.BaseDir
+	if baseRoot == "" {
+		baseRoot = validateBaseDir(jsonPath, "")
+	}
+	assetBaseDir, baseDiag := resolveAssetBaseDir(baseRoot)
+	if baseDiag != nil {
+		return writeJSONError(*deck, jsonOutputPath, newDeckRefusal(baseDiag.Message, []diagnostics.Diagnostic{*baseDiag}))
 	}
 
 	// urlResolverCleanup releases any URL-download cache opened by the PreConvert
@@ -476,7 +464,7 @@ func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templat
 	// conversion, generation, and output validation.
 	// A deck that names its own .pptx resolves it against the deck file's own
 	// directory, the same frame relative asset paths use (go-slide-creator-ydbk).
-	resolvedTemplatePath, tplPathErr := resolveDeckTemplatePath(input.TemplatePath, jsonPath)
+	resolvedTemplatePath, tplPathErr := resolveDeckTemplatePath(input.TemplatePath, filepath.Join(assetBaseDir, "deck.json"))
 	if tplPathErr != nil {
 		return writeJSONError(*deck, jsonOutputPath, newDeckRefusal(tplPathErr.Error(), []diagnostics.Diagnostic{codedErrorDiagnostic(tplPathErr)}))
 	}
@@ -530,7 +518,7 @@ func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templat
 			// Errors abort with an aggregated message; non-blocking warnings (e.g.
 			// ICON_FILL_IGNORED_ON_INLINE) flow into inputWarnings so the user sees
 			// them in the success output instead of having generation refused.
-			if jsonPath != "-" {
+			if jsonPath != "-" || opts.BaseDir != "" {
 				// Resolve relative assets against the deck's own directory, absolutized so
 				// the base dir satisfies the absolute-path contract that the MCP base_dir
 				// resolver enforces and that resolveIconInputPath's symlink-escape check
@@ -539,7 +527,7 @@ func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templat
 				// makes a valid relative icon *file path* falsely trip
 				// ICON_PATH_SYMLINK_ESCAPE. validate already absolutizes via
 				// validateBaseDir; sharing it keeps the two CLI surfaces in lockstep.
-				inputDir := validateBaseDir(jsonPath, "")
+				inputDir := assetBaseDir
 				assetFindings := resolveLocalAssetPaths(input.Slides, inputDir, imageAllowList(cfg.Images.AllowedBasePaths, urlCacheDir)...)
 				if assetErr := assetRefusal(assetFindings); assetErr != nil {
 					preConvertErr = assetErr
@@ -588,10 +576,7 @@ func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templat
 	// Unpack render results into the local names the rest of runJSONMode uses.
 	templateLayouts := runRes.TemplateLayouts
 	syntheticFiles := runRes.SyntheticFiles
-	synthesisFindings := runRes.SynthesisFindings
-	strictFitFindings := runRes.StrictFitFindings
 	slideSpecs := runRes.SlideSpecs
-	gridVisualFindings := runRes.GridVisualFindings
 	outputPath := runRes.OutputPath
 	outputValidationFindings := runRes.OutputValidationFindings
 	result := runRes.GenResult
@@ -602,16 +587,6 @@ func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templat
 	// Pre-validate chart/diagram data structures via svggen Validate().
 	// Issues are collected as warnings so generation still proceeds.
 	inputWarnings = append(inputWarnings, validateSlidesChartData(input.Slides)...)
-	chartDiagFindings := validateSlidesChartDiagnostics(input.Slides)
-
-	// Constrained-mode diagram data colors (e.g. pyramid levels[].color) are
-	// rendered with the template scheme and otherwise silently ignored. Surface
-	// an advisory finding/warning so the author knows the custom colors were
-	// dropped and that design_mode "free" is required to honor them.
-	droppedColorFindings := collectDroppedDiagramColorWarnings(input)
-	for _, f := range droppedColorFindings {
-		inputWarnings = append(inputWarnings, f.Message)
-	}
 
 	// Merge input-layer warnings with generation warnings
 	allWarnings := append(inputWarnings, result.Warnings...)
@@ -620,40 +595,7 @@ func runJSONModeInto(deck **PresentationInput, jsonPath, jsonOutputPath, templat
 	slideErrors := convertMediaFailures(result.MediaFailures)
 
 	// Build success output
-	// Collect fit findings: synthesis + render-time + contrast.
-	var allFitFindings []patterns.FitFinding
-	if jsonOutputPath != "" {
-		// Headless consumers need the same review-class preflight findings MCP
-		// exposes with fit_report=true (substance, contrast predictions, chrome,
-		// accessibility, and geometry), not only render-time warnings.
-		allFitFindings = append(allFitFindings, collectFitFindings(input, templateLayouts,
-			runRes.SlideWidth, runRes.SlideHeight, &runRes.TemplateTheme)...)
-	} else {
-		allFitFindings = append(allFitFindings, unresolvedPlaceholderContrastFindings(input, templateLayouts, runRes.TemplateTheme.Colors)...)
-	}
-	allFitFindings = append(allFitFindings, synthesisFindings...)
-	allFitFindings = append(allFitFindings, result.FitFindings...)
-	allFitFindings = append(allFitFindings, contrastSwapsToFindings(result.ContrastSwaps, input, runRes.TemplateTheme.Colors)...)
-	allFitFindings = append(allFitFindings, chartDiagFindings...)
-	allFitFindings = append(allFitFindings, gridVisualFindings...)
-	allFitFindings = append(allFitFindings, droppedColorFindings...)
-	// Append strict_fit findings collected before generation so CLI JSON
-	// consumers see warn-mode overflow diagnostics in the structured response.
-	allFitFindings = append(allFitFindings, strictFitFindings...)
-	// A pattern's own post-expand warnings (BODY_TOO_LONG on an over-budget
-	// bio, CHART_PLACEHOLDER_EMPTY on a chart panel with no chart) are part of
-	// what generate saw; without them the JSON report called a degraded deck
-	// clean (go-slide-creator-wn4v).
-	if jsonOutputPath == "" {
-		// The full headless preflight above already includes these warnings.
-		allFitFindings = append(allFitFindings, collectPatternPostExpandFindings(input, runRes.SlideWidth, runRes.SlideHeight, &runRes.TemplateTheme)...)
-	}
-	// An icon name that does not resolve drops the icon from its panel while
-	// the siblings keep theirs; generation only logged it (go-slide-creator-puki).
-	if jsonOutputPath == "" {
-		allFitFindings = append(allFitFindings, collectDiagramIconFindings(input)...)
-	}
-	allFitFindings = supersedeRealizedContrastPredictions(dedupFitFindings(allFitFindings))
+	allFitFindings := assembleGenerationFindings(input, runRes, jsonOutputPath != "" || opts.FitReport, opts.VerboseFit)
 
 	// A chart or diagram that failed to render left a grey "Data unavailable"
 	// box where the visual should be. That deck is not a result at any

@@ -56,6 +56,11 @@ func resolveBaseDir(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
 func resolveBaseDirDiag(request mcp.CallToolRequest) (string, *diagnostics.Diagnostic) {
 	args := request.GetArguments()
 	raw, _ := args["base_dir"].(string)
+	return resolveAssetBaseDir(raw)
+}
+
+// resolveAssetBaseDir is the shared CLI/MCP contract for an explicit asset root.
+func resolveAssetBaseDir(raw string) (string, *diagnostics.Diagnostic) {
 
 	bad := func(msg, remediation string, withInput bool) (string, *diagnostics.Diagnostic) {
 		details := map[string]any{"remediation": remediation}
