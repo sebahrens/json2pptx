@@ -1756,7 +1756,7 @@ func (s *semDiags) productPlaceholder(path string, m placeholder.Marker) {
 		Code:     diagnostics.CodeSemanticWeakContent,
 		Path:     path,
 		Severity: sev,
-		Message:  fmt.Sprintf("this is placeholder copy from %s (%s), not content; replace it with real text", m.Source, m.Name),
+		Message:  fmt.Sprintf("this is placeholder copy from %q, not content; replace it with real text", m.Source),
 		Details:  map[string]any{PlaceholderDetail: m.Name},
 	})
 }

@@ -1,10 +1,12 @@
 package semantic
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 )
 
 func TestSuggestKind(t *testing.T) {
@@ -143,6 +145,53 @@ func TestProductPlaceholderFinding(t *testing.T) {
 		if d, ok := found["slides[0].subtitle"]; ok && d.Details[PlaceholderDetail] != nil {
 			t.Errorf("authored filler is marked as a product placeholder: %+v", d)
 		}
+	}
+}
+
+func TestProductPlaceholderAdvicePreservesRegisteredProvenance(t *testing.T) {
+	for _, marker := range placeholder.Registered() {
+		t.Run(marker.Name, func(t *testing.T) {
+			text := marker.Phrase
+			switch marker.Name {
+			case placeholder.NameRecipeCopy:
+				text = placeholder.RecipeCopy(placeholder.SlotTakeaway)
+			case placeholder.NameArgumentHint:
+				text = "<rewrite this field>"
+			}
+			for _, strict := range []Strictness{StrictnessOff, StrictnessWarn, StrictnessStrict} {
+				s := &semDiags{strict: strict}
+				scanWeak("slides[0].image.alt", text, s)
+				if len(s.out) != 1 {
+					t.Fatalf("strict=%s: got %d findings for registered marker", strict, len(s.out))
+				}
+				got := s.out[0]
+				wantSeverity := diagnostics.SeverityWarning
+				if strict == StrictnessStrict {
+					wantSeverity = diagnostics.SeverityError
+				}
+				wantMessage := fmt.Sprintf("this is placeholder copy from %q, not content; replace it with real text", marker.Source)
+				if got.Code != diagnostics.CodeSemanticWeakContent || got.Path != "slides[0].image.alt" || got.Severity != wantSeverity || got.Message != wantMessage {
+					t.Errorf("strict=%s: finding=%+v, want exact quoted-source message %q and severity %s", strict, got, wantMessage, wantSeverity)
+				}
+				if len(got.Details) != 1 || got.Details[PlaceholderDetail] != marker.Name || strings.Contains(got.Message, marker.Name) {
+					t.Errorf("marker identifier must remain only in structured provenance: %+v", got)
+				}
+			}
+		})
+	}
+}
+
+func TestProductPlaceholderAdviceLeavesOrdinaryTextAlone(t *testing.T) {
+	for _, text := range []string{"Replace with usage-based pricing", "The team delivered the migration", "recommend_visual recipes guide the author", "recipe_alt_text", "<5%", "< 10 days"} {
+		t.Run(text, func(t *testing.T) {
+			for _, strict := range []Strictness{StrictnessOff, StrictnessWarn, StrictnessStrict} {
+				s := &semDiags{strict: strict}
+				scanWeak("slides[0].image.alt", text, s)
+				if len(s.out) != 0 {
+					t.Errorf("strict=%s: ordinary text produced placeholder advice: %+v", strict, s.out)
+				}
+			}
+		})
 	}
 }
 
