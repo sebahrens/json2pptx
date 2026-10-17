@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"image"
 	"image/color"
 	"image/png"
@@ -200,9 +201,7 @@ func TestRenderDeckThumbnails_ImageContentIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("render integration skipped in -short mode")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	mc := &mcpConfig{
 		templatesDir: "../../templates",
 		outputDir:    t.TempDir(),
@@ -334,9 +333,7 @@ func TestRenderDeckThumbnails_SlideIndicesIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("render integration skipped in -short mode")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	mc := &mcpConfig{
 		templatesDir: "../../templates",
 		outputDir:    t.TempDir(),

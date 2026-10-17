@@ -54,29 +54,12 @@ func TestMCPRequestWithArgs(t *testing.T) {
 	}
 }
 
-// captureStdout redirects os.Stdout for the duration of fn and returns what was
-// written. Used to verify printMCPResultJSON formatting without relying on
-// implementation details.
-func captureStdout(t *testing.T, fn func()) string {
+// captureStdout captures a per-call writer; it never changes process streams.
+func captureStdout(t *testing.T, fn func(io.Writer)) string {
 	t.Helper()
-	orig := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
-	}
-	os.Stdout = w
-
-	done := make(chan []byte, 1)
-	go func() {
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		done <- buf.Bytes()
-	}()
-
-	fn()
-	_ = w.Close()
-	os.Stdout = orig
-	return string(<-done)
+	var buf bytes.Buffer
+	fn(&buf)
+	return buf.String()
 }
 
 func TestPrintMCPResultJSON_Nil(t *testing.T) {
@@ -99,7 +82,7 @@ func TestPrintMCPResultJSON_PrettyPrintsJSON(t *testing.T) {
 		},
 	}
 	var err error
-	out := captureStdout(t, func() { err = printMCPResultJSON(res) })
+	out := captureStdout(t, func(outputWriter io.Writer) { err = printMCPResultJSONTo(res, outputWriter) })
 	if err != nil {
 		t.Fatalf("printMCPResultJSON: %v", err)
 	}
@@ -120,7 +103,7 @@ func TestPrintMCPResultJSON_PassesThroughNonJSON(t *testing.T) {
 		},
 	}
 	var err error
-	out := captureStdout(t, func() { err = printMCPResultJSON(res) })
+	out := captureStdout(t, func(outputWriter io.Writer) { err = printMCPResultJSONTo(res, outputWriter) })
 	if err != nil {
 		t.Fatalf("printMCPResultJSON: %v", err)
 	}

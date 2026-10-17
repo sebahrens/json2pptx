@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -571,7 +572,7 @@ func recommendVisualEvalCases(t *testing.T) []struct {
 // two tracked ones, plus the local p-style template when it is present.
 func recommendVisualEvalTemplates() []string {
 	out := []string{"midnight-blue", "forest-green"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		out = append(out, "p-style")
 	}
 	return out

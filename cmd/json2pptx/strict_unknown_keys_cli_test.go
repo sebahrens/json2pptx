@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -70,8 +72,8 @@ func TestValidateJSONFile_UnknownKey_StrictError(t *testing.T) {
 
 func TestRunJSONDryRun_UnknownKey_DefaultWarning(t *testing.T) {
 	path := writeTempJSON(t, inputWithTypo)
-	output := captureDryRun(t, func() error {
-		return runJSONDryRun(path, "", "../../templates", "", "", false)
+	output := captureDryRun(t, func(outputWriter io.Writer) error {
+		return runJSONDryRunTo(path, "", "../../templates", "", "", false, outputWriter)
 	})
 	warns := findingMessages(output.Findings, diagnostics.SeverityWarning)
 	if !output.Valid {
@@ -84,8 +86,8 @@ func TestRunJSONDryRun_UnknownKey_DefaultWarning(t *testing.T) {
 
 func TestRunJSONDryRun_UnknownKey_StrictError(t *testing.T) {
 	path := writeTempJSON(t, inputWithTypo)
-	output := captureDryRun(t, func() error {
-		return runJSONDryRun(path, "", "../../templates", "", "", true)
+	output := captureDryRun(t, func(outputWriter io.Writer) error {
+		return runJSONDryRunTo(path, "", "../../templates", "", "", true, outputWriter)
 	})
 	if output.Valid {
 		t.Fatalf("expected Valid=false with strict=true")
@@ -185,34 +187,13 @@ func anyContains(items []string, needle string) bool {
 // captureDryRun reroutes stdout while invoking fn, parses the JSON written by
 // writeDryRunOutput, and returns the parsed dryRunOutput so tests can assert
 // the structured fields directly (instead of grepping stdout text).
-func captureDryRun(t *testing.T, fn func() error) dryRunOutput {
+func captureDryRun(t *testing.T, fn func(io.Writer) error) dryRunOutput {
 	t.Helper()
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
-	}
-	oldStdout := os.Stdout
-	os.Stdout = w
-	defer func() { os.Stdout = oldStdout }()
-
-	_ = fn() // errors are surfaced via output.Errors / output.Valid
-	_ = w.Close()
-
-	buf := make([]byte, 0, 4096)
-	tmp := make([]byte, 1024)
-	for {
-		n, readErr := r.Read(tmp)
-		if n > 0 {
-			buf = append(buf, tmp[:n]...)
-		}
-		if readErr != nil {
-			break
-		}
-	}
-
+	var buf bytes.Buffer
+	_ = fn(&buf) // errors are asserted through the structured verdict below
 	var output dryRunOutput
-	if err := json.Unmarshal(buf, &output); err != nil {
-		t.Fatalf("dry-run output not JSON: %v\nraw: %s", err, string(buf))
+	if err := json.Unmarshal(buf.Bytes(), &output); err != nil {
+		t.Fatalf("dry-run output not JSON: %v\nraw: %s", err, buf.String())
 	}
 	return output
 }
@@ -223,8 +204,8 @@ func captureDryRun(t *testing.T, fn func() error) dryRunOutput {
 func TestRunJSONDryRun_TemplateOverride(t *testing.T) {
 	deck := `{"template":"no-such-template","slides":[{"slide_type":"title","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`
 	path := writeTempJSON(t, deck)
-	output := captureDryRun(t, func() error {
-		return runJSONDryRun(path, "midnight-blue.pptx", "../../templates", "", "", false)
+	output := captureDryRun(t, func(outputWriter io.Writer) error {
+		return runJSONDryRunTo(path, "midnight-blue.pptx", "../../templates", "", "", false, outputWriter)
 	})
 	if !output.Valid {
 		t.Fatalf("dry run ignored -template override: %v", findingMessages(output.Findings, diagnostics.SeverityError))
@@ -234,8 +215,8 @@ func TestRunJSONDryRun_TemplateOverride(t *testing.T) {
 	}
 
 	// Without the override the deck's own (unknown) template still fails.
-	output = captureDryRun(t, func() error {
-		return runJSONDryRun(path, "", "../../templates", "", "", false)
+	output = captureDryRun(t, func(outputWriter io.Writer) error {
+		return runJSONDryRunTo(path, "", "../../templates", "", "", false, outputWriter)
 	})
 	if output.Valid {
 		t.Fatal("dry run without override accepted an unknown template")

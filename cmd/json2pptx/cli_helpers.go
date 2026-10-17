@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -153,13 +154,17 @@ func cliErrorEnvelopeText(text string) string {
 // envelope goes to stdout like every other command's output, stamped with the
 // CLI subcommand name, and the returned error makes the process exit non-zero.
 func printMCPResultJSON(result *mcpgo.CallToolResult) error {
+	return printMCPResultJSONTo(result, os.Stdout)
+}
+
+func printMCPResultJSONTo(result *mcpgo.CallToolResult, writer io.Writer) error {
 	if result == nil {
 		return fmt.Errorf("nil result")
 	}
 
 	if result.IsError {
 		if text := cliResultText(result); text != "" {
-			fmt.Fprintln(os.Stdout, cliErrorEnvelopeText(text))
+			fmt.Fprintln(writer, cliErrorEnvelopeText(text))
 		}
 		return errCLIReported
 	}
@@ -177,17 +182,17 @@ func printMCPResultJSON(result *mcpgo.CallToolResult) error {
 	var raw json.RawMessage
 	if err := json.Unmarshal([]byte(tc.Text), &raw); err != nil {
 		// Not JSON — print as-is.
-		fmt.Println(tc.Text)
+		fmt.Fprintln(writer, tc.Text)
 		return nil
 	}
 
 	pretty, err := json.MarshalIndent(raw, "", "  ")
 	if err != nil {
-		fmt.Println(tc.Text)
+		fmt.Fprintln(writer, tc.Text)
 		return nil
 	}
 
-	_, err = os.Stdout.Write(append(pretty, '\n'))
+	_, err = writer.Write(append(pretty, '\n'))
 	return err
 }
 

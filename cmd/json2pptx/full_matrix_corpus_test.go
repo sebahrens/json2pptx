@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -28,6 +29,8 @@ import (
 // TestShortSensitiveTestsRunInCorpus fails until it is.
 var shortSensitiveTests = map[string]func(*testing.T){
 	// A part of the matrix under -short.
+	"TestComposeExamplesRoundTrip":                             TestComposeExamplesRoundTrip,
+	"TestExemplarDeckUsesTheContentArea":                       TestExemplarDeckUsesTheContentArea,
 	"TestSchemaMaximaStayReadable":                             TestSchemaMaximaStayReadable,
 	"TestConsultingSchemaMaximaAreMeasured":                    TestConsultingSchemaMaximaAreMeasured,
 	"TestSchemaMaximaMeasurementsMatchWrittenRuns":             TestSchemaMaximaMeasurementsMatchWrittenRuns,
@@ -138,7 +141,14 @@ func TestShortReducedMatricesCorpus(t *testing.T) {
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		t.Run(name, shortSensitiveTests[name])
+		t.Run(name, func(st *testing.T) {
+			defer func() {
+				if st.Skipped() && os.Getenv("CI") != "" {
+					st.Errorf("corpus member %s skipped in CI; fix its dependencies or gate", name)
+				}
+			}()
+			shortSensitiveTests[name](st)
+		})
 	}
 }
 
@@ -148,7 +158,7 @@ func TestShortReducedMatricesCorpus(t *testing.T) {
 // job when its name carries one of the job's two words or it is listed in
 // shortSensitiveTests, and the job named in shortSensitiveElsewhere otherwise.
 func TestShortSensitiveTestsRunInCorpus(t *testing.T) {
-	pkgs, err := parser.ParseDir(token.NewFileSet(), ".", nil, 0) //nolint:staticcheck // one directory of files, no type information needed
+	pkgs, err := parser.ParseDir(token.NewFileSet(), ".", nil, parser.ParseComments) //nolint:staticcheck // one directory of files, no type information needed
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +171,7 @@ func TestShortSensitiveTestsRunInCorpus(t *testing.T) {
 			}
 			switch fun := call.Fun.(type) {
 			case *ast.SelectorExpr:
-				if x, ok := fun.X.(*ast.Ident); ok && x.Name == "testing" && fun.Sel.Name == "Short" {
+				if x, ok := fun.X.(*ast.Ident); ok && ((x.Name == "testing" && fun.Sel.Name == "Short") || (x.Name == "testutil" && fun.Sel.Name == "RequireRenderTools")) {
 					found = true
 				}
 			case *ast.Ident:
@@ -174,6 +184,17 @@ func TestShortSensitiveTestsRunInCorpus(t *testing.T) {
 	funcs := map[string]*ast.BlockStmt{}
 	for _, pkg := range pkgs {
 		for name, file := range pkg.Files {
+			probe := false
+			for _, group := range file.Comments {
+				for _, comment := range group.List {
+					if comment.Text == "//go:build probe" {
+						probe = true
+					}
+				}
+			}
+			if probe {
+				continue
+			}
 			if !strings.HasSuffix(name, "_test.go") {
 				continue
 			}
@@ -184,7 +205,7 @@ func TestShortSensitiveTestsRunInCorpus(t *testing.T) {
 			}
 		}
 	}
-	isTest := func(name string) bool { return strings.HasPrefix(name, "Test") }
+	isTest := func(name string) bool { return name != "TestMain" && strings.HasPrefix(name, "Test") }
 	// Helpers that read testing.Short(), to a fixed point: a helper that calls
 	// one is one.
 	helpers := map[string]bool{}

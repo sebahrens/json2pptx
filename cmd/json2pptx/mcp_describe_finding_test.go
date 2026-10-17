@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"os"
+
 	"strings"
 	"testing"
 
@@ -142,30 +142,20 @@ func TestDescribeFinding_UnknownCodeReturnsAllowedList(t *testing.T) {
 }
 
 func TestRunDescribeFinding_AcceptsPositionalCode(t *testing.T) {
-	// The describe_command emitted on the wire is "json2pptx describe-finding
-	// <code>" (positional), so the CLI must accept the code without -code.
-	withSavedArgs(func() {
-		os.Args = []string{"json2pptx", diagnostics.CodeMissingParameter}
-		out := captureStdout(t, func() {
-			if err := runDescribeFinding(); err != nil {
-				t.Fatalf("runDescribeFinding (positional) returned error: %v", err)
-			}
-		})
-		if !strings.Contains(out, diagnostics.CodeMissingParameter) {
-			t.Errorf("positional describe output missing code %q; got: %s", diagnostics.CodeMissingParameter, out)
-		}
-	})
+	out, stderr, code := cliRun(t, nil, "describe-finding", diagnostics.CodeMissingParameter)
+	if code != 0 {
+		t.Fatalf("describe-finding failed: %s", stderr)
+	}
+	if !strings.Contains(out, diagnostics.CodeMissingParameter) {
+		t.Errorf("positional describe output missing code: %s", out)
+	}
 }
 
 func TestRunDescribeFinding_NoCodeIsError(t *testing.T) {
-	withSavedArgs(func() {
-		os.Args = []string{"json2pptx"}
-		captureStderr(t, func() {
-			if err := runDescribeFinding(); err == nil {
-				t.Fatal("runDescribeFinding with no code should return an error")
-			}
-		})
-	})
+	_, _, code := cliRun(t, nil, "describe-finding")
+	if code == 0 {
+		t.Fatal("missing code must fail")
+	}
 }
 
 func TestDescribeFinding_CoversEveryDiagnosticCode(t *testing.T) {

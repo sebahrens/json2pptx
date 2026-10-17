@@ -2,14 +2,15 @@ package main
 
 import (
 	"encoding/json"
-	"path/filepath"
+	"github.com/sebahrens/json2pptx/internal/testutil/templatefixture"
+
 	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/examine"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
-	"github.com/sebahrens/json2pptx/internal/template"
+
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -20,18 +21,7 @@ const (
 
 func loadTemplateAnalysis(t *testing.T, name string) *types.TemplateAnalysis {
 	t.Helper()
-	path := filepath.Join("..", "..", "templates", name+".pptx")
-	reader, err := template.OpenTemplate(path)
-	if err != nil {
-		t.Skipf("template %s: %v", name, err)
-	}
-	defer func() { _ = reader.Close() }()
-	layouts, err := template.ParseLayouts(reader)
-	if err != nil {
-		t.Fatalf("ParseLayouts: %v", err)
-	}
-	w, h := template.ParseSlideDimensions(reader)
-	return &types.TemplateAnalysis{TemplatePath: path, SlideWidth: w, SlideHeight: h, Layouts: layouts, Theme: template.ParseTheme(reader)}
+	return templatefixture.OpenTemplateAnalysis(t, name)
 }
 
 func titleSlide(title string) SlideInput {

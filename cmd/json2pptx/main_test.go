@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -815,36 +816,9 @@ func TestRunJSONMode_TemplateNotFound(t *testing.T) {
 
 // Mock TemplateCache for testing
 
-type mockTemplateCache struct {
-	cache map[string]*types.TemplateAnalysis
-}
+type mockTemplateCache = testutil.TemplateCache
 
-func newMockTemplateCache() *mockTemplateCache {
-	return &mockTemplateCache{
-		cache: make(map[string]*types.TemplateAnalysis),
-	}
-}
-
-func (m *mockTemplateCache) Get(path string) (*types.TemplateAnalysis, bool) {
-	analysis, ok := m.cache[path]
-	return analysis, ok
-}
-
-func (m *mockTemplateCache) Set(path string, analysis *types.TemplateAnalysis) {
-	m.cache[path] = analysis
-}
-
-func (m *mockTemplateCache) Invalidate(path string) {
-	delete(m.cache, path)
-}
-
-func (m *mockTemplateCache) Clear() {
-	m.cache = make(map[string]*types.TemplateAnalysis)
-}
-
-func (m *mockTemplateCache) Size() int {
-	return len(m.cache)
-}
+func newMockTemplateCache() *mockTemplateCache { return testutil.NewTemplateCache() }
 
 func TestMockTemplateCache(t *testing.T) {
 	cache := newMockTemplateCache()

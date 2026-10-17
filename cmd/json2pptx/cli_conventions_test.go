@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -28,8 +29,14 @@ import (
 // code. env entries are added to the process environment.
 func cliRun(t *testing.T, env []string, args ...string) (string, string, int) {
 	t.Helper()
+	return cliRunInput(t, nil, env, args...)
+}
+
+func cliRunInput(t *testing.T, stdin io.Reader, env []string, args ...string) (string, string, int) {
+	t.Helper()
 	cmd := exec.Command(buildTestBinary(t), args...) //nolint:gosec // test-controlled arguments
 	cmd.Env = append(os.Environ(), env...)
+	cmd.Stdin = stdin
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	code := 0

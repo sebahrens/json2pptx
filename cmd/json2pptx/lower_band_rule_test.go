@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+
 	"strings"
 	"testing"
 
@@ -44,7 +44,7 @@ func codesAt(t *testing.T, tpl string, deck PresentationInput, path string) map[
 func lowerBandTemplates(t *testing.T) []string {
 	t.Helper()
 	tpls := []string{"modern-template", "midnight-blue"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		tpls = append(tpls, "p-style")
 	}
 	return tpls

@@ -161,7 +161,7 @@ type ImageInput struct {
 
 // templates available in the templates/ directory.
 var templates = []string{
-	"template_2",
+	"modern-template",
 	"forest-green",
 	"midnight-blue",
 	"warm-coral",

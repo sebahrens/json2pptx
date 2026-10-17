@@ -4,8 +4,8 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"image"
-	"image/png"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,17 +18,7 @@ import (
 func writeTestPNG(t *testing.T, dir, name string, w, h int) string {
 	t.Helper()
 	path := filepath.Join(dir, name)
-	f, err := os.Create(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := png.Encode(f, image.NewRGBA(image.Rect(0, 0, w, h))); err != nil {
-		_ = f.Close()
-		t.Fatal(err)
-	}
-	if err := f.Close(); err != nil {
-		t.Fatal(err)
-	}
+	testutil.WriteTestPNG(t, path, w, h)
 	return path
 }
 

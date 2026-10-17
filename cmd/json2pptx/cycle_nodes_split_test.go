@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"image"
 	"math"
 	"regexp"
@@ -264,9 +265,7 @@ func TestCycleNodesArrowsRenderAcrossTemplates(t *testing.T) {
 	if testing.Short() {
 		t.Skip("render integration skipped in -short mode")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	const (
 		n       = 6
 		density = 100

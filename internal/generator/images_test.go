@@ -3,6 +3,7 @@ package generator
 import (
 	"archive/zip"
 	"context"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -155,10 +156,7 @@ func TestValidateImagePath_NoBasePaths(t *testing.T) {
 
 // TestGenerate_PathTraversalBlocked tests CRIT-03 through the Generate API
 func TestGenerate_PathTraversalBlocked(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.pptx")
@@ -348,10 +346,7 @@ func TestScaleImageToFit_AspectRatio(t *testing.T) {
 
 // TestUpdateContentTypes tests AC-NEW4: Content-Types Update
 func TestUpdateContentTypes(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	// Open template ZIP
 	r, err := zip.OpenReader(templatePath)
@@ -390,10 +385,7 @@ func TestUpdateContentTypes(t *testing.T) {
 
 // TestUpdateContentTypes_NoNewExtensions tests when no new extensions needed
 func TestUpdateContentTypes_NoNewExtensions(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	r, err := zip.OpenReader(templatePath)
 	if err != nil {

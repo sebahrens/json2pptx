@@ -4,8 +4,8 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"errors"
-	"image"
-	"image/png"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+
 	"io"
 	"os"
 	"path/filepath"
@@ -20,14 +20,7 @@ import (
 
 func writeTestPNG(t *testing.T, path string, w, h int) {
 	t.Helper()
-	f, err := os.Create(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = f.Close() }()
-	if err := png.Encode(f, image.NewRGBA(image.Rect(0, 0, w, h))); err != nil {
-		t.Fatal(err)
-	}
+	testutil.WriteTestPNG(t, path, w, h)
 }
 
 func imageTextSplitSlide(values string) SlideInput {

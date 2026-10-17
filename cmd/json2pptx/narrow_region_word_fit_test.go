@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -62,7 +63,7 @@ func narrowRegionValueChain() map[string]any {
 
 func narrowRegionTemplates() []string {
 	tpls := []string{"midnight-blue", "modern-yellow"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		tpls = append(tpls, "p-style")
 	}
 	return tpls

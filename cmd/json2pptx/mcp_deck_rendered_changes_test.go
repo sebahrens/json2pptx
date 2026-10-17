@@ -2,7 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"os"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+
 	"slices"
 	"strings"
 	"testing"
@@ -39,7 +40,7 @@ func chromeDeckSpec(t *testing.T, template string, edit func(doc map[string]any)
 // one, and the private p-style when the checkout has it.
 func renderedChangeTemplates() []string {
 	out := []string{"midnight-blue"}
-	if _, err := os.Stat("../../templates/p-style.pptx"); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		out = append(out, "p-style")
 	}
 	return out

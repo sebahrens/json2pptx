@@ -1,7 +1,8 @@
 package main
 
 import (
-	"os"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+
 	"testing"
 )
 
@@ -91,7 +92,7 @@ func TestOpsLeadOperatingRhythmJourney(t *testing.T) {
 	}
 
 	templates := []string{"midnight-blue", "warm-coral"}
-	if _, err := os.Stat("../../templates/p-style.pptx"); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		templates[1] = "p-style" // the journey's second template, when it is installed
 	}
 	for _, tpl := range templates {

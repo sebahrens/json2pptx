@@ -192,6 +192,10 @@ type dryRunPlaceholder struct {
 // is true, unknown JSON keys are reported as errors (matching MCP
 // strict_unknown_keys=true semantics) instead of warnings.
 func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool) error {
+	return runJSONDryRunTo(jsonPath, templateOverride, templatesDir, configPath, designModeOverride, strictUnknownKeys, os.Stdout)
+}
+
+func runJSONDryRunTo(jsonPath, templateOverride, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool, writer io.Writer) error {
 	var input PresentationInput
 	output := dryRunOutput{
 		Valid:      true,
@@ -214,7 +218,7 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 			Code: "READ_FAILED", Message: fmt.Sprintf("failed to read JSON input: %v", err),
 			Severity: diagnostics.SeverityError,
 		})
-		return writeDryRunOutput(output)
+		return writeDryRunOutputTo(output, writer)
 	}
 	output.inputSHA256 = diagnostics.ComputeInputSHA256(inputData)
 
@@ -228,7 +232,7 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 				Code: "PATCH_ERROR", Message: fmt.Sprintf("failed to apply patch: %v", patchErr),
 				Severity: diagnostics.SeverityError,
 			})
-			return writeDryRunOutput(output)
+			return writeDryRunOutputTo(output, writer)
 		}
 		input = *patched
 	} else {
@@ -238,7 +242,7 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 				Code: "INVALID_JSON", Message: fmt.Sprintf("failed to parse JSON: %v", err),
 				Severity: diagnostics.SeverityError,
 			})
-			return writeDryRunOutput(output)
+			return writeDryRunOutputTo(output, writer)
 		}
 	}
 
@@ -270,7 +274,7 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 			Code: "SETTINGS_ERROR", Message: fmt.Sprintf("failed to load config: %v", err),
 			Severity: diagnostics.SeverityError,
 		})
-		return writeDryRunOutput(output)
+		return writeDryRunOutputTo(output, writer)
 	}
 	if templatesDir != "" {
 		cfg.Templates.Dir = templatesDir
@@ -285,7 +289,7 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, structDiags...)
-		return writeDryRunOutput(output)
+		return writeDryRunOutputTo(output, writer)
 	}
 
 	// Check for unknown keys (additionalProperties:false). Warnings by default;
@@ -328,7 +332,7 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 		output.Diagnostics = append(output.Diagnostics, deckSlidesRequiredDiagnostic())
 	}
 	if !output.Valid {
-		return writeDryRunOutput(output)
+		return writeDryRunOutputTo(output, writer)
 	}
 
 	// Resolve template for validation: the deck's own .pptx, or a registered name.
@@ -336,7 +340,7 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 	if tplDiag != nil {
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, *tplDiag)
-		return writeDryRunOutput(output)
+		return writeDryRunOutputTo(output, writer)
 	}
 	defer templateCleanup()
 
@@ -349,7 +353,7 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 			Message:  fmt.Sprintf("template analysis failed: %v", err),
 			Severity: diagnostics.SeverityError,
 		})
-		return writeDryRunOutput(output)
+		return writeDryRunOutputTo(output, writer)
 	}
 
 	// Resolve canonical layout names before validation so agents can use
@@ -360,7 +364,7 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 	deckStructuralDiagnostics(&output, &input, templateAnalysis)
 	appendGridConverterPreflight(&output, &input, generator.NewSVGConverter().IsPNGAvailable())
 
-	return writeDryRunOutput(output)
+	return writeDryRunOutputTo(output, writer)
 }
 
 // resolveDryRunTemplate returns the .pptx a dry run validates against: the
@@ -1857,9 +1861,9 @@ func parseThresholdNumber(s string) (float64, bool) {
 // diagnostics and fit findings are folded into the single Findings envelope just
 // before encoding. Returns nil on valid output, or an error to signal exit code 1
 // for invalid.
-func writeDryRunOutput(output dryRunOutput) error {
+func writeDryRunOutputTo(output dryRunOutput, writer io.Writer) error {
 	output.buildFindingsEnvelope()
-	enc := json.NewEncoder(os.Stdout)
+	enc := json.NewEncoder(writer)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(output); err != nil {
 		return fmt.Errorf("failed to encode dry-run output: %w", err)

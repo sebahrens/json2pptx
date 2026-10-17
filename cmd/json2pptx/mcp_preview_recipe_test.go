@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"image"
 	_ "image/png"
 	"io"
@@ -25,7 +26,7 @@ import (
 // ones, plus the local p-style when it is present.
 func previewTestTemplates() []string {
 	names := []string{"midnight-blue", "warm-coral"}
-	if _, err := os.Stat("../../templates/p-style.pptx"); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		names = append(names, "p-style")
 	}
 	return names
@@ -197,9 +198,7 @@ func TestPatternPreviewPixelsMatchGeneratedSlide(t *testing.T) {
 	if testing.Short() {
 		t.Skip("render integration skipped in -short mode")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	reg := patterns.Default()
 	names := previewPixelSample
 	if os.Getenv("PREVIEW_PIXEL_FULL") == "1" {
@@ -275,9 +274,7 @@ func TestListSlideKindsPreviewMatchesRenderDeckSpec(t *testing.T) {
 	if testing.Short() {
 		t.Skip("render integration skipped in -short mode")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	for _, tpl := range previewTestTemplates() {
 		t.Run(tpl, func(t *testing.T) {
 			mc := semanticTestConfig(t)
@@ -330,9 +327,7 @@ func TestRecommendVisualPreviewReturnsImages(t *testing.T) {
 	if testing.Short() {
 		t.Skip("render integration skipped in -short mode")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	mc := semanticTestConfig(t)
 	names := []any{"kpi-3up", "labeled-rows", "gantt", "waterfall"}
 	res, err := mc.handleRecommendVisual(context.Background(), makeRequest(map[string]any{

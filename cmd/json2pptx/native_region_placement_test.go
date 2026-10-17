@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"encoding/json"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"io"
 	"os"
 	"path/filepath"
@@ -84,7 +85,7 @@ func TestAdvertisedNativeRegionPlacementsGenerate(t *testing.T) {
 	}
 
 	templates := []string{"midnight-blue"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		templates = append(templates, "p-style")
 	}
 	for _, tpl := range templates {

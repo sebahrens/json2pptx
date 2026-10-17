@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -110,8 +111,8 @@ func verdictSurfaces(t *testing.T, mc *mcpConfig, deckPath string, generate bool
 
 	// generate --dry-run.
 	var dryErr error
-	dry := captureStdout(t, func() {
-		dryErr = runJSONDryRun(deckPath, "", mc.templatesDir, "", "", false)
+	dry := captureStdout(t, func(outputWriter io.Writer) {
+		dryErr = runJSONDryRunTo(deckPath, "", mc.templatesDir, "", "", false, outputWriter)
 	})
 	doc = decode("generate --dry-run", dry)
 	valid, _ := doc["valid"].(bool)
@@ -809,7 +810,9 @@ func TestCLIValidateResolvesTemplatePathAsGenerate(t *testing.T) {
 		t.Errorf("validate rejects a template_path generate renders: %v", res.Errors)
 	}
 	var dryErr error
-	captureStdout(t, func() { dryErr = runJSONDryRun(path, "", "../../templates", "", "", false) })
+	captureStdout(t, func(outputWriter io.Writer) {
+		dryErr = runJSONDryRunTo(path, "", "../../templates", "", "", false, outputWriter)
+	})
 	if dryErr != nil {
 		t.Errorf("generate --dry-run rejects it: %v", dryErr)
 	}

@@ -83,6 +83,7 @@ func TestAllTestTemplateNamesSupersetOfCore(t *testing.T) {
 }
 
 func TestLocalPStyleAvailability(t *testing.T) {
+	t.Setenv("JSON2PPTX_SKIP_LOCAL_TEMPLATES", "0")
 	if got := localTestTemplateNames(t.TempDir()); len(got) != 0 {
 		t.Errorf("empty directory unexpectedly has local templates: %v", got)
 	}
@@ -95,5 +96,19 @@ func TestLocalPStyleAvailability(t *testing.T) {
 	}
 	if _, err := templates.Embedded.ReadFile("p-style.pptx"); err == nil {
 		t.Error("local p-style must not be embedded in the shipped binary")
+	}
+}
+
+func TestLocalTemplateOptOut(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "p-style.pptx"), []byte("fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSON2PPTX_SKIP_LOCAL_TEMPLATES", "1")
+	if got := localTestTemplateNames(dir); len(got) != 0 {
+		t.Fatalf("CI fixture matrix includes local template: %v", got)
+	}
+	if LocalTemplateAvailable("p-style") {
+		t.Fatal("explicit fixture branch ignored opt-out")
 	}
 }

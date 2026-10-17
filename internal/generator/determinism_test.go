@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,10 +16,7 @@ import (
 // produces byte-identical PPTX output across multiple runs.
 // This is the core deterministic compiler mandate: same input → same output.
 func TestGenerate_Determinism_TextOnly(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	slides := []SlideSpec{
 		{
@@ -110,10 +108,7 @@ func TestGenerate_Determinism_TextOnly(t *testing.T) {
 
 // TestGenerate_Determinism_WithImages verifies determinism when slides include images.
 func TestGenerate_Determinism_WithImages(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testImage := "testdata/test_image_small.png"
 	if _, err := os.Stat(testImage); os.IsNotExist(err) {
@@ -203,10 +198,7 @@ func TestGenerate_Determinism_WithImages(t *testing.T) {
 // TestGenerate_Determinism_ManySlides verifies determinism with many slides
 // to stress-test map iteration ordering.
 func TestGenerate_Determinism_ManySlides(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	// Create 10 slides to exercise map iteration paths thoroughly
 	slides := make([]SlideSpec, 10)
@@ -271,10 +263,7 @@ func TestGenerate_Determinism_ManySlides(t *testing.T) {
 // Key risks: map iteration order in panelShapeInserts, shape ID allocation
 // order, and icon processing order must all be deterministic.
 func TestGenerate_Determinism_PanelLayout(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	// 4-panel columns layout with icons and bullet text, spread across
 	// two slides to exercise sorted map iteration in finalizePanelGroupXML.

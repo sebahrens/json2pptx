@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
-	"path/filepath"
+
 	"strings"
 	"testing"
 
@@ -16,13 +17,7 @@ import (
 // p-style template when it is present (it is gitignored, so CI runs without
 // it). modern-template has the shortest content area, so it is the one that
 // catches a region sized for the roomier templates.
-func composeExampleTemplates() []string {
-	templates := []string{"forest-green", "midnight-blue", "modern-template", "warm-coral"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
-		templates = append(templates, "p-style")
-	}
-	return templates
-}
+func composeExampleTemplates() []string { return testutil.CoreTemplateNames() }
 
 // blockingFindings returns the findings an agent copying an example would
 // have to repair: errors, warnings, and the info-severity findings that still
@@ -100,6 +95,9 @@ func TestComposeExamplesRoundTrip(t *testing.T) {
 					t.Errorf("validate_input(fit_report) findings on the example:\n  %s", strings.Join(bad, "\n  "))
 				}
 
+				if testing.Short() && tpl != "modern-template" {
+					return
+				}
 				gen, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{"presentation": deck}))
 				if err != nil {
 					t.Fatal(err)

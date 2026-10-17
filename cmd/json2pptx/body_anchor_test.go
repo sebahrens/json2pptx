@@ -2,7 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"os"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -21,7 +22,7 @@ var shapeOffYRegexp = regexp.MustCompile(`<a:off x="-?\d+" y="(\d+)"`)
 // content-top grid_violation; a dense block keeps its sizes and its place.
 func TestSparsePatternBlockIsComposed(t *testing.T) {
 	templates := []string{"midnight-blue", "modern-template"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		templates = append(templates, "p-style")
 	}
 	sparse := `{"layout_id":"content","pattern":{"name":"kpi-3up","values":[{"big":"42%","small":"Faster resolution"},{"big":"$3.1M","small":"Annual savings"},{"big":"4.6","small":"CSAT score"}]}}`
@@ -97,7 +98,7 @@ func TestSparsePatternBlockIsComposed(t *testing.T) {
 // a sparse block instead (TestSparsePatternBlockIsComposed).
 func TestShortPatternStartsAtBodyPlaceholderTop(t *testing.T) {
 	templates := []string{"abstract", "forest-green", "modern-template"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		templates = append(templates, "p-style")
 	}
 	for _, name := range templates {
@@ -155,7 +156,7 @@ func TestShortPatternStartsAtBodyPlaceholderTop(t *testing.T) {
 // the title-box line (bodyStartTop).
 func TestStretchPatternStartsAtBodyLine(t *testing.T) {
 	templates := []string{"abstract", "blue-corporate", "business-template", "forest-green", "midnight-blue", "modern", "modern-template", "modern-yellow", "warm-coral"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		templates = append(templates, "p-style")
 	}
 	cases := []struct{ pattern, values string }{
@@ -231,7 +232,7 @@ func TestStretchPatternStartsAtBodyLine(t *testing.T) {
 // from the body line: their content tops agree within ~10pt on blank-title.
 func TestKindDefaultsHangFromBodyLine(t *testing.T) {
 	templates := []string{"abstract", "midnight-blue"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		templates = append(templates, "p-style")
 	}
 	slidesJSON := `[

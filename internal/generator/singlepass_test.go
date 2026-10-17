@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"io"
 	"os"
 	"path/filepath"
@@ -199,10 +200,7 @@ func TestInsertSlideEntriesIntoPresentationXML(t *testing.T) {
 
 // TestSinglePassContext_ScanTemplate tests the scanTemplate method
 func TestSinglePassContext_ScanTemplate(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	// Open template
 	reader, err := zip.OpenReader(templatePath)
@@ -1137,7 +1135,7 @@ func TestGenerateSinglePass_ErrorHandling(t *testing.T) {
 			// Skip if template doesn't exist for tests that need it
 			if tt.req.TemplatePath == "../template/testdata/standard.pptx" {
 				if _, err := os.Stat(tt.req.TemplatePath); os.IsNotExist(err) {
-					t.Skip("test template not found")
+					t.Fatal("required tracked test template not found")
 				}
 			}
 
@@ -1155,10 +1153,7 @@ func TestGenerateSinglePass_ErrorHandling(t *testing.T) {
 
 // TestGenerateSinglePass_LayoutNotFound tests error when layout is not found
 func TestGenerateSinglePass_LayoutNotFound(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.pptx")
@@ -1189,10 +1184,7 @@ func TestGenerateSinglePass_LayoutNotFound(t *testing.T) {
 
 // TestGenerateSinglePass_BasicGeneration tests successful generation
 func TestGenerateSinglePass_BasicGeneration(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.pptx")
@@ -1257,10 +1249,7 @@ func TestGenerateSinglePass_BasicGeneration(t *testing.T) {
 
 // TestGenerateSinglePass_SVGStrategy tests SVG strategy configuration
 func TestGenerateSinglePass_SVGStrategy(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 
@@ -1303,10 +1292,7 @@ func TestGenerateSinglePass_SVGStrategy(t *testing.T) {
 
 // TestSinglePassContext_AllocateNativeSVGRelIDs tests relationship ID allocation
 func TestSinglePassContext_AllocateNativeSVGRelIDs(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	reader, err := zip.OpenReader(templatePath)
 	if err != nil {
@@ -1417,10 +1403,7 @@ func TestStreamBytesToZip_EdgeCases(t *testing.T) {
 
 // TestUpdateContentTypes_Singlepass tests updating [Content_Types].xml with image extensions
 func TestUpdateContentTypes_Singlepass(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	reader, err := zip.OpenReader(templatePath)
 	if err != nil {
@@ -1567,10 +1550,7 @@ func TestAddSlideContentTypeOverrides(t *testing.T) {
 
 // TestCreateSlideFromLayout tests creating slide XML from layout
 func TestCreateSlideFromLayout(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	reader, err := zip.OpenReader(templatePath)
 	if err != nil {
@@ -3133,10 +3113,7 @@ func TestPopulateShapeText_BulletGroups_EmptyBody(t *testing.T) {
 
 // TestLoadOrCreateRelationships tests loading relationships from template
 func TestLoadOrCreateRelationships(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	reader, err := zip.OpenReader(templatePath)
 	if err != nil {
@@ -3227,10 +3204,7 @@ func TestConvertSVGToRaster_UnavailableConverter(t *testing.T) {
 
 // TestWriteRelationships_BothMediaAndNativeSVG tests writing relationships with both regular media and native SVG
 func TestWriteRelationships_BothMediaAndNativeSVG(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	reader, err := zip.OpenReader(templatePath)
 	if err != nil {
@@ -3292,10 +3266,7 @@ func TestWriteRelationships_BothMediaAndNativeSVG(t *testing.T) {
 
 // TestWriteNativeSVGOnlyRelationships tests writing relationships for slides with only native SVG (no regular media)
 func TestWriteNativeSVGOnlyRelationships(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	reader, err := zip.OpenReader(templatePath)
 	if err != nil {
@@ -3614,10 +3585,7 @@ func TestFinalizePPTX_Success(t *testing.T) {
 
 // TestWriteContentTypes_Error tests writeContentTypes error handling
 func TestWriteContentTypes_Error(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	reader, err := zip.OpenReader(templatePath)
 	if err != nil {

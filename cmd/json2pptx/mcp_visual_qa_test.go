@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -268,9 +269,7 @@ func TestVisualQA_EnabledWithRenderTools(t *testing.T) {
 	if testing.Short() {
 		t.Skip("real visual-QA render integration")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("render tools unavailable")
-	}
+	testutil.RequireRenderTools(t)
 	withRenderStatus(t, true, nil)
 	assertVisualQAEnabledReportsRequirementsAndMode(t)
 }
@@ -416,10 +415,7 @@ func TestVisualQA_AuditPaletteRequested(t *testing.T) {
 	if testing.Short() {
 		t.Skip("real palette-audit render integration")
 	}
-	avail, _ := render.DependencyStatus()
-	if !avail {
-		t.Skip("render tools unavailable; visual_qa phase is skipped so palette audit never runs")
-	}
+	testutil.RequireRenderTools(t)
 	mc := repairMC(t)
 
 	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{

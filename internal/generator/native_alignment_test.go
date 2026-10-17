@@ -93,6 +93,9 @@ func TestNativeDisplayAlignmentInGeneratedPPTX(t *testing.T) {
 		{"p-style", "slideLayout4", "Section Number", "r"},
 	} {
 		t.Run(tc.name+"/"+tc.id, func(t *testing.T) {
+			if tc.name == "p-style" && os.Getenv("JSON2PPTX_SKIP_LOCAL_TEMPLATES") == "1" {
+				t.Skip("optional local templates disabled")
+			}
 			tpl := filepath.Join("../../templates", tc.name+".pptx")
 			if _, err := os.Stat(tpl); os.IsNotExist(err) && tc.name == "p-style" {
 				t.Skip("ignored local p-style template is not present")

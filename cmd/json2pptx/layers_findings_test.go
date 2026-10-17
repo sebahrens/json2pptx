@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -309,8 +310,8 @@ func TestLayerShapeIsValidatedLikeACellShape(t *testing.T) {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	out := captureStdout(t, func() {
-		_ = runJSONDryRun(path, "", testutil.TemplatesDir(), "", "", false)
+	out := captureStdout(t, func(outputWriter io.Writer) {
+		_ = runJSONDryRunTo(path, "", testutil.TemplatesDir(), "", "", false, outputWriter)
 	})
 	if want := `cell 1 layer 1: unknown geometry \"blockArk\"`; !strings.Contains(out, want) {
 		t.Errorf("dry run does not report %s:\n%s", want, out)

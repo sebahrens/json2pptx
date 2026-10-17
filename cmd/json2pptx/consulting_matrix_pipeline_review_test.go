@@ -20,6 +20,9 @@ func TestMeasuredMatricesSurviveSemanticPipeline(t *testing.T) {
 		for _, kind := range []string{"raci", "status_board"} {
 			t.Run(template+"/"+kind, func(t *testing.T) {
 				if template == "p-style" {
+					if os.Getenv("JSON2PPTX_SKIP_LOCAL_TEMPLATES") == "1" {
+						t.Skip("optional local templates disabled")
+					}
 					info, err := os.Stat(filepath.Join(testutil.TemplatesDir(), "p-style.pptx"))
 					if os.IsNotExist(err) {
 						t.Skip("optional local p-style template is absent")

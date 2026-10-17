@@ -494,3 +494,13 @@ help:
 	@echo ""
 	@echo "All binaries ($(words $(ALL_CMDS))):"
 	@$(foreach pair,$(ALL_CMDS),echo "  $(word 1,$(subst :, ,$(pair)))	./$(word 2,$(subst :, ,$(pair)))";)
+
+# Linux matches the golden-hash CI platform; no host font/cache state leaks in.
+.PHONY: determinism-linux test-local-templates
+determinism-linux:
+	scripts/determinism_linux.sh
+
+# Supplemental designer-owned template matrix; keep this in output-quality reviews.
+test-local-templates:
+	test -f templates/p-style.pptx
+	JSON2PPTX_SKIP_LOCAL_TEMPLATES=0 go test ./cmd/json2pptx ./internal/generator -run 'AcrossTemplates|Corpus|PStyle|NativeDisplayAlignment|DropsFooterSegment|DerivedAccentUsageGuide|MeasuredMatricesSurvive|StakeholderBoundaryMarkers|StakeholderPaddingRetains' -count=1 -timeout=45m

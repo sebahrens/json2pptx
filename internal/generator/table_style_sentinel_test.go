@@ -3,8 +3,9 @@ package generator
 import (
 	"archive/zip"
 	"context"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"io"
-	"os"
+
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -28,10 +29,7 @@ var templateSentinelPattern = regexp.MustCompile(`@template-[a-zA-Z0-9_-]+`)
 //  2. ppt/tableStyles.xml is populated with a <a:tblStyle> entry for every
 //     referenced style GUID (so the file is self-contained per OOXML schema).
 func TestGenerate_NoSentinelsInOutput(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "table-sentinel.pptx")

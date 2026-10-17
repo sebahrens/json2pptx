@@ -3,13 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
-
-	"github.com/sebahrens/json2pptx/internal/render"
 )
 
 // go-slide-creator-1w3uo: the image tools accept a slide id wherever they
@@ -98,9 +97,7 @@ func TestRenderThumbnailsBySlideIDIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("render integration skipped in -short mode")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	mc := handleTestConfig(t)
 	first := renderDeckSpec(t, mc, map[string]any{"spec": revisionTestSpec})
 

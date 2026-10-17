@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,10 +46,10 @@ func TestCLIRenderManifestWritesNamedFiles(t *testing.T) {
 	}
 
 	var printErr error
-	stdout := captureStdout(t, func() {
-		printErr = cliPrintRenderManifest(mcpgo.NewToolResultText(string(meta)), out, func(i int) string {
+	stdout := captureStdout(t, func(outputWriter io.Writer) {
+		printErr = cliPrintRenderManifestTo(mcpgo.NewToolResultText(string(meta)), out, func(i int) string {
 			return filepath.Join(out, fmt.Sprintf("slide-%d.png", i))
-		}, true)
+		}, true, outputWriter)
 	})
 	if printErr != nil {
 		t.Fatal(printErr)
@@ -81,8 +82,8 @@ func TestCLIRenderManifestWritesNamedFiles(t *testing.T) {
 	}
 
 	// Without a destination the manifest reports the cache paths and says so.
-	stdout = captureStdout(t, func() {
-		printErr = cliPrintRenderManifest(mcpgo.NewToolResultText(string(meta)), "", nil, false)
+	stdout = captureStdout(t, func(outputWriter io.Writer) {
+		printErr = cliPrintRenderManifestTo(mcpgo.NewToolResultText(string(meta)), "", nil, false, outputWriter)
 	})
 	if printErr != nil {
 		t.Fatal(printErr)
@@ -101,8 +102,8 @@ func TestCLIRenderManifestWritesNamedFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	one := filepath.Join(t.TempDir(), "one.png")
-	stdout = captureStdout(t, func() {
-		printErr = cliPrintRenderManifest(mcpgo.NewToolResultText(string(single)), "", singleSlideDest(one), false)
+	stdout = captureStdout(t, func(outputWriter io.Writer) {
+		printErr = cliPrintRenderManifestTo(mcpgo.NewToolResultText(string(single)), "", singleSlideDest(one), false, outputWriter)
 	})
 	if printErr != nil {
 		t.Fatal(printErr)
@@ -133,10 +134,10 @@ func TestCLIRenderManifestKeepsUnchangedSlides(t *testing.T) {
 		t.Fatal(err)
 	}
 	var printErr error
-	stdout := captureStdout(t, func() {
-		printErr = cliPrintRenderManifest(mcpgo.NewToolResultText(string(meta)), out, func(i int) string {
+	stdout := captureStdout(t, func(outputWriter io.Writer) {
+		printErr = cliPrintRenderManifestTo(mcpgo.NewToolResultText(string(meta)), out, func(i int) string {
 			return filepath.Join(out, fmt.Sprintf("slide-%d.png", i))
-		}, true)
+		}, true, outputWriter)
 	})
 	if printErr != nil {
 		t.Fatal(printErr)

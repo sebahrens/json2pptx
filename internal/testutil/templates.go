@@ -106,6 +106,9 @@ func AllTestTemplateNames() []string {
 }
 
 func localTestTemplateNames(dir string) []string {
+	if os.Getenv("JSON2PPTX_SKIP_LOCAL_TEMPLATES") == "1" {
+		return nil
+	}
 	info, err := os.Stat(filepath.Join(dir, "p-style.pptx"))
 	if err != nil || !info.Mode().IsRegular() {
 		return nil
@@ -216,4 +219,15 @@ func VerifyBuiltinTemplateCoverage() ([]string, error) {
 
 	sort.Strings(problems)
 	return problems, nil
+}
+
+// LocalTemplateAvailable applies the same opt-out to explicit local fixture
+// branches as to the shared corpus. Only named optional fixtures are admitted.
+func LocalTemplateAvailable(name string) bool {
+	for _, candidate := range localTestTemplateNames(TemplatesDir()) {
+		if candidate == name {
+			return true
+		}
+	}
+	return false
 }

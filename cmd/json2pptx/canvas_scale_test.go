@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
+	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+	"github.com/sebahrens/json2pptx/internal/testutil/templatefixture"
 	"strings"
 	"sync"
 	"testing"
@@ -18,6 +19,14 @@ import (
 // values.
 func exemplarDeck(t *testing.T) PresentationInput {
 	t.Helper()
+	deck, err := buildExemplarDeck()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return deck
+}
+
+func buildExemplarDeck() (PresentationInput, error) {
 	var deck PresentationInput
 	for _, p := range patterns.Default().List() {
 		ex, ok := p.(patterns.Exemplar)
@@ -26,12 +35,24 @@ func exemplarDeck(t *testing.T) PresentationInput {
 		}
 		values, err := json.Marshal(ex.ExemplarValues())
 		if err != nil {
-			t.Fatalf("marshal exemplar %s: %v", p.Name(), err)
+			return deck, fmt.Errorf("marshal exemplar %s: %w", p.Name(), err)
 		}
-		values = bindTestExemplarImage(t, p.Name(), values)
+		if p.Name() == "image-hero" {
+			var imageValues map[string]any
+			if err := json.Unmarshal(values, &imageValues); err != nil {
+				return deck, err
+			}
+			if err := bindIllustrativeHeroImage(imageValues); err != nil {
+				return deck, err
+			}
+			values, err = json.Marshal(imageValues)
+			if err != nil {
+				return deck, err
+			}
+		}
 		deck.Slides = append(deck.Slides, titledPatternSlide(p.Name(), values))
 	}
-	return deck
+	return deck, nil
 }
 
 // The patterns' points are designed on the 13.33 x 7.5in slide. On
@@ -46,7 +67,11 @@ func TestExemplarDeckUsesTheContentArea(t *testing.T) {
 		patterns.ErrCodeHorizontalImbalance: true,
 		patterns.ErrCodeVerticalImbalance:   true,
 	}
-	for _, tpl := range []string{"business-template", "midnight-blue"} {
+	templates := []string{"business-template", "midnight-blue"}
+	if testing.Short() {
+		templates = templates[:1]
+	}
+	for _, tpl := range templates {
 		for _, f := range exemplarDeckFitFindings(t, tpl) {
 			if balance[f.Code] && supportingBandPatterns[f.Pattern] == "" {
 				t.Errorf("%s: %s exemplar: %s: %s", tpl, f.Pattern, f.Code, f.Message)
@@ -61,14 +86,36 @@ func TestExemplarDeckUsesTheContentArea(t *testing.T) {
 // measured (go-slide-creator-efhg2). The findings are shared; read them only.
 func exemplarDeckFitFindings(t *testing.T, tpl string) []patterns.FitFinding {
 	t.Helper()
-	if cached, ok := exemplarFitFindings.Load(tpl); ok {
-		return cached.([]patterns.FitFinding)
+	findings, err := cachedExemplarFindings(tpl)
+	if err != nil {
+		t.Fatal(err)
 	}
-	a := loadTemplateAnalysis(t, tpl)
-	deck := exemplarDeck(t)
-	findings := collectFitFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme)
-	exemplarFitFindings.Store(tpl, findings)
 	return findings
+}
+
+func cachedExemplarFindings(tpl string) ([]patterns.FitFinding, error) {
+	entry, _ := exemplarFitFindings.LoadOrStore(tpl, &exemplarFitEntry{})
+	cached := entry.(*exemplarFitEntry)
+	cached.once.Do(func() {
+		a, err := templatefixture.ReadTemplateAnalysis(tpl)
+		if err != nil {
+			cached.err = err
+			return
+		}
+		deck, err := buildExemplarDeck()
+		if err != nil {
+			cached.err = err
+			return
+		}
+		cached.findings = collectFitFindings(&deck, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme)
+	})
+	return cached.findings, cached.err
+}
+
+type exemplarFitEntry struct {
+	once     sync.Once
+	findings []patterns.FitFinding
+	err      error
 }
 
 var exemplarFitFindings sync.Map
@@ -103,8 +150,8 @@ func TestExemplarsClearTheUnderusedThreshold(t *testing.T) {
 		templates = templates[:2]
 	}
 	for _, tpl := range templates {
-		if _, err := os.Stat(filepath.Join("..", "..", "templates", tpl+".pptx")); err != nil {
-			t.Logf("template %s not present; skipped", tpl)
+		if tpl == "p-style" && !testutil.LocalTemplateAvailable(tpl) {
+			t.Logf("optional template %s not present or disabled; skipped", tpl)
 			continue
 		}
 		a := loadTemplateAnalysis(t, tpl)

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -224,7 +225,7 @@ func TestExampleCorpusScoreListsEachFindingOnce(t *testing.T) {
 		files = append(files, m...)
 	}
 	templates := []string{"midnight-blue", "modern-template"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		templates = append(templates, "p-style")
 	}
 	decks := 0

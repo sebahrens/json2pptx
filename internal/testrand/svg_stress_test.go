@@ -59,12 +59,9 @@ func TestSVGStressAliasResolution(t *testing.T) {
 			data := runner.dataForType(canonical, 3)
 			result := runner.runOne(alias, VariantStandard)
 
-			// Alias might not be directly renderable if not registered
-			// The important thing is it doesn't panic
-			if result.Error != "" && result.Passed {
-				t.Logf("alias %s: %s (ok)", alias, result.Error)
-			} else if !result.Passed {
-				t.Logf("alias %s failed: %s (data keys: %v)", alias, result.Error, keys(data))
+			// Every advertised alias must render successfully.
+			if !result.Passed {
+				t.Errorf("alias %s failed: %s (data keys: %v)", alias, result.Error, keys(data))
 			}
 		})
 	}

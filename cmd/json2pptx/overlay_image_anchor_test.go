@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"image"
 	"image/png"
 	"os"
@@ -297,7 +298,7 @@ var (
 // written — offset, extent and a:srcRect — independently of the resolver.
 func TestExhibitCalloutsDeck_LeadersLandOnPictureTargets(t *testing.T) {
 	templates := []string{"midnight-blue", "warm-coral"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		templates = append(templates, "p-style")
 	}
 	targets := [][2]float64{{560.0 / 1600, 484.0 / 900}, {1182.0 / 1600, 484.0 / 900}}

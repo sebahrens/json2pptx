@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"io"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -205,6 +206,9 @@ func TestGenerateDropsFooterSegmentInsteadOfEllipsis(t *testing.T) {
 	const client = "Meridian Capital Partners Infrastructure Fund Management Limited"
 	for _, name := range []string{"midnight-blue", "modern-template", "forest-green", "warm-coral", "p-style"} {
 		t.Run(name, func(t *testing.T) {
+			if name == "p-style" && os.Getenv("JSON2PPTX_SKIP_LOCAL_TEMPLATES") == "1" {
+				t.Skip("optional local templates disabled")
+			}
 			templatePath := "../../templates/" + name + ".pptx"
 			reader, err := template.OpenTemplate(templatePath)
 			if err != nil {

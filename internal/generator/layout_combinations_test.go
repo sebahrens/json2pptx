@@ -480,32 +480,6 @@ func TestAspectRatio_AllChartsCanStretchToFillContainer(t *testing.T) {
 	}
 }
 
-// TestAspectRatio_RectangularChartsCanStretch validates rectangular charts.
-func TestAspectRatio_RectangularChartsCanStretch(t *testing.T) {
-	testCases := GetAspectRatioTestCases()
-
-	for _, tc := range testCases {
-		if !tc.CanStretch {
-			continue
-		}
-
-		t.Run(tc.Name, func(t *testing.T) {
-			// For rectangular charts, FitMode can be "stretch" or omitted
-			spec := &types.DiagramSpec{
-				Type:    string(tc.ChartType) + "_chart",
-				Width:   800,
-				Height:  600,
-				FitMode: "stretch",
-			}
-
-			// Rectangular charts should allow stretching
-			if spec.FitMode != "stretch" && spec.FitMode != "" {
-				t.Logf("Rectangular chart %s using FitMode=%q", tc.ChartType, spec.FitMode)
-			}
-		})
-	}
-}
-
 // =============================================================================
 // VALIDATION ASSERTIONS FOR CI
 // =============================================================================

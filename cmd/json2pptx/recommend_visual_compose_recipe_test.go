@@ -4,8 +4,9 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"io"
-	"os"
+
 	"strings"
 	"testing"
 
@@ -19,7 +20,7 @@ import (
 // rendered on; the local, untracked p-style joins when present.
 func composeRecipeTemplates() []string {
 	tpls := []string{"midnight-blue", "warm-coral"}
-	if _, err := os.Stat("../../templates/p-style.pptx"); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		tpls = append(tpls, "p-style")
 	}
 	return tpls

@@ -94,7 +94,6 @@ internal/
   visualqa/       # Visual QA agent integration
   resource/       # Embedded resource handling
   config/         # Configuration
-  safeyaml/       # Safe YAML parsing
   testrand/       # Random test data generation
   testutil/       # Test helpers
   utils/          # Utilities

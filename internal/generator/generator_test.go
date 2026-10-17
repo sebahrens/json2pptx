@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,10 +18,7 @@ import (
 // When generated
 // Then file size < 10MB
 func TestGenerate_FileSize_AC10(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	// Verify test images exist
 	testImages := []string{
@@ -242,10 +240,7 @@ func TestGenerate_FileSize_AC10(t *testing.T) {
 // TestGenerate_CompleteIntegration tests the complete generation pipeline
 // with text, bullets, and images working together
 func TestGenerate_CompleteIntegration(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testImage := "testdata/test_image_small.png"
 	if _, err := os.Stat(testImage); os.IsNotExist(err) {
@@ -373,10 +368,7 @@ func TestGenerate_CompleteIntegration(t *testing.T) {
 // When generated
 // Then slide created with placeholder text removed
 func TestGenerate_EmptyContentHandling(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "empty_content.pptx")
@@ -432,10 +424,7 @@ func TestGenerate_EmptyContentHandling(t *testing.T) {
 // When generated
 // Then both images appear with unique relationship IDs
 func TestGenerate_MultipleImagesPerSlide(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testImages := []string{
 		"testdata/test_image_small.png",
@@ -523,10 +512,7 @@ func TestGenerate_MultipleImagesPerSlide(t *testing.T) {
 // When generated
 // Then all content types are correctly rendered
 func TestGenerate_MixedContent(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testImage := "testdata/test_image_small.png"
 	if _, err := os.Stat(testImage); os.IsNotExist(err) {
@@ -670,10 +656,7 @@ func TestGenerate_ImageEmbedding_AC5(t *testing.T) {
 
 func generateSingleImageDeck(t *testing.T, outputName, alt string) string {
 	t.Helper()
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testImage := "testdata/test_image_small.png"
 	if _, err := os.Stat(testImage); os.IsNotExist(err) {
@@ -721,10 +704,7 @@ func generateSingleImageDeck(t *testing.T, outputName, alt string) string {
 // When generated
 // Then image cover-fills the placeholder without distortion.
 func TestGenerate_ImageScaling_AC6(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testImage := "testdata/test_image_large.png"
 	if _, err := os.Stat(testImage); os.IsNotExist(err) {
@@ -832,10 +812,7 @@ func TestGenerate_RelationshipLinkage_AC_NEW2(t *testing.T) {
 // TestGenerate_FullPipelineValidation validates the complete generation pipeline
 // with all image-related acceptance criteria
 func TestGenerate_FullPipelineValidation(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testImages := []string{
 		"testdata/test_image_small.png",
@@ -993,10 +970,7 @@ func TestGenerate_FullPipelineValidation(t *testing.T) {
 // Note: This test validates that the streamImageToZip function is used correctly
 // by verifying that large images can be processed without issues.
 func TestGenerate_StreamingImageHandling_AC2(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	// Create a larger test image to verify streaming works
 	testImage := "testdata/test_image_large.png"
@@ -1164,10 +1138,7 @@ func TestStreamImageToZip_MissingFile(t *testing.T) {
 // Note: This is a structural/performance optimization test. We verify the output
 // is correct (which implies single-pass worked) and that performance improved.
 func TestGenerate_SinglePassOptimization_AC1(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testImage := "testdata/test_image_small.png"
 	if _, err := os.Stat(testImage); os.IsNotExist(err) {
@@ -1279,10 +1250,7 @@ func TestGenerate_SVGImageEmbedding(t *testing.T) {
 		t.Skip("SVG conversion not available (rsvg-convert not installed)")
 	}
 
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testSVG := "testdata/test_image.svg"
 	if _, err := os.Stat(testSVG); os.IsNotExist(err) {
@@ -1361,10 +1329,7 @@ func TestGenerate_SVGWithPNGImage(t *testing.T) {
 		t.Skip("SVG conversion not available (rsvg-convert not installed)")
 	}
 
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testSVG := "testdata/test_image.svg"
 	testPNG := "testdata/test_image_small.png"
@@ -1599,10 +1564,7 @@ func stringContains(s, substr string) bool {
 
 // TestGenerate_BackgroundImage tests slide background image generation.
 func TestGenerate_BackgroundImage(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	testImage := "testdata/test_image_small.png"
 	if _, err := os.Stat(testImage); os.IsNotExist(err) {

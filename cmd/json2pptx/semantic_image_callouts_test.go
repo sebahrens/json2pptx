@@ -39,10 +39,7 @@ func TestSemanticImageCaseCallouts(t *testing.T) {
 	orig := os.Args
 	defer func() { os.Args = orig }()
 	os.Args = []string{"json2pptx", "render", "--spec", specPath, "--output", out, "--templates-dir", testTemplatesDir}
-	var stdout string
-	stderr := captureStderr(t, func() {
-		stdout = captureStdout(t, func() { _ = runSemantic() })
-	})
+	stdout, stderr, _ := cliRun(t, nil, append([]string{"semantic"}, os.Args[1:]...)...)
 
 	var res struct {
 		Diagnostics []struct {

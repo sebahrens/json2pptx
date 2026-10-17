@@ -83,9 +83,7 @@ func TestTemplateDefaultWithoutDefinitionRendersStyledHeader(t *testing.T) {
 	if testing.Short() {
 		t.Skip("pixel comparison requires LibreOffice")
 	}
-	if ok, missing := render.DependencyStatus(); !ok {
-		t.Skipf("render dependencies unavailable: %v", missing)
-	}
+	testutil.RequireRenderTools(t)
 	for _, name := range []string{"forest-green", "midnight-blue", "modern-yellow", "warm-coral"} {
 		t.Run(name, func(t *testing.T) {
 			templatePath := filepath.Join(testutil.TemplatesDir(), name+".pptx")

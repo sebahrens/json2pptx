@@ -684,12 +684,9 @@ func TestHumanFitReportAddressesAuthoredDeck(t *testing.T) {
 	saved := os.Args
 	t.Cleanup(func() { os.Args = saved })
 	os.Args = []string{"validate", "--fit-report", "--templates-dir", "../../templates", path}
-	var runErr error
-	report := captureStderr(t, func() {
-		_ = captureStdout(t, func() { runErr = runValidate() })
-	})
-	if runErr != nil {
-		t.Fatalf("validate: %v\n%s", runErr, report)
+	_, report, code := cliRun(t, nil, append([]string{"validate"}, os.Args[1:]...)...)
+	if code != 0 {
+		t.Fatalf("validate exit: %d\n%s", code, report)
 	}
 	for _, want := range []string{
 		"  Slide 4:\n    [review] /structure/sections/0/slides/0/source",

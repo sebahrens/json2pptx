@@ -12,8 +12,8 @@
 #   scripts/ci_test_durations.txt  "seconds TestName" per line, from a CI run.
 #       Refresh it from a job log with scripts/ci_test_durations.sh (see that
 #       script). A test the file does not list weighs CI_TEST_DEFAULT_WEIGHT
-#       seconds, so adding a test never needs the file edited; a stale file
-#       only balances worse.
+#       seconds. Inventory growth is checked against the last calibration;
+#       refresh the table before more than CI_TEST_MAX_UNMEASURED are added.
 #   scripts/ci_test_affinity.txt   one group of test names per line. A group
 #       shares an expensive once-per-binary fixture, so it is placed in one
 #       shard as a unit and the fixture is computed once.
@@ -36,6 +36,7 @@
 #   CI_TEST_AFFINITY         affinity file (default scripts/ci_test_affinity.txt)
 #   CI_TEST_DEFAULT_WEIGHT   seconds assumed for an unlisted test (default 0.1,
 #                            about what the two thousand tests under a second take)
+#   CI_TEST_MAX_UNMEASURED net new tests tolerated since calibration (default 100)
 #   SHARD_PLAN_ONLY          1 prints the assignment and exits without running
 #   SHARD_TESTS              a regular expression: run only the matching tests
 #                            (for trying the script; CI runs them all)
@@ -87,6 +88,24 @@ if [ -n "$missing" ]; then
   echo "rename them in the affinity file (or drop the group if the fixture is no longer shared)." >&2
   exit 1
 fi
+
+# The duration file intentionally omits sub-second tests. Its measured inventory
+# count distinguishes that omission from tests added since the last green run.
+measured="$(sed -n 's/^# Measured top-level tests: //p' "$DURATIONS" | tail -1)"
+if [ -z "$measured" ]; then
+  echo "::warning::Duration table lacks inventory metadata; refresh from the latest green CI run."
+else
+  growth=$((total - measured))
+  if [ "$growth" -gt 0 ]; then
+    echo "::warning::$growth net new tests since duration calibration; refresh scripts/ci_test_durations.txt"
+    if [ "$growth" -gt "${CI_TEST_MAX_UNMEASURED:-100}" ]; then
+      echo "::error::Unmeasured test growth exceeds CI_TEST_MAX_UNMEASURED; regenerate the durations table."
+      exit 1
+    fi
+  fi
+fi
+awk 'FILENAME==ARGV[1] { if ($1 !~ /^#/ && NF>=2) known[$2]=1; next } !($1 in known) { print $1 }' "$DURATIONS" "$LOGDIR/tests.txt" >"$LOGDIR/unlisted.txt"
+echo "$(wc -l <"$LOGDIR/unlisted.txt" | tr -d ' ') tests use default duration; inventory: $LOGDIR/unlisted.txt"
 
 # A local trial of the script itself can run a part of the suite.
 if [ -n "${SHARD_TESTS:-}" ]; then

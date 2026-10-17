@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"io"
-	"os"
+
 	"strings"
 	"testing"
 
@@ -78,142 +76,81 @@ func TestMCPToolConstructors(t *testing.T) {
 	}
 }
 
-// captureStderr redirects os.Stderr for the duration of fn and returns what
-// was written, so we can verify CLI usage banners without parsing flags.
-func captureStderr(t *testing.T, fn func()) string {
-	t.Helper()
-	orig := os.Stderr
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
-	}
-	os.Stderr = w
-	done := make(chan []byte, 1)
-	go func() {
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		done <- buf.Bytes()
-	}()
-	fn()
-	_ = w.Close()
-	os.Stderr = orig
-	return string(<-done)
-}
-
 func TestPrintUsage(t *testing.T) {
-	out := captureStderr(t, func() { printUsage() })
+	stdout, stderr, code := cliRun(t, nil, "help")
+	if code != 0 {
+		t.Fatalf("command failed: %s", stderr)
+	}
+	out := stdout + stderr
 	for _, want := range []string{"json2pptx", "generate", "validate", "mcp", "patterns"} {
 		if !strings.Contains(out, want) {
-			t.Errorf("printUsage output missing %q: %q", want, out)
+			t.Errorf("usage missing %q: %s", want, out)
 		}
 	}
 }
 
 func TestPrintIconsUsage(t *testing.T) {
-	out := captureStderr(t, func() { printIconsUsage() })
+	stdout, stderr, code := cliRun(t, nil, "icons", "help")
+	if code != 0 {
+		t.Fatalf("command failed: %s", stderr)
+	}
+	out := stdout + stderr
 	if !strings.Contains(out, "icons") {
-		t.Errorf("printIconsUsage missing 'icons': %q", out)
+		t.Fatalf("usage/output missing icons: %s", out)
 	}
-	if !strings.Contains(out, "list") {
-		t.Errorf("printIconsUsage missing 'list': %q", out)
-	}
-}
-
-// withSavedArgs restores os.Args after fn runs so tests do not leak state
-// to subsequent tests in the package.
-func withSavedArgs(fn func()) {
-	saved := os.Args
-	defer func() { os.Args = saved }()
-	fn()
 }
 
 func TestRunIcons_NoArgs_PrintsUsage(t *testing.T) {
-	withSavedArgs(func() {
-		os.Args = []string{"json2pptx"}
-		out := captureStderr(t, func() {
-			if err := runIcons(); err != nil {
-				t.Fatalf("runIcons: %v", err)
-			}
-		})
-		if !strings.Contains(out, "icons") {
-			t.Errorf("expected usage banner, got %q", out)
-		}
-	})
+	stdout, stderr, code := cliRun(t, nil, "icons")
+	if code != 0 {
+		t.Fatalf("command failed: %s", stderr)
+	}
+	out := stdout + stderr
+	if !strings.Contains(out, "icons") {
+		t.Fatalf("usage/output missing icons: %s", out)
+	}
 }
 
 func TestRunIcons_HelpReturnsNil(t *testing.T) {
-	withSavedArgs(func() {
-		os.Args = []string{"json2pptx", "help"}
-		out := captureStderr(t, func() {
-			if err := runIcons(); err != nil {
-				t.Fatalf("runIcons help: %v", err)
-			}
-		})
-		if !strings.Contains(out, "icons") {
-			t.Errorf("expected usage banner from help, got %q", out)
-		}
-	})
+	stdout, stderr, code := cliRun(t, nil, "icons", "help")
+	if code != 0 {
+		t.Fatalf("command failed: %s", stderr)
+	}
+	out := stdout + stderr
+	if !strings.Contains(out, "icons") {
+		t.Fatalf("usage/output missing icons: %s", out)
+	}
 }
 
 func TestRunIcons_UnknownReturnsError(t *testing.T) {
-	withSavedArgs(func() {
-		os.Args = []string{"json2pptx", "definitely-not-a-subcommand"}
-		// captureStderr to suppress the usage banner from test output.
-		_ = captureStderr(t, func() {
-			if err := runIcons(); err == nil {
-				t.Error("expected error for unknown subcommand")
-			}
-		})
-	})
+	_, _, code := cliRun(t, nil, "icons", "definitely-not-a-command")
+	if code == 0 {
+		t.Fatal("unknown command must fail")
+	}
 }
 
 func TestRunIconsListTable(t *testing.T) {
-	// runIconsListTable writes to os.Stdout; redirect to verify it produces
-	// the expected per-set summary lines.
-	orig := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
+	stdout, stderr, code := cliRun(t, nil, "icons", "list", "--set", "outline")
+	if code != 0 {
+		t.Fatalf("command failed: %s", stderr)
 	}
-	os.Stdout = w
-	done := make(chan []byte, 1)
-	go func() {
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		done <- buf.Bytes()
-	}()
-	if err := runIconsListTable([]string{"outline"}); err != nil {
-		t.Fatalf("runIconsListTable: %v", err)
-	}
-	_ = w.Close()
-	os.Stdout = orig
-	out := string(<-done)
+	out := stdout + stderr
 	if !strings.Contains(out, "outline") {
-		t.Errorf("expected 'outline' in output, got %q", out)
+		t.Fatalf("usage/output missing outline: %s", out)
 	}
 }
 
 func TestRunIconsListJSON(t *testing.T) {
-	orig := os.Stdout
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
+	stdout, stderr, code := cliRun(t, nil, "icons", "list", "--set", "outline", "--format", "json")
+	if code != 0 {
+		t.Fatalf("command failed: %s", stderr)
 	}
-	os.Stdout = w
-	done := make(chan []byte, 1)
-	go func() {
-		var buf bytes.Buffer
-		_, _ = io.Copy(&buf, r)
-		done <- buf.Bytes()
-	}()
-	if err := runIconsListJSON([]string{"outline"}); err != nil {
-		t.Fatalf("runIconsListJSON: %v", err)
+	out := stdout + stderr
+	if !strings.Contains(out, "outline") {
+		t.Fatalf("usage/output missing outline: %s", out)
 	}
-	_ = w.Close()
-	os.Stdout = orig
-	out := string(<-done)
-	if !strings.Contains(out, `"set"`) || !strings.Contains(out, `"outline"`) {
-		t.Errorf("expected JSON with set=outline, got %q", out)
+	if !strings.Contains(stdout, `"set"`) {
+		t.Errorf("JSON output has no set field: %s", stdout)
 	}
 }
 
@@ -224,51 +161,45 @@ func TestRunIconsListTable_BadSet(t *testing.T) {
 }
 
 func TestPrintPatternsUsage(t *testing.T) {
-	out := captureStderr(t, func() { printPatternsUsage() })
+	stdout, stderr, code := cliRun(t, nil, "patterns", "help")
+	if code != 0 {
+		t.Fatalf("command failed: %s", stderr)
+	}
+	out := stdout + stderr
 	for _, want := range []string{"patterns", "list", "show", "validate", "expand"} {
 		if !strings.Contains(out, want) {
-			t.Errorf("printPatternsUsage missing %q: %q", want, out)
+			t.Errorf("usage missing %q: %s", want, out)
 		}
 	}
 }
 
 func TestRunPatterns_NoArgs_PrintsUsage(t *testing.T) {
-	withSavedArgs(func() {
-		os.Args = []string{"json2pptx"}
-		out := captureStderr(t, func() {
-			if err := runPatterns(); err != nil {
-				t.Fatalf("runPatterns: %v", err)
-			}
-		})
-		if !strings.Contains(out, "patterns") {
-			t.Errorf("expected usage banner, got %q", out)
-		}
-	})
+	stdout, stderr, code := cliRun(t, nil, "patterns")
+	if code != 0 {
+		t.Fatalf("command failed: %s", stderr)
+	}
+	out := stdout + stderr
+	if !strings.Contains(out, "patterns") {
+		t.Fatalf("usage/output missing patterns: %s", out)
+	}
 }
 
 func TestRunPatterns_HelpReturnsNil(t *testing.T) {
-	withSavedArgs(func() {
-		os.Args = []string{"json2pptx", "help"}
-		out := captureStderr(t, func() {
-			if err := runPatterns(); err != nil {
-				t.Fatalf("runPatterns help: %v", err)
-			}
-		})
-		if !strings.Contains(out, "patterns") {
-			t.Errorf("expected usage banner, got %q", out)
-		}
-	})
+	stdout, stderr, code := cliRun(t, nil, "patterns", "help")
+	if code != 0 {
+		t.Fatalf("command failed: %s", stderr)
+	}
+	out := stdout + stderr
+	if !strings.Contains(out, "patterns") {
+		t.Fatalf("usage/output missing patterns: %s", out)
+	}
 }
 
 func TestRunPatterns_UnknownReturnsError(t *testing.T) {
-	withSavedArgs(func() {
-		os.Args = []string{"json2pptx", "definitely-not-a-real-subcommand"}
-		_ = captureStderr(t, func() {
-			if err := runPatterns(); err == nil {
-				t.Error("expected error for unknown patterns subcommand")
-			}
-		})
-	})
+	_, _, code := cliRun(t, nil, "patterns", "definitely-not-a-command")
+	if code == 0 {
+		t.Fatal("unknown command must fail")
+	}
 }
 
 func TestUnknownPatternError(t *testing.T) {

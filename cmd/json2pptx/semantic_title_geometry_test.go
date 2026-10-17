@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+
 	"regexp"
 	"sort"
 	"strconv"
@@ -123,7 +123,7 @@ func effectiveTitle(t *testing.T, parts map[string][]byte, slide string) (layout
 // one title xfrm — with every authored framework item still on the slide.
 func TestDeckSpecContentKindsShareTitleGeometry(t *testing.T) {
 	templates := []string{"abstract"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		templates = append(templates, "p-style")
 	}
 	for _, name := range templates {

@@ -2,7 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"os"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -22,7 +23,7 @@ var (
 // shares the pattern's left edge.
 func TestPatternTextSharesTitleLeftEdge(t *testing.T) {
 	templates := []string{"abstract", "forest-green", "midnight-blue"}
-	if _, err := os.Stat(filepath.Join("..", "..", "templates", "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		templates = append(templates, "p-style")
 	}
 	for _, tmpl := range templates {

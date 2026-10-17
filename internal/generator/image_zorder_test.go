@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"image"
 	"image/color"
 	"image/draw"
@@ -73,10 +74,7 @@ func TestModernFullBleedImageLeavesTitleVisible(t *testing.T) {
 		t.Log("pixel check skipped in short mode; OOXML z-order checks passed")
 		return
 	}
-	if ok, missing := render.DependencyStatus(); !ok {
-		t.Logf("pixel check skipped: missing render dependencies %v", missing)
-		return
-	}
+	testutil.RequireRenderTools(t)
 	pngs, cleanup, err := render.DeckPNGs(output, 72, true)
 	if err != nil {
 		t.Fatal(err)

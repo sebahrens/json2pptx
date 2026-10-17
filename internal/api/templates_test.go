@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,44 +17,9 @@ import (
 )
 
 // mockTemplateCache is a simple in-memory cache for testing.
-type mockTemplateCache struct {
-	data map[string]*types.TemplateAnalysis
-}
+type mockTemplateCache = testutil.TemplateCache
 
-func newMockTemplateCache() *mockTemplateCache {
-	return &mockTemplateCache{
-		data: make(map[string]*types.TemplateAnalysis),
-	}
-}
-
-func (c *mockTemplateCache) Get(path string) (*types.TemplateAnalysis, bool) {
-	analysis, ok := c.data[path]
-	return analysis, ok
-}
-
-func (c *mockTemplateCache) Set(path string, analysis *types.TemplateAnalysis) {
-	c.data[path] = analysis
-}
-
-func (c *mockTemplateCache) Invalidate(path string) {
-	delete(c.data, path)
-}
-
-func (c *mockTemplateCache) IsValid(path string, hash string) bool {
-	analysis, ok := c.data[path]
-	if !ok {
-		return false
-	}
-	return analysis.Hash == hash
-}
-
-func (c *mockTemplateCache) Clear() {
-	c.data = make(map[string]*types.TemplateAnalysis)
-}
-
-func (c *mockTemplateCache) Size() int {
-	return len(c.data)
-}
+func newMockTemplateCache() *mockTemplateCache { return testutil.NewTemplateCache() }
 
 func TestListTemplatesHandler(t *testing.T) {
 	tests := []struct {

@@ -25,13 +25,13 @@ It is the reference for the audit tracked by `go-slide-creator-p9vi`.
 Everything not gated below. Runs on every push/PR via the `test` job with
 `-short -race` and a 70% coverage threshold.
 
-Most `t.Skip("test template not found")` / `t.Skip("test image not found")`
-guards in `internal/generator/*_test.go` are **defensive only** — the fixtures
+The standard-template fixture in `internal/generator/*_test.go` is mandatory.
+Other image guards refer to the fixtures
 they look for (`internal/template/testdata/standard.pptx`,
 `internal/generator/testdata/test_image_*.png`, `test_image.svg`) are committed,
 so the guards do not fire in a normal checkout and these tests run as unit
-tests. The guards stay as cheap protection against a corrupted/partial checkout;
-they are not an integration boundary.
+tests. Required standard-template guards now fail a corrupted/partial checkout via
+`testutil.StandardTemplatePath(t)`; optional local fixtures remain explicit skips.
 
 ## 2. Tool-gated render tier
 
@@ -196,3 +196,105 @@ forcing them to run:
    installs the tool. Don't leave it as a silent runtime `t.Skip` with no CI
    job exercising it.
 3. **Expensive opt-in (parity/visual)?** Env-gate it and add a dedicated CI job.
+
+## Reproducing CI and retaining local output-quality coverage
+
+Set `JSON2PPTX_SKIP_LOCAL_TEMPLATES=1 make test` to exclude the ignored p-style
+fixture from shared matrices and explicit optional-template branches. Leave it
+unset for local output-quality reviews: those reviews must include p-style.
+`make test-local-templates` requires p-style to exist, then runs the supplemental
+cross-template and designer-template suites. It never commits that template.
+
+The optional p-style cases have no CI fixture: `TestDerivedAccentUsageGuideForTemplateWithoutMetadata`,
+`TestDeterministicCorpus/p-style`, `TestMeasuredMatricesSurviveSemanticPipeline/p-style`,
+`TestExecutiveSummaryReclaimsTallTitleBandOnPStyle`,
+`TestStakeholderBoundaryMarkersClearWrittenAxisBands/p-style`,
+`TestStakeholderPaddingRetainsExhibitCoverage/p-style`,
+`TestNativeDisplayAlignmentInGeneratedPPTX/p-style`, and
+`TestGenerateDropsFooterSegmentInsteadOfEllipsis/p-style`. Their shipped-template
+siblings still execute in CI. Corrupt shipped templates fail; only the named
+optional fixture may be absent.
+
+`make determinism-linux` cross-compiles the test binary and runs the canonical
+Linux byte-golden check in the existing `lo24-rt` Docker image. Set
+`DETERMINISM_IMAGE` to another local render-toolchain image if needed. Docker and
+that image must be installed; the target does not silently fall back to macOS.
+The source mount is read-only, so this check cannot rebaseline goldens.
+
+## Calibration probes and environment switches
+
+Calibration functions are behind `//go:build probe`; default `go test` and shard
+inventory exclude them. Their helpers and genuine assertion tests stay in the
+ordinary suite. Opt in explicitly, for example:
+
+```bash
+JSON2PPTX_CYCLE_NODES_BUDGET_PROBE=1 go test -tags=probe ./cmd/json2pptx -run '^TestCycleNodesBudgetProbe$' -count=1 -v
+CYCLE_INTAKE_PROBE=1 go test -tags=probe ./internal/patterns -run '^TestCycleIntakeBudgetProbe$' -count=1 -v
+(cd svggen && FONT_INSPECT=1 go test -tags=probe -run '^TestFontSizeInspection$' -count=1 -v)
+```
+
+No CI job sets the calibration gates. The `*_BUDGET_PROBE` family includes
+`JSON2PPTX_` prefixes for HORIZONTAL_BAR, AGENDA_IMAGES, BEFORE_AFTER_COMPACT,
+PHASE_ROADMAP, TIMELINE, STYLISH_PANELS, HERO_DETAIL, TABLE_HIGHLIGHT,
+QUOTE_CLUSTER, DUAL_ORG, EXEC_SUMMARY, WATERFALL, STAT_HERO, SCQA, AGENDA,
+VALUE_CHAIN, STATE_SHIFT_HUB, STRATEGY_HOUSE, JOURNEY, PROCESS_COMPACT,
+PROCESS_FLOW, ARCH_STACK, PYRAMID, CHART_INSIGHTS, MATRIX, DRIVER, COMPARISON,
+ROADMAP, TEAM_BIOS, SWIMLANE, NUMBERED, KPI_INLINE, CYCLE_RING,
+CYCLE_FIGURE_EIGHT, CYCLE_NODES, CYCLE_INTAKE, RADIAL_HUB and CONCENTRIC_RINGS.
+Other calibration gates are `JSON2PPTX_BUDGET_PROBE`,
+`JSON2PPTX_DRIVER_SPAN_PROBE`, `CYCLE_INTAKE_PROBE`,
+`JSON2PPTX_CYCLE_FIGURE_EIGHT_RENDER`, `J2P_FIT_DECK` (path), `J2P_FIT_GEOM`,
+`DEBUG_RENDER`, and `FONT_INSPECT`. Use the corresponding probe file's test name
+with `-run`; set the gate to `1` except path-valued switches.
+
+| Switch | Purpose | CI job |
+| --- | --- | --- |
+| `PALETTE_PARITY_TEST` | Cross-engine palette assertions | palette-parity |
+| `RENDER_TEST_PPTX` | Input deck for render integration | render-integration |
+| `RENDER_TRUTH_TEMPLATES` | Template list for LibreOffice refit audit | render-integration |
+| `RENDER_TRUTH_PATTERNS`, `RENDER_TRUTH_KEEP` | Limit patterns, retain audit artifacts | none |
+| `JSON2PPTX_BINARY` | Prebuilt CLI for portability integration | template-portability-rendered |
+| `PORTABILITY_RENDER_*` | Rendered portability inventory/artifacts | template-portability-rendered |
+| `NATIVE_LAYOUT_CORPUS_OUT` | Retained all-native-layout review output | none |
+| `NATIVE_LAYOUT_TEMPLATE_DIR`, `NATIVE_LAYOUT_IMAGE_SOURCE`, `NATIVE_LAYOUT_STRICT_FIT`, `NATIVE_LAYOUT_PHOTO_BACKDROP`, `NATIVE_LAYOUT_TABLE_CONTINUATIONS`, `NATIVE_LAYOUT_BULLET_CONTINUATIONS` | Native layout review inputs and mode | none |
+| `DISCLOSURE_ALIGNMENT_ARTIFACT_DIR`, `FOOTER_PROMPT_CANDIDATE_DIR` | Retain generator review artifacts | none |
+| `PREVIEW_PIXEL_FULL` | Expand preview pixel comparison matrix | none |
+| `SWEEP_KEEP`, `PEER_KEEP` | Retain typography sweep artifacts | none |
+| `UPDATE_GOLDEN` | Explicit golden regeneration | none |
+| `JOURNEY_RECORD`, `JOURNEY_COMMIT`, `JOURNEY_NOTE` | Record journey metrics and provenance | none |
+| `JSON2PPTX_SKIP_LOCAL_TEMPLATES` | Reproduce shipped-only template inventory | optional local use |
+| `SHARD_BUDGET_*`, `SHARD_TIMEOUT`, `CI_TEST_*`, `SHARD_PLAN_ONLY`, `SHARD_TESTS` | Shard planning, duration calibration and runtime budget | test; plan/filter overrides are local |
+
+`GET_STARTED_RENDER_INTEGRATION` is retired: the non-short corpus always runs
+those render steps. `testutil.RequireRenderTools` skips missing optional tools
+locally and fails with their names when `CI` is set. Corpus members that skip at
+the top level in CI also fail, so membership alone no longer implies execution.
+The corpus-headless job installs LibreOffice, ImageMagick and the Calibri-compatible
+Carlito face. Child-process plumbing (`JSON2PPTX_HEADLESS_TEST_HELPER`,
+`J2P_CLI_DISPATCH_HELPER`, `JSON2PPTX_GUARD_*`, `RENDER_CONVERT_*`) is internal test
+protocol, not an opt-in coverage tier.
+
+## Shared fixture timing and duration refresh
+
+Exemplar findings use one `sync.Once` per template. Selected exemplar tests warm
+their shared template/font/fit state in `TestMain` before individual test timers;
+`-list` and unrelated focused selections do not pay that cost. Setup time remains
+part of shard wall time and its enforced budget. The short exemplar area test
+uses business-template; the full corpus retains midnight-blue as well. Compose
+examples still receive fit validation on every template under `-short`, while
+PPTX writing uses modern-template; corpus-headless writes the full matrix.
+
+`scripts/ci_test_durations.sh` records the measured top-level inventory count
+alongside its deliberately sparse (at least one second) table. The shard runner
+reports the default-weight inventory and warns on growth, failing above
+`CI_TEST_MAX_UNMEASURED` (100 by default). Legacy tables without the count emit a
+refresh warning. The scheduled **Refresh test durations** workflow downloads the
+latest successful main CI log every Monday (or on manual dispatch), regenerates
+the table, and uploads `calibrated-test-durations` for review and commit. It does
+not substitute laptop timings or commit thousands of default-weight entries.
+After fixture changes, review that artifact before updating the tracked table.
+
+The semantic example corpus now runs the same scratch-render evaluation as
+`semantic validate`, preserving each pinned template (midnight-blue for an
+unpinned example). Input-only checks in `internal/semantic` remain useful but
+are not the render-stage quality gate.

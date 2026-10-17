@@ -1,11 +1,16 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // The package's CLI tests shell out to a built json2pptx binary. Building it
@@ -25,6 +30,21 @@ func TestMain(m *testing.M) {
 	// The developer's own installed skill must not put a line on a test's
 	// stderr; the skill tests set their own directory.
 	_ = os.Setenv(skillCheckEnv, "off")
+	flag.Parse()
+	if flag.Lookup("test.list").Value.String() == "" && needsExemplarSetup(flag.Lookup("test.run").Value.String()) {
+		started := time.Now()
+		names := []string{"business-template", "midnight-blue"}
+		if testing.Short() {
+			names = []string{"business-template", "modern-template"}
+		}
+		for _, name := range names {
+			if _, err := cachedExemplarFindings(name); err != nil {
+				fmt.Fprintf(os.Stderr, "exemplar fixture setup: %v\n", err)
+				os.Exit(1)
+			}
+		}
+		fmt.Fprintf(os.Stderr, "exemplar fixture setup: %s\n", time.Since(started))
+	}
 	code := m.Run()
 	if sharedBinaryDir != "" {
 		_ = os.RemoveAll(sharedBinaryDir)
@@ -53,4 +73,34 @@ func sharedTestBinary(t *testing.T) string {
 		t.Fatalf("failed to build test binary: %v\n%s", sharedBinaryErr, sharedBinaryOut)
 	}
 	return sharedBinaryPath
+}
+
+// Charge shared template/font/exemplar warm-up to process setup, before test
+// timing starts. Focused unrelated tests and -list must not pay this cost.
+func needsExemplarSetup(pattern string) bool {
+	top := strings.Split(pattern, "/")[0]
+	re, err := regexp.Compile(top)
+	if err != nil {
+		return false
+	} // testing reports the invalid selection itself.
+	for _, name := range []string{"TestExemplarDeckUsesTheContentArea", "TestExemplarsClearTheUnderusedThreshold", "TestShortReducedMatricesCorpus"} {
+		if re.MatchString(name) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestExemplarSetupSelection(t *testing.T) {
+	for _, tc := range []struct {
+		pattern string
+		want    bool
+	}{
+		{"", true}, {"^TestExemplarDeckUsesTheContentArea$", true}, {"^TestExemplarsClearTheUnderusedThreshold$/business-template", true},
+		{"^TestSomethingElse$", false}, {"[", false},
+	} {
+		if got := needsExemplarSetup(tc.pattern); got != tc.want {
+			t.Errorf("selection %q=%v want %v", tc.pattern, got, tc.want)
+		}
+	}
 }

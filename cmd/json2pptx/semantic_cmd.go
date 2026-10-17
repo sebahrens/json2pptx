@@ -1516,7 +1516,7 @@ func printJSONIndent(v any) error {
 }
 
 // fprintJSONIndent writes v as indented JSON (with a trailing newline) to w.
-func fprintJSONIndent(w *os.File, v any) error {
+func fprintJSONIndent(w io.Writer, v any) error {
 	out, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal JSON: %w", err)

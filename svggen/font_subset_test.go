@@ -3,10 +3,10 @@ package svggen
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/binary"
 	"regexp"
 	"strings"
 	"testing"
-	"time"
 )
 
 // svgBase64Blob matches an embedded data-URI payload — in practice the base64
@@ -112,7 +112,7 @@ func TestSVGRenderOptionsSubsetFonts(t *testing.T) {
 	}
 }
 
-func TestChartSVGStableAcrossClockBoundary(t *testing.T) {
+func TestChartSVGStableAcrossFontTimestampChanges(t *testing.T) {
 	req := &RequestEnvelope{Type: "bar_chart", Title: "Stable font emission", Output: OutputSpec{Width: 900, Height: 500}, Data: map[string]any{"categories": []any{"Q1", "Q2"}, "series": []any{map[string]any{"name": "Revenue", "values": []any{12.0, 18.0}}}}}
 	first, err := Render(req)
 	if err != nil {
@@ -121,7 +121,39 @@ func TestChartSVGStableAcrossClockBoundary(t *testing.T) {
 	if len(svgBase64Blob.FindAll(first.Content, -1)) == 0 {
 		t.Fatal("reproduction requires embedded fonts")
 	}
-	time.Sleep(1100 * time.Millisecond)
+	// Inject a different timestamp into each real embedded font, then run
+	// the same normalization used by Render. No wall clock or sleep required.
+	changed := svgBase64Blob.ReplaceAllFunc(first.Content, func(blob []byte) []byte {
+		font, err := base64.StdEncoding.DecodeString(string(blob[len("base64,"):]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		count := int(binary.BigEndian.Uint16(font[4:6]))
+		found := false
+		for i := 0; i < count; i++ {
+			record := 12 + i*16
+			if string(font[record:record+4]) != "head" {
+				continue
+			}
+			offset := int(binary.BigEndian.Uint32(font[record+8 : record+12]))
+			binary.BigEndian.PutUint64(font[offset+28:offset+36], 123456789)
+			found = true
+		}
+		if !found {
+			t.Fatal("embedded font has no head timestamp")
+		}
+		return []byte("base64," + base64.StdEncoding.EncodeToString(font))
+	})
+	if bytes.Equal(first.Content, changed) {
+		t.Fatal("timestamp mutation did not change SVG")
+	}
+	normalized, err := normalizeEmittedFontDeterminism(changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first.Content, normalized) {
+		t.Fatal("font timestamp normalization changed SVG")
+	}
 	second, err := Render(req)
 	if err != nil {
 		t.Fatal(err)

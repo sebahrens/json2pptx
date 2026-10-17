@@ -1,0 +1,27 @@
+name: Refresh test durations
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '19 6 * * 1'
+permissions:
+  actions: read
+  contents: read
+jobs:
+  calibrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Regenerate from the latest successful main CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run=$(gh run list --workflow ci.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          test -n "$run"
+          gh run view "$run" --log > /tmp/green-ci.log
+          DURATIONS_SOURCE="CI run $run" scripts/ci_test_durations.sh /tmp/green-ci.log > /tmp/ci_test_durations.txt
+          grep -q '^[0-9]' /tmp/ci_test_durations.txt
+          grep -q '^# Measured top-level tests: [1-9]' /tmp/ci_test_durations.txt
+      - uses: actions/upload-artifact@v6
+        with:
+          name: calibrated-test-durations
+          path: /tmp/ci_test_durations.txt

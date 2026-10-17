@@ -74,6 +74,9 @@ func TestDeterministicCorpus(t *testing.T) {
 		tmpl := tmpl
 		t.Run(tmpl, func(t *testing.T) {
 			if tmpl == "p-style" {
+				if os.Getenv("JSON2PPTX_SKIP_LOCAL_TEMPLATES") == "1" {
+					t.Skip("optional local templates disabled")
+				}
 				if _, err := os.Stat(filepath.Join(templatesDir, tmpl+".pptx")); os.IsNotExist(err) {
 					t.Skip("local p-style template is not present")
 				} else if err != nil {
@@ -108,7 +111,7 @@ func TestDeterministicCorpus(t *testing.T) {
 				if runtime.GOOS == "linux" {
 					t.Error(msg)
 				} else {
-					t.Logf("%s\n(non-linux platform: logged as info — CI on linux is the source of truth)", msg)
+					t.Logf("%s\n(non-linux platform: logged as info — reproduce CI with make determinism-linux)", msg)
 				}
 			}
 		})

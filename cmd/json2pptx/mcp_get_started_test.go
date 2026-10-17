@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -488,20 +489,16 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 				"presentation": fixtureDeck,
 			}))
 		case "render_deck_thumbnails":
-			if testing.Short() || os.Getenv("GET_STARTED_RENDER_INTEGRATION") != "1" {
+			if testing.Short() {
 				return generatedPath
 			}
-			if ok, _ := render.DependencyStatus(); !ok {
-				return generatedPath
-			}
+			testutil.RequireRenderTools(t)
 			result, err = mc.handleRenderDeckThumbnails(ctx, makeRequest(map[string]any{"pptx_path": generatedPath}))
 		case "inspect_slide_images":
-			if testing.Short() || os.Getenv("GET_STARTED_RENDER_INTEGRATION") != "1" {
+			if testing.Short() {
 				return generatedPath
 			}
-			if ok, _ := render.DependencyStatus(); !ok {
-				return generatedPath
-			}
+			testutil.RequireRenderTools(t)
 			rendered, rerr := mc.handleRenderDeckThumbnails(ctx, makeRequest(map[string]any{"pptx_path": generatedPath}))
 			if rerr != nil || rendered == nil {
 				t.Fatalf("render prerequisite failed: %v", rerr)

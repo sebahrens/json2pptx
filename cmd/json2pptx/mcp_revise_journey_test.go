@@ -3,8 +3,9 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
-	"runtime"
+
 	"strings"
 	"testing"
 
@@ -79,15 +80,11 @@ func (j journeyServer) render(args map[string]any) (renderDeckSpecResponse, *mcp
 }
 
 // renderOK is render for a turn the journey rendered successfully. Fit
-// refusals depend on font metrics, which differ off macOS; the journey ran on
-// macOS, so elsewhere a refusal skips rather than fails.
+// refusals must fail on every platform; CI installs the metric-compatible fonts.
 func (j journeyServer) renderOK(args map[string]any) (renderDeckSpecResponse, int) {
 	j.t.Helper()
 	out, res, size := j.render(args)
 	if !out.Success {
-		if runtime.GOOS != "darwin" && len(out.Diagnostics) > 0 {
-			j.t.Skipf("font-dependent fit refusal off macOS: %s %+v", out.Error, out.Diagnostics)
-		}
 		j.t.Fatalf("render failed: %s", resultText(res))
 	}
 	return out, size
@@ -442,9 +439,7 @@ func TestNotesOnlyRevisionKeepsThumbnailHashes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("render integration skipped in -short mode")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	// A private render cache: the stored slide images are the subject.
 	t.Setenv("TMPDIR", t.TempDir())
 	mc := handleTestConfig(t)

@@ -12,6 +12,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"hash/crc32"
 	"image"
 	"image/png"
@@ -20,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/visualqa"
 )
@@ -109,9 +109,7 @@ func TestSubmitVisualReview_SurvivesSelectedForceRefresh(t *testing.T) {
 	if testing.Short() {
 		t.Skip("render integration skipped in -short mode")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	pptxPath, sha, _ := renderReviewFixture(t)
 	mc := &mcpConfig{templatesDir: "../../templates", outputDir: t.TempDir(), cache: template.NewMemoryCache(24 * time.Hour)}
 
@@ -135,13 +133,12 @@ func TestSubmitVisualReview_SurvivesSelectedForceRefresh(t *testing.T) {
 			t.Fatalf("slide %d: content_hash %s is not the pixel hash %s of its own path", i, s.ContentHash, got)
 		}
 		retained[i] = filepath.Join(dir, fmt.Sprintf("slide-%d.png", i))
-		if err := os.WriteFile(retained[i], data, 0o600); err != nil {
+		if err := os.WriteFile(retained[i], withTextChunk(t, data, "date:create", "2000-01-01T00:00:00Z"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 		hashes[i] = s.ContentHash
 	}
 
-	time.Sleep(1100 * time.Millisecond) // metadata timestamps have 1s resolution
 	refresh, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{
 		"pptx_path": pptxPath, "density": 100, "slide_indices": []any{1}, "force": true,
 	}))

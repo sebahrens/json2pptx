@@ -48,19 +48,14 @@ func writeSpec(t *testing.T, name, content string) string {
 	return path
 }
 
-// runSemanticArgs invokes runSemantic with os.Args reshaped as main.dispatch
-// would have left them (os.Args[0] is the program, the rest are the semantic
-// subcommand and its flags). It restores os.Args afterward and returns the
-// captured stdout plus the handler error.
+// runSemanticArgs invokes the CLI in an isolated process and returns its stdout and exit error.
 func runSemanticArgs(t *testing.T, args ...string) (string, error) {
 	t.Helper()
-	orig := os.Args
-	defer func() { os.Args = orig }()
-	os.Args = append([]string{"json2pptx"}, args...)
-
-	var err error
-	out := captureStdout(t, func() { err = runSemantic() })
-	return out, err
+	stdout, stderr, code := cliRun(t, nil, append([]string{"semantic"}, args...)...)
+	if code != 0 {
+		return stdout, fmt.Errorf("semantic exited %d: %s", code, stderr)
+	}
+	return stdout, nil
 }
 
 func TestSemanticValidate_ValidFixture(t *testing.T) {
@@ -360,9 +355,7 @@ func TestSemanticRender_InvalidSpecFails(t *testing.T) {
 	defer func() { os.Args = orig }()
 	os.Args = []string{"json2pptx", "render", "--spec", path, "--output", out, "--templates-dir", testTemplatesDir}
 
-	var err error
-	// The failure result is the command's result: stdout, like a success.
-	stderr := captureStdout(t, func() { err = runSemantic() })
+	stderr, err := runSemanticArgs(t, os.Args[1:]...)
 	if err == nil {
 		t.Fatal("expected render to fail on a spec with blocking findings")
 	}
@@ -489,9 +482,7 @@ func TestSemanticRender_RawSlideRejectsMissingImage(t *testing.T) {
 	defer func() { os.Args = orig }()
 	os.Args = []string{"json2pptx", "render", "--spec", specPath, "--output", out, "--templates-dir", testTemplatesDir}
 
-	var err error
-	// The failure result is the command's result: stdout, like a success.
-	stderr := captureStdout(t, func() { err = runSemantic() })
+	stderr, err := runSemanticArgs(t, os.Args[1:]...)
 	if err == nil {
 		t.Fatalf("expected render to fail on a missing relative image; stdout=%s", stderr)
 	}
@@ -748,22 +739,9 @@ func TestSemanticCompile_EnvelopeBlockingError(t *testing.T) {
 // TestSemanticCompile_StdinSpec verifies that --spec - reads the spec from
 // os.Stdin (the Windows-portable path) rather than /dev/stdin.
 func TestSemanticCompile_StdinSpec(t *testing.T) {
-	origStdin := os.Stdin
-	defer func() { os.Stdin = origStdin }()
-
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("pipe: %v", err)
-	}
-	go func() {
-		_, _ = w.WriteString(validSemanticSpec)
-		_ = w.Close()
-	}()
-	os.Stdin = r
-
-	out, err := runSemanticArgs(t, "compile", "--spec", "-", "--output", "-")
-	if err != nil {
-		t.Fatalf("semantic compile --spec - returned error: %v\noutput=%s", err, out)
+	out, stderr, code := cliRunInput(t, strings.NewReader(validSemanticSpec), nil, "semantic", "compile", "--spec", "-", "--output", "-")
+	if code != 0 {
+		t.Fatalf("semantic compile stdin exited %d: %s\n%s", code, stderr, out)
 	}
 	var input PresentationInput
 	if jerr := json.Unmarshal([]byte(out), &input); jerr != nil {

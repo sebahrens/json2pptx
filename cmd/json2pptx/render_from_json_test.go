@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"strings"
 	"testing"
 
@@ -183,9 +184,7 @@ func TestHandleRenderSlideImageFromJSON_CachedAnswerHasTheFreshShape(t *testing.
 	if testing.Short() {
 		t.Skip("render integration skipped in -short mode")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	mc := cliMCPConfig("../../templates", "")
 	args := map[string]any{
 		"template": "midnight-blue",

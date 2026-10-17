@@ -89,43 +89,13 @@ func DiagramTypes() []string {
 
 // AliasMap returns a copy of all alias→canonical mappings.
 func AliasMap() map[string]string {
-	// We test alias resolution by trying to render with alias names.
-	return map[string]string{
-		"funnel":        "funnel_chart",
-		"gauge":         "gauge_chart",
-		"treemap":       "treemap_chart",
-		"bar":           "bar_chart",
-		"line":          "line_chart",
-		"pie":           "pie_chart",
-		"donut":         "donut_chart",
-		"area":          "area_chart",
-		"radar":         "radar_chart",
-		"scatter":       "scatter_chart",
-		"bubble":        "bubble_chart",
-		"stacked_bar":   "stacked_bar_chart",
-		"stacked_area":  "stacked_area_chart",
-		"grouped_bar":   "grouped_bar_chart",
-		"bar-stacked":   "stacked_bar_chart",
-		"process":       "process_flow",
-		"flow":          "process_flow",
-		"flowchart":     "process_flow",
-		"orgchart":      "org_chart",
-		"org":           "org_chart",
-		"nine-box":      "nine_box_talent",
-		"nine_box":      "nine_box_talent",
-		"bmc":           "business_model_canvas",
-		"canvas":        "business_model_canvas",
-		"porter":        "porters_five_forces",
-		"matrix":        "matrix_2x2",
-		"porters":       "porters_five_forces",
-		"icon_columns":  "panel_layout",
-		"icon_rows":     "panel_layout",
-		"stat_cards":    "panel_layout",
-		"panel":         "panel_layout",
-		"icon_panel":    "panel_layout",
-		"number_tiles":  "panel_layout",
-		"callout_cards": "panel_layout",
+	aliases := map[string]string{}
+	for _, canonical := range svggen.Types() {
+		for _, alias := range svggen.Aliases(canonical) {
+			aliases[alias] = canonical
+		}
 	}
+	return aliases
 }
 
 // Run executes the full stress test. If filterType is non-empty, only that type is tested.
@@ -164,7 +134,11 @@ func (r *SVGStressRunner) runOne(typ string, v Variant) SVGStressResult {
 		Variant:     v.String(),
 	}
 
-	data := r.generateData(typ, v)
+	canonical := typ
+	if name, ok := AliasMap()[typ]; ok {
+		canonical = name
+	}
+	data := r.generateData(canonical, v)
 	req := &svggen.RequestEnvelope{
 		Type:  typ,
 		Title: fmt.Sprintf("Stress Test: %s (%s)", typ, v),

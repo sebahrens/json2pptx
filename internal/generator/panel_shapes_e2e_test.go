@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/xml"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,10 +18,7 @@ import (
 // TestPanelNativeShapes_E2E generates a PPTX with a 4-panel columns layout using
 // the native OOXML shape pipeline and validates the output structure.
 func TestPanelNativeShapes_E2E(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "panel_e2e.pptx")
@@ -157,10 +155,7 @@ func TestPanelNativeShapes_E2E(t *testing.T) {
 
 // TestPanelNativeShapes_E2E_SinglePanel verifies the pipeline with a single panel.
 func TestPanelNativeShapes_E2E_SinglePanel(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "panel_single.pptx")
@@ -240,10 +235,7 @@ func TestPanelNativeShapes_E2E_SinglePanel(t *testing.T) {
 // TestPanelNativeShapes_E2E_DefaultLayout verifies that omitting the layout field
 // defaults to "columns" and still triggers native shape generation.
 func TestPanelNativeShapes_E2E_DefaultLayout(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "panel_default.pptx")

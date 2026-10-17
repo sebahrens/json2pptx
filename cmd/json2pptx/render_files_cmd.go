@@ -98,11 +98,15 @@ func cliRenderedSlides(result *mcpgo.CallToolResult) (renderedDeckThumbnailsResp
 // previous run left that this run did not rewrite (a shorter deck must not
 // leave the longer one's tail behind for inspect to read).
 func cliPrintRenderManifest(result *mcpgo.CallToolResult, outDir string, dest func(index int) string, sweep bool) error {
+	return cliPrintRenderManifestTo(result, outDir, dest, sweep, os.Stdout)
+}
+
+func cliPrintRenderManifestTo(result *mcpgo.CallToolResult, outDir string, dest func(index int) string, sweep bool, writer io.Writer) error {
 	if result == nil {
 		return fmt.Errorf("nil result")
 	}
 	if result.IsError {
-		return printMCPResultJSON(result)
+		return printMCPResultJSONTo(result, writer)
 	}
 	deck, err := cliRenderedSlides(result)
 	if err != nil {
@@ -155,7 +159,7 @@ func cliPrintRenderManifest(result *mcpgo.CallToolResult, outDir string, dest fu
 			}
 		}
 	}
-	return printJSONIndent(manifest)
+	return fprintJSONIndent(writer, manifest)
 }
 
 // copyFileHashed copies src to dst (skipped when they are the same path) and

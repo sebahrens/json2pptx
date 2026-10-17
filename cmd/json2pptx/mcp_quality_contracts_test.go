@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
-	"github.com/sebahrens/json2pptx/internal/render"
+
 	"github.com/sebahrens/json2pptx/internal/semantic"
 	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
@@ -170,9 +171,7 @@ func TestImageCaseDraftThumbnailReview(t *testing.T) {
 	if testing.Short() {
 		t.Skip("requires LibreOffice thumbnails")
 	}
-	if ok, _ := render.DependencyStatus(); !ok {
-		t.Skip("LibreOffice/ImageMagick not installed")
-	}
+	testutil.RequireRenderTools(t)
 	mc := semanticTestConfig(t)
 	listed, err := handleListSlideKinds(context.Background(), makeRequest(map[string]any{"kinds": []any{"image_case"}}))
 	if err != nil {

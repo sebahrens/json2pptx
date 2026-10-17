@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/xml"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,10 +15,7 @@ import (
 // TestGenerate_ValidPPTX tests AC1: Valid PPTX output
 func TestGenerate_ValidPPTX(t *testing.T) {
 	// Use the standard.pptx template from testdata
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	// Create temp output directory
 	tmpDir := t.TempDir()
@@ -98,10 +96,7 @@ func TestGenerateFailurePreservesExistingDestination(t *testing.T) {
 
 // TestGenerate_SlideCount tests AC2: Correct slide count
 func TestGenerate_SlideCount(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tests := []struct {
 		name       string
@@ -166,10 +161,7 @@ func TestGenerate_SlideCount(t *testing.T) {
 
 // TestGenerate_LayoutAccuracy tests AC9: Layout accuracy
 func TestGenerate_LayoutAccuracy(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.pptx")
@@ -276,10 +268,7 @@ func TestGenerate_InvalidTemplate(t *testing.T) {
 
 // TestGenerate_InvalidOutput tests output validation
 func TestGenerate_InvalidOutput(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tests := []struct {
 		name      string
@@ -320,10 +309,7 @@ func TestGenerate_InvalidOutput(t *testing.T) {
 
 // TestGenerate_NoSlides tests validation of empty slides
 func TestGenerate_NoSlides(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.pptx")
@@ -344,10 +330,7 @@ func TestGenerate_NoSlides(t *testing.T) {
 
 // TestGenerate_InvalidLayoutID tests handling of invalid layout IDs
 func TestGenerate_InvalidLayoutID(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.pptx")
@@ -382,10 +365,7 @@ func TestGenerate_InvalidLayoutID(t *testing.T) {
 
 // TestGenerate_FileSize tests that file size is reported
 func TestGenerate_FileSize(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.pptx")
@@ -420,10 +400,7 @@ func TestGenerate_FileSize(t *testing.T) {
 
 // TestGenerate_Duration tests that duration is reported
 func TestGenerate_Duration(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.pptx")
@@ -461,10 +438,7 @@ func TestDefaultGenerator_Interface(t *testing.T) {
 // TestDefaultGenerator_Generate tests DefaultGenerator.Generate method
 func TestDefaultGenerator_Generate(t *testing.T) {
 	// Use the standard.pptx template from testdata
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	// Create temp output directory
 	tmpDir := t.TempDir()

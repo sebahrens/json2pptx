@@ -65,7 +65,8 @@ Thumbs.db
 
 # Build cache
 /cache/
-/output/
+/output/*
+!/output/go.mod
 /outputs/
 
 # examine-template's default output directory

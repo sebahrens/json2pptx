@@ -34,7 +34,10 @@ fi
 # with the others, so it adds about its reported seconds divided by PARALLEL
 # (default 4, the runner's cores) to the shard's wall time. A parent reports
 # only its own body: its parallel first-level subtests are added to it.
-cat "$@" | awk -v min="$MIN" -v par="$PARALLEL" '
+log=$(mktemp)
+trap 'rm -f "$log"' EXIT
+cat "$@" >"$log"
+awk -v min="$MIN" -v par="$PARALLEL" '
   {
     line = $0
     sub(/\r$/, "", line)
@@ -49,7 +52,7 @@ cat "$@" | awk -v min="$MIN" -v par="$PARALLEL" '
       paused[f[3]] = 1
       next
     }
-    if (line ~ /^(    )?--- (PASS|FAIL): Test[^ ]+ \([0-9.]+s\)$/) {
+    if (line ~ /^(    )?--- (PASS|FAIL|SKIP): Test[^ ]+ \([0-9.]+s\)$/) {
       n = split(line, f, " ")
       secs = f[n]
       gsub(/[()s]/, "", secs)
@@ -64,9 +67,12 @@ cat "$@" | awk -v min="$MIN" -v par="$PARALLEL" '
     }
   }
   END {
+    count = 0
     for (name in own) {
+      count++
       secs = own[name] + subs[name]
       if (secs + 0 >= min + 0) printf "%.2f %s\n", secs, name
     }
+    printf "# Measured top-level tests: %d\n", count
   }
-' | sort -k1,1nr -k2,2
+' "$log" | sort -k1,1nr -k2,2

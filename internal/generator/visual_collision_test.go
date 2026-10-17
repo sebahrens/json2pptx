@@ -2,7 +2,8 @@ package generator
 
 import (
 	"context"
-	"os"
+	"github.com/sebahrens/json2pptx/internal/testutil"
+
 	"path/filepath"
 	"strings"
 	"testing"
@@ -18,10 +19,7 @@ import (
 // Regression for go-slide-creator-nujb (field-test 8.8: >2 content blocks
 // silently dropped).
 func TestPrepareImages_VisualCollisionEmitsContentDropped(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.pptx")
@@ -94,10 +92,7 @@ func TestPrepareImages_VisualCollisionEmitsContentDropped(t *testing.T) {
 // TestPrepareImages_SingleVisualNoFinding ensures a single visual per
 // placeholder does not trigger a false-positive CONTENT_DROPPED finding.
 func TestPrepareImages_SingleVisualNoFinding(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	templatePath := testutil.StandardTemplatePath(t)
 
 	tmpDir := t.TempDir()
 	outputPath := filepath.Join(tmpDir, "output.pptx")

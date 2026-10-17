@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -66,7 +67,7 @@ func budgetTemplates(t *testing.T) []string {
 	if len(names) == 0 {
 		t.Fatal("no shipped templates")
 	}
-	if _, err := os.Stat(filepath.Join(testTemplatesDir, "p-style.pptx")); err == nil {
+	if testutil.LocalTemplateAvailable("p-style") {
 		names = append(names, "p-style")
 	}
 	return names
@@ -185,10 +186,7 @@ func renderSpecDiagnostics(t *testing.T, spec map[string]any) []renderDiagnostic
 	orig := os.Args
 	defer func() { os.Args = orig }()
 	os.Args = []string{"json2pptx", "render", "--spec", specPath, "--output", filepath.Join(dir, "deck.pptx"), "--templates-dir", testTemplatesDir}
-	var stdout string
-	stderr := captureStderr(t, func() {
-		stdout = captureStdout(t, func() { _ = runSemantic() })
-	})
+	stdout, stderr, _ := cliRun(t, nil, append([]string{"semantic"}, os.Args[1:]...)...)
 	var res struct {
 		Diagnostics []renderDiagnostic `json:"diagnostics"`
 	}
