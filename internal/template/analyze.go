@@ -3,6 +3,7 @@ package template
 import (
 	"fmt"
 	"log/slog"
+	"reflect"
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -15,7 +16,8 @@ var defaultAnalysisCache = NewMemoryCacheWithMaxSize(time.Hour, 128)
 // validation and rendering. Cached analyses are read-only; per-deck overrides
 // belong on a copy of Theme, outside this function.
 func Analyze(path string, cache types.TemplateCache, strictMode bool) (*types.TemplateAnalysis, error) {
-	if cache == nil {
+	value := reflect.ValueOf(cache)
+	if !value.IsValid() || (value.Kind() == reflect.Pointer && value.IsNil()) {
 		cache = defaultAnalysisCache
 	}
 	var cached *types.TemplateAnalysis

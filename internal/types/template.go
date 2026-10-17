@@ -128,6 +128,15 @@ type TemplateAnalysis struct {
 	Warnings     []TemplateWarning  // Non-fatal metadata validation advisories
 }
 
+// SyntheticFiles returns replacement layout parts, including normalized native
+// layouts. Like the analysis itself, the returned map is read-only.
+func (a *TemplateAnalysis) SyntheticFiles() map[string][]byte {
+	if a.Synthesis == nil {
+		return nil
+	}
+	return a.Synthesis.SyntheticFiles
+}
+
 // TableStyleInfo describes a table style declared in a template.
 type TableStyleInfo struct {
 	ID   string `json:"id"`

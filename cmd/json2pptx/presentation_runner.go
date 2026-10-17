@@ -189,25 +189,16 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	}
 	cleanup = templateCleanup
 	res.TemplatePath = templatePath
-	styleReader, openErr := template.OpenTemplate(templatePath)
-	if openErr != nil {
-		return res, cleanup, fmt.Errorf("open template for table styles: %w", openErr)
+	styleReader, analysis, analysisErr := loadRenderTemplate(templatePath, opts.TemplateCache)
+	if analysisErr != nil {
+		return res, cleanup, analysisErr
 	}
 	defer styleReader.Close()
-	res.TemplateHash = styleReader.Hash()
-
-	// Analyze template for layout metadata, synthetic files, and dimensions.
-	analysis, analysisErr := template.Analyze(templatePath, opts.TemplateCache, false)
-	if analysisErr != nil {
-		return res, cleanup, fmt.Errorf("analyze template: %w", analysisErr)
-	}
+	res.TemplateHash = analysis.Hash
 	templateLayouts, slideWidth, slideHeight := analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight
 	templateMetadata, templateTheme := analysis.Metadata, analysis.Theme
 	synthesisFindings := template.AnalysisFindings(analysis)
-	var syntheticFiles map[string][]byte
-	if analysis.Synthesis != nil {
-		syntheticFiles = analysis.Synthesis.SyntheticFiles
-	}
+	syntheticFiles := analysis.SyntheticFiles()
 	res.TemplateLayouts = templateLayouts
 	res.SyntheticFiles = syntheticFiles
 	res.SlideWidth = slideWidth
@@ -360,6 +351,19 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	}
 
 	return res, cleanup, nil
+}
+
+func loadRenderTemplate(path string, cache types.TemplateCache) (*template.Reader, *types.TemplateAnalysis, error) {
+	reader, err := template.OpenTemplate(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open template for table styles: %w", err)
+	}
+	analysis, err := template.Analyze(path, cache, false)
+	if err != nil {
+		_ = reader.Close()
+		return nil, nil, fmt.Errorf("analyze template: %w", err)
+	}
+	return reader, analysis, nil
 }
 
 // deckEnumRefusal is the refusal for a deck with an enum value outside its

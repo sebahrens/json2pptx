@@ -94,6 +94,15 @@ func TestAnalyzeSharedMetadataAndCache(t *testing.T) {
 	}
 }
 
+func TestAnalyzeAcceptsNilPointerCache(t *testing.T) {
+	path := analyzerFixture(t, `{"version":"1.0"}`, false)
+	var cache *MemoryCache
+	analysis, err := Analyze(path, cache, false)
+	if err != nil || analysis == nil || len(analysis.Layouts) == 0 {
+		t.Fatalf("typed nil cache did not use default analysis cache: %v", err)
+	}
+}
+
 func TestAnalyzeInvalidatesReplacedTemplate(t *testing.T) {
 	path := analyzerFixture(t, `{"version":"1.0"}`, false)
 	cache := NewMemoryCache(time.Hour)
