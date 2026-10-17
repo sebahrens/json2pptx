@@ -236,8 +236,11 @@ func fitReportGeometry(templateName, templatesDir string) ([]types.LayoutMetadat
 	// The theme drives the contrast preflight and the chart dry-render's font
 	// measurement, so the CLI has to carry it too or those detectors measure
 	// against a different typeface than the renderer uses.
-	layouts, _, slideWidth, slideHeight, _, theme, _ := analyzeTemplateLayouts(templatePath)
-	return layouts, &theme, slideWidth, slideHeight
+	analysis, err := analyzeTemplateLayouts(templatePath)
+	if err != nil {
+		return nil, nil, 0, 0
+	}
+	return analysis.Layouts, &analysis.Theme, analysis.SlideWidth, analysis.SlideHeight
 }
 
 // validateResult holds the structured validation output for a single file.

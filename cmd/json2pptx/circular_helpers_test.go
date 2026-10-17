@@ -42,11 +42,11 @@ func loadCircularTemplate(t *testing.T, name string) *circularTemplate {
 	if cached, ok := circularTemplates.Load(name); ok {
 		return cached.(*circularTemplate)
 	}
-	layouts, _, width, height, _, theme, _ := analyzeTemplateLayouts(filepath.Join(testutil.TemplatesDir(), name+".pptx"))
-	if layouts == nil {
-		t.Fatalf("cannot analyze template %q", name)
+	analysis, err := analyzeTemplateLayouts(filepath.Join(testutil.TemplatesDir(), name+".pptx"))
+	if err != nil {
+		t.Fatalf("analyze template %q: %v", name, err)
 	}
-	tpl := &circularTemplate{name: name, layouts: layouts, width: width, height: height, theme: theme}
+	tpl := &circularTemplate{name: name, layouts: analysis.Layouts, width: analysis.SlideWidth, height: analysis.SlideHeight, theme: analysis.Theme}
 	circularTemplates.Store(name, tpl)
 	return tpl
 }

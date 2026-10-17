@@ -100,6 +100,16 @@ type SynthesisManifest struct {
 	// SyntheticFiles maps layout paths (e.g., "ppt/slideLayouts/slideLayout99.xml")
 	// to their generated XML bytes. Also includes .rels files.
 	SyntheticFiles map[string][]byte
+	// LayoutIDs excludes normalized native layouts, which also have replacement
+	// XML in SyntheticFiles. It preserves synthesis advice when analysis is cached.
+	LayoutIDs    []string
+	BaseLayoutID string
+}
+
+// TemplateWarning retains metadata advisories alongside a cached analysis.
+type TemplateWarning struct {
+	Code    string
+	Message string
 }
 
 // TemplateAnalysis contains the complete analysis of a PowerPoint template.
@@ -115,6 +125,7 @@ type TemplateAnalysis struct {
 	Metadata     *TemplateMetadata  // Optional embedded metadata (nil if not present)
 	Synthesis    *SynthesisManifest // nil if no synthesis needed
 	TableStyles  []TableStyleInfo   // Table styles declared in ppt/tableStyles.xml
+	Warnings     []TemplateWarning  // Non-fatal metadata validation advisories
 }
 
 // TableStyleInfo describes a table style declared in a template.

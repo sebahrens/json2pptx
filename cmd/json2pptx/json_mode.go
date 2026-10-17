@@ -328,57 +328,10 @@ func loadRunConfig(configPath, templatesDir, outputDir string, chartPNG bool) (c
 	return cfg, nil
 }
 
-// analyzeTemplateLayouts opens a template, parses layouts, synthesizes missing layouts,
-// normalizes placeholder names, and returns the metadata needed for slide conversion.
-func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[string][]byte, int64, int64, *types.TemplateMetadata, types.ThemeInfo, []patterns.FitFinding) {
-	reader, err := template.OpenTemplate(templatePath)
-	if err != nil {
-		return nil, nil, 0, 0, nil, types.ThemeInfo{}, nil
-	}
-	defer func() { _ = reader.Close() }()
-
-	layouts, err := template.ParseLayouts(reader)
-	if err != nil {
-		return nil, nil, 0, 0, nil, types.ThemeInfo{}, nil
-	}
-
-	theme := template.ParseTheme(reader)
-	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
-	analysis := &types.TemplateAnalysis{
-		TemplatePath: templatePath,
-		SlideWidth:   slideWidth,
-		SlideHeight:  slideHeight,
-		Layouts:      layouts,
-		Theme:        theme,
-	}
-	synthesisFindings := template.SynthesizeIfNeeded(reader, analysis)
-
-	// Parse optional template metadata (for semantic accents, layout hints, etc.)
-	metadata, _ := template.ParseMetadata(reader)
-	if metadata != nil {
-		theme.SemanticAccents = metadata.SemanticAccents
-		theme.SurfaceTints = metadata.SurfaceTints
-	}
-
-	// Normalize placeholder names to canonical form (body, body_2, body_3, etc.)
-	normalizedFiles, normErr := template.NormalizeLayoutFiles(reader, analysis.Layouts)
-	if normErr == nil && len(normalizedFiles) > 0 {
-		if analysis.Synthesis == nil {
-			analysis.Synthesis = &types.SynthesisManifest{
-				SyntheticFiles: normalizedFiles,
-			}
-		} else {
-			for path, data := range normalizedFiles {
-				analysis.Synthesis.SyntheticFiles[path] = data
-			}
-		}
-	}
-
-	var syntheticFiles map[string][]byte
-	if analysis.Synthesis != nil {
-		syntheticFiles = analysis.Synthesis.SyntheticFiles
-	}
-	return analysis.Layouts, syntheticFiles, slideWidth, slideHeight, metadata, theme, synthesisFindings
+// analyzeTemplateLayouts returns the shared, cached analysis or the original
+// template error. A broken template never becomes an empty layout universe.
+func analyzeTemplateLayouts(templatePath string) (*types.TemplateAnalysis, error) {
+	return template.Analyze(templatePath, nil, false)
 }
 
 // runJSONMode processes JSON input and generates PPTX.

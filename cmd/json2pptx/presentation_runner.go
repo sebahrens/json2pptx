@@ -52,6 +52,8 @@ type RenderOptions struct {
 	OutputFilename string
 	// TemplatesDir is the template search directory passed to resolveTemplatePath.
 	TemplatesDir string
+	// TemplateCache shares analysis with discovery/validation in a server.
+	TemplateCache types.TemplateCache
 	// ResolvedTemplatePath, when non-empty, is a template FILE the caller has
 	// already resolved and vetted — the MCP template_path guard, or the CLI
 	// resolving a deck's template_path against the input JSON's directory
@@ -195,7 +197,17 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	res.TemplateHash = styleReader.Hash()
 
 	// Analyze template for layout metadata, synthetic files, and dimensions.
-	templateLayouts, syntheticFiles, slideWidth, slideHeight, templateMetadata, templateTheme, synthesisFindings := analyzeTemplateLayouts(templatePath)
+	analysis, analysisErr := template.Analyze(templatePath, opts.TemplateCache, false)
+	if analysisErr != nil {
+		return res, cleanup, fmt.Errorf("analyze template: %w", analysisErr)
+	}
+	templateLayouts, slideWidth, slideHeight := analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight
+	templateMetadata, templateTheme := analysis.Metadata, analysis.Theme
+	synthesisFindings := template.AnalysisFindings(analysis)
+	var syntheticFiles map[string][]byte
+	if analysis.Synthesis != nil {
+		syntheticFiles = analysis.Synthesis.SyntheticFiles
+	}
 	res.TemplateLayouts = templateLayouts
 	res.SyntheticFiles = syntheticFiles
 	res.SlideWidth = slideWidth

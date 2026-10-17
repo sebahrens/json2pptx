@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -82,61 +83,25 @@ func SynthesizeIfNeeded(reader *Reader, analysis *types.TemplateAnalysis) []patt
 		}
 	}
 
-	var findings []patterns.FitFinding
 	baseLayoutID := analysis.Layouts[bestSliceIdx].ID
 
-	// Synthesize blank-title layout if missing.
 	if containsCapability(missing, "blank-title") {
 		nextLayoutNum = synthesizeBlankTitle(analysis, manifest, nextLayoutNum, baseTitlePH, baseFooterPHs, bestSliceIdx, masterTarget)
 	}
-
-	// Synthesize two-column layouts if missing.
 	if containsCapability(missing, "two-column") {
 		synthesizeTwoColumn(reader, analysis, manifest, nextLayoutNum, baseTitlePH, bestSliceIdx, masterTarget)
 	}
-
 	if len(manifest.SyntheticFiles) > 0 {
-		analysis.Synthesis = manifest
-
-		// Emit a layout_synthesized finding for each synthetic layout file pair.
-		// Each layout has a .xml and a .rels; count distinct layouts by .xml files.
+		manifest.BaseLayoutID = baseLayoutID
 		for path := range manifest.SyntheticFiles {
-			if !strings.HasSuffix(path, ".xml") || strings.Contains(path, "_rels") {
-				continue
+			if strings.HasSuffix(path, ".xml") && !strings.Contains(path, "_rels") {
+				manifest.LayoutIDs = append(manifest.LayoutIDs, strings.TrimSuffix(strings.TrimPrefix(path, "ppt/slideLayouts/"), ".xml"))
 			}
-			// Extract layout ID from path like "ppt/slideLayouts/slideLayout5.xml"
-			layoutFile := strings.TrimPrefix(path, "ppt/slideLayouts/")
-			layoutID := strings.TrimSuffix(layoutFile, ".xml")
-
-			// Find the synthesized layout's name from metadata.
-			layoutName := layoutID
-			for _, lm := range analysis.Layouts {
-				if lm.ID == layoutID {
-					layoutName = lm.Name
-					break
-				}
-			}
-
-			findings = append(findings, patterns.FitFinding{
-				ValidationError: patterns.ValidationError{
-					Code:    "layout_synthesized",
-					Message: fmt.Sprintf("layout %q synthesized from base layout %q — visual identity may differ from template brand", layoutName, baseLayoutID),
-					Path:    "template.layouts",
-					Fix: &patterns.FixSuggestion{
-						Kind: "review_layout",
-						Params: map[string]any{
-							"layout_id":      layoutID,
-							"capability":     layoutName,
-							"base_layout_id": baseLayoutID,
-						},
-					},
-				},
-				Action: "review",
-			})
 		}
+		sort.Strings(manifest.LayoutIDs)
+		analysis.Synthesis = manifest
 	}
-
-	return findings
+	return synthesisFindings(analysis)
 }
 
 // containsCapability checks if a capability is in the list.

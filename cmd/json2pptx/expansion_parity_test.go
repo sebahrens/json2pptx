@@ -21,10 +21,11 @@ import (
 func gridShapesBothWays(t *testing.T, input *PresentationInput, templateName string) (generated, predicted [][][]byte, ok bool) {
 	t.Helper()
 	templatePath := filepath.Join(testutil.TemplatesDir(), templateName+".pptx")
-	layouts, _, width, height, metadata, theme, _ := analyzeTemplateLayouts(templatePath)
-	if layouts == nil {
-		t.Fatalf("cannot analyze template %q", templateName)
+	analysis, err := analyzeTemplateLayouts(templatePath)
+	if err != nil {
+		t.Fatalf("analyze template %q: %v", templateName, err)
 	}
+	layouts, width, height, metadata, theme := analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight, analysis.Metadata, analysis.Theme
 	// Validate's theme the way the read-only tools that parse only the theme
 	// get it (repair_slide, apply_patch, score_deck, preview): it has to carry
 	// the template metadata by itself.
