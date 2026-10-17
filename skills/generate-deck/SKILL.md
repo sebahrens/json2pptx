@@ -112,17 +112,20 @@ content lives in `docs/wiki/`.
 
 ## Operational boundaries
 
-Start the server with `json2pptx mcp` (profiles: TOOLS.md; `--tools all`
-lists every tool, `get_capabilities().mcp_tools_available` the callable ones).
-`list_templates` `read_only: true` skips cache writes. Template precedence:
-DECKSPEC.md. A CLI command that answers in JSON prints exactly one JSON
-document on stdout, also when it fails (`{subcommand, ok:false,
-findings:[{code, message}]}`; a failed `generate` reports the findings
-`validate` reports, else `STRICT_FIT` / `GENERATION_FAILED`); stderr is logs.
-Args over 2 MiB of text are refused; a raced
-`deck_id` patch returns `STALE_REVISION` (reload, re-apply).
-`render_deck_spec` resolves relative asset paths (image, photos) against
-`base_dir` and fetches `url` assets; a missing asset fails the render. A
-`template_path` + `base_dir` render is kept on the `deck_id` for later calls.
+Run `json2pptx mcp`; profiles: TOOLS.md. `--tools all` lists all tools;
+`get_capabilities().mcp_tools_available` lists callable ones. `list_templates`
+`read_only:true` skips cache writes. Template precedence: DECKSPEC.md.
 
-Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
+Schema 5 validation and CLI validate/dry-run expose `ok`, `summary`, `findings[]`
+at top level; `legacy_findings` keeps the prior envelope. Raw generation adds
+`ok`, `pptx_path`, `quality_summary`, `diagnostics`; old keys remain. Both accept
+`template` overrides. CLI generate/dry-run shares `--fit-report`, `--verbose-fit`,
+`--placeholder-policy`, `--base-dir`.
+
+JSON commands print one stdout document, including failures; stderr is logs.
+Generate refusals carry validate's findings, else `STRICT_FIT` / `GENERATION_FAILED`.
+Text args over 2 MiB fail. Raced `deck_id` patches return `STALE_REVISION`: reload.
+Render assets resolve against `base_dir`; URLs are fetched, missing assets fail.
+Stored template paths and base directories remain bound to the handle.
+
+Responses are compact; legacy compact-response switches remain accepted.
