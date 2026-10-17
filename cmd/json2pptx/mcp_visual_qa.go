@@ -393,7 +393,7 @@ func (mc *mcpConfig) runVisualQALoop(
 		// together or neither does, so a re-render failure can never leave the
 		// caller with repaired JSON pointing at a pre-repair PPTX.
 		outcome := applyAndReRenderVisualRepairs(input, proposed, func() error {
-			_, rerr := mc.renderAutoRepairFinal(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, outputPath)
+			_, rerr := mc.renderAutoRepairFinal(ctx, input, templatePath, outputPath)
 			return rerr
 		})
 		entry.RepairsApplied = outcome.Applied

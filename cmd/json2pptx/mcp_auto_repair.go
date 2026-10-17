@@ -22,12 +22,10 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
-	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
-	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
 )
 
@@ -559,31 +557,20 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	}
 	defer templateCleanup()
 
-	reader, err := template.OpenTemplate(templatePath)
+	cachedAnalysis, err := getOrAnalyzeTemplate(templatePath, mc.cache)
 	if err != nil {
 		return nil, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates())
 	}
-	defer func() { _ = reader.Close() }()
-
-	layouts, err := template.ParseLayouts(reader)
-	if err != nil {
-		return nil, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates())
+	analysis := *cachedAnalysis
+	if input.ThemeOverride != nil {
+		analysis.Theme, _ = analysis.Theme.ApplyOverride(input.ThemeOverride.ToThemeOverride())
 	}
-	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
-	analysis := &types.TemplateAnalysis{
-		TemplatePath: templatePath,
-		SlideWidth:   slideWidth,
-		SlideHeight:  slideHeight,
-		Layouts:      layouts,
-		Theme:        template.ParseTheme(reader),
-	}
-	template.SynthesizeIfNeeded(reader, analysis)
-	layouts = analysis.Layouts
+	layouts, slideWidth, slideHeight := analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight
 	var syntheticFiles map[string][]byte
 	if analysis.Synthesis != nil {
 		syntheticFiles = analysis.Synthesis.SyntheticFiles
 	}
-	templateMetadata, _ := template.ParseMetadata(reader)
+	templateMetadata := analysis.Metadata
 	dataPalette := resolveDataPalette(templateMetadata, analysis.Theme.Colors)
 
 	// Resolve canonical layout names (e.g. "title", "blank") to concrete
@@ -619,6 +606,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		passesRun = pass
 
 		findings := collectFitFindings(input, layouts, slideWidth, slideHeight, &analysis.Theme)
+		findings = append(findings, template.AnalysisFindings(&analysis)...)
 		renderFindings, renderEvidence := mc.collectRenderFindings(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, urls.CacheDir)
 		findings = append(findings, renderFindings...)
 
@@ -658,7 +646,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		}
 	}
 
-	finalPath, renderErr := mc.renderAutoRepairFinal(ctx, input, templatePath, layouts, slideWidth, slideHeight, syntheticFiles, templateMetadata, dataPalette, outputPath, urls.CacheDir)
+	finalPath, renderErr := mc.renderAutoRepairFinal(ctx, input, templatePath, outputPath, urls.CacheDir)
 	if renderErr != nil {
 		return nil, api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("final generation failed: %v", renderErr))
 	}
@@ -1251,59 +1239,18 @@ func cloneStringMap(m map[string]any) map[string]any {
 	return out
 }
 
-// renderAutoRepairFinal renders the converged (or best-effort) deck to the
-// configured output path. Mirrors collectRenderFindings's pipeline assembly
-// but writes to a stable location instead of a temp dir.
-func (mc *mcpConfig) renderAutoRepairFinal(
-	ctx context.Context,
-	input *PresentationInput,
-	templatePath string,
-	layouts []types.LayoutMetadata,
-	slideWidth, slideHeight int64,
-	syntheticFiles map[string][]byte,
-	templateMetadata *types.TemplateMetadata,
-	dataPalette []string,
-	outputPath string,
-	extraImageDirs ...string,
-) (string, error) {
-	var rhythmGrid *resolvedGrid
-	if input.Grid != nil {
-		rhythmGrid = resolveGrid(input.Grid, layouts, slideWidth, slideHeight)
-	}
-
-	slideSpecs, _, _, err := convertPresentationSlides(input.Slides, layouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), nil, false)
+// renderAutoRepairFinal uses the same normalized analysis, conversion,
+// content-loss refusal, output lock and output validation as normal generation.
+func (mc *mcpConfig) renderAutoRepairFinal(ctx context.Context, input *PresentationInput, templatePath, outputPath string, extraImageDirs ...string) (string, error) {
+	result, cleanup, err := RunPresentation(ctx, input, mc.withServerSVGConfig(RenderOptions{
+		OutputDir: filepath.Dir(outputPath), OutputFilename: filepath.Base(outputPath),
+		TemplatesDir: mc.templatesDir, ResolvedTemplatePath: templatePath, TemplateCache: mc.cache,
+		StrictFit: "warn", AccentStrategy: patterns.AccentStrategy(input.AccentStrategy),
+		AllowedImagePaths: imageAllowList(mc.cfg.Images.AllowedBasePaths, extraImageDirs...),
+	}))
+	defer cleanup()
 	if err != nil {
-		return "", fmt.Errorf("convert slides: %w", err)
-	}
-
-	genReq := generator.GenerationRequest{
-		TemplatePath:          templatePath,
-		OutputPath:            outputPath,
-		Slides:                slideSpecs,
-		SVGStrategy:           string(mc.cfg.SVG.Strategy),
-		SVGScale:              mc.cfg.SVG.Scale,
-		SVGNativeCompat:       string(mc.cfg.SVG.NativeCompatibility),
-		MaxPNGWidth:           mc.cfg.SVG.MaxPNGWidth,
-		ExcludeTemplateSlides: true,
-		SyntheticFiles:        syntheticFiles,
-		StrictFit:             "warn",
-		DataPalette:           dataPalette,
-		ViewingMode:           input.ViewingMode,
-		AllowedImagePaths:     imageAllowList(mc.cfg.Images.AllowedBasePaths, extraImageDirs...),
-	}
-	genReq.Footer = footerConfigForInput(input, len(slideSpecs))
-	if input.Chrome != nil {
-		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, layouts)
-		applyChromeTracker(slideSpecs, input.Chrome, input.Slides, layouts)
-		applyChromeSectionCrumb(genReq.Footer, slideSpecs, input.Chrome, input.Slides, layouts)
-	}
-	applyAppendixPageLabels(genReq.Footer, input.Slides, layouts)
-	if input.ThemeOverride != nil {
-		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()
-	}
-
-	if _, err := generator.Generate(ctx, genReq); err != nil {
 		return "", err
 	}
-	return outputPath, nil
+	return result.OutputPath, nil
 }

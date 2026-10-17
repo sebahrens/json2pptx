@@ -328,6 +328,7 @@ type previewTemplateContext struct {
 	slideWidth  int64
 	slideHeight int64
 	theme       *types.ThemeInfo
+	findings    []patterns.FitFinding
 }
 
 // loadPreviewTemplate opens and analyzes a template for the preview tool.
@@ -337,44 +338,26 @@ func loadPreviewTemplate(templatePath string) (*previewTemplateContext, error) {
 		return nil, err
 	}
 
-	layouts, err := template.ParseLayouts(reader)
+	analysis, err := template.Analyze(templatePath, nil, false)
 	if err != nil {
 		_ = reader.Close()
 		return nil, err
 	}
-	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
-
-	analysis := &types.TemplateAnalysis{
-		TemplatePath: templatePath,
-		SlideWidth:   slideWidth,
-		SlideHeight:  slideHeight,
-		Layouts:      layouts,
-	}
-	_ = template.SynthesizeIfNeeded(reader, analysis)
-	// Preview must use the same canonical placeholder names as generation.
-	// Otherwise a user-authored body/body_2 resolves during render but preview
-	// cannot attach its bounds when the source layout says "Content Placeholder".
-	if _, err := template.NormalizeLayoutFiles(reader, analysis.Layouts); err != nil {
-		_ = reader.Close()
-		return nil, fmt.Errorf("normalize preview layouts: %w", err)
-	}
-
 	layoutByID := make(map[string]types.LayoutMetadata, len(analysis.Layouts))
 	for _, l := range analysis.Layouts {
 		layoutByID[l.ID] = l
 	}
-
-	metadata, _ := template.ParseMetadata(reader)
-	theme := template.ParseTheme(reader)
+	theme := analysis.Theme
 
 	return &previewTemplateContext{
 		reader:      reader,
 		layouts:     analysis.Layouts,
 		layoutByID:  layoutByID,
-		metadata:    metadata,
-		slideWidth:  slideWidth,
-		slideHeight: slideHeight,
+		metadata:    analysis.Metadata,
+		slideWidth:  analysis.SlideWidth,
+		slideHeight: analysis.SlideHeight,
 		theme:       &theme,
+		findings:    template.AnalysisFindings(analysis),
 	}, nil
 }
 
@@ -806,6 +789,7 @@ func computePreviewFitFindings(input *PresentationInput, output *previewPlanOutp
 
 	findings := collectFitFindings(&resolvedInput, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.theme)
 	findings = append(findings, placeholderRemappedFindings(output.ResolvedSlides)...)
+	findings = append(findings, tctx.findings...)
 	if len(output.composeFindings) > 0 {
 		findings = append(findings, output.composeFindings...)
 	}

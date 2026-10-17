@@ -288,32 +288,22 @@ func (mc *mcpConfig) collectScoreDeckEvidence(ctx context.Context, request mcp.C
 	}
 	defer templateCleanup()
 
-	reader, err := template.OpenTemplate(templatePath)
+	cachedAnalysis, err := getOrAnalyzeTemplate(templatePath, mc.cache)
 	if err != nil {
 		return nil, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates())
 	}
-	defer func() { _ = reader.Close() }()
-
-	layouts, err := template.ParseLayouts(reader)
-	if err != nil {
-		return nil, mcpErrorWithNext("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err), nextCallListTemplates())
+	analysis := *cachedAnalysis
+	if input.ThemeOverride != nil {
+		analysis.Theme, _ = analysis.Theme.ApplyOverride(input.ThemeOverride.ToThemeOverride())
 	}
-	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
-
-	// Analyze template for synthesis and metadata.
-	analysis := &types.TemplateAnalysis{
-		TemplatePath: templatePath,
-		SlideWidth:   slideWidth,
-		SlideHeight:  slideHeight,
-		Layouts:      layouts,
-		Theme:        template.ParseTheme(reader),
-	}
-	synthesisFindings := template.SynthesizeIfNeeded(reader, analysis)
+	layouts, slideWidth, slideHeight := analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight
+	synthesisFindings := template.AnalysisFindings(&analysis)
 	var syntheticFiles map[string][]byte
 	if analysis.Synthesis != nil {
 		syntheticFiles = analysis.Synthesis.SyntheticFiles
 	}
-	templateMetadata, _ := template.ParseMetadata(reader)
+	templateMetadata := analysis.Metadata
+	resolveCanonicalLayoutIDs(input.Slides, layouts)
 
 	// 1. Collect static fit findings from input JSON.
 	findings := collectFitFindings(&input, layouts, slideWidth, slideHeight, &analysis.Theme)
