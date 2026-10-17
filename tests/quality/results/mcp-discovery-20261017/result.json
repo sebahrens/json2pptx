@@ -1,0 +1,175 @@
+{
+  "date": "2026-10-17",
+  "source_base": "38f1e36d725e9a6df5a7d589871740da8da85d9f",
+  "schema_version": "4.176.0",
+  "scope": "Completion audit of the existing visual-quality and MCP review, followed by parallel implementation of remaining discovery tasks and fixes reproduced by a fresh MCP-only agent. Rendering logic unchanged; this is not a new exhaustive visual certification.",
+  "analysis_evidence": [
+    "Beads xjrxu and tests/quality/results/mcp-audit-20261007/result.json: 29 real MCP calls, 16 reviewed slides, root-cause issues followed by fix commit 6a6f91f2.",
+    "Beads gcbvd and tests/quality/results/mcp-quality-audit-20261005: 27 kind examples schema-checked, generated and pixel-rendered, plus two-template board journey.",
+    "Closed 4mp2f: 97-slide design review and 27 implementation issues; prior parallel agent merges include d7408683, 7ef7be7b, 9a340652 and 205c9837.",
+    "Current review used code-indexer symbol/implementation queries for MCP onboarding, explanation and pattern layout decisions; direct source inspection verified builder thresholds and output schemas."
+  ],
+  "issues": {
+    "go-slide-creator-mnsgq": "Promote archetypes and explanation into the default profile, preserving byte budgets and compact schema parity.",
+    "go-slide-creator-ivgem": "Expose truthful shared segment-fit metadata in full MCP/CLI discovery and explicit output schemas.",
+    "go-slide-creator-su66d.1": "Honor narrow cycle placement in open and shortlist recommendations, preserve meaning in alternatives, qualify horizontal compositions and expose candidate/leaf constraints.",
+    "go-slide-creator-su66d.2": "Derive hidden-tool notes from active profile membership.",
+    "go-slide-creator-eifma": "Already implemented by 81aa98a6; closed after checking current source and successful CI38401672732."
+  },
+  "parallel_work": {
+    "audit_mcp_completion": "Default-profile implementation, then recommendation fixes.",
+    "audit_visual_completion": "Segment-fit implementation, output schemas and independent keyword/metadata review.",
+    "live_discovery_journey": "Fresh focused agent using only live product responses; no repository reading."
+  },
+  "initial_live_journey": {
+    "scope": "Focused changed-surface first-contact MCP discovery journey; not fourteen-intent persona certification. No repo source/docs/skills/tests read; no render or tests run. Defaults and limits verified as exposed metadata, not renderer behavior.",
+    "calls": {
+      "tools_list": 1,
+      "default_get_started": 2,
+      "archetype_schema": 3,
+      "archetypes": 4,
+      "explain_schema": 5,
+      "plan_schema": 6,
+      "recommend_schema": 7,
+      "plan": 8,
+      "two_loop_beside_text": 9,
+      "explain_storyline": 10,
+      "figure_eight_details": 11,
+      "ring_details": 12,
+      "compact_kpi_recommendation": 13,
+      "kpi_inline_details": 14
+    },
+    "passed": [
+      {
+        "surface": "Default discovery",
+        "calls": [
+          1,
+          3,
+          4,
+          5,
+          10
+        ],
+        "evidence": "tools/list includes list_deck_archetypes and explain_deck_spec. Archetype catalogue returns six entries with summaries, default_template, executive. board_update resolves midnight-blue in explain. Explain returns per-slide roles, density, selected layout/pattern, alternatives, rhythm, layout_coverage and deck_id without rendering."
+      },
+      {
+        "surface": "Two coupled loops fit",
+        "calls": [
+          11
+        ],
+        "evidence": "cycle-figure-eight exposes min_content_width_pt=580, min_content_height_pt=140, narrow_fallback=refused, segment_only=false. use_when calls for full-width slide/band; not_when excludes half-width segments under about 580pt and suggests cycle-ring. 4-8 phases, each lobe 2-4; left_count defaults half rounded up. Labels max 26, descriptions max 60, tightened to 40 when a lobe holds four. Body default 12pt, header default 14 stepping to 12. Actual text still needs validation."
+      },
+      {
+        "surface": "Single-loop narrow fit",
+        "calls": [
+          12
+        ],
+        "evidence": "cycle-ring exposes narrow_fallback=legend, fallback_below_width_pt=450, segment_only=false. Unset labels select legend below threshold; explicit labels override transition. Short legend can omit descriptions with warning. 4-8 phases, default clockwise/segments/regular; description budgets 90 for 4, 70 for 5-6, 50 for 7-8; label 28 for 4-6, 24 for 7-8."
+      },
+      {
+        "surface": "Compact KPI guidance",
+        "calls": [
+          13,
+          14
+        ],
+        "evidence": "Recommendation discovers kpi-inline and distinguishes compact supporting bar from kpi-4up. show_pattern exposes segment_only=true, narrow_fallback=none and SLIDE_UNDERUSED risk alone. 2-6 metrics; big max 8, small max 40, sub max 12. Caption budgets tighten by count/icon/delta. Default open for plain cells, tinted with icons, semantic_accent or nonuniform accents. Raw-only data contract supplied."
+      }
+    ],
+    "friction": [
+      {
+        "priority": "P2",
+        "surface": "Half-width recommendation",
+        "calls": [
+          9,
+          11
+        ],
+        "args": {
+          "intent": "Show a two-loop learning cycle beside explanatory text on one slide; the cycle occupies half the slide width.",
+          "content_hints": {
+            "item_count": 6
+          }
+        },
+        "evidence": "recommend_visual ranks cycle-figure-eight first at 1.0 despite explicit half-width constraint. Rationale says needs slide width, but candidate contains no structured min-width/narrow-fallback or explicit refusal; recipe is standalone. show_pattern later clearly refuses this area and suggests ring/full width.",
+        "impact": "An agent following the top runnable recommendation can miss the spatial constraint before validation."
+      },
+      {
+        "priority": "P3",
+        "surface": "Discovery consistency",
+        "calls": [
+          1,
+          2
+        ],
+        "evidence": "get_started hidden_tools says show_pattern and explain_deck_spec are not in tools/list although tools/list includes both. Default workflow does not mention archetype/explanation discovery.",
+        "impact": "Contradictory discoverability description, though tools are callable/listed."
+      },
+      {
+        "priority": "P3",
+        "surface": "Compact KPI recipe",
+        "calls": [
+          13,
+          14
+        ],
+        "evidence": "kpi-inline candidate runnable recipe is a standalone raw_json2pptx slide; show_pattern declares segment_only=true and warns alone can report SLIDE_UNDERUSED. Top composite candidate uses kpi-4up, not inline; compact-band constraint needs manual composition.",
+        "impact": "Pattern fit guidance is discoverable but not carried into its generated recipe."
+      },
+      {
+        "priority": "informational",
+        "surface": "Planner outside changed scope",
+        "calls": [
+          8
+        ],
+        "evidence": "Four-slide board brief explicit comparison ends in unplaced_facts while decision slide is empty; no rendering attempted. Planner clearly reports the unplaced fact and draft placeholders.",
+        "impact": "Author must fill/reconcile draft; not a changed-surface blocker."
+      }
+    ]
+  },
+  "verified_live_replay": {
+    "calls": 4,
+    "checks": [
+      "Default tools/list advertises 15 tools including both planning tools.",
+      "get_started hidden_tools has no intersection with tools/list.",
+      "Exact half-width two-loop request now returns a single-ring alternative with explicit loss-of-two-lobes warning and preserve-or-simplify question.",
+      "kpi-inline recommendation immediately carries segment_only=true and identifies standalone recipe as an isolated illustration."
+    ],
+    "rendering_repeated": false
+  },
+  "validation": {
+    "focused_pattern_tests": "pass: builder boundaries, actual fallback decisions, recommendation narrow/full-width/vertical/anatomy controls, open and shortlist behavior, nested composition metadata.",
+    "focused_cli_contract_tests": "pass: discovery schemas, recipe enrichment, onboarding reachability, installed skill and payload budgets; initial largest-response headroom failure resolved by omitting empty recommendation contracts.",
+    "recommendation_payload": {
+      "intents": 72,
+      "mean_bytes": 7068,
+      "largest_bytes": 15722,
+      "limit_bytes": 16384,
+      "headroom_bytes": 662,
+      "required_headroom_bytes": 256
+    },
+    "journey_metrics": {
+      "clean_spec_calls_to_ready_render": 2,
+      "clean_spec_validate_round_trips": 1,
+      "onboarding_first_contact_bytes": 37644,
+      "onboarding_get_started_bytes": 4881,
+      "onboarding_instructions_bytes": 1254,
+      "onboarding_slide_kinds_bytes": 5672,
+      "onboarding_template_names_bytes": 1470,
+      "onboarding_tools_list_bytes": 24367,
+      "parity_disagreements": 0,
+      "parity_pairs_compared": 16,
+      "patches_not_clearing": 0,
+      "patches_offered": 13,
+      "patches_server_verified": 9,
+      "twelve_flaw_calls_to_ready_render": 4,
+      "twelve_flaw_first_response_bytes": 7779,
+      "twelve_flaw_first_response_findings": 15,
+      "twelve_flaw_validate_round_trips": 3
+    },
+    "lint": "Pinned2.12.2 both modules passed; final root refinement checked separately.",
+    "build": "go build ./... and current-source live MCP binary passed.",
+    "preview_refresh": "Sequential make template-previews covers108 layouts including local ignored p-style. All tracked preview PNG hashes unchanged; provenance manifests refreshed.",
+    "duplicate_tests_avoided": "Did not rerun historical broad race/render matrices locally. Rechecked only failed gates or checks affected by subsequent source changes; full CI runs on the delivered commit."
+  },
+  "limits": [
+    "No original user deck supplied for the earlier table issue; existing actual-template checks are representative.",
+    "Placement hints are not proof that arbitrary text fits; expand_pattern remains the content/geometry check.",
+    "Explicit narrow natural-language placement is a preference conflict, not a measured refusal for an unknown template."
+  ]
+}

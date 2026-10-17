@@ -78,6 +78,7 @@ func TestCoreToolProfile_RequiredTools(t *testing.T) {
 	core := coreToolSet()
 	for _, name := range []string{
 		"render_deck_spec", "validate_deck_spec", "list_slide_kinds", "get_started",
+		"explain_deck_spec", "list_deck_archetypes",
 		"render_deck_thumbnails", "generate_presentation",
 		"validate_input", "repair_slide", "score_deck", "list_patterns", "show_pattern",
 		"expand_pattern", "recommend_visual", "plan_deck", "list_templates",
@@ -123,12 +124,12 @@ func TestAllToolProfile_FullSurface(t *testing.T) {
 func TestCoreToolProfile_HiddenToolsStillCallable(t *testing.T) {
 	withToolProfile(t, activeToolProfile())
 	s := newJSON2PPTXMCPServer(profileTestConfig(t), toolProfileCore)
-	if coreToolSet()["list_deck_archetypes"] {
-		t.Skip("list_deck_archetypes promoted to core; pick another hidden tool")
+	if coreToolSet()["get_data_format_hints"] {
+		t.Fatal("get_data_format_hints promoted to core; pick another hidden tool")
 	}
 	ctx := context.Background()
 	s.HandleMessage(ctx, json.RawMessage(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"t","version":"0"}}}`))
-	resp := s.HandleMessage(ctx, json.RawMessage(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_deck_archetypes","arguments":{}}}`))
+	resp := s.HandleMessage(ctx, json.RawMessage(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"get_data_format_hints","arguments":{}}}`))
 	raw, _ := json.Marshal(resp)
 	var env struct {
 		Result *mcp.CallToolResult `json:"result"`
@@ -195,6 +196,15 @@ func TestDeckSpecToolProfileBudget(t *testing.T) {
 		t.Errorf("deckspec tools/list is %d bytes, want < %d", len(raw), deckSpecToolListByteBudget)
 	}
 	t.Logf("deckspec profile: %d tools, %d bytes", len(tools), len(raw))
+	advertised := make(map[string]bool, len(tools))
+	for _, tool := range tools {
+		advertised[tool.Name] = true
+	}
+	for _, name := range []string{"explain_deck_spec", "list_deck_archetypes"} {
+		if !advertised[name] {
+			t.Errorf("default profile hides planning tool %q", name)
+		}
+	}
 	core := coreToolSet()
 	for _, tool := range tools {
 		if !core[tool.Name] {

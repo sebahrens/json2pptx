@@ -163,6 +163,17 @@ var outputSchemaGetDiagramCapabilities = json.RawMessage(`{
   "required": ["diagram_capabilities"]
 }`)
 
+// Shared flat properties for full pattern discovery. Compact lists omit them.
+const patternSegmentFitProperties = `
+    "min_content_width_pt": {"type": "number", "exclusiveMinimum": 0, "description": "Declared hard area minimum; absent means no fixed minimum is declared, not that all content fits."},
+    "min_content_height_pt": {"type": "number", "exclusiveMinimum": 0},
+    "narrow_fallback": {"type": "string", "enum": ["legend", "stacked", "refused", "none"], "description": "Default narrow-area behavior. none means no automatic alternative declared; use expand_pattern with actual content and bounds."},
+    "segment_only": {"type": "boolean", "description": "Supporting band intended for a segment or region, not a standalone refusal."},
+    "fallback_below_width_pt": {"type": "number", "exclusiveMinimum": 0, "description": "Default-layout transition below this width, not a hard minimum. See fit_notes for override behavior."},
+    "min_label_column_width_pt": {"type": "number", "exclusiveMinimum": 0, "description": "Minimum remaining label column after geometry and gaps; not the whole segment width."},
+    "reference_value_digit_budget": {"type": "integer", "minimum": 1, "description": "Full-width default KPI digit budget on the narrowest shipped template; actual glyphs, fonts, icons and widths still require measurement."},
+    "fit_notes": {"type": "string"}`
+
 // --- list_patterns ---
 var outputSchemaListPatterns = json.RawMessage(`{
   "type": "object",
@@ -189,7 +200,8 @@ var outputSchemaListPatterns = json.RawMessage(`{
                 "role_on_slide":    {"type": "array", "items": {"type": "string"}},
                 "density_class":    {"type": "string"},
                 "accent_weight":    {"type": "string"},
-                "supports_callout": {"type": "boolean"}
+                "supports_callout": {"type": "boolean"},
+                ` + patternSegmentFitProperties + `
               },
               "required": ["name", "category"]
             }
@@ -210,6 +222,7 @@ var outputSchemaListPatterns = json.RawMessage(`{
 var outputSchemaShowPattern = json.RawMessage(`{
   "type": "object",
   "properties": {
+    ` + patternSegmentFitProperties + `,
     "name":        {"type": "string"},
     "description": {"type": "string"},
     "cells":       {"type": "string"},
@@ -452,6 +465,7 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
           "confidence_band":  {"type": "string", "enum": ["high", "medium", "low"]},
           "diversity_bonus":  {"type": "boolean"},
           "placement":        {"$ref": "#/$defs/placement_guidance"},
+          "segment_fit":      {"$ref": "#/$defs/segment_fit"},
           "template_support": {"$ref": "#/$defs/template_support"},
           "example":          {"$ref": "#/$defs/visual_example"},
           "differs_by":       {"type": "string", "description": "One line saying what sets this candidate apart from the candidate it nearly ties with (scores within 0.02): which of the two can do what. Absent when no other candidate is that close."},
@@ -532,6 +546,12 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
   },
   "required": ["candidates", "query_understood_as"],
   "$defs": {
+    "segment_fit": {
+      "type": "object",
+      "description": "Named-pattern structural fit metadata, also on composition leaves. Hard minima are distinct from automatic fallback thresholds; omitted minima do not guarantee fit. Check actual content and bounds with expand_pattern.",
+      "properties": {` + patternSegmentFitProperties + `},
+      "required": ["narrow_fallback", "segment_only"]
+    },
     "placement_guidance": {
       "type": "object",
       "description": "Authoring guidance: how and where to place this candidate on a slide.",
@@ -570,8 +590,9 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
               "size_pct":      {"type": "number", "description": "The segment's share of its envelope (shares of one envelope sum to 100)."},
               "position":      {"type": "string", "description": "Where the region sits: left, right, top, bottom, upper-right, ..."},
               "segment_path":  {"type": "string", "description": "This segment in next_tool_call.args_template.spec."},
+              "segment_fit":   {"$ref": "#/$defs/segment_fit"},
               "data_contract": {"type": "object", "description": "Leaf regions: data keys (chart / diagram) or values keys (pattern) and field_path of the sample content to replace."},
-              "compose":       {"type": "object", "description": "Nested visual_composition of a compose region."}
+              "compose":       {"$ref": "#/$defs/visual_composition", "description": "Nested visual_composition of a compose region."}
             },
             "required": ["category", "size_pct"]
           }

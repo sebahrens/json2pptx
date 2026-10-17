@@ -94,6 +94,7 @@ func runPatternsList() error {
 			}
 			tax := p.Taxonomy()
 			entries[i] = skillPatternCompact{
+				SegmentFit:               patterns.SegmentFitFor(p),
 				Name:                     p.Name(),
 				Cells:                    cells,
 				UseWhen:                  p.UseWhen(),
@@ -162,6 +163,7 @@ func runPatternsShow() error {
 		schemaJSON := patterns.SchemaJSON(pat)
 		tax := pat.Taxonomy()
 		result := skillPatternFull{
+			SegmentFit:      patterns.SegmentFitFor(pat),
 			Name:            pat.Name(),
 			Description:     pat.Description(),
 			UseWhen:         pat.UseWhen(),

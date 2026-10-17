@@ -166,10 +166,12 @@ templates in one call and returns `template_results[] {template, ok,
 summary, findings}` — run it before the second render so the budget breaks
 are known in advance.
 
-## Hidden tools worth calling by name
+## Planning, review and specialist tools
 
-The default profile hides these; `get_started(tool:"<name>")` returns the
-schema and they are called like any other.
+The default profile includes `list_deck_archetypes`, `explain_deck_spec`,
+`describe_finding` and `score_deck`. The other tools below are hidden;
+`get_started(tool:"<name>")` returns their schema and they remain callable
+by name.
 
 | Tool | Call it when | Returns |
 |---|---|---|

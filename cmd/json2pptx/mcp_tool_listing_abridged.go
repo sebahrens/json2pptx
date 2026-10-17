@@ -40,6 +40,18 @@ type abridgedListing struct {
 
 // abridgedListings holds the default profile's wording per tool.
 var abridgedListings = map[string]abridgedListing{
+	"explain_deck_spec": {
+		Description: `Preview DeckSpec visuals, rhythm and layout coverage.`,
+		Args: map[string]string{
+			"spec":     "DeckSpec object/string; OR deck_id.",
+			"deck_id":  "Stored handle; OR spec.",
+			"patch":    "Edits; see render_deck_spec.",
+			"template": "Unbound template override.",
+		},
+	},
+	"list_deck_archetypes": {
+		Description: `List meta.archetype choices and defaults.`,
+	},
 	"describe_finding": {
 		Description: `Explain one finding or error code: summary, severity, whether it blocks, when it is emitted, remediation steps and a before/after example. Call it for any code you do not recognize (fit and pattern codes, chart.*, SEMANTIC_*, input / template / render errors). An unknown code returns the closest known one.`,
 	},
@@ -274,7 +286,7 @@ func fullToolListing(name string) (toolDetail, error) {
 		switch name {
 		case "validate_deck_spec":
 			tool = withDeckSpecOutlineInput(tool)
-		case "render_deck_spec":
+		case "render_deck_spec", "explain_deck_spec":
 			tool = withDeckSpecReferenceInput(tool)
 		}
 	}

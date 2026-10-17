@@ -1368,7 +1368,7 @@ Projection (token-economy): compact is the DEFAULT — {name, category, cells, u
 Filtering: pass filter="<substring>" to limit the response to patterns whose name contains the substring (case-insensitive). Applied before pagination.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListPatterns)),
 		mcp.WithString("fields",
-			mcp.Description("Field projection: compact (name, category, cells, use_when, supports_callout) or full (taxonomy detail). "+listFieldsOmitted),
+			mcp.Description("Field projection: compact (name, category, cells, use_when, supports_callout) or full (taxonomy and segment-fit constraints). "+listFieldsOmitted),
 			mcp.Enum(listFieldsCompact, listFieldsFull),
 		),
 		mcp.WithString("filter",
@@ -2064,6 +2064,7 @@ func handleListPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 			SupportsCallout: supportsCallout,
 		}
 		if fieldsMode == listFieldsFull {
+			entry.SegmentFit = patterns.SegmentFitFor(p)
 			entry.NotWhen = p.NotWhen()
 			entry.NarrativeRole = tax.NarrativeRole
 			entry.PairsWith = tax.PairsWith
@@ -2143,6 +2144,7 @@ func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 
 	tax := pat.Taxonomy()
 	result := skillPatternFull{
+		SegmentFit:      patterns.SegmentFitFor(pat),
 		Name:            pat.Name(),
 		Description:     pat.Description(),
 		Cells:           "",

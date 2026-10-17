@@ -62,6 +62,11 @@ func markedHiddenTools(t *testing.T, structured any) []string {
 	if body.HiddenTools.Note == "" {
 		t.Error("hidden_tools carries names but no note saying they are callable")
 	}
+	for _, name := range body.HiddenTools.Names {
+		if toolIsAdvertised(name) {
+			t.Errorf("hidden_tools incorrectly marks advertised tool %q as hidden", name)
+		}
+	}
 	return body.HiddenTools.Names
 }
 

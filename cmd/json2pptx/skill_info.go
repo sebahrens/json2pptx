@@ -181,6 +181,7 @@ type skillDeprecation struct {
 // drop from the wire; in `fields=full` (or the legacy default) they are
 // populated as before. Tests targeting full mode see no shape change.
 type skillPatternCompact struct {
+	*patterns.SegmentFit
 	Name                     string   `json:"name"`
 	Cells                    string   `json:"cells,omitempty"`
 	UseWhen                  string   `json:"use_when,omitempty"`
@@ -198,6 +199,7 @@ type skillPatternCompact struct {
 
 // skillPatternFull is a full pattern entry including the hand-authored schema.
 type skillPatternFull struct {
+	*patterns.SegmentFit
 	Name                  string                        `json:"name"`
 	Description           string                        `json:"description"`
 	Cells                 string                        `json:"cells"`
@@ -1442,6 +1444,7 @@ func buildPatternEntries(mode string) ([]skillPatternCompact, []skillPatternFull
 	for i, p := range all {
 		schemaJSON := patterns.SchemaJSON(p)
 		full[i] = skillPatternFull{
+			SegmentFit:      patterns.SegmentFitFor(p),
 			Name:            p.Name(),
 			Description:     p.Description(),
 			Cells:           compact[i].Cells,

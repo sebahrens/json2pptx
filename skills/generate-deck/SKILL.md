@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.175.0
+schema_version: 4.176.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -49,7 +49,9 @@ Default for content-bearing decks: author real content as a DeckSpec; call `list
 For a new content-bearing deck, write a semantic **DeckSpec** (`meta` plus
 `slides[].kind`, or chapter-based `structure`). `get_started(task:"brief")`
 returns this path as its `sequence` (`hidden_tools` names the callable rest). `plan_deck` with
-`format:"deckspec"` drafts the storyline. `list_slide_kinds` lists the kinds;
+`format:"deckspec"` drafts the storyline. Use `list_deck_archetypes` and
+`explain_deck_spec` to plan its structure and check its rhythm.
+`list_slide_kinds` lists the kinds;
 `kinds:[chosen]` returns their copy-ready examples, `fields` their
 signatures and text budgets (DECKSPEC.md) and `preview: true` each example
 as a rendered image. Then call `validate_deck_spec`,
@@ -75,7 +77,8 @@ unclear) → `list_patterns` / `show_pattern` → `expand_pattern` →
 `validate_input` → `generate_presentation` → render and inspect;
 `get_input_schema` has the raw fields. How patterns fit text and
 report `BODY_TOO_LONG` / `TEXT_EXCEEDS_SHAPE` is in [PATTERNS.md](PATTERNS.md);
-patterns spend at most one solid accent block, in `color_roles.primary_fill`.
+Read `segment_fit` placement constraints on recommendations (TOOLS.md).
+Patterns spend at most one solid accent block, in `color_roles.primary_fill`.
 
 Both render tools return `deterministic_ready` (a precondition, not proof),
 `publishable` (false on a fresh render), `blocking_reasons`

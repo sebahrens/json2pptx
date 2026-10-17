@@ -32,6 +32,37 @@ To add `kpi-7up`, append one entry to `kpiVariants` in `kpi_variants.go` — no 
 
 ## Contributor checklist
 
+### Segment-fit discovery
+
+`show_pattern`, `list_patterns` with `fields:"full"`, and full CLI pattern
+discovery expose structural placement metadata from `patterns.SegmentFitFor`.
+The metadata uses the same constants as the builders; compact listings omit it.
+`recommend_visual` carries it as `segment_fit` on named candidates and named
+composition leaves, including nested compositions; it omits empty contracts.
+Compact-band recipes are
+isolated illustrations: place their content in a supporting segment for a real
+deck. Explicit narrow figure-eight requests identify the placement conflict;
+a full-width figure-eight with text above or below preserves the two coupled
+loops, while a single-ring alternative changes the content's meaning.
+These fields help an agent choose a pattern before rendering, but do not replace
+validation of actual content, fonts and segment geometry with `expand_pattern`.
+
+| Field | Meaning |
+|---|---|
+| `min_content_width_pt`, `min_content_height_pt` | Hard minimum dimensions, when declared; `cycle-figure-eight` requires 580 × 140pt. Absence means no fixed minimum is declared. |
+| `narrow_fallback` | `legend`, `stacked`, `refused` or `none`. `none` means no automatic alternate layout is declared, not that every width fits. |
+| `fallback_below_width_pt` | Default-layout transition rather than a refusal; `cycle-ring` uses a legend below 450pt unless its label mode is explicit. |
+| `min_label_column_width_pt` | Minimum remaining label-column width, not the whole segment width. Nodes, radial hubs and intake loops depend on ring size, gaps, counts and height. Read `fit_notes`. |
+| `segment_only` | Placement guidance for supporting bands (`kpi-inline`, `before-after-compact`, `process-flow-compact`), not a standalone rendering prohibition. |
+| `reference_value_digit_budget` | Full-width default KPI digit budget on the narrowest shipped template: 11 for five KPIs, 9 for six. Glyphs, font, icons and available width still affect fit. |
+| `fit_notes` | Conditions and limitations of the declared thresholds and fallbacks. |
+
+When adding or changing a builder threshold, update this shared metadata and
+verify discovery against the builder's behavior at the boundary. Do not invent
+a single width threshold for a transition that depends on the content or height.
+
+### Pattern implementation
+
 Every pattern PR must include all of these:
 
 - [ ] **Implementation** (`internal/patterns/<name>.go`)

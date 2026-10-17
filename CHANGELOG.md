@@ -18,6 +18,10 @@ How to cut a release (tag, archives, container image) is described in
 
 ### Added
 
+- MCP pattern placement metadata exposes hard dimensions, narrow-layout
+  fallbacks and supporting-band guidance before rendering. The default tool
+  profile now includes deck archetypes and storyline explanation (schema 4.176.0).
+
 - **Agent wiki** (`docs/wiki/`): four new pages — the layout catalog (every
   kind with its forms, all 58 patterns by family with their DeckSpec reach,
   16 charts, 21 diagrams, and how to preview each), the slide-estate and

@@ -315,6 +315,13 @@ usually the fix the finding names.
 
 ## 5. Segment-fit matrix: what survives at which width
 
+For machine-readable placement limits, use `show_pattern` or `list_patterns`
+with `fields:"full"`: `min_content_width_pt` is a hard minimum when present;
+`fallback_below_width_pt` is a default-layout transition. `narrow_fallback`,
+`segment_only` and `fit_notes` explain the alternative and its conditions.
+Label-column thresholds depend on the remaining geometry. These fields do not
+guarantee text fit; validate the actual content with `expand_pattern`.
+
 The shipped templates give about 824–828pt of content width. A 50% segment
 or `columns` region is therefore ~400–410pt after the gap and insets; 60% is
 ~490pt; 70% is ~570pt.

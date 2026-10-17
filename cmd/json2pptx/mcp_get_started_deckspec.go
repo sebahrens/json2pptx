@@ -92,10 +92,7 @@ func deckSpecProfileGetStarted(task string) (fast *getStartedFastPath, seq []get
 	const template = "<template name from list_templates>"
 	const deckID = "<deck_id from the validate/render response>"
 	pptx := map[string]any{"pptx_path": "<pptx_path from render_deck_spec>"}
-	rawPath := &hiddenToolsNote{
-		Names: []string{"validate_input", "generate_presentation", "repair_slide", "list_patterns", "show_pattern", "expand_pattern", "analyze_deck_rhythm", "explain_deck_spec", "get_capabilities"},
-		Note:  hiddenToolsExplanation,
-	}
+	rawPath := hiddenToolsIn("validate_input generate_presentation repair_slide list_patterns show_pattern expand_pattern analyze_deck_rhythm explain_deck_spec get_capabilities")
 	switch task {
 	case "brief":
 		fast = &getStartedFastPath{
@@ -143,10 +140,7 @@ func deckSpecProfileGetStarted(task string) (fast *getStartedFastPath, seq []get
 			"A patch is not a review: a one-field edit still needs the changed slides rendered and looked at.",
 			"No DeckSpec for the deck (an existing .pptx, or raw json2pptx JSON)? Author it as a DeckSpec from the brief (task=brief). The raw repair chain is among the hidden tools.",
 		}
-		hidden = &hiddenToolsNote{
-			Names: []string{"read_presentation", "validate_input", "preview_presentation_plan", "repair_slide", "generate_presentation", "analyze_deck_rhythm"},
-			Note:  hiddenToolsExplanation,
-		}
+		hidden = hiddenToolsIn("read_presentation validate_input preview_presentation_plan repair_slide generate_presentation analyze_deck_rhythm")
 		return fast, seq, notes, hidden, true
 	case "validate-only":
 		seq = []getStartedStep{
@@ -158,7 +152,7 @@ func deckSpecProfileGetStarted(task string) (fast *getStartedFastPath, seq []get
 			"Nothing is written: validation stores the spec under a deck_id and returns findings only.",
 			"Raw json2pptx JSON is validated by a hidden tool (validate_input).",
 		}
-		hidden = &hiddenToolsNote{Names: []string{"validate_input", "preview_presentation_plan"}, Note: hiddenToolsExplanation}
+		hidden = hiddenToolsIn("validate_input preview_presentation_plan")
 		return nil, seq, notes, hidden, true
 	case "onboard-template":
 		seq = []getStartedStep{

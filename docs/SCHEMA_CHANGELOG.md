@@ -1,5 +1,10 @@
 # Schema Changelog
 
+- **2026-10-17 — Schema 4.176.0 · MCP planning and placement discovery (`go-slide-creator-su66d`).** Input fields and the input fingerprint are unchanged; response metadata is additive.
+  - Default and core tool profiles now advertise `list_deck_archetypes` and `explain_deck_spec` within the existing payload budgets. Onboarding derives hidden-tool guidance from the active profile.
+  - `show_pattern`, full `list_patterns`, CLI JSON and full skill-info expose builder-sourced minimum dimensions, narrow-layout fallbacks, segment-only placement guidance and conditional fit notes. Recommendations carry the same information in `segment_fit`, including named-pattern composition leaves. Missing minima never guarantee fit; `expand_pattern` checks the actual content and geometry.
+  - Explicit narrow figure-eight requests receive placement guidance before rendering. Preserve two coupled loops with a full-width figure-eight and companion text above or below; a single-ring alternative changes the meaning. Compact-band recipes are identified as isolated illustrations, with segment placement required for their intended role.
+
 - **2026-10-12 — Full-slide SVG and PNG images (`go-slide-creator-pczey`).** SchemaVersion unchanged (existing fields). SVG grid images without cell-level `fit` now fill their rectangular cell like PNG images. `image.fit` applies cover/contain placement to both formats, including image-anchored callouts. Native SVG embeds a visible PNG fallback. Full-slide bounds are `{x: 0, y: 0, width: 100, height: 100}`; explicit cell-level `fit` retains square framing.
 
 - **2026-10-07 — MCP audit fixes: planner facts, slide data versus outline, region slots, comparison sources, restore (label `mcp-audit-20261007`).** SchemaVersion unchanged (no new fields, codes or fix kinds).

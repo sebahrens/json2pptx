@@ -6,7 +6,7 @@
 //
 //   - "deckspec" (default): the DeckSpec authoring core — discovery, the
 //     semantic validate/render pair, render-and-look, review and scoring.
-//     ~12 tools, no outputSchema, and validate_deck_spec carries the DeckSpec
+//     15 tools, no outputSchema, and validate_deck_spec carries the DeckSpec
 //     outline instead of the closed per-kind schema (list_slide_kinds
 //     fields:[item_schema] serves a chosen kind's contract on demand).
 //   - "core" (alias "raw"): the deckspec tools plus the raw-JSON path
@@ -53,7 +53,7 @@ const (
 	// go-slide-creator-355t7 target for tools/list alone; it is now the budget
 	// for the whole of first contact (go-slide-creator-mvdt5), so the listing
 	// is abridged (mcp_tool_listing_abridged.go) and capped well under it.
-	deckSpecToolLimit          = 13 // 12 + show_pattern (go-slide-creator-cb339)
+	deckSpecToolLimit          = 15 // Includes pre-render explanation and archetype discovery.
 	deckSpecToolListByteBudget = 24 * 1024
 
 	// allToolListByteBudget caps the "all" profile's default listing, which
@@ -71,7 +71,7 @@ const (
 
 	// coreToolLimit caps the core profile. TestCoreToolProfileBudget enforces it
 	// together with coreToolListByteBudget.
-	coreToolLimit = 24
+	coreToolLimit = 26
 	// coreToolListByteBudget is the max marshalled tools/list size (bytes) for
 	// the core profile.
 	//
@@ -100,6 +100,8 @@ var deckSpecToolNames = []string{
 	"list_templates",
 	"examine_template",
 	"list_slide_kinds",
+	"list_deck_archetypes",
+	"explain_deck_spec",
 	"validate_deck_spec",
 	"render_deck_spec",
 	"render_deck_thumbnails",
@@ -152,6 +154,8 @@ var coreToolNames = []string{
 	"validate_deck_spec",
 	"render_deck_spec",
 	"list_slide_kinds",
+	"list_deck_archetypes",
+	"explain_deck_spec",
 	// Plan / vary
 	"plan_deck",
 	"recommend_visual",
@@ -271,7 +275,7 @@ func toolProfileFilter(profile string) server.ToolFilterFunc {
 				switch out[i].Name {
 				case "validate_deck_spec":
 					out[i] = withDeckSpecOutlineInput(out[i])
-				case "render_deck_spec":
+				case "render_deck_spec", "explain_deck_spec":
 					out[i] = withDeckSpecReferenceInput(out[i])
 				}
 				// The listing an agent chooses and calls from; get_started
@@ -329,7 +333,7 @@ func withDeckSpecOutlineInput(tool mcp.Tool) mcp.Tool {
 	return tool
 }
 
-// withDeckSpecReferenceInput replaces render_deck_spec's copy of the DeckSpec
+// withDeckSpecReferenceInput replaces render/explain_deck_spec's copy of the DeckSpec
 // outline with a pointer to validate_deck_spec's, which the default profile
 // lists right beside it: the same 3 KB outline was advertised twice
 // (go-slide-creator-mvdt5). The accepted payload is unchanged.
@@ -344,7 +348,7 @@ func withDeckSpecReferenceInput(tool mcp.Tool) mcp.Tool {
 	}
 	props["spec"] = map[string]any{
 		"type":        []any{"object", "string"},
-		"description": "The semantic DeckSpec to render, as a JSON object or a YAML/JSON string: the shape validate_deck_spec's spec documents. Send this OR deck_id, not both.",
+		"description": "The semantic DeckSpec, as a JSON object or a YAML/JSON string: the shape validate_deck_spec's spec documents. Send this OR deck_id, not both.",
 		"oneOf": []any{
 			map[string]any{"type": "object", "required": []any{"slides"}, "not": map[string]any{"required": []any{"structure"}}},
 			map[string]any{"type": "object", "required": []any{"structure"}, "not": map[string]any{"required": []any{"slides"}}},

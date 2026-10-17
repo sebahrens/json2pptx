@@ -88,6 +88,9 @@ type VisualCandidate struct {
 	Rationale      string         `json:"rationale"`
 	ConfidenceBand string         `json:"confidence_band"`
 	DiversityBonus bool           `json:"diversity_bonus,omitempty"`
+	// SegmentFit exposes the selected pattern's placement constraints before
+	// an agent copies its isolated example into a narrower segment.
+	SegmentFit *SegmentFit `json:"segment_fit,omitempty"`
 	// Placement provides authoring guidance for the agent. Populated by the MCP layer
 	// from capability truth; nil when returned from the pure scoring function.
 	Placement *PlacementGuidance `json:"placement,omitempty"`
@@ -129,6 +132,8 @@ type VisualCandidate struct {
 	// intentCompound marks, in shortlist mode, the intent's own same-slide
 	// composition until rankShortlistCompound scores it.
 	intentCompound bool
+	// placementConflict retains a planning question after ranking/filtering.
+	placementConflict bool
 }
 
 // VisualDataContract is the data shape of a candidate as its runnable spec
@@ -458,6 +463,7 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	// left, a KPI upper-right, a timeline lower-right) is one heterogeneous
 	// composition, ranked above every partial view (go-slide-creator-lp0o8).
 	all = scoreCompoundCompose(reg, intentLower, hints, all)
+	all = applyPatternPlacementGuidance(reg, intentLower, hints, all, false)
 
 	// Sort by score descending.
 	sort.Slice(all, func(i, j int) bool {
@@ -495,7 +501,7 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 		QueryUnderstood: summarizeVisualIntent(intentLower, hints),
 	}
 
-	result.DisambiguatingQuestions = suggestVisualQuestions(hints, intentLower, filtered)
+	result.DisambiguatingQuestions = patternPlacementQuestions(suggestVisualQuestions(hints, intentLower, filtered), filtered)
 	AnnotateDiffersBy(reg, result.Candidates)
 
 	return result
@@ -583,6 +589,7 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 	applyLiteralNameRouting(out, intentLower)
 	applyTwinCueRouting(out, intentLower)
 	out = rankShortlistCompound(out)
+	out = applyPatternPlacementGuidance(reg, intentLower, hints, out, true)
 
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Score != out[j].Score {
@@ -595,7 +602,7 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 	return RecommendVisualResult{
 		Candidates:              out,
 		QueryUnderstood:         summarizeVisualIntent(intentLower, hints),
-		DisambiguatingQuestions: suggestVisualQuestions(hints, intentLower, out),
+		DisambiguatingQuestions: patternPlacementQuestions(suggestVisualQuestions(hints, intentLower, out), out),
 	}
 }
 

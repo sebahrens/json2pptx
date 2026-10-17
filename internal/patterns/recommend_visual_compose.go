@@ -45,7 +45,8 @@ type VisualComposition struct {
 // VisualRegion is one compose segment: a leaf visual (named_pattern, chart or
 // diagram) or a nested composition (category "compose").
 type VisualRegion struct {
-	Category VisualCategory `json:"category"`
+	SegmentFit *SegmentFit    `json:"segment_fit,omitempty"`
+	Category   VisualCategory `json:"category"`
 	// Name is the pattern / chart / diagram type; empty for a nested region.
 	Name string `json:"name,omitempty"`
 	// SizePct is the region's share of its envelope's axis (the segment's
