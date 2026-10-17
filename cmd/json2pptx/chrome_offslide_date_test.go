@@ -132,8 +132,7 @@ func renderChromeDeck(t *testing.T, templatesDir, tpl string, deck map[string]an
 		t.Fatal(err)
 	}
 	resultPath := filepath.Join(dir, "result.json")
-	if err := runJSONMode(inputPath, resultPath, templatesDir, dir,
-		"", false, false, tpl, "off", false, "off", "", false); err != nil {
+	if _, err := runJSONModeDeck(inputPath, resultPath, templatesDir, dir, "", false, false, tpl, "off", false, "off", "", false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	raw, err := os.ReadFile(resultPath)

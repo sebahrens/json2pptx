@@ -10,6 +10,7 @@ run:
 linters:
   default: standard
   enable:
+    - unused        # Keep unreachable declarations visible
     # Error handling
     - errcheck       # Check for unchecked errors
     # Note: err113 disabled - requires sentinel errors which is a major refactor

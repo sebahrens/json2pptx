@@ -73,7 +73,7 @@ func TestReadability_KPILongLabelPresentMode(t *testing.T) {
 	// Far too long for the card: the writer stores a deep autofit shrink.
 	long := strings.Repeat("up from $41M last year, driven by enterprise expansion and new logos in EMEA ", 4)
 	in := &PresentationInput{ViewingMode: "present", Slides: []SlideInput{kpiSlide(t, "Annual recurring revenue (all segments)", long)}}
-	got := readabilityCodes(collectReadabilityFindings(in, nil, 12192000, 6858000))
+	got := readabilityCodes(collectReadabilityFindingsWithTheme(in, nil, 12192000, 6858000, nil))
 	if len(got) == 0 {
 		t.Fatal("expected TEXT_BELOW_READABLE_MIN for the long KPI label")
 	}
@@ -104,7 +104,7 @@ func TestReadability_KPILongLabelPresentMode(t *testing.T) {
 
 	// Short labels are fine.
 	short := &PresentationInput{Slides: []SlideInput{kpiSlide(t, "ARR", "+4% vs plan")}}
-	if got := readabilityCodes(collectReadabilityFindings(short, nil, 12192000, 6858000)); len(got) != 0 {
+	if got := readabilityCodes(collectReadabilityFindingsWithTheme(short, nil, 12192000, 6858000, nil)); len(got) != 0 {
 		t.Errorf("short KPI labels flagged: %v", got[0].Message)
 	}
 }
@@ -134,7 +134,7 @@ func TestReadabilityExplicitInsetsDoNotSubtractDefaultsAgain(t *testing.T) {
 	}
 	// 36pt frame minus 4pt authored padding leaves 32pt for two 13pt
 	// lines at 1.2 spacing. The written shape fits without any font shrink.
-	if got := readabilityCodes(collectReadabilityFindings(&input, nil, 12192000, 6858000)); len(got) != 0 {
+	if got := readabilityCodes(collectReadabilityFindingsWithTheme(&input, nil, 12192000, 6858000, nil)); len(got) != 0 {
 		t.Fatalf("explicitly padded readable text falsely shrunk: %+v", got)
 	}
 }
@@ -200,8 +200,8 @@ func TestReadability_ReadModeIsMoreLenient(t *testing.T) {
 	sub := strings.Repeat("up from $41M last year, driven by expansion ", 2)
 	present := &PresentationInput{ViewingMode: "present", Slides: []SlideInput{kpiSlide(t, "ARR", sub)}}
 	read := &PresentationInput{ViewingMode: "read", Slides: []SlideInput{kpiSlide(t, "ARR", sub)}}
-	np := len(readabilityCodes(collectReadabilityFindings(present, nil, 12192000, 6858000)))
-	nr := len(readabilityCodes(collectReadabilityFindings(read, nil, 12192000, 6858000)))
+	np := len(readabilityCodes(collectReadabilityFindingsWithTheme(present, nil, 12192000, 6858000, nil)))
+	nr := len(readabilityCodes(collectReadabilityFindingsWithTheme(read, nil, 12192000, 6858000, nil)))
 	if nr > np {
 		t.Errorf("read mode produced more findings (%d) than present (%d)", nr, np)
 	}
@@ -271,7 +271,7 @@ func TestPullQuoteReadabilityUsesProseFloor(t *testing.T) {
 			input := &PresentationInput{Template: templateName, Slides: []SlideInput{{
 				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "pull-quote", Values: encoded},
 			}}}
-			if findings := collectReadabilityFindings(input, layouts, width, height); len(findings) != 0 {
+			if findings := collectReadabilityFindingsWithTheme(input, layouts, width, height, nil); len(findings) != 0 {
 				t.Fatalf("500-character quote without headshot should clear the prose floor: %+v", findings)
 			}
 			expanded, _ := expandPatternsForFit(input, width, height, nil, layouts...)
@@ -282,7 +282,7 @@ func TestPullQuoteReadabilityUsesProseFloor(t *testing.T) {
 			raw := &PresentationInput{Template: templateName, Slides: []SlideInput{{
 				SlideType: "content", LayoutID: "blank-title", ShapeGrid: grid,
 			}}}
-			if findings := collectReadabilityFindings(raw, layouts, width, height); len(findings) != 0 {
+			if findings := collectReadabilityFindingsWithTheme(raw, layouts, width, height, nil); len(findings) != 0 {
 				t.Fatalf("source-stamped expanded quote changed role: %+v", findings)
 			}
 		})

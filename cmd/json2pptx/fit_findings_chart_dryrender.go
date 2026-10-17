@@ -51,7 +51,7 @@ func diagramRenderFailures(findings []patterns.FitFinding) []patterns.FitFinding
 	return failed
 }
 
-// collectChartDryRenderFindings iterates every slide's chart_value /
+// collectChartDryRenderFindingsWithConverter iterates every slide's chart_value /
 // diagram_value content item AND every diagram surface embedded in a slide's
 // shape_grid (cell diagrams, composite sub_diagrams, and recursively nested
 // sub-grids), invoking svggen.DryRender and converting the returned chart.*
@@ -75,16 +75,6 @@ func diagramRenderFailures(findings []patterns.FitFinding) []patterns.FitFinding
 //
 // strictFit threads through to svggen's severity promotion ladder so warn /
 // strict modes promote chart findings consistently with the generate path.
-func collectChartDryRenderFindings(
-	input *PresentationInput,
-	themeColors []types.ThemeColor,
-	bodyFont string,
-	strictFit string,
-) []patterns.FitFinding {
-	return collectChartDryRenderFindingsWithConverter(input, themeColors, bodyFont, strictFit,
-		generator.NewSVGConverter().IsPNGAvailable())
-}
-
 // The explicit availability argument keeps dependency-state tests independent
 // of the host PATH while production still probes the actual converter tools.
 func collectChartDryRenderFindingsWithConverter(
@@ -355,22 +345,7 @@ func chartValueToDiagramSpec(c *types.ChartSpec) *types.DiagramSpec { //nolint:s
 	return c.ToDiagramSpec()
 }
 
-// dryRenderSpecToFindings calls svggen.DryRender for a single DiagramSpec
-// and converts the returned svggen.Findings into patterns.FitFinding entries
-// pinned at the supplied path. A render error is dropped: placeholder
-// content items fall back to a placeholder image at generate time and the
-// chart_value shorthand forms are only normalized on the render path.
-func dryRenderSpecToFindings(
-	spec *types.DiagramSpec,
-	themeColors []types.ThemeColor,
-	bodyFont string,
-	strictFit string,
-	path string,
-) []patterns.FitFinding {
-	return dryRenderSpec(spec, themeColors, bodyFont, strictFit, path, false)
-}
-
-// dryRenderGridSpecInBounds is dryRenderSpecToFindings for shape_grid
+// dryRenderGridSpecInBounds is dryRenderSpec for shape_grid
 // (and pattern-expanded) diagram cells. Generate aborts the deck when such a
 // cell fails to render, so a dry-render error is surfaced as a
 // diagram_render_failed finding with action "refuse" instead of being

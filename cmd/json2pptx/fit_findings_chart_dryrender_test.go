@@ -133,7 +133,7 @@ func TestDryRenderChartStyleUnresolvedColorFinding(t *testing.T) {
 		},
 	}
 	theme := []types.ThemeColor{{Name: "accent1", RGB: "#123456"}, {Name: "lt1", RGB: "#FFFFFF"}}
-	findings := dryRenderSpecToFindings(spec, theme, "", "warn", "/slides/0/content/0/diagram_value")
+	findings := dryRenderSpec(spec, theme, "", "warn", "/slides/0/content/0/diagram_value", false)
 	var dropped []string
 	for _, finding := range findings {
 		if finding.Code == "CUSTOM_COLOR_DROPPED" {
@@ -149,14 +149,14 @@ func TestDryRenderChartStyleUnresolvedColorFinding(t *testing.T) {
 
 	spec.Style.Colors = []string{"accent1"}
 	spec.Style.Background = "lt1"
-	for _, finding := range dryRenderSpecToFindings(spec, theme, "", "warn", "/valid") {
+	for _, finding := range dryRenderSpec(spec, theme, "", "warn", "/valid", false) {
 		if finding.Code == "CUSTOM_COLOR_DROPPED" {
 			t.Errorf("valid template color reported dropped: %+v", finding)
 		}
 	}
 	spec.Style.Colors = []string{"accent1", "accent1", "accent1", "accent1", "accent1", "accent1", "accent9"}
 	var seventhFound bool
-	for _, finding := range dryRenderSpecToFindings(spec, theme, "", "warn", "/seven") {
+	for _, finding := range dryRenderSpec(spec, theme, "", "warn", "/seven", false) {
 		if finding.Code == "CUSTOM_COLOR_DROPPED" {
 			if finding.Path != "/seven/style/colors/6" {
 				t.Errorf("unexpected seventh-color finding path: %+v", finding)
@@ -206,7 +206,7 @@ func TestCollectChartDryRenderFindings_CrowdedNominal(t *testing.T) {
 		},
 	}
 
-	findings := collectChartDryRenderFindings(input, nil, "", "warn")
+	findings := collectChartDryRenderFindingsWithConverter(input, nil, "", "warn", generator.NewSVGConverter().IsPNGAvailable())
 	if len(findings) == 0 {
 		t.Fatalf("expected at least one finding for 40-cat narrow bar chart, got none")
 	}
@@ -249,7 +249,7 @@ func TestCollectChartDryRenderFindings_EllipsizedCategoryAction(t *testing.T) {
 			Data: map[string]any{"categories": categories, "series": []any{map[string]any{"name": "S", "values": values}}},
 		},
 	}}}}}
-	findings := collectChartDryRenderFindings(input, nil, "", "warn")
+	findings := collectChartDryRenderFindingsWithConverter(input, nil, "", "warn", generator.NewSVGConverter().IsPNGAvailable())
 	for _, f := range findings {
 		if f.Code == "chart.label_ellipsized" && f.Action == "shrink_or_split" {
 			return
@@ -261,11 +261,11 @@ func TestCollectChartDryRenderFindings_EllipsizedCategoryAction(t *testing.T) {
 // TestCollectChartDryRenderFindings_EmptyInput is a regression guard: passing
 // no slides (or no chart/diagram content) must return nil without panicking.
 func TestCollectChartDryRenderFindings_EmptyInput(t *testing.T) {
-	if got := collectChartDryRenderFindings(nil, nil, "", "warn"); got != nil {
+	if got := collectChartDryRenderFindingsWithConverter(nil, nil, "", "warn", generator.NewSVGConverter().IsPNGAvailable()); got != nil {
 		t.Errorf("nil input: got %v, want nil", got)
 	}
 	empty := &PresentationInput{}
-	if got := collectChartDryRenderFindings(empty, nil, "", "warn"); got != nil {
+	if got := collectChartDryRenderFindingsWithConverter(empty, nil, "", "warn", generator.NewSVGConverter().IsPNGAvailable()); got != nil {
 		t.Errorf("empty input: got %v, want nil", got)
 	}
 	textOnly := &PresentationInput{
@@ -277,7 +277,7 @@ func TestCollectChartDryRenderFindings_EmptyInput(t *testing.T) {
 			},
 		},
 	}
-	if got := collectChartDryRenderFindings(textOnly, nil, "", "warn"); got != nil {
+	if got := collectChartDryRenderFindingsWithConverter(textOnly, nil, "", "warn", generator.NewSVGConverter().IsPNGAvailable()); got != nil {
 		t.Errorf("text-only input: got %d findings, want 0", len(got))
 	}
 }
@@ -432,7 +432,7 @@ func TestCollectChartDryRenderFindings_ShapeGridDiagram(t *testing.T) {
 		},
 	}
 
-	findings := collectChartDryRenderFindings(input, nil, "", "warn")
+	findings := collectChartDryRenderFindingsWithConverter(input, nil, "", "warn", generator.NewSVGConverter().IsPNGAvailable())
 	const wantPath = "/slides/0/shape_grid/rows/0/cells/0/diagram"
 	assertCrowdedNominalAt(t, findings, wantPath)
 }
@@ -459,7 +459,7 @@ func TestCollectChartDryRenderFindings_CompositeSubDiagram(t *testing.T) {
 		},
 	}
 
-	findings := collectChartDryRenderFindings(input, nil, "", "warn")
+	findings := collectChartDryRenderFindingsWithConverter(input, nil, "", "warn", generator.NewSVGConverter().IsPNGAvailable())
 	const wantPath = "/slides/0/shape_grid/rows/0/cells/0/composite/sub_diagram"
 	assertCrowdedNominalAt(t, findings, wantPath)
 }
@@ -493,7 +493,7 @@ func TestCollectChartDryRenderFindings_NestedGridDiagram(t *testing.T) {
 		},
 	}
 
-	findings := collectChartDryRenderFindings(input, nil, "", "warn")
+	findings := collectChartDryRenderFindingsWithConverter(input, nil, "", "warn", generator.NewSVGConverter().IsPNGAvailable())
 	const wantPath = "/slides/0/shape_grid/rows/0/cells/0/grid/rows/0/cells/1/diagram"
 	assertCrowdedNominalAt(t, findings, wantPath)
 }
@@ -523,7 +523,7 @@ func TestDryRender_NativeDiagramsAreNotSvggenBusiness(t *testing.T) {
 	for _, typ := range []string{"swot", "business_model_canvas", "value_chain", "heatmap", "panel_layout", "pyramid", "kpi_dashboard"} {
 		spec := &types.DiagramSpec{Type: typ, Data: map[string]any{"whatever": "the native builder reads"}}
 		var got []patterns.FitFinding
-		for _, f := range dryRenderSpecToFindings(spec, nil, "", "warn", "/slides/0/content/0/diagram_value") {
+		for _, f := range dryRenderSpec(spec, nil, "", "warn", "/slides/0/content/0/diagram_value", false) {
 			// The canvas names the key it does not read (go-slide-creator-b7qqg.17);
 			// that review finding is the native builder's own, not svggen's.
 			if typ == "business_model_canvas" && f.Code == "diagram.data_key_ignored" && f.Action == "review" {
@@ -538,7 +538,7 @@ func TestDryRender_NativeDiagramsAreNotSvggenBusiness(t *testing.T) {
 	// A type NEITHER renderer owns still refuses: that one really does become a
 	// placeholder.
 	spec := &types.DiagramSpec{Type: "sankey_of_the_mind", Data: map[string]any{"a": 1}}
-	got := dryRenderSpecToFindings(spec, nil, "", "warn", "/slides/0/content/0/diagram_value")
+	got := dryRenderSpec(spec, nil, "", "warn", "/slides/0/content/0/diagram_value", false)
 	if len(got) != 1 || got[0].Action != "refuse" {
 		t.Fatalf("an unknown type must still refuse, got %+v", got)
 	}
@@ -552,7 +552,7 @@ func TestDryRender_NativeDiagramGeometryFindings(t *testing.T) {
 	spec := &types.DiagramSpec{Type: "business_model_canvas", Data: map[string]any{
 		"key_partners": items, "key_activities": items, "value_propositions": items,
 	}}
-	got := dryRenderSpecToFindings(spec, nil, "Arial", "warn", "/slides/0/content/0/diagram_value")
+	got := dryRenderSpec(spec, nil, "Arial", "warn", "/slides/0/content/0/diagram_value", false)
 	if len(got) == 0 || got[0].Code != "diagram.text_overlap" || !strings.Contains(got[0].Path, "/data/key_partners") {
 		t.Fatalf("native BMC findings = %+v", got)
 	}
@@ -590,7 +590,7 @@ func TestDryRender_NormalizesAuthoredChartShorthand(t *testing.T) {
 			if spec == nil {
 				t.Fatal("no spec")
 			}
-			for _, f := range dryRenderSpecToFindings(spec, nil, "", "warn", "/slides/0/content/0/chart_value") {
+			for _, f := range dryRenderSpec(spec, nil, "", "warn", "/slides/0/content/0/chart_value", false) {
 				if f.Action == "refuse" {
 					t.Errorf("a chart the renderer draws was refused: %s", f.Message)
 				}

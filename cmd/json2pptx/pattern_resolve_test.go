@@ -647,7 +647,7 @@ func TestCalloutCrossTemplate(t *testing.T) {
 				}
 
 				jsonResultPath := filepath.Join(outputDir, fixtureName+"_"+tmpl+".result.json")
-				err = runJSONMode(tmpJSON, jsonResultPath, templatesDir, outputDir, "", false, false, "", "off", false, "off", "", false)
+				_, err = runJSONModeDeck(tmpJSON, jsonResultPath, templatesDir, outputDir, "", false, false, "", "off", false, "off", "", false)
 				if err != nil {
 					t.Fatalf("runJSONMode failed: %v", err)
 				}
@@ -863,7 +863,7 @@ func TestComputeQualityScore_ShapeGridNotEmpty(t *testing.T) {
 		},
 	}
 
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	for _, sq := range score.SlideScores {
 		for _, issue := range sq.Issues {
 			if strings.Contains(issue, "empty slide") {
@@ -882,7 +882,7 @@ func TestComputeQualityScore_PatternNotEmpty(t *testing.T) {
 		},
 	}
 
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	for _, sq := range score.SlideScores {
 		for _, issue := range sq.Issues {
 			if strings.Contains(issue, "empty slide") {
@@ -900,7 +900,7 @@ func TestComputeQualityScore_TrulyEmptyStillPenalized(t *testing.T) {
 		},
 	}
 
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	found := false
 	for _, sq := range score.SlideScores {
 		for _, issue := range sq.Issues {

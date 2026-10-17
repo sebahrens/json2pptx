@@ -356,13 +356,13 @@ func TestSVGConverter_ComplexSVG(t *testing.T) {
 
 // TestSVGConversionAvailable tests the package-level function
 func TestSVGConversionAvailable(t *testing.T) {
-	available := SVGConversionAvailable()
+	available := DefaultSVGConverter().IsAvailable()
 	t.Logf("SVG conversion available: %v", available)
 }
 
 // TestConvertSVGToPNG tests the package-level conversion function
 func TestConvertSVGToPNG(t *testing.T) {
-	if !SVGConversionAvailable() {
+	if !DefaultSVGConverter().IsAvailable() {
 		t.Skip("SVG conversion not available")
 	}
 
@@ -372,7 +372,7 @@ func TestConvertSVGToPNG(t *testing.T) {
 		t.Fatalf("Failed to write test SVG: %v", err)
 	}
 
-	pngPath, cleanup, err := ConvertSVGToPNG(context.Background(), svgPath, DefaultSVGScale)
+	pngPath, cleanup, err := DefaultSVGConverter().ConvertToPNG(context.Background(), svgPath, DefaultSVGScale)
 	if err != nil {
 		t.Fatalf("ConvertSVGToPNG failed: %v", err)
 	}

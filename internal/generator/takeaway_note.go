@@ -103,13 +103,6 @@ func generateTakeawayShapesInBounds(takeawayText string, firstID uint32, bounds 
 	return string(bar) + string(text)
 }
 
-// insertTakeaway inserts the takeaway band at bounds (the chrome frame's
-// takeaway rectangle) before </p:spTree>, so it renders on top of slide
-// content, measuring with Arial and inking in dk1.
-func insertTakeaway(slideData []byte, takeawayText string, bounds pptx.RectEmu) ([]byte, error) {
-	return insertStyledTakeaway(slideData, takeawayText, bounds, takeawayStyle{})
-}
-
 func insertStyledTakeaway(slideData []byte, takeawayText string, bounds pptx.RectEmu, style takeawayStyle) ([]byte, error) {
 	// Allocate slide-unique IDs above any existing shape so the band cannot
 	// collide with content shapes or other late injections.

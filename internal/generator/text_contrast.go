@@ -171,23 +171,6 @@ var schemeClrInFillRegexp = regexp.MustCompile(
 	`(?s)<a:solidFill\b[^>]*>\s*<a:schemeClr\s+val="([^"]+)"(?:\s*/>|\s*>.*?</a:schemeClr>)\s*</a:solidFill>`,
 )
 
-// enforceTextContrastInSlide checks all text shapes in a slide for poor contrast
-// between the text color (from lstStyle or run properties) and the layout
-// background. When a scheme color resolves to a color with contrast below WCAG
-// AA normal (4.5:1), it is replaced with a high-contrast sRGB color.
-//
-// Parameters:
-//   - slide: the parsed slide XML to modify
-//   - bgHex: the layout background color as hex (e.g., "#FFE8D4")
-//   - themeColors: theme colors for resolving scheme color references
-//
-// Returns a slice of ContrastSwap records for each color replacement made.
-// This function mutates the slide's shapes in place. slideIndex is the 0-based
-// index into the input slides array, recorded on each swap for finding paths.
-func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, authorBackground bool, layoutXML ...[]byte) []ContrastSwap {
-	return enforceTextContrastInSlideExcept(slide, bgHex, themeColors, slideIndex, override, authorBackground, nil, layoutXML...)
-}
-
 func enforceTextContrastInSlideExcept(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, authorBackground bool, excluded map[int]bool, layoutXML ...[]byte) []ContrastSwap {
 	if slide == nil {
 		return nil

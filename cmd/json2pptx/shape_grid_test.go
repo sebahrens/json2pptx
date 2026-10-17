@@ -1210,7 +1210,7 @@ func TestGenerateShapeFromSpec_MinimalRect(t *testing.T) {
 	spec := &shapegrid.ShapeSpec{Geometry: "rect"}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}
 
-	xml, err := shapegrid.GenerateShapeXML(spec, 1, bounds)
+	xml, err := shapegrid.GenerateCellShapeXML(shapegrid.ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}

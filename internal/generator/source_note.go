@@ -16,14 +16,6 @@ import (
 // the one place a generated slide shows attribution (go-slide-creator-cuszt).
 const sourceNoteFontSize = int(patterns.SourceNoteSizePt * 100)
 
-// generateSourceNoteShapeInBounds creates a p:sp element for source
-// attribution text in 9pt muted-text italics, placed at bounds (the chrome frame's
-// source band). shapeID must be unique within the slide's shape tree; callers
-// allocate it from findMaxShapeID(slideData)+1 just before insertion.
-func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds pptx.RectEmu) string {
-	return generateLinkedSourceNoteShapeInBounds(sourceText, shapeID, bounds, "", false)
-}
-
 func generateLinkedSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds pptx.RectEmu, relID string, slideJump bool) string {
 	action := ""
 	if slideJump {
@@ -69,12 +61,6 @@ func generateLinkedSourceNoteShapeInBounds(sourceText string, shapeID uint32, bo
 // the stutter; go-slide-creator-7eib unified the surfaces).
 func sourceNoteText(sourceText string) string {
 	return patterns.SourceNoteText(sourceText)
-}
-
-// insertSourceNote inserts a source attribution text shape at bounds (the
-// chrome frame's source band) before </p:spTree>.
-func insertSourceNote(slideData []byte, sourceText string, bounds pptx.RectEmu) ([]byte, error) {
-	return insertLinkedSourceNote(slideData, sourceText, bounds, "", false)
 }
 
 func insertLinkedSourceNote(slideData []byte, sourceText string, bounds pptx.RectEmu, relID string, slideJump bool) ([]byte, error) {

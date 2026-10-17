@@ -151,7 +151,7 @@ func TestGetStartedSequencesAreClassifiedTools(t *testing.T) {
 	classes := toolClassifications()
 
 	for _, task := range getStartedAvailableTasks() {
-		resp := buildGetStartedResponse(task, testRenderReady())
+		resp := buildGetStartedResponseOpts(task, testRenderReady(), true)
 		if len(resp.Sequence) == 0 {
 			t.Errorf("task %q: empty sequence", task)
 		}
@@ -237,7 +237,7 @@ func TestGetStartedFastPathIsClassifiedFacade(t *testing.T) {
 	classes := toolClassifications()
 
 	for _, task := range getStartedAvailableTasks() {
-		resp := buildGetStartedResponse(task, testRenderReady())
+		resp := buildGetStartedResponseOpts(task, testRenderReady(), true)
 		switch task {
 		// validate-only is pure diagnostics; onboard-template vets a file the
 		// server has never seen (go-slide-creator-ydbk) and every step of it
@@ -686,7 +686,7 @@ func TestGetStarted_CoreProfileRecommendsOnlyAdvertisedTools(t *testing.T) {
 
 	for _, task := range getStartedAvailableTasks() {
 		t.Run(task, func(t *testing.T) {
-			resp := buildGetStartedResponse(task, testRenderReady())
+			resp := buildGetStartedResponseOpts(task, testRenderReady(), true)
 
 			for i, step := range append(append([]getStartedStep{}, resp.Sequence...), resp.RawSequence...) {
 				if !core[step.Tool] {
@@ -724,7 +724,7 @@ func TestGetStarted_ReviseIsDeckSpecFirstInBothProfiles(t *testing.T) {
 	for _, profile := range []string{toolProfileCore, toolProfileAll} {
 		t.Run(profile, func(t *testing.T) {
 			withToolProfile(t, profile)
-			resp := buildGetStartedResponse("revise", testRenderReady())
+			resp := buildGetStartedResponseOpts("revise", testRenderReady(), true)
 			if resp.FastPath == nil {
 				t.Fatal("revise has no fast_path")
 			}
@@ -765,7 +765,7 @@ func TestGetStarted_ReviseIsDeckSpecFirstInBothProfiles(t *testing.T) {
 // that other profile, where it reads as a lie about the tools on the table.
 func TestGetStartedNotesDoNotMisreportTheProfile(t *testing.T) {
 	withToolProfile(t, toolProfileAll)
-	for _, n := range buildGetStartedResponse("revise", testRenderReady()).Notes {
+	for _, n := range buildGetStartedResponseOpts("revise", testRenderReady(), true).Notes {
 		if strings.Contains(n, "this profile hides") {
 			t.Errorf("full profile note claims tools are hidden: %q", n)
 		}
@@ -830,7 +830,7 @@ func TestGetStartedThumbnailStepsMatchTheLiveNextCall(t *testing.T) {
 // have explicit semantic forms, so the note must name those forms accurately.
 func TestGetStartedChromeNoteMatchesTheRecommendedPath(t *testing.T) {
 	withToolProfile(t, toolProfileAll)
-	resp := buildGetStartedResponse("brief", testRenderReady())
+	resp := buildGetStartedResponseOpts("brief", testRenderReady(), true)
 
 	var note string
 	for _, n := range resp.Notes {

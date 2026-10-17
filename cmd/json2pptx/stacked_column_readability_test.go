@@ -68,7 +68,7 @@ func TestReadability_NestedSubGridCellPredicted(t *testing.T) {
 		},
 	}
 	in := &PresentationInput{ViewingMode: "present", Slides: []SlideInput{{LayoutID: "blank", ShapeGrid: grid}}}
-	got := readabilityCodes(collectReadabilityFindings(in, nil, 12192000, 6858000))
+	got := readabilityCodes(collectReadabilityFindingsWithTheme(in, nil, 12192000, 6858000, nil))
 	if len(got) == 0 {
 		t.Fatal("expected TEXT_BELOW_READABLE_MIN for the overflowing nested cell")
 	}

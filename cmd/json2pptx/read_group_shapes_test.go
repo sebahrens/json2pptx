@@ -22,8 +22,7 @@ func TestReadPresentation_IncludesGroupedDiagramText(t *testing.T) {
 	if err := os.WriteFile(inputPath, src, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := runJSONMode(inputPath, filepath.Join(dir, "result.json"), testTemplatesDir, dir,
-		"", false, false, "midnight-blue", "off", false, "off", "", false); err != nil {
+	if _, err := runJSONModeDeck(inputPath, filepath.Join(dir, "result.json"), testTemplatesDir, dir, "", false, false, "midnight-blue", "off", false, "off", "", false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	pres, err := pptxread.ReadFile(filepath.Join(dir, "swot.pptx"))

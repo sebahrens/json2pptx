@@ -57,7 +57,7 @@ func TestCLIExtremeSchemaPatternsCannotPublishTinyText(t *testing.T) {
 				if err := os.WriteFile(input, before, 0600); err != nil {
 					t.Fatal(err)
 				}
-				if err := runJSONMode(input, report, testutil.TemplatesDir(), outputDir, "", false, false, "", "off", false, "strict", "", false); err == nil {
+				if _, err := runJSONModeDeck(input, report, testutil.TemplatesDir(), outputDir, "", false, false, "", "off", false, "strict", "", false); err == nil {
 					t.Fatal("extreme schema pattern published")
 				}
 				data, err := os.ReadFile(report)

@@ -1246,7 +1246,7 @@ func TestGenerate_SinglePassOptimization_AC1(t *testing.T) {
 // When generated
 // Then SVG is converted to PNG and embedded in the slide
 func TestGenerate_SVGImageEmbedding(t *testing.T) {
-	if !SVGConversionAvailable() {
+	if !DefaultSVGConverter().IsAvailable() {
 		t.Skip("SVG conversion not available (rsvg-convert not installed)")
 	}
 
@@ -1325,7 +1325,7 @@ func TestGenerate_SVGImageEmbedding(t *testing.T) {
 
 // TestGenerate_SVGWithPNGImage tests mixed SVG and PNG images
 func TestGenerate_SVGWithPNGImage(t *testing.T) {
-	if !SVGConversionAvailable() {
+	if !DefaultSVGConverter().IsAvailable() {
 		t.Skip("SVG conversion not available (rsvg-convert not installed)")
 	}
 

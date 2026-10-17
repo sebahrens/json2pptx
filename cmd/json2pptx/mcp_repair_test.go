@@ -789,12 +789,12 @@ func TestRepairSlide_ReplaceColor_ContrastPredictionConverges(t *testing.T) {
 				t.Fatal(err)
 			}
 			original.Slides[0].Pattern = &PatternInput{}
-			derived := contrastPredictions(collectContrastPreflightFindings(&original, nil, theme))
+			derived := contrastPredictions(collectContrastPreflightFindingsAt(&original, nil, &types.ThemeInfo{Colors: theme}, 0, 0))
 			if len(derived) != 1 || derived[0].Fix != nil {
 				t.Fatalf("expanded pattern cell must not offer an uneditable shape_grid repair: %+v", derived)
 			}
 			original.Slides[0].Pattern = nil
-			findings := contrastPredictions(collectContrastPreflightFindings(&original, nil, theme))
+			findings := contrastPredictions(collectContrastPreflightFindingsAt(&original, nil, &types.ThemeInfo{Colors: theme}, 0, 0))
 			if len(findings) != 1 || findings[0].Fix == nil {
 				t.Fatalf("want one executable contrast prediction, got %+v", findings)
 			}
@@ -807,7 +807,7 @@ func TestRepairSlide_ReplaceColor_ContrastPredictionConverges(t *testing.T) {
 			if err := json.Unmarshal(output.PatchedDeck, &patched); err != nil {
 				t.Fatal(err)
 			}
-			if after := contrastPredictions(collectContrastPreflightFindings(&patched, nil, theme)); len(after) != 0 {
+			if after := contrastPredictions(collectContrastPreflightFindingsAt(&patched, nil, &types.ThemeInfo{Colors: theme}, 0, 0)); len(after) != 0 {
 				t.Errorf("contrast repair did not converge: %+v", after)
 			}
 			cell := patched.Slides[0].ShapeGrid.Rows[0].Cells[0].Shape

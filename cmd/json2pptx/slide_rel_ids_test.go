@@ -80,8 +80,7 @@ func TestNewSlideRelIDsUniqueAcrossTemplates(t *testing.T) {
 				if err := os.WriteFile(inputPath, data, 0o600); err != nil {
 					t.Fatalf("write input: %v", err)
 				}
-				if err := runJSONMode(inputPath, filepath.Join(dir, "result.json"), templatesDir, dir,
-					"", false, false, tpl, "off", false, "off", "", false); err != nil {
+				if _, err := runJSONModeDeck(inputPath, filepath.Join(dir, "result.json"), templatesDir, dir, "", false, false, tpl, "off", false, "off", "", false); err != nil {
 					t.Fatalf("generate: %v", err)
 				}
 				assertUniqueSlideRelIDs(t, filepath.Join(dir, "rels.pptx"))

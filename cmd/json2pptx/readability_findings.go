@@ -27,12 +27,6 @@ import (
 // paragraph spacing) and reports the paragraph that lands
 // furthest below the deck viewing_mode floor for its text role.
 
-// collectReadabilityFindings returns TEXT_BELOW_READABLE_MIN findings for
-// shape_grid cells in the deck.
-func collectReadabilityFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []patterns.FitFinding {
-	return collectReadabilityFindingsWithTheme(input, layouts, slideWidth, slideHeight, nil)
-}
-
 // collectReadabilityFindingsWithTheme is collectReadabilityFindings with the
 // template theme the renderer hands nested patterns: their content sizing
 // measures text in the theme body font.

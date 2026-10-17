@@ -141,11 +141,6 @@ func fitFooterText(text string, widthEMU int64, fontName string) (string, int) {
 	return text, footerMinFontSize
 }
 
-// generateFooterShape creates a single p:sp element for a footer zone.
-func generateFooterShape(shapeID uint32, name string, xfrm *transformXML, text string, alignment string) string {
-	return generateFooterShapeSized(shapeID, name, xfrm, text, alignment, footerFontSize, "")
-}
-
 // chromeFill returns the fill every chrome run is drawn with. An empty
 // colorHex keeps the inherited scheme color, which is what almost every layout
 // wants; a non-empty one pins an explicit color because the scheme color would
@@ -189,19 +184,6 @@ func generateFooterShapeSized(shapeID uint32, name string, xfrm *transformXML, t
 		return ""
 	}
 	return string(b)
-}
-
-// generateFooterShapes creates the p:sp elements for the footer zones.
-// nextID is the first slide-unique shape ID to assign; each emitted footer
-// shape consumes one ID, allocated sequentially so the left and right footers
-// never collide with each other or with existing slide shapes.
-//
-// The left footer text is laid out on a single line (go-slide-creator-55i1):
-// its box spans the dt + ftr placeholder width (see leftFooterBox) and the
-// text shrinks, then ellipsizes, to fit that width. fontName is the theme
-// body font used for measurement.
-func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig, nextID uint32, fontName, colorHex string, slideIndex int) string {
-	return generateFooterShapesAvoiding(positions, config, nextID, fontName, colorHex, slideIndex, nil, 0)
 }
 
 func generateFooterShapesAvoiding(positions map[string]*transformXML, config *FooterConfig, nextID uint32, fontName, colorHex string, slideIndex int, obstacles []footerObstacle, slideWidth int64) string {
@@ -426,12 +408,6 @@ func buildPageNumberRuns(format string, totalSlides, fontSize int, colorHex stri
 	}
 
 	return runs
-}
-
-// insertFooters inserts footer shapes into slide XML before </p:spTree>.
-// fontName is the theme body font used to fit the left footer text on one line.
-func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML, fontName, colorHex string, slideIndex int) ([]byte, error) {
-	return insertFootersAvoiding(slideData, footerConfig, positions, fontName, colorHex, slideIndex, nil, 0)
 }
 
 func insertFootersAvoiding(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML, fontName, colorHex string, slideIndex int, obstacles []footerObstacle, slideWidth int64) ([]byte, error) {

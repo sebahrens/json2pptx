@@ -99,8 +99,7 @@ func TestAdvertisedNativeRegionPlacementsGenerate(t *testing.T) {
 			if err := os.WriteFile(in, data, 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if err := runJSONMode(in, filepath.Join(dir, "result.json"), "../../templates", dir,
-				"", false, false, tpl, "off", false, "off", "", false); err != nil {
+			if _, err := runJSONModeDeck(in, filepath.Join(dir, "result.json"), "../../templates", dir, "", false, false, tpl, "off", false, "off", "", false); err != nil {
 				t.Fatalf("generate: %v", err)
 			}
 			parts := readPPTXSlides(t, filepath.Join(dir, "native.pptx"))

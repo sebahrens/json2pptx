@@ -352,7 +352,7 @@ func TestComputeQualityScore_TableContent(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score == nil {
 		t.Fatal("score is nil")
 	}
@@ -370,7 +370,7 @@ func TestComputeQualityScore_EmptyTable(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score == nil {
 		t.Fatal("score is nil")
 	}
@@ -395,7 +395,7 @@ func TestComputeQualityScore_SubtitleLengthLimit(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score == nil {
 		t.Fatal("score is nil")
 	}
@@ -415,7 +415,7 @@ func TestComputeQualityScore_SubtitleLengthLimit(t *testing.T) {
 			},
 		},
 	}
-	score2 := computeQualityScore(slides2, nil)
+	score2 := computeQualityScoreWithLayouts(slides2, nil, nil)
 	if score2 == nil {
 		t.Fatal("score2 is nil")
 	}
@@ -442,7 +442,7 @@ func TestComputeQualityScore_BodyAndBullets(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score.Score < 80 {
 		t.Errorf("expected good score for body_and_bullets, got %f", score.Score)
 	}
@@ -457,7 +457,7 @@ func TestComputeQualityScore_BulletGroups(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score.Score < 80 {
 		t.Errorf("expected good score for bullet_groups, got %f", score.Score)
 	}
@@ -473,7 +473,7 @@ func TestComputeQualityScore_TooManyBullets(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score.Score >= 100 {
 		t.Errorf("expected penalty for 10 bullets, got perfect score %f", score.Score)
 	}
@@ -493,7 +493,7 @@ func TestComputeQualityScore_TooManyBullets(t *testing.T) {
 func TestComputeQualityScore_BulletsCountedPerPlaceholder(t *testing.T) {
 	five := json.RawMessage(`["1","2","3","4","5"]`)
 	hasBulletIssue := func(slides []SlideInput) bool {
-		for _, issue := range computeQualityScore(slides, nil).SlideScores[0].Issues {
+		for _, issue := range computeQualityScoreWithLayouts(slides, nil, nil).SlideScores[0].Issues {
 			if strings.Contains(issue, "too many bullets") {
 				return true
 			}
@@ -516,7 +516,7 @@ func TestComputeQualityScore_BulletsCountedPerPlaceholder(t *testing.T) {
 }
 
 func TestComputeQualityScore_EmptySlides(t *testing.T) {
-	score := computeQualityScore(nil, nil)
+	score := computeQualityScoreWithLayouts(nil, nil, nil)
 	if score.Score != 0.0 {
 		t.Errorf("Score = %f, want 0.0 for no slides", score.Score)
 	}
@@ -526,7 +526,7 @@ func TestComputeQualityScore_Warnings(t *testing.T) {
 	slides := []SlideInput{
 		{LayoutID: "l1", Content: []ContentInput{{PlaceholderID: "t", Type: "text", Value: json.RawMessage(`"hi"`)}}},
 	}
-	score := computeQualityScore(slides, []string{"warning1", "warning2"})
+	score := computeQualityScoreWithLayouts(slides, []string{"warning1", "warning2"}, nil)
 	if score.Score >= 100 {
 		t.Errorf("expected penalty for warnings, got %f", score.Score)
 	}
@@ -543,7 +543,7 @@ func TestComputeQualityScore_WaterfallWithPoints(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score.Score < 90 {
 		t.Errorf("expected high score for valid waterfall, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
@@ -558,7 +558,7 @@ func TestComputeQualityScore_FunnelMissingStages(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score.Score >= 100 {
 		t.Errorf("expected penalty for funnel without stages, got %f", score.Score)
 	}
@@ -582,7 +582,7 @@ func TestComputeQualityScore_FunnelWithStages(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score.Score < 90 {
 		t.Errorf("expected high score for valid funnel, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
@@ -597,7 +597,7 @@ func TestComputeQualityScore_GaugeMissingValue(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	found := false
 	for _, issue := range score.SlideScores[0].Issues {
 		if strings.Contains(issue, "gauge") && strings.Contains(issue, "value") {
@@ -618,7 +618,7 @@ func TestComputeQualityScore_GaugeMissingMinMax(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	found := false
 	for _, issue := range score.SlideScores[0].Issues {
 		if strings.Contains(issue, "gauge") && strings.Contains(issue, "min") {
@@ -639,7 +639,7 @@ func TestComputeQualityScore_GaugeComplete(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score.Score < 90 {
 		t.Errorf("expected high score for valid gauge, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
@@ -654,7 +654,7 @@ func TestComputeQualityScore_PortersMissingForces(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	found := false
 	for _, issue := range score.SlideScores[0].Issues {
 		if strings.Contains(issue, "porter") && strings.Contains(issue, "forces") {
@@ -675,7 +675,7 @@ func TestComputeQualityScore_PortersWithForces(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score.Score < 90 {
 		t.Errorf("expected high score for valid porter's, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
@@ -691,7 +691,7 @@ func TestComputeQualityScore_PortersDirectKeys(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score.Score < 90 {
 		t.Errorf("expected high score for porter's with direct keys, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
@@ -707,7 +707,7 @@ func TestComputeQualityScore_ChartAliasHandling(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score.Score < 90 {
 		t.Errorf("expected high score for funnel alias with data, got %f (issues: %v)", score.Score, score.SlideScores[0].Issues)
 	}
@@ -725,7 +725,7 @@ func TestComputeQualityScore_SectionDividerBodyMisuse(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score == nil {
 		t.Fatal("score is nil")
 	}
@@ -756,7 +756,7 @@ func TestComputeQualityScore_SectionDividerShortNumeric(t *testing.T) {
 			},
 		},
 	}
-	score := computeQualityScore(slides, nil)
+	score := computeQualityScoreWithLayouts(slides, nil, nil)
 	if score == nil {
 		t.Fatal("score is nil")
 	}

@@ -326,7 +326,7 @@ func measureSchemaMaximumEncodedPt(patternName string, encoded json.RawMessage, 
 	}
 
 	worst := 0.0
-	for _, f := range collectReadabilityFindings(input, geom.layouts, geom.width, geom.height) {
+	for _, f := range collectReadabilityFindingsWithTheme(input, geom.layouts, geom.width, geom.height, nil) {
 		if pt := readabilityRenderedPt(f.Message); pt > 0 && (worst == 0 || pt < worst) {
 			worst = pt
 		}
@@ -367,7 +367,7 @@ func TestSchemaMaximaMeasurementsMatchWrittenRuns(t *testing.T) {
 					if cell.ShapeSpec == nil {
 						continue
 					}
-					data, err := shapegrid.GenerateShapeXML(cell.ShapeSpec, cell.ID, cell.Bounds, cell.TextInsets)
+					data, err := shapegrid.GenerateCellShapeXML(shapegrid.ResolvedCell{ShapeSpec: cell.ShapeSpec, ID: cell.ID, Bounds: cell.Bounds, TextInsets: cell.TextInsets})
 					if err != nil {
 						t.Fatal(err)
 					}

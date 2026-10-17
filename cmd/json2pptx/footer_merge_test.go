@@ -76,7 +76,7 @@ func TestStructuralFooterUsesResolvedRegionAndChrome(t *testing.T) {
 	}
 	input := &PresentationInput{Chrome: &ChromeInput{PageNumbers: &PageNumbersInput{}}, Slides: []SlideInput{{LayoutID: layout.ID, ShapeGrid: grid}}}
 	var collision bool
-	for _, finding := range collectStructuralFindings(input, []types.LayoutMetadata{layout}, slideW, slideH) {
+	for _, finding := range collectStructuralFindingsWithTheme(input, []types.LayoutMetadata{layout}, slideW, slideH, nil) {
 		if finding.Code == patterns.ErrCodeFooterCollision && strings.Contains(finding.Path, "/shape_grid/") {
 			collision = true
 		}
@@ -85,14 +85,14 @@ func TestStructuralFooterUsesResolvedRegionAndChrome(t *testing.T) {
 		t.Fatal("chrome-only footer collision was not reported")
 	}
 	layout.CanonicalType = types.CanonicalLayoutTitleSlide
-	for _, finding := range collectStructuralFindings(input, []types.LayoutMetadata{layout}, slideW, slideH) {
+	for _, finding := range collectStructuralFindingsWithTheme(input, []types.LayoutMetadata{layout}, slideW, slideH, nil) {
 		if finding.Code == patterns.ErrCodeFooterCollision {
 			t.Errorf("title-layout chrome is skipped at render and must not report a footer collision: %+v", finding)
 		}
 	}
 	input.Chrome.PageNumbers.Skip = []string{} // Explicitly show chrome on every layout.
 	var titleCollision bool
-	for _, finding := range collectStructuralFindings(input, []types.LayoutMetadata{layout}, slideW, slideH) {
+	for _, finding := range collectStructuralFindingsWithTheme(input, []types.LayoutMetadata{layout}, slideW, slideH, nil) {
 		titleCollision = titleCollision || finding.Code == patterns.ErrCodeFooterCollision
 	}
 	if !titleCollision {

@@ -65,7 +65,7 @@ func contrastPredictions(findings []patterns.FitFinding) []patterns.FitFinding {
 func TestContrastPreflight_AuthorBackgroundPredicted(t *testing.T) {
 	in := &PresentationInput{Slides: []SlideInput{s7wmhSlide("dk1")}}
 
-	findings := contrastPredictions(collectContrastPreflightFindings(in, s7wmhLayouts, s7wmhCmdTheme))
+	findings := contrastPredictions(collectContrastPreflightFindingsAt(in, s7wmhLayouts, &types.ThemeInfo{Colors: s7wmhCmdTheme}, 0, 0))
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 contrast_predicted finding, got %d (%+v)", len(findings), findings)
 	}
@@ -84,7 +84,7 @@ func TestContrastPreflight_AuthorBackgroundPredicted(t *testing.T) {
 // An unresolved template background gives preflight no measurable canvas.
 func TestContrastPreflight_UnresolvedLayoutBackgroundNotPredicted(t *testing.T) {
 	in := &PresentationInput{Slides: []SlideInput{s7wmhSlide("")}}
-	if f := contrastPredictions(collectContrastPreflightFindings(in, s7wmhLayouts, s7wmhCmdTheme)); len(f) != 0 {
+	if f := contrastPredictions(collectContrastPreflightFindingsAt(in, s7wmhLayouts, &types.ThemeInfo{Colors: s7wmhCmdTheme}, 0, 0)); len(f) != 0 {
 		t.Errorf("a slide with no resolvable background should draw no prediction, got %+v", f)
 	}
 }
@@ -98,7 +98,7 @@ func TestContrastPreflight_TemplateBackgroundMatchesRendererReplacement(t *testi
 	input := &PresentationInput{Slides: []SlideInput{{LayoutID: "slideLayout1",
 		Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Readable title")}},
 	}}}
-	findings := contrastPredictions(collectContrastPreflightFindings(input, layouts, s7wmhCmdTheme))
+	findings := contrastPredictions(collectContrastPreflightFindingsAt(input, layouts, &types.ThemeInfo{Colors: s7wmhCmdTheme}, 0, 0))
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, "#FD5108 → #F34E08 (on #FFE8D4") {
 		t.Fatalf("template-background prediction = %+v, want visible 3:1 repair", findings)
 	}
@@ -115,7 +115,7 @@ func TestContrastPreflight_ChromeRespectsLayoutSourceAndSkip(t *testing.T) {
 	input := &PresentationInput{Chrome: &ChromeInput{}, Slides: []SlideInput{{LayoutID: "slideLayout1"}}}
 	check := func(want int) {
 		t.Helper()
-		got := contrastPredictions(collectContrastPreflightFindings(input, layouts, s7wmhCmdTheme))
+		got := contrastPredictions(collectContrastPreflightFindingsAt(input, layouts, &types.ThemeInfo{Colors: s7wmhCmdTheme}, 0, 0))
 		if len(got) != want {
 			t.Fatalf("chrome predictions = %+v, want %d", got, want)
 		}
@@ -144,7 +144,7 @@ func TestContrastPreflight_ContrastCheckOptOutSilences(t *testing.T) {
 	off := false
 	slide.ContrastCheck = &off
 	in := &PresentationInput{Slides: []SlideInput{slide}}
-	if f := contrastPredictions(collectContrastPreflightFindings(in, s7wmhLayouts, s7wmhCmdTheme)); len(f) != 0 {
+	if f := contrastPredictions(collectContrastPreflightFindingsAt(in, s7wmhLayouts, &types.ThemeInfo{Colors: s7wmhCmdTheme}, 0, 0)); len(f) != 0 {
 		t.Errorf("contrast_check: false should silence the prediction, got %+v", f)
 	}
 }
@@ -153,7 +153,7 @@ func TestContrastPreflight_ContrastCheckOptOutSilences(t *testing.T) {
 // template's title colour already reads well on draws nothing.
 func TestContrastPreflight_ReadableOnAuthorBackground(t *testing.T) {
 	in := &PresentationInput{Slides: []SlideInput{s7wmhSlide("lt1")}}
-	if f := contrastPredictions(collectContrastPreflightFindings(in, s7wmhLayouts, s7wmhCmdTheme)); len(f) != 0 {
+	if f := contrastPredictions(collectContrastPreflightFindingsAt(in, s7wmhLayouts, &types.ThemeInfo{Colors: s7wmhCmdTheme}, 0, 0)); len(f) != 0 {
 		t.Errorf("dk2 on white is readable; expected no prediction, got %+v", f)
 	}
 }

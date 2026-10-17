@@ -218,7 +218,7 @@ func TestRadialHubCopyBudgetsHoldAcrossTemplates(t *testing.T) {
 				input := &PresentationInput{Template: tpl, Slides: []SlideInput{{
 					SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "radial-hub", Values: values},
 				}}}
-				if findings := collectReadabilityFindings(input, geom.layouts, geom.width, geom.height); len(findings) > 0 {
+				if findings := collectReadabilityFindingsWithTheme(input, geom.layouts, geom.width, geom.height, nil); len(findings) > 0 {
 					t.Errorf("label %d / description %d characters with %d spokes: %+v", b.label, b.description, b.n, findings)
 				}
 				if n := writtenRoleViolations(t, input, geom); n > 0 {

@@ -930,16 +930,6 @@ func newDeckHandleFor(spec []byte, filename, template string) *deckHandle {
 	}
 }
 
-// rememberDeck stores (or refreshes) the handle for a call's spec and returns
-// the id to echo. An existing id is kept so one identifier covers the session.
-// base is the stored spec the call started from (specSource.BaseSpec). It
-// reports false when another call changed the stored deck in the meantime and
-// this call's edit would overwrite it; a call that made no edit then leaves
-// the newer stored deck in place and still reports true.
-func (mc *mcpConfig) rememberDeck(existingID string, base, spec []byte, filename, template string) (string, bool) {
-	return mc.rememberDeckSource(existingID, base, spec, filename, deckTemplateSource{Template: template})
-}
-
 // deckTemplateSource is the template identity a render resolved: a registered
 // name, or a bring-your-own file plus the root it was vetted against.
 type deckTemplateSource struct {

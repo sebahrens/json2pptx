@@ -322,17 +322,6 @@ func pinRunColors(shape *shapeXML, level int, hex string) {
 	}
 }
 
-// enforceInheritedTextContrast fixes placeholder text whose color is inherited
-// rather than stated. It is the counterpart to enforceTextContrastInSlide, which
-// only sees colors the slide itself names.
-//
-// masterXML may be nil: a layout that styles its own placeholders needs no
-// master, and without either file there is nothing to resolve and nothing is
-// changed.
-func enforceInheritedTextContrast(slide *slideXML, layoutXML, masterXML []byte, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string) []ContrastSwap {
-	return enforceInheritedTextContrastExcept(slide, layoutXML, masterXML, bgHex, themeColors, slideIndex, override, nil)
-}
-
 func enforceInheritedTextContrastExcept(slide *slideXML, layoutXML, masterXML []byte, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, excluded map[int]bool, cached ...map[string]string) []ContrastSwap {
 	if slide == nil || len(layoutXML) == 0 {
 		return nil

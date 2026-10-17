@@ -1872,8 +1872,8 @@ func TestAllocateMediaSlot(t *testing.T) {
 			if got != tt.wantMediaFile {
 				t.Errorf("allocateMediaSlot() = %q, want %q", got, tt.wantMediaFile)
 			}
-			if ctx.nextMediaNum() != tt.wantNextAfter {
-				t.Errorf("nextMediaNum() = %d, want %d", ctx.nextMediaNum(), tt.wantNextAfter)
+			if ctx.media.NextImageNum() != tt.wantNextAfter {
+				t.Errorf("nextMediaNum() = %d, want %d", ctx.media.NextImageNum(), tt.wantNextAfter)
 			}
 			if !ctx.usedExtensions[tt.wantExtensionUsed] {
 				t.Errorf("extension %q not marked as used", tt.wantExtensionUsed)

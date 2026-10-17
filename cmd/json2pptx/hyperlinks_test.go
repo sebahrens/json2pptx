@@ -30,7 +30,7 @@ func TestHyperlinkInputConversion(t *testing.T) {
 	if cell.Shape == nil || cell.Shape.Link == nil || cell.Shape.Link.Slide != 2 {
 		t.Fatalf("grid link lost: %+v", cell.Shape)
 	}
-	gridXML, err := shapegrid.GenerateShapeXML(cell.Shape, 201, pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000})
+	gridXML, err := shapegrid.GenerateCellShapeXML(shapegrid.ResolvedCell{ShapeSpec: cell.Shape, ID: 201, Bounds: pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}})
 	if err != nil || !strings.Contains(string(gridXML), `action="ppaction://hlinksldjump"`) {
 		t.Fatalf("grid link not emitted: %s, %v", gridXML, err)
 	}

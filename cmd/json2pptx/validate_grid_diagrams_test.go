@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"strings"
 	"testing"
 
@@ -67,7 +68,7 @@ func TestYzbo_MapFormChartInPatternValidatesAndGenerates(t *testing.T) {
 	if err := generateErr(slide); err != nil {
 		t.Fatalf("generate failed for map-form chart: %v", err)
 	}
-	for _, f := range collectChartDryRenderFindings(&PresentationInput{Slides: []SlideInput{slide}}, nil, "", "warn") {
+	for _, f := range collectChartDryRenderFindingsWithConverter(&PresentationInput{Slides: []SlideInput{slide}}, nil, "", "warn", generator.NewSVGConverter().IsPNGAvailable()) {
 		if f.Code == patterns.ErrCodeDiagramRenderFailed {
 			t.Errorf("unexpected dry-render failure for normalized chart: %+v", f)
 		}
@@ -112,7 +113,7 @@ func TestYzbo_InvalidPatternChartValidateMatchesGenerate(t *testing.T) {
 	}
 
 	var refuse bool
-	for _, f := range collectChartDryRenderFindings(&PresentationInput{Slides: []SlideInput{slide}}, nil, "", "warn") {
+	for _, f := range collectChartDryRenderFindingsWithConverter(&PresentationInput{Slides: []SlideInput{slide}}, nil, "", "warn", generator.NewSVGConverter().IsPNGAvailable()) {
 		if f.Code == patterns.ErrCodeDiagramRenderFailed && f.Action == "refuse" && strings.HasPrefix(f.Path, "/slides/0/pattern") {
 			refuse = true
 		}

@@ -42,7 +42,7 @@ func TestPortabilityFixtureGeometry(t *testing.T) {
 			}
 			outDir := t.TempDir()
 			resultPath := filepath.Join(outDir, "result.json")
-			if err := runJSONMode(filepath.Join(fixtures, deck), resultPath, templatesDir, outDir, "", false, false, tpl, "off", false, "warn", "free", false); err != nil {
+			if _, err := runJSONModeDeck(filepath.Join(fixtures, deck), resultPath, templatesDir, outDir, "", false, false, tpl, "off", false, "warn", "free", false); err != nil {
 				t.Fatalf("generate: %v", err)
 			}
 			data, err := os.ReadFile(resultPath) //nolint:gosec // test output

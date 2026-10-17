@@ -82,7 +82,7 @@ func generateNarrowRegionDeck(t *testing.T, template string, slides []any) (JSON
 	if err := os.WriteFile(in, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	runErr := runJSONMode(in, report, "../../templates", dir, "", false, false, template, "off", false, "off", "", false)
+	_, runErr := runJSONModeDeck(in, report, "../../templates", dir, "", false, false, template, "off", false, "off", "", false)
 	out, err := os.ReadFile(report)
 	if err != nil {
 		t.Fatalf("generate: %v", runErr)

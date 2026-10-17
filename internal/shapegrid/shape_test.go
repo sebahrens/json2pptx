@@ -39,7 +39,7 @@ func TestGenerateShapeXML_MinimalRect(t *testing.T) {
 	spec := &ShapeSpec{Geometry: "rect"}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}
 
-	xml, err := GenerateShapeXML(spec, 1, bounds)
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestGenerateShapeXML_WithRotation(t *testing.T) {
 	spec := &ShapeSpec{Geometry: "rect", Rotation: 45}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}
 
-	xml, err := GenerateShapeXML(spec, 1, bounds)
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +173,7 @@ func TestResolveTextInput_Vert(t *testing.T) {
 			t.Errorf("ResolveTextInput(%s): Vert = %q, want %q", raw, tb.Vert, "vert270")
 		}
 		spec := &ShapeSpec{Geometry: "rect", Text: raw}
-		xml, err := GenerateShapeXML(spec, 1, pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000})
+		xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}})
 		if err != nil {
 			t.Fatalf("GenerateShapeXML(%s): %v", raw, err)
 		}
@@ -288,7 +288,7 @@ func TestGenerateShapeXML_AllPhase1Geometries(t *testing.T) {
 	for _, geom := range geometries {
 		t.Run(geom, func(t *testing.T) {
 			spec := &ShapeSpec{Geometry: geom}
-			xml, err := GenerateShapeXML(spec, 1, bounds)
+			xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -302,7 +302,7 @@ func TestGenerateShapeXML_AllPhase1Geometries(t *testing.T) {
 func TestGenerateShapeXML_ZeroBounds(t *testing.T) {
 	spec := &ShapeSpec{Geometry: "rect"}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 0, CY: 0}
-	xml, err := GenerateShapeXML(spec, 1, bounds)
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -314,7 +314,7 @@ func TestGenerateShapeXML_ZeroBounds(t *testing.T) {
 func TestGenerateShapeXML_LargeBounds(t *testing.T) {
 	spec := &ShapeSpec{Geometry: "rect"}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 12192000, CY: 6858000} // full slide
-	xml, err := GenerateShapeXML(spec, 1, bounds)
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +329,7 @@ func TestGenerateShapeXML_WithAdjustments(t *testing.T) {
 		Adjustments: map[string]int64{"adj": 25000},
 	}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}
-	xml, err := GenerateShapeXML(spec, 1, bounds)
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +345,7 @@ func TestGenerateShapeXML_RoundRectDefaultSharpCorners(t *testing.T) {
 		// No explicit adjustments — should default adj=0 (sharp corners)
 	}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}
-	xml, err := GenerateShapeXML(spec, 1, bounds)
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,7 +361,7 @@ func TestGenerateShapeXML_RoundRectExplicitRadiusPreserved(t *testing.T) {
 		Adjustments: map[string]int64{"adj": 16667}, // explicit rounded corners
 	}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}
-	xml, err := GenerateShapeXML(spec, 1, bounds)
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +379,7 @@ func TestGenerateShapeXML_RectNoAdjInjected(t *testing.T) {
 		Geometry: "rect",
 	}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}
-	xml, err := GenerateShapeXML(spec, 1, bounds)
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -948,7 +948,7 @@ func TestGenerateShapeXML_NumberedTextRendersAsWritten(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		xml, err := GenerateShapeXML(&ShapeSpec{Geometry: "rect", Text: raw}, 7, bounds)
+		xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: &ShapeSpec{Geometry: "rect", Text: raw}, ID: 7, Bounds: bounds})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1031,7 +1031,7 @@ func TestBuildTextBody_BulletDetection(t *testing.T) {
 func TestGenerateShapeXML_FlipH(t *testing.T) {
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 1000000, CY: 500000}
 	spec := &ShapeSpec{Geometry: "chevron", FlipH: true, Text: json.RawMessage(`"Test"`)}
-	flipped, err := GenerateShapeXML(spec, 1, bounds)
+	flipped, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1039,7 +1039,7 @@ func TestGenerateShapeXML_FlipH(t *testing.T) {
 		t.Errorf("expected a:xfrm flipH=\"1\" in %s", flipped)
 	}
 	spec.FlipH = false
-	plain, err := GenerateShapeXML(spec, 1, bounds)
+	plain, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}

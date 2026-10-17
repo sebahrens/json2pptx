@@ -66,7 +66,7 @@ func TestNativeDiagramReadabilityValidateGenerateParity(t *testing.T) {
 		for _, template := range templates {
 			t.Run(filepath.Base(deck)+"/"+template, func(t *testing.T) {
 				validateRefuses := validateRefusesReadability(t, deck, template)
-				err := runJSONMode(deck, "", testTemplatesDir, t.TempDir(), "", false, false, template, "warn", false, "strict", "", false)
+				_, err := runJSONModeDeck(deck, "", testTemplatesDir, t.TempDir(), "", false, false, template, "warn", false, "strict", "", false)
 				generateRefuses := err != nil && strings.Contains(err.Error(), "unreadable generated text")
 				if err != nil && !generateRefuses {
 					t.Fatalf("generate failed for another reason: %v", err)
@@ -99,7 +99,7 @@ func TestReadabilityRefusalNamesSlideAndPartialSkipsIt(t *testing.T) {
 	dir := t.TempDir()
 
 	report := filepath.Join(dir, "refused.json")
-	err := runJSONMode(deck, report, testTemplatesDir, filepath.Join(dir, "refused"), "", false, false, "modern", "warn", false, "strict", "", false)
+	_, err := runJSONModeDeck(deck, report, testTemplatesDir, filepath.Join(dir, "refused"), "", false, false, "modern", "warn", false, "strict", "", false)
 	if err == nil {
 		t.Fatal("dense canvas generated on modern")
 	}
@@ -116,7 +116,7 @@ func TestReadabilityRefusalNamesSlideAndPartialSkipsIt(t *testing.T) {
 	}
 
 	report = filepath.Join(dir, "partial.json")
-	if err := runJSONMode(deck, report, testTemplatesDir, filepath.Join(dir, "partial"), "", false, false, "modern", "warn", true, "strict", "", false); err != nil {
+	if _, err := runJSONModeDeck(deck, report, testTemplatesDir, filepath.Join(dir, "partial"), "", false, false, "modern", "warn", true, "strict", "", false); err != nil {
 		t.Fatalf("partial generation failed: %v", err)
 	}
 	var partial JSONOutput

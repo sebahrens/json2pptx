@@ -37,21 +37,21 @@ func TestDefaultChevronAdj(t *testing.T) {
 // an authored adj is never overridden (go-slide-creator-5wm83).
 func TestGenerateShapeXML_StubbyChevronNotch(t *testing.T) {
 	bounds := pptx.RectEmu{CX: 1000000, CY: 1000000}
-	out, err := GenerateShapeXML(&ShapeSpec{Geometry: "chevron"}, 2, bounds)
+	out, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: &ShapeSpec{Geometry: "chevron"}, ID: 2, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(out), `name="adj" fmla="val 25000"`) {
 		t.Errorf("square chevron missing capped adj: %s", out)
 	}
-	out, err = GenerateShapeXML(&ShapeSpec{Geometry: "chevron", Adjustments: map[string]int64{"adj": 40000}}, 2, bounds)
+	out, err = GenerateCellShapeXML(ResolvedCell{ShapeSpec: &ShapeSpec{Geometry: "chevron", Adjustments: map[string]int64{"adj": 40000}}, ID: 2, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(out), `fmla="val 40000"`) || strings.Contains(string(out), "val 25000") {
 		t.Errorf("authored adj must win: %s", out)
 	}
-	out, err = GenerateShapeXML(&ShapeSpec{Geometry: "chevron"}, 2, pptx.RectEmu{CX: 3000000, CY: 1000000})
+	out, err = GenerateCellShapeXML(ResolvedCell{ShapeSpec: &ShapeSpec{Geometry: "chevron"}, ID: 2, Bounds: pptx.RectEmu{CX: 3000000, CY: 1000000}})
 	if err != nil {
 		t.Fatal(err)
 	}

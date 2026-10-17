@@ -305,8 +305,7 @@ func TestExhibitCalloutsDeck_LeadersLandOnPictureTargets(t *testing.T) {
 	for _, tpl := range templates {
 		t.Run(tpl, func(t *testing.T) {
 			dir := t.TempDir()
-			if err := runJSONMode("../../examples/exhibit-callouts.json", filepath.Join(dir, "result.json"), "../../templates", dir,
-				"", false, false, tpl, "off", false, "off", "", false); err != nil {
+			if _, err := runJSONModeDeck("../../examples/exhibit-callouts.json", filepath.Join(dir, "result.json"), "../../templates", dir, "", false, false, tpl, "off", false, "off", "", false); err != nil {
 				t.Fatalf("generate: %v", err)
 			}
 			parts := pptxParts(t, filepath.Join(dir, "exhibit-callouts.pptx"))

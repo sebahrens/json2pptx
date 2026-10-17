@@ -82,8 +82,7 @@ func TestTemplateGuideExamplesUseTypedFieldsAndRender(t *testing.T) {
 				t.Fatal(wErr)
 			}
 			tpl, _ := deck["template"].(string)
-			if rErr := runJSONMode(inputPath, filepath.Join(dir, "result.json"), templatesDir, dir,
-				"", false, false, tpl, "off", false, "off", "", false); rErr != nil {
+			if _, rErr := runJSONModeDeck(inputPath, filepath.Join(dir, "result.json"), templatesDir, dir, "", false, false, tpl, "off", false, "off", "", false); rErr != nil {
 				t.Fatalf("generate: %v", rErr)
 			}
 			slideText := guideDeckSlideText(t, filepath.Join(dir, "guide.pptx"))

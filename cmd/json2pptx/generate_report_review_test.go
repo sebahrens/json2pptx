@@ -26,8 +26,7 @@ func TestGenerateJSONOutputReportIncludesReviewFindings(t *testing.T) {
 	if err := os.WriteFile(inputPath, []byte(input), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runJSONMode(inputPath, reportPath, filepath.Join("..", "..", "templates"), dir,
-		"", false, false, "", "off", false, "off", "", false); err != nil {
+	if _, err := runJSONModeDeck(inputPath, reportPath, filepath.Join("..", "..", "templates"), dir, "", false, false, "", "off", false, "off", "", false); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(reportPath)

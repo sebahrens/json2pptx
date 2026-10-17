@@ -144,12 +144,12 @@ func TestDeckHandleValidateThenRenderKeepsChosenTemplate(t *testing.T) {
 
 func TestDeckHandleUpdatePreservesOmittedMetadata(t *testing.T) {
 	mc := handleTestConfig(t)
-	id, _ := mc.rememberDeck("", nil, []byte(unpinnedHandleSpec()), "authored.yaml", "midnight-blue")
+	id, _ := mc.rememberDeckSource("", nil, []byte(unpinnedHandleSpec()), "authored.yaml", deckTemplateSource{Template: "midnight-blue"})
 	if id == "" {
 		t.Fatal("no deck handle")
 	}
 	h, _ := mc.deckHandles.Load(id)
-	mc.rememberDeck(id, h.Spec, []byte(unpinnedHandleSpec()), "", "")
+	mc.rememberDeckSource(id, h.Spec, []byte(unpinnedHandleSpec()), "", deckTemplateSource{Template: ""})
 	h, ok := mc.deckHandles.Load(id)
 	if !ok {
 		t.Fatal("updated handle missing")
@@ -157,7 +157,7 @@ func TestDeckHandleUpdatePreservesOmittedMetadata(t *testing.T) {
 	if h.Template != "midnight-blue" || h.Filename != "authored.json" {
 		t.Errorf("omitted metadata was lost: template=%q filename=%q", h.Template, h.Filename)
 	}
-	mc.rememberDeck(id, h.Spec, []byte(unpinnedHandleSpec()), "renamed.yaml", "forest-green")
+	mc.rememberDeckSource(id, h.Spec, []byte(unpinnedHandleSpec()), "renamed.yaml", deckTemplateSource{Template: "forest-green"})
 	h, ok = mc.deckHandles.Load(id)
 	if !ok || h.Template != "forest-green" || h.Filename != "renamed.json" {
 		t.Errorf("explicit metadata did not replace the old values: handle=%+v loaded=%v", h, ok)
@@ -166,7 +166,7 @@ func TestDeckHandleUpdatePreservesOmittedMetadata(t *testing.T) {
 
 func TestValidateDeckHandleUsesRememberedTemplateForDiagnostics(t *testing.T) {
 	mc := handleTestConfig(t)
-	id, _ := mc.rememberDeck("", nil, []byte(unpinnedHandleSpec()), "authored.yaml", "definitely-not-a-template")
+	id, _ := mc.rememberDeckSource("", nil, []byte(unpinnedHandleSpec()), "authored.yaml", deckTemplateSource{Template: "definitely-not-a-template"})
 	res := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"deck_id": id}))
 	if res.OK {
 		t.Fatalf("validation ignored the handle's unavailable template: %+v", res.Findings)
@@ -216,7 +216,7 @@ func TestPinnedTemplateOverridesRememberedOrRequestedTemplate(t *testing.T) {
 
 	// A stale remembered default must not cause a false missing-template
 	// diagnostic when the spec itself pins a valid template.
-	id, _ := mc.rememberDeck("", nil, []byte(renderSpecWithTitle("Pinned template")), "pinned.yaml", "definitely-not-a-template")
+	id, _ := mc.rememberDeckSource("", nil, []byte(renderSpecWithTitle("Pinned template")), "pinned.yaml", deckTemplateSource{Template: "definitely-not-a-template"})
 	validated := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"deck_id": id}))
 	if !validated.OK {
 		t.Errorf("validation used stale remembered template instead of pin: %+v", validated.Findings)

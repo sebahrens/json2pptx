@@ -13,7 +13,7 @@ import (
 func TestGetStartedBriefToolsAreCore(t *testing.T) {
 	core := coreToolSet()
 	for _, task := range []string{"brief", "validate-only"} {
-		resp := buildGetStartedResponse(task, testRenderReady())
+		resp := buildGetStartedResponseOpts(task, testRenderReady(), true)
 		if resp.FastPath != nil {
 			if !core[resp.FastPath.Tool] {
 				t.Errorf("task=%s fast_path tool %q not in core profile", task, resp.FastPath.Tool)

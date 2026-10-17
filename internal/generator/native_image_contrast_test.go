@@ -80,7 +80,7 @@ func TestNativeImageContrastExclusionPreservesTextStyle(t *testing.T) {
 	if slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner != style {
 		t.Fatal("excluded text style changed")
 	}
-	if swaps := enforceTextContrastInSlide(slide, "#FFFFFF", modernLikeTheme(), 0, nil, true); len(swaps) != 1 {
+	if swaps := enforceTextContrastInSlideExcept(slide, "#FFFFFF", modernLikeTheme(), 0, nil, true, nil); len(swaps) != 1 {
 		t.Fatalf("ordinary canvas text must still be repaired: %+v", swaps)
 	}
 }
@@ -91,7 +91,7 @@ func TestNativeImageContrastExclusionPreservesInheritedColor(t *testing.T) {
 	if len(swaps) != 0 || slideRunFills(slide)[0] != "" {
 		t.Fatalf("image-dependent inherited text must not be recolored against the canvas: %+v %v", swaps, slideRunFills(slide))
 	}
-	if swaps := enforceInheritedTextContrast(slide, []byte(invertedSectionLayout), []byte(masterWithTx1Body), "#FFFFFF", modernLikeTheme(), 0, parseLayoutColorMapOverride([]byte(invertedSectionLayout))); len(swaps) != 1 {
+	if swaps := enforceInheritedTextContrastExcept(slide, []byte(invertedSectionLayout), []byte(masterWithTx1Body), "#FFFFFF", modernLikeTheme(), 0, parseLayoutColorMapOverride([]byte(invertedSectionLayout)), nil); len(swaps) != 1 {
 		t.Fatalf("ordinary inherited canvas text still requires repair: %+v", swaps)
 	}
 }

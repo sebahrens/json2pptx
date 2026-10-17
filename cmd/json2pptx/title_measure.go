@@ -230,13 +230,6 @@ func layoutForSlideResolved(slide *SlideInput, layouts []types.LayoutMetadata) *
 	return nil
 }
 
-// titlePlaceholderFor resolves the title placeholder a slide's content item
-// targets (canonical layout ids resolved). Returns nil when the item does not
-// target a title placeholder.
-func titlePlaceholderFor(slide *SlideInput, placeholderID string, layouts []types.LayoutMetadata) *types.PlaceholderInfo {
-	return titlePlaceholderIn(layoutForSlideResolved(slide, layouts), placeholderID)
-}
-
 // titlePlaceholderIn returns the title placeholder with the given id on a
 // resolved layout, or nil when the layout is unknown or the id is not a title.
 func titlePlaceholderIn(l *types.LayoutMetadata, placeholderID string) *types.PlaceholderInfo {

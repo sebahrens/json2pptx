@@ -55,7 +55,7 @@ func TestGenerateTakeawayShape(t *testing.T) {
 // the spTree (before its closing tag) without corrupting the surrounding XML.
 func TestInsertTakeaway(t *testing.T) {
 	const slide = `<?xml version="1.0"?><p:sld xmlns:p="x"><p:cSld><p:spTree><p:sp/></p:spTree></p:cSld></p:sld>`
-	out, err := insertTakeaway([]byte(slide), "Hello world", pptx.RectEmu{X: 1, Y: 2, CX: 3, CY: 4})
+	out, err := insertStyledTakeaway([]byte(slide), "Hello world", pptx.RectEmu{X: 1, Y: 2, CX: 3, CY: 4}, takeawayStyle{})
 	if err != nil {
 		t.Fatalf("insertTakeaway error: %v", err)
 	}

@@ -113,7 +113,7 @@ func TestInstalledSkillReferencesAreSelfContained(t *testing.T) {
 			}
 			dir := t.TempDir()
 			report := filepath.Join(dir, "result.json")
-			if err := runJSONMode(filepath.Join(example.dir, example.name), report, testutil.TemplatesDir(), dir, "", false, false, "", "strict", true, "strict", "", false); err != nil {
+			if _, err := runJSONModeDeck(filepath.Join(example.dir, example.name), report, testutil.TemplatesDir(), dir, "", false, false, "", "strict", true, "strict", "", false); err != nil {
 				t.Fatal(err)
 			}
 			data, err := os.ReadFile(report)

@@ -19,7 +19,7 @@ func TestCLIGridBodyBelowRoleFloorCannotPublish(t *testing.T) {
 	if err := os.WriteFile(input, source, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := runJSONMode(input, report, testutil.TemplatesDir(), dir, "", false, false, "", "off", false, "strict", "", false); err == nil {
+	if _, err := runJSONModeDeck(input, report, testutil.TemplatesDir(), dir, "", false, false, "", "off", false, "strict", "", false); err == nil {
 		t.Fatal("undersized panel published body text below the present-mode 12pt floor")
 	}
 	data, err := os.ReadFile(report)
@@ -78,7 +78,7 @@ func TestCLIGridAxisMarkerIsNotKPIButLoneFigureIs(t *testing.T) {
 		if err := os.WriteFile(input, source, 0600); err != nil {
 			t.Fatal(err)
 		}
-		runErr := runJSONMode(input, report, testutil.TemplatesDir(), dir, "", false, false, "", "off", false, "strict", "", false)
+		_, runErr := runJSONModeDeck(input, report, testutil.TemplatesDir(), dir, "", false, false, "", "off", false, "strict", "", false)
 		var result JSONOutput
 		out, err := os.ReadFile(report)
 		if err != nil {

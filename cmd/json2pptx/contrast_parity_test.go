@@ -58,7 +58,7 @@ func TestCompiledGridContrastPreflightMatchesGeneration(t *testing.T) {
 				Slides: []SlideInput{{SlideType: "blank", ShapeGrid: &ShapeGridInput{Rows: []GridRowInput{row}}}},
 			}
 			applyDefaults(input)
-			predicted := contrastPredictions(collectContrastPreflightFindings(input, nil, theme))
+			predicted := contrastPredictions(collectContrastPreflightFindingsAt(input, nil, &types.ThemeInfo{Colors: theme}, 0, 0))
 			result, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{
 				OutputDir: t.TempDir(), TemplatesDir: testutil.TemplatesDir(), StrictFit: "off", OutputValidation: "strict",
 			})
@@ -127,7 +127,7 @@ func TestSharedGridContrastPredictionAcrossLocalTemplates(t *testing.T) {
 			input := &PresentationInput{Template: templateName, OutputFilename: "contrast-parity.pptx",
 				Slides: []SlideInput{{SlideType: "blank", ShapeGrid: &ShapeGridInput{Rows: []GridRowInput{row}}}}}
 			applyDefaults(input)
-			predicted := contrastPredictions(collectContrastPreflightFindings(input, analysis.Layouts, analysis.Theme.Colors))
+			predicted := contrastPredictions(collectContrastPreflightFindingsAt(input, analysis.Layouts, &types.ThemeInfo{Colors: analysis.Theme.Colors}, 0, 0))
 			if len(predicted) != 1 {
 				t.Fatalf("predicted %d swaps, want one group decision: %+v", len(predicted), predicted)
 			}
@@ -164,9 +164,9 @@ func TestImageLabelContrastPredictionUsesCompiledTextShape(t *testing.T) {
 		Background: &BackgroundInput{Color: "#FFFFFF"},
 		ShapeGrid:  &ShapeGridInput{Rows: []GridRowInput{{Cells: []*GridCellInput{cell}}}},
 	}}}
-	findings := contrastPredictions(collectContrastPreflightFindings(input, nil, []types.ThemeColor{
+	findings := contrastPredictions(collectContrastPreflightFindingsAt(input, nil, &types.ThemeInfo{Colors: []types.ThemeColor{
 		{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"},
-	}))
+	}}, 0, 0))
 	if len(findings) != 1 || !strings.HasSuffix(findings[0].Path, "/image/text") {
 		t.Fatalf("image label prediction = %+v, want one finding on image/text", findings)
 	}
@@ -185,9 +185,9 @@ func TestCompositeAndNestedGridShareContrastDecision(t *testing.T) {
 			{Grid: nested},
 		}}},
 	}}}}
-	findings := contrastPredictions(collectContrastPreflightFindings(input, nil, []types.ThemeColor{
+	findings := contrastPredictions(collectContrastPreflightFindingsAt(input, nil, &types.ThemeInfo{Colors: []types.ThemeColor{
 		{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"},
-	}))
+	}}, 0, 0))
 	if len(findings) != 1 || !strings.Contains(findings[0].Message, "shared across 2 cells") {
 		t.Fatalf("composite/nested prediction = %+v, want one shared decision", findings)
 	}
@@ -247,7 +247,7 @@ func TestModifiedTemplateTextColorPredictionUsesVisibleForeground(t *testing.T) 
 		Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Contrast test")}},
 	}}}
 	applyDefaults(input)
-	findings := contrastPredictions(collectContrastPreflightFindings(input, analysis.Layouts, analysis.Theme.Colors))
+	findings := contrastPredictions(collectContrastPreflightFindingsAt(input, analysis.Layouts, &types.ThemeInfo{Colors: analysis.Theme.Colors}, 0, 0))
 	if len(findings) != 2 {
 		t.Fatalf("modified title and retained section-number predictions = %+v, want two", findings)
 	}
@@ -344,7 +344,7 @@ func TestAuthoredBackgroundPlaceholderParityAcrossLocalTemplates(t *testing.T) {
 				Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Contrast test")}},
 			}}}
 			applyDefaults(input)
-			predicted := contrastPredictions(collectContrastPreflightFindings(input, analysis.Layouts, analysis.Theme.Colors))
+			predicted := contrastPredictions(collectContrastPreflightFindingsAt(input, analysis.Layouts, &types.ThemeInfo{Colors: analysis.Theme.Colors}, 0, 0))
 			result, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{
 				OutputDir: t.TempDir(), TemplatesDir: testutil.TemplatesDir(), StrictFit: "off", OutputValidation: "strict",
 			})

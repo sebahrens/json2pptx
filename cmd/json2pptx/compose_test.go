@@ -526,7 +526,7 @@ func TestExpandCompose_Horizontal_TruncationWarning(t *testing.T) {
 		}},
 	}
 
-	merged, _, err := mergeHorizontal([]*jsonschema.ShapeGridInput{seg0, seg1}, []float64{50, 50}, 0)
+	merged, _, err := mergeHorizontalIn([]*jsonschema.ShapeGridInput{seg0, seg1}, []float64{50, 50}, 0, 0)
 	if err == nil || !contains(err.Error(), "COMPOSE_HORIZONTAL_TRUNCATION") || merged != nil {
 		t.Fatalf("lossy merge must refuse, got grid%v err%v", merged, err)
 	}

@@ -274,7 +274,7 @@ func TestSemanticizeFindingsKeepsFixParams(t *testing.T) {
 		{Code: "FIT.threshold", Evidence: map[string]any{"path": "slides[0].missing"},
 			Remediation: &diagnostics.Remediation{Primary: &diagnostics.RemediationAction{Action: diagnostics.ActionApplyPatch, Params: map[string]any{"threshold_pct": 80}}}},
 	}}
-	semanticizeFindings(&envelope, data, "deck_1")
+	newRemedyContext("spec.json", data, "deck_1").remedyEnvelope(&envelope, nil)
 
 	title := envelope.Findings[0]
 	if title.Remediation == nil || title.Remediation.Primary.Action != diagnostics.ActionShortenText || len(title.Remediation.Primary.Params) != 1 || title.Remediation.Primary.Params["max_chars"] != 20 {

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/sebahrens/json2pptx/internal/types"
 	"io"
 	"os"
 	"path/filepath"
@@ -199,7 +200,7 @@ func TestLayerContrastPreflightMatchesCellShape(t *testing.T) {
 	predict := func(inLayer bool) []patterns.FitFinding {
 		input := &PresentationInput{Template: "midnight-blue", Slides: []SlideInput{layerContrastSlide(inLayer)}}
 		applyDefaults(input)
-		return contrastPredictions(collectContrastPreflightFindings(input, nil, s7wmhCmdTheme))
+		return contrastPredictions(collectContrastPreflightFindingsAt(input, nil, &types.ThemeInfo{Colors: s7wmhCmdTheme}, 0, 0))
 	}
 	cell, layer := predict(false), predict(true)
 	if len(cell) != 1 || len(layer) != 1 {
@@ -228,7 +229,7 @@ func TestLayerContrastPreflightMatchesCellShape(t *testing.T) {
 func TestLayerContrastSwapMatchesPreflight(t *testing.T) {
 	input := &PresentationInput{Template: "midnight-blue", OutputFilename: "layer-contrast.pptx", Slides: []SlideInput{layerContrastSlide(true)}}
 	applyDefaults(input)
-	predictions := contrastPredictions(collectContrastPreflightFindings(input, nil, s7wmhCmdTheme))
+	predictions := contrastPredictions(collectContrastPreflightFindingsAt(input, nil, &types.ThemeInfo{Colors: s7wmhCmdTheme}, 0, 0))
 	if len(predictions) != 1 {
 		t.Fatalf("preflight predictions = %d, want 1", len(predictions))
 	}

@@ -131,7 +131,7 @@ func TestFooterShapesDoNotOverlap(t *testing.T) {
 		PageNumberFormat: "{current} / {total}",
 		TotalSlides:      10,
 	}
-	xml := generateFooterShapes(positions, config, 900, "Arial", "", 1)
+	xml := generateFooterShapesAvoiding(positions, config, 900, "Arial", "", 1, nil, 0)
 	if !strings.Contains(xml, "Footer Left") || !strings.Contains(xml, "Footer Right") {
 		t.Fatalf("expected both footer shapes:\n%s", xml)
 	}

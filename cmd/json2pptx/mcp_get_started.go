@@ -205,15 +205,6 @@ func getStartedAvailableTasks() []string {
 	return tasks
 }
 
-// buildGetStartedResponse returns the ordered call sequence keyed to the
-// caller's stated task. Unknown or empty task strings fall back to "brief",
-// which is the default new-deck workflow and the most common entry point.
-// buildGetStartedResponse keeps the two-argument form callers and tests use; it
-// includes the prose narrative, which is what a CLI caller wants.
-func buildGetStartedResponse(task string, rt getStartedRuntime) getStartedResponse {
-	return buildGetStartedResponseOpts(task, rt, true)
-}
-
 // buildGetStartedResponseOpts is the form the MCP handler uses, where verbose
 // is false by default: an MCP client already received the same prose as the
 // initialize instructions (go-slide-creator-bxve).

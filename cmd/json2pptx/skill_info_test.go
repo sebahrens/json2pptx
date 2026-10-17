@@ -376,7 +376,7 @@ func TestBuildColorRoles_NoSafeAccents(t *testing.T) {
 
 func TestBuildColorRoles_AbstractThemeUsesVisibleFirstAccent(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
-	info, err := analyzeTemplateForSkillInfo("../../templates/abstract.pptx", cache, "compact")
+	info, err := analyzeTemplateForSkillInfoOpts("../../templates/abstract.pptx", cache, "compact", skillInfoOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -446,7 +446,7 @@ func TestColorRolesSafetyOnLocalTemplateCorpus(t *testing.T) {
 	white := svggen.MustParseColor("#FFFFFF")
 	for _, path := range testutil.TestTemplatePaths() {
 		t.Run(filepath.Base(path), func(t *testing.T) {
-			info, err := analyzeTemplateForSkillInfo(path, cache, "compact")
+			info, err := analyzeTemplateForSkillInfoOpts(path, cache, "compact", skillInfoOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -490,7 +490,7 @@ func TestColorRolesSafetyOnLocalTemplateCorpus(t *testing.T) {
 
 func TestAnalyzeTemplateForSkillInfo_ColorRolesInCompactMode(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
-	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "compact")
+	info, err := analyzeTemplateForSkillInfoOpts("../../templates/midnight-blue.pptx", cache, "compact", skillInfoOptions{})
 	if err != nil {
 		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
 	}
@@ -512,7 +512,7 @@ func TestAnalyzeTemplateForSkillInfo_TableStylesAllTemplates(t *testing.T) {
 		t.Run(tmpl, func(t *testing.T) {
 			t.Parallel() // Each template is immutable; MemoryCache is synchronized.
 			for _, mode := range []string{"list", "compact", "full"} {
-				info, err := analyzeTemplateForSkillInfo(tmpl, cache, mode)
+				info, err := analyzeTemplateForSkillInfoOpts(tmpl, cache, mode, skillInfoOptions{})
 				if err != nil {
 					t.Fatalf("mode=%s: %v", mode, err)
 				}
@@ -525,7 +525,7 @@ func TestAnalyzeTemplateForSkillInfo_TableStylesAllTemplates(t *testing.T) {
 	}
 
 	// modern-template should have at least 1 table style.
-	info, err := analyzeTemplateForSkillInfo("../../templates/modern-template.pptx", cache, "compact")
+	info, err := analyzeTemplateForSkillInfoOpts("../../templates/modern-template.pptx", cache, "compact", skillInfoOptions{})
 	if err != nil {
 		t.Fatalf("modern-template: %v", err)
 	}
@@ -544,7 +544,7 @@ func TestAnalyzeTemplateForSkillInfo_TableStylesAllTemplates(t *testing.T) {
 
 func TestAnalyzeTemplateForSkillInfo_CompactPlaceholders(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
-	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "compact")
+	info, err := analyzeTemplateForSkillInfoOpts("../../templates/midnight-blue.pptx", cache, "compact", skillInfoOptions{})
 	if err != nil {
 		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
 	}
@@ -591,7 +591,7 @@ func TestTemplateDiscoveryMarksSectionNumberAutoFilled(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
 	for _, mode := range []string{"compact", "full"} {
 		t.Run(mode, func(t *testing.T) {
-			info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, mode)
+			info, err := analyzeTemplateForSkillInfoOpts("../../templates/midnight-blue.pptx", cache, mode, skillInfoOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -634,7 +634,7 @@ func TestAnalyzeTemplateForSkillInfo_AccentUsageGuideAuthored(t *testing.T) {
 	// Bundled templates author accent_usage_guide (go-slide-creator-u1h9b):
 	// it is surfaced as-is and never flagged derived.
 	cache := template.NewMemoryCache(24 * time.Hour)
-	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "compact")
+	info, err := analyzeTemplateForSkillInfoOpts("../../templates/midnight-blue.pptx", cache, "compact", skillInfoOptions{})
 	if err != nil {
 		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
 	}
@@ -775,7 +775,7 @@ func TestBuildComposeEntry_PopulatedWithExamples(t *testing.T) {
 // coverage matrix, derivable readiness, and semantic palette metadata.
 func TestAnalyzeTemplateForSkillInfo_CanonicalMetadataFull(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
-	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "full")
+	info, err := analyzeTemplateForSkillInfoOpts("../../templates/midnight-blue.pptx", cache, "full", skillInfoOptions{})
 	if err != nil {
 		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
 	}
@@ -876,7 +876,7 @@ func TestDerivableLayoutAddressesExistInLocalCorpus(t *testing.T) {
 	}
 	for _, file := range files {
 		t.Run(filepath.Base(file), func(t *testing.T) {
-			info, err := analyzeTemplateForSkillInfo(file, cache, "full")
+			info, err := analyzeTemplateForSkillInfoOpts(file, cache, "full", skillInfoOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -906,7 +906,7 @@ func TestDerivableLayoutAddressesExistInLocalCorpus(t *testing.T) {
 // the heavy full layouts array stays out of compact.
 func TestAnalyzeTemplateForSkillInfo_CompactSurvivesProjection(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
-	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "compact")
+	info, err := analyzeTemplateForSkillInfoOpts("../../templates/midnight-blue.pptx", cache, "compact", skillInfoOptions{})
 	if err != nil {
 		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
 	}
@@ -961,7 +961,7 @@ func TestAnalyzeTemplateForSkillInfo_CompactSurvivesProjection(t *testing.T) {
 // slim projection keeps actionable color intent but omits heavy detail.
 func TestAnalyzeTemplateForSkillInfo_ListModeKeepsSmallPaletteFields(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
-	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "list")
+	info, err := analyzeTemplateForSkillInfoOpts("../../templates/midnight-blue.pptx", cache, "list", skillInfoOptions{})
 	if err != nil {
 		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
 	}

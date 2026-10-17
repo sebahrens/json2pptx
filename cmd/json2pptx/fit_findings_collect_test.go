@@ -230,7 +230,7 @@ func TestContrastSwapsToFindings_RepairsOnlyPreciselyMappedRawText(t *testing.T)
 	if result := applyReplaceColor(input, 0, params); !result.Applied {
 		t.Fatalf("render-time finding's fix did not apply: %+v", result)
 	}
-	if after := contrastPredictions(collectContrastPreflightFindings(input, nil, theme)); len(after) != 0 {
+	if after := contrastPredictions(collectContrastPreflightFindingsAt(input, nil, &types.ThemeInfo{Colors: theme}, 0, 0)); len(after) != 0 {
 		t.Errorf("source repair did not converge: %+v", after)
 	}
 	var untouched map[string]any
@@ -1090,7 +1090,7 @@ func TestExpandComposeForPreflight_FillsShapeGrid(t *testing.T) {
 		},
 	}
 
-	out := expandComposeForPreflight(input, 12192000, 6858000)
+	out, _ := expandComposeForPreflightWithTheme(input, 12192000, 6858000, nil)
 	if out == nil {
 		t.Fatal("expandComposeForPreflight returned nil")
 	}
@@ -1123,7 +1123,7 @@ func TestExpandComposeForPreflight_NoCopyWhenNothingToExpand(t *testing.T) {
 			{ShapeGrid: &ShapeGridInput{}}, // Raw shape_grid — no expansion needed
 		},
 	}
-	out := expandComposeForPreflight(input, 12192000, 6858000)
+	out, _ := expandComposeForPreflightWithTheme(input, 12192000, 6858000, nil)
 	if out != input {
 		t.Error("expected the original input pointer to be returned when no expansion is needed")
 	}
@@ -1149,7 +1149,7 @@ func TestExpandComposeForPreflight_SkipsAlreadyExpanded(t *testing.T) {
 			},
 		},
 	}
-	out := expandComposeForPreflight(input, 12192000, 6858000)
+	out, _ := expandComposeForPreflightWithTheme(input, 12192000, 6858000, nil)
 	if out != input {
 		t.Error("expected fast-path return when compose slides already have ShapeGrid set")
 	}
@@ -1225,7 +1225,7 @@ func TestCollectFitFindings_RunsStructuralOnComposeMergedGrid(t *testing.T) {
 	// And: the expansion helper, when called directly, must produce a grid
 	// from this compose envelope — confirming downstream detectors now have
 	// post-merge geometry to evaluate.
-	expanded := expandComposeForPreflight(input, 12192000, 6858000)
+	expanded, _ := expandComposeForPreflightWithTheme(input, 12192000, 6858000, nil)
 	if expanded.Slides[0].ShapeGrid == nil {
 		t.Fatal("compose envelope was never expanded — preflight detectors will keep missing post-merge findings")
 	}

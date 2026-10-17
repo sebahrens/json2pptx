@@ -443,11 +443,6 @@ func (ctx *singlePassContext) allocPNG(sourceID string) string {
 	return pptx.MediaFilename(mediaPath)
 }
 
-// nextMediaNum returns the next image number that would be allocated.
-func (ctx *singlePassContext) nextMediaNum() int {
-	return ctx.media.NextImageNum()
-}
-
 // allocPNGForFile allocates a media filename for an image file path, with deduplication.
 // If the same file path was already allocated, returns the existing filename.
 // Returns the basename like "image5.png".

@@ -296,7 +296,7 @@ func TestExpandedDeckRenderedAndPlannedFindings(t *testing.T) {
 			if err := os.WriteFile(input, []byte(tc.deck), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			_ = runJSONMode(input, report, mc.templatesDir, dir, "", false, false, "", "warn", false, "strict", "", false)
+			_, _ = runJSONModeDeck(input, report, mc.templatesDir, dir, "", false, false, "", "warn", false, "strict", "", false)
 			data, err := os.ReadFile(report)
 			if err != nil {
 				t.Fatal(err)
@@ -636,7 +636,7 @@ func TestPartialModeFindingsKeepAuthoredSlides(t *testing.T) {
 			if err := os.WriteFile(input, []byte(deck), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if err := runJSONMode(input, report, "../../templates", dir, "", false, false, "", "warn", true, "strict", "", false); err != nil {
+			if _, err := runJSONModeDeck(input, report, "../../templates", dir, "", false, false, "", "warn", true, "strict", "", false); err != nil {
 				t.Fatal(err)
 			}
 			data, err := os.ReadFile(report)

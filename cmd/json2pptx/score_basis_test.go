@@ -40,7 +40,7 @@ func TestScoreScaleUnified(t *testing.T) {
 			{Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Good title")}}},
 			{},
 		}
-		q := computeQualityScore(deck, []string{"w"})
+		q := computeQualityScoreWithLayouts(deck, []string{"w"}, nil)
 		assertScore100(t, "quality.score", q.Score)
 		assertBasis(t, "quality", q.Basis, scoreBasisInput)
 		if q.Score <= 1 {
@@ -49,7 +49,7 @@ func TestScoreScaleUnified(t *testing.T) {
 		for _, s := range q.SlideScores {
 			assertScore100(t, "quality.slide_scores[].score", s.Score)
 		}
-		empty := computeQualityScore(nil, nil)
+		empty := computeQualityScoreWithLayouts(nil, nil, nil)
 		assertBasis(t, "empty quality", empty.Basis, scoreBasisInput)
 	})
 

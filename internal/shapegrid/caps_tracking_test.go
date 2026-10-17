@@ -11,7 +11,7 @@ import (
 func capsShapeXML(t *testing.T, text string, widthPt float64) string {
 	t.Helper()
 	spec := &ShapeSpec{Geometry: "rect", Text: json.RawMessage(text)}
-	xml, err := GenerateShapeXML(spec, 1, pptx.RectEmu{CX: PtToEMU(widthPt), CY: PtToEMU(60)})
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: pptx.RectEmu{CX: PtToEMU(widthPt), CY: PtToEMU(60)}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,11 +131,11 @@ func TestFinishingMeasuresThePresetTextRectangle(t *testing.T) {
 	onlyRect, both := false, false
 	for w := 110.0; w <= 260; w += 2 {
 		b := pptx.RectEmu{CX: PtToEMU(w), CY: PtToEMU(40)}
-		inRect, err := GenerateShapeXML(&ShapeSpec{Geometry: "rect", Text: raw}, 1, b)
+		inRect, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: &ShapeSpec{Geometry: "rect", Text: raw}, ID: 1, Bounds: b})
 		if err != nil {
 			t.Fatal(err)
 		}
-		inChevron, err := GenerateShapeXML(&ShapeSpec{Geometry: "chevron", Text: raw}, 1, b)
+		inChevron, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: &ShapeSpec{Geometry: "chevron", Text: raw}, ID: 1, Bounds: b})
 		if err != nil {
 			t.Fatal(err)
 		}

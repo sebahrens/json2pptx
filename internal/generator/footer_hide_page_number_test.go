@@ -14,7 +14,7 @@ func TestGenerateFooterShapes_HidePageNumber(t *testing.T) {
 		"type:ftr":    {Offset: offsetXML{X: 4038600, Y: 6492875}, Extent: extentXML{CX: 4114800, CY: 365125}},
 		"type:sldNum": {Offset: offsetXML{X: 8610600, Y: 6492875}, Extent: extentXML{CX: 3200400, CY: 365125}},
 	}
-	got := generateFooterShapes(positions, &FooterConfig{Enabled: true, LeftText: "Acme Corp", HidePageNumber: true}, 100, "", "", 0)
+	got := generateFooterShapesAvoiding(positions, &FooterConfig{Enabled: true, LeftText: "Acme Corp", HidePageNumber: true}, 100, "", "", 0, nil, 0)
 	if strings.Contains(got, "Footer Right") || strings.Contains(got, `type="slidenum"`) {
 		t.Errorf("HidePageNumber still emitted a slide number:\n%s", got)
 	}

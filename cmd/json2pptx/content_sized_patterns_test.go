@@ -30,7 +30,7 @@ func TestComposePreflightMatchesGeneratedGeometry(t *testing.T) {
 		{SizePct: 40, Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"99%","label":"Uptime"}`)}},
 		{SizePct: 60, Pattern: PatternInput{Name: "kpi-3up", Values: json.RawMessage(`["$4M | ARR","98% | NRR","1K | Customers"]`)}},
 	}}}
-	preflight := expandComposeForPreflight(&PresentationInput{Slides: []SlideInput{slide}}, sw, sh, layouts...)
+	preflight, _ := expandComposeForPreflightWithTheme(&PresentationInput{Slides: []SlideInput{slide}}, sw, sh, nil, layouts...)
 	grid := preflight.Slides[0].ShapeGrid
 	if grid == nil {
 		t.Fatal("preflight did not expand compose")

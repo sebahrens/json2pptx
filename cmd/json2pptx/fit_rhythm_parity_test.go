@@ -46,8 +46,8 @@ func TestFitAndReadabilityUseDeckRhythmBounds(t *testing.T) {
 	if hasOverflow(base) || !hasOverflow(tight) {
 		t.Fatalf("fit_overflow should occur only in the tight rhythm area (template=%t, rhythm=%t)", hasOverflow(base), hasOverflow(tight))
 	}
-	baseRead := collectReadabilityFindings(base, layouts, sw, sh)
-	tightRead := collectReadabilityFindings(tight, layouts, sw, sh)
+	baseRead := collectReadabilityFindingsWithTheme(base, layouts, sw, sh, nil)
+	tightRead := collectReadabilityFindingsWithTheme(tight, layouts, sw, sh, nil)
 	if len(baseRead) != 1 || len(tightRead) != 1 {
 		t.Fatalf("expected one readability finding per deck, got template=%d rhythm=%d", len(baseRead), len(tightRead))
 	}

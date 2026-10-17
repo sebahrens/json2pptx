@@ -218,7 +218,7 @@ func TestDefaultProfileResponsesNameOnlyReachableTools(t *testing.T) {
 // the profile that hides it.
 func TestGetStartedKeepsTheRawPathWhereItIsListed(t *testing.T) {
 	withToolProfile(t, toolProfileCore)
-	resp := buildGetStartedResponse("brief", testRenderReady())
+	resp := buildGetStartedResponseOpts("brief", testRenderReady(), true)
 	if len(resp.RawSequence) == 0 || resp.HiddenTools != nil {
 		t.Errorf("core profile brief: raw_sequence %d steps, hidden_tools %+v", len(resp.RawSequence), resp.HiddenTools)
 	}

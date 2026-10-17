@@ -109,7 +109,7 @@ func TestSectionKeyedComposePreflightUsesSectionAccent(t *testing.T) {
 			{Pattern: kpi, SizePct: 50}, {Pattern: kpi, SizePct: 50},
 		}}},
 	}}
-	expanded := expandComposeForPreflight(input, 12192000, 6858000)
+	expanded, _ := expandComposeForPreflightWithTheme(input, 12192000, 6858000, nil)
 	grid := expanded.Slides[2].ShapeGrid
 	if grid == nil {
 		t.Fatal("compose preflight did not expand")

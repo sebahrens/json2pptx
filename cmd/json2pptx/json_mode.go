@@ -260,12 +260,6 @@ func analyzeTemplateLayouts(templatePath string) (*types.TemplateAnalysis, error
 	return template.Analyze(templatePath, nil, false)
 }
 
-// runJSONMode processes JSON input and generates PPTX.
-func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath string, verbose bool, chartPNG bool, templateOverride string, strictFit string, partial bool, outputValidation string, designModeOverride string, strictUnknownKeys bool, options ...generationOptions) error {
-	_, err := runJSONModeDeck(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath, verbose, chartPNG, templateOverride, strictFit, partial, outputValidation, designModeOverride, strictUnknownKeys, options...)
-	return err
-}
-
 // runJSONModeDeck is runJSONMode returning the decoded deck beside the error
 // (nil when the input did not decode): the caller that reports the failure
 // itself addresses its findings to that deck (authoredPaths).
@@ -1811,14 +1805,6 @@ func writeJSONErrorWithFindings(deck *PresentationInput, jsonOutputPath string, 
 	}
 
 	return err
-}
-
-// computeQualityScore evaluates the quality of a set of slides and
-// returns a QualityScore. It can be used by both JSON mode (json_mode.go)
-// and markdown mode (generate.go) when --json-output is specified.
-// Accepts []SlideInput (typed schema) for full typed + legacy field support.
-func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
-	return computeQualityScoreWithLayouts(slides, warnings, nil)
 }
 
 // computeQualityScoreWithLayouts is computeQualityScore with the template

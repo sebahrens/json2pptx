@@ -128,7 +128,7 @@ func verdictSurfaces(t *testing.T, mc *mcpConfig, deckPath string, generate bool
 
 	// generate (CLI).
 	report := filepath.Join(t.TempDir(), "report.json")
-	genErr := runJSONMode(deckPath, report, mc.templatesDir, t.TempDir(), "", false, false, "", "warn", false, "strict", "", false)
+	_, genErr := runJSONModeDeck(deckPath, report, mc.templatesDir, t.TempDir(), "", false, false, "", "warn", false, "strict", "", false)
 	reportData, err := os.ReadFile(report)
 	if err != nil {
 		t.Fatalf("generate wrote no report (error %v): %v", genErr, err)
@@ -817,7 +817,7 @@ func TestCLIValidateResolvesTemplatePathAsGenerate(t *testing.T) {
 		t.Errorf("generate --dry-run rejects it: %v", dryErr)
 	}
 	report := filepath.Join(t.TempDir(), "report.json")
-	if err := runJSONMode(path, report, "../../templates", t.TempDir(), "", false, false, "", "warn", false, "strict", "", false); err != nil {
+	if _, err := runJSONModeDeck(path, report, "../../templates", t.TempDir(), "", false, false, "", "warn", false, "strict", "", false); err != nil {
 		t.Errorf("generate refuses it: %v", err)
 	}
 }

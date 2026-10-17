@@ -63,7 +63,7 @@ func TestListStyleContrastFixesOnlyUsedLevels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			slide := sectionNumberSlide(tt.paragraphs...)
-			swaps := enforceTextContrastInSlide(slide, sectionNumberBg, sectionNumberTheme(), 2, nil, false)
+			swaps := enforceTextContrastInSlideExcept(slide, sectionNumberBg, sectionNumberTheme(), 2, nil, false, nil)
 			if len(swaps) != len(tt.wantSwapped) {
 				t.Fatalf("recorded %d swaps, want %d (one per used level): %+v", len(swaps), len(tt.wantSwapped), swaps)
 			}
@@ -101,10 +101,10 @@ func TestListStyleContrastThresholdIgnoresUnusedLevelSizes(t *testing.T) {
 			TextBody: &textBodyXML{ListStyle: &listStyleXML{Inner: lvl1 + lvl2}, Paragraphs: []paragraphXML{paragraphAtLevel(level, "01")}},
 		}}}}}
 	}
-	if swaps := enforceTextContrastInSlide(build(nil), sectionNumberBg, theme, 0, nil, false); len(swaps) != 0 {
+	if swaps := enforceTextContrastInSlideExcept(build(nil), sectionNumberBg, theme, 0, nil, false, nil); len(swaps) != 0 {
 		t.Errorf("large level-1 text was held to the unused 16pt level's threshold: %+v", swaps)
 	}
-	if swaps := enforceTextContrastInSlide(build(intPtr(1)), sectionNumberBg, theme, 0, nil, false); len(swaps) != 1 {
+	if swaps := enforceTextContrastInSlideExcept(build(intPtr(1)), sectionNumberBg, theme, 0, nil, false, nil); len(swaps) != 1 {
 		t.Errorf("16pt level-2 text below 4.5:1 recorded %d swaps, want 1: %+v", len(swaps), swaps)
 	}
 }
@@ -155,7 +155,7 @@ func TestInheritedTextContrastSeesPastUnusedLevelColours(t *testing.T) {
 	if !levelNamesNoColor(shape, 1) {
 		t.Fatal("a colour on an unused level made the shape count as naming its text colour")
 	}
-	if swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), bgHex, theme, 1, override); len(swaps) != 1 {
+	if swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithTx1Body), bgHex, theme, 1, override, nil); len(swaps) != 1 {
 		t.Errorf("white-on-white level-1 text behind an unused lvl2 colour drew %d swaps, want 1", len(swaps))
 	}
 
@@ -200,7 +200,7 @@ func TestInheritedTextContrastResolvesEachUsedLevel(t *testing.T) {
 	slide := bodySlide("Revenue grew", "driven by renewals")
 	shape := &slide.CommonSlideData.ShapeTree.Shapes[0]
 	shape.TextBody.Paragraphs[1].Properties = &paragraphPropertiesXML{Level: &level}
-	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithLightSecondLevel), bgHex, theme, 3, override)
+	swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithLightSecondLevel), bgHex, theme, 3, override, nil)
 	if len(swaps) != 1 {
 		t.Fatalf("got %d swaps, want 1 (the second level): %+v", len(swaps), swaps)
 	}
@@ -217,7 +217,7 @@ func TestInheritedTextContrastResolvesEachUsedLevel(t *testing.T) {
 	// The same deck with no second-level paragraph: nothing uses the failing
 	// level, so nothing is changed or reported.
 	flat := bodySlide("Revenue grew", "driven by renewals")
-	if swaps := enforceInheritedTextContrast(flat, layout, []byte(masterWithLightSecondLevel), bgHex, theme, 3, override); len(swaps) != 0 {
+	if swaps := enforceInheritedTextContrastExcept(flat, layout, []byte(masterWithLightSecondLevel), bgHex, theme, 3, override, nil); len(swaps) != 0 {
 		t.Errorf("an unused failing level drew swaps: %+v", swaps)
 	}
 }
@@ -236,7 +236,7 @@ func TestInheritedTextContrastFixesLevelsTheListStyleLeavesAlone(t *testing.T) {
 	shape := &slide.CommonSlideData.ShapeTree.Shapes[0]
 	shape.TextBody.ListStyle.Inner = `<a:lvl2pPr><a:defRPr sz="1600"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl2pPr>`
 	shape.TextBody.Paragraphs[1].Properties = &paragraphPropertiesXML{Level: &level}
-	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), bgHex, theme, 1, override)
+	swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithTx1Body), bgHex, theme, 1, override, nil)
 	if len(swaps) != 1 {
 		t.Fatalf("white-on-white first-level text beside a coloured second level drew %d swaps, want 1: %+v", len(swaps), swaps)
 	}

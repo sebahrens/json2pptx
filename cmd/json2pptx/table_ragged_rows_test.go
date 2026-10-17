@@ -43,8 +43,7 @@ func TestRaggedTableRows_ValidateAndGenerateAgree(t *testing.T) {
 				t.Errorf("validate error should name the header count, got: %v", result.Errors)
 			}
 
-			genErr := runJSONMode(inputPath, filepath.Join(dir, "result.json"), testTemplatesDir, dir,
-				"", false, false, "midnight-blue", "off", false, "off", "", false)
+			_, genErr := runJSONModeDeck(inputPath, filepath.Join(dir, "result.json"), testTemplatesDir, dir, "", false, false, "midnight-blue", "off", false, "off", "", false)
 			if !tc.wantValid {
 				if genErr == nil {
 					t.Fatal("generate succeeded for a row wider than the headers; validate rejected it")

@@ -78,7 +78,7 @@ func crGenerate(t *testing.T, tpl string, input PresentationInput) JSONOutput {
 		t.Fatal(err)
 	}
 	resultPath := filepath.Join(dir, "result.json")
-	if err := runJSONMode(inputPath, resultPath, testutil.TemplatesDir(), dir, "", false, false, tpl, "off", false, "strict", "free", false); err != nil {
+	if _, err := runJSONModeDeck(inputPath, resultPath, testutil.TemplatesDir(), dir, "", false, false, tpl, "off", false, "strict", "free", false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	resBytes, err := os.ReadFile(resultPath)

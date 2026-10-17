@@ -16,12 +16,12 @@ func TestGenerateShapeXMLAdjustmentsDeterministic(t *testing.T) {
 		Adjustments: map[string]int64{"adj2": 75000, "adj1": 18750, "adj3": 5000},
 	}
 	bounds := pptx.RectEmu{X: 0, Y: 0, CX: 914400, CY: 914400}
-	first, err := GenerateShapeXML(spec, 2, bounds)
+	first, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 2, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for i := 0; i < 50; i++ {
-		got, err := GenerateShapeXML(spec, 2, bounds)
+		got, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 2, Bounds: bounds})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -51,7 +51,7 @@ func titleSlideXML(scheme string) *slideXML {
 // ratio exactly 3.0 and barely visible on black.
 func TestAuthorBackgroundSnapsToPalette(t *testing.T) {
 	slide := titleSlideXML("dk2")
-	swaps := enforceTextContrastInSlide(slide, "#000000", s7wmhTheme, 0, nil, true)
+	swaps := enforceTextContrastInSlideExcept(slide, "#000000", s7wmhTheme, 0, nil, true, nil)
 	if len(swaps) != 1 {
 		t.Fatalf("expected 1 swap, got %d (%v)", len(swaps), swaps)
 	}
@@ -69,7 +69,7 @@ func TestAuthorBackgroundSnapsToPalette(t *testing.T) {
 // whose background comes from its layout must not change at all.
 func TestLayoutBackgroundStillLerps(t *testing.T) {
 	slide := titleSlideXML("dk2")
-	swaps := enforceTextContrastInSlide(slide, "#000000", s7wmhTheme, 0, nil, false)
+	swaps := enforceTextContrastInSlideExcept(slide, "#000000", s7wmhTheme, 0, nil, false, nil)
 	if len(swaps) != 1 {
 		t.Fatalf("expected 1 swap, got %d (%v)", len(swaps), swaps)
 	}
@@ -113,7 +113,7 @@ func TestShapeGridCellKeepsLerp(t *testing.T) {
 // the same colour the render-time swap writes.
 func TestAuthorBackgroundPreflightMatchesRender(t *testing.T) {
 	slide := titleSlideXML("dk2")
-	swaps := enforceTextContrastInSlide(slide, "#000000", s7wmhTheme, 0, nil, true)
+	swaps := enforceTextContrastInSlideExcept(slide, "#000000", s7wmhTheme, 0, nil, true, nil)
 	if len(swaps) != 1 {
 		t.Fatalf("expected 1 render-time swap, got %d", len(swaps))
 	}

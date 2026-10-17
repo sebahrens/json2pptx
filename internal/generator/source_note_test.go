@@ -33,8 +33,7 @@ func TestSourceNoteText(t *testing.T) {
 }
 
 func TestSourceNoteShapeDoesNotStutter(t *testing.T) {
-	xml := generateSourceNoteShapeInBounds("Source: Company filings FY2026", 42,
-		pptx.RectEmu{X: 0, Y: 0, CX: 1000, CY: 100})
+	xml := generateLinkedSourceNoteShapeInBounds("Source: Company filings FY2026", 42, pptx.RectEmu{X: 0, Y: 0, CX: 1000, CY: 100}, "", false)
 	if strings.Contains(xml, "Source: Source:") {
 		t.Errorf("emitted a stuttered label:\n%s", xml)
 	}
@@ -48,8 +47,7 @@ func TestSourceNoteShapeDoesNotStutter(t *testing.T) {
 // 8pt in a raw #888888 on the right while the patterns drew 9-10pt dk1 on the
 // left (go-slide-creator-7eib).
 func TestSourceNoteFollowsTheSharedConvention(t *testing.T) {
-	xml := generateSourceNoteShapeInBounds("Helio finance data warehouse", 42,
-		pptx.RectEmu{X: 0, Y: 0, CX: 5000000, CY: 300000})
+	xml := generateLinkedSourceNoteShapeInBounds("Helio finance data warehouse", 42, pptx.RectEmu{X: 0, Y: 0, CX: 5000000, CY: 300000}, "", false)
 	if xml == "" {
 		t.Fatal("no shape generated")
 	}

@@ -50,14 +50,14 @@ func writeFakeExecutable(t *testing.T, path string) {
 }
 
 func TestRenderSlide_FileNotFound(t *testing.T) {
-	_, err := RenderSlide("/tmp/nonexistent-deck.pptx", 0, 100)
+	_, err := RenderSlideOpts("/tmp/nonexistent-deck.pptx", 0, 100, false)
 	if err == nil {
 		t.Fatal("expected error for nonexistent file")
 	}
 }
 
 func TestRenderDeck_FileNotFound(t *testing.T) {
-	_, err := RenderDeck("/tmp/nonexistent-deck.pptx", 50, 10)
+	_, err := RenderDeckOpts("/tmp/nonexistent-deck.pptx", 50, 10, false)
 	if err == nil {
 		t.Fatal("expected error for nonexistent file")
 	}
@@ -183,7 +183,7 @@ func TestIntegrationRenderSlide(t *testing.T) {
 
 	pptxPath := integrationPPTXPath(t)
 
-	img, err := RenderSlide(pptxPath, 0, 72)
+	img, err := RenderSlideOpts(pptxPath, 0, 72, false)
 	if err != nil {
 		t.Fatalf("RenderSlide failed: %v", err)
 	}
@@ -530,7 +530,7 @@ func TestIntegrationRenderDeck(t *testing.T) {
 	pptxPath := integrationPPTXPath(t)
 	usingDefaultDeck := os.Getenv("RENDER_TEST_PPTX") == ""
 
-	result, err := RenderDeck(pptxPath, 50, 3)
+	result, err := RenderDeckOpts(pptxPath, 50, 3, false)
 	if err != nil {
 		t.Fatalf("RenderDeck failed: %v", err)
 	}

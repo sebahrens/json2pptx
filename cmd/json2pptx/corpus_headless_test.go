@@ -120,7 +120,7 @@ func runHeadlessRoundTrip(t *testing.T, soffice, baseTmp, templatesDir, exampleP
 	// guarantee we are testing — we only care that the generated PPTX opens
 	// cleanly in LibreOffice. strict-fit is left off so density warnings on a
 	// non-original template don't mask the actual round-trip outcome.
-	if err := runJSONMode(patchedJSON, resultJSON, templatesDir, caseDir, "", false, false, tmpl, "off", false, "off", "free", false); err != nil {
+	if _, err := runJSONModeDeck(patchedJSON, resultJSON, templatesDir, caseDir, "", false, false, tmpl, "off", false, "off", "free", false); err != nil {
 		t.Fatalf("runJSONMode failed for %s × %s: %v", examplePath, tmpl, err)
 	}
 

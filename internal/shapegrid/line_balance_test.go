@@ -40,7 +40,7 @@ func TestBalanceHeadingRemovesOneWordLastLine(t *testing.T) {
 		t.Fatal("no widowed width found for the fixture")
 	}
 	full := 2
-	xml, err := GenerateShapeXML(spec, 1, bounds)
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: bounds})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestParagraphsAfterABalancedHeadingStateTheirMargins(t *testing.T) {
 	spec := &ShapeSpec{Geometry: "rect", Text: json.RawMessage(text)}
 	paragraphs := regexp.MustCompile(`(?s)<a:p>.*?</a:p>`)
 	for pt := 200.0; pt <= 500; pt++ {
-		xml, err := GenerateShapeXML(spec, 1, pptx.RectEmu{CX: PtToEMU(pt), CY: PtToEMU(200)})
+		xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: pptx.RectEmu{CX: PtToEMU(pt), CY: PtToEMU(200)}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -101,7 +101,7 @@ func TestBalanceLeavesBodyAndSingleLinesAlone(t *testing.T) {
 		`{"content":"GOVERNANCE","size":14,"bold":true}`,                                        // one word
 	} {
 		spec := &ShapeSpec{Geometry: "rect", Text: json.RawMessage(text)}
-		xml, err := GenerateShapeXML(spec, 1, pptx.RectEmu{CX: PtToEMU(210), CY: PtToEMU(80)})
+		xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: pptx.RectEmu{CX: PtToEMU(210), CY: PtToEMU(80)}})
 		if err != nil {
 			t.Fatal(err)
 		}

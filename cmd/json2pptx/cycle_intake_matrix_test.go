@@ -95,7 +95,7 @@ func cycleIntakeMatrixTemplates() []string {
 // below its role floor, any refusal and any cycle-intake copy warning.
 func assertCycleIntakeClean(t *testing.T, input *PresentationInput, geom schemaMaximaGeometry) {
 	t.Helper()
-	for _, f := range collectReadabilityFindings(input, geom.layouts, geom.width, geom.height) {
+	for _, f := range collectReadabilityFindingsWithTheme(input, geom.layouts, geom.width, geom.height, nil) {
 		t.Errorf("readability finding: %s %s", f.Code, f.Message)
 	}
 	if n := writtenRoleViolations(t, input, geom); n > 0 {

@@ -183,8 +183,7 @@ func TestChromeTruncatedPreflightMatchesRender(t *testing.T) {
 				t.Fatal(err)
 			}
 			resultPath := filepath.Join(dir, "result.json")
-			if err := runJSONMode(inputPath, resultPath, filepath.Join("..", "..", "templates"), dir,
-				"", false, false, tpl, "off", false, "off", "", false); err != nil {
+			if _, err := runJSONModeDeck(inputPath, resultPath, filepath.Join("..", "..", "templates"), dir, "", false, false, tpl, "off", false, "off", "", false); err != nil {
 				t.Fatalf("generate: %v", err)
 			}
 			raw, err := os.ReadFile(resultPath)

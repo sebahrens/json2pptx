@@ -663,20 +663,6 @@ func mergeVertical(grids []*jsonschema.ShapeGridInput, sizes []float64, gap floa
 	return merged, nil
 }
 
-// mergeHorizontal places each segment in a full-height sub-grid spanning its
-// allocated columns. This keeps independent row heights, gaps, and vertical
-// alignment: segments with different row counts cannot share parent rows.
-// The parent retains the sum of segment columns for compose col attribution.
-//
-// If a segment's row over-occupies its allocated column range (sum of cell
-// ColSpans exceeds the segment's column count), the excess cells are dropped
-// and a COMPOSE_HORIZONTAL_TRUNCATION warning is appended to the returned
-// warnings slice so callers can surface it instead of dropping content
-// silently.
-func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap float64) (*jsonschema.ShapeGridInput, []string, error) {
-	return mergeHorizontalIn(grids, sizes, gap, 0)
-}
-
 // mergeHorizontalIn is mergeHorizontal for an envelope whose width (EMU) is
 // known: each segment's columns are then weighted so that the segment, the
 // gaps between its own columns included, is exactly its share of the width

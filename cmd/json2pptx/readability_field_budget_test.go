@@ -41,7 +41,7 @@ const sharedCellBody = "The workbench puts unowned cases beside assigned work. T
 func sharedCellFinding(t *testing.T, body string, heightPct float64) *patterns.FitFinding {
 	t.Helper()
 	in := &PresentationInput{ViewingMode: "present", Slides: []SlideInput{sharedCellSlide(t, body, heightPct)}}
-	got := readabilityCodes(collectReadabilityFindings(in, nil, 12192000, 6858000))
+	got := readabilityCodes(collectReadabilityFindingsWithTheme(in, nil, 12192000, 6858000, nil))
 	if len(got) == 0 {
 		return nil
 	}

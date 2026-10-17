@@ -197,8 +197,7 @@ func TestSectionCrumbFlatDeckRenders(t *testing.T) {
 	if err := os.WriteFile(inPath, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := runJSONMode(inPath, filepath.Join(dir, "result.json"), filepath.Join(root, "templates"), dir,
-		"", false, false, "midnight-blue", "off", false, "off", "", false); err != nil {
+	if _, err := runJSONModeDeck(inPath, filepath.Join(dir, "result.json"), filepath.Join(root, "templates"), dir, "", false, false, "midnight-blue", "off", false, "off", "", false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	zr, err := zip.OpenReader(filepath.Join(dir, "crumb.pptx"))

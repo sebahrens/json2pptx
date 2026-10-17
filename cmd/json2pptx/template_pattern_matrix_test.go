@@ -156,7 +156,7 @@ func TestTemplatePatternMatrix(t *testing.T) {
 				}
 
 				resultPath := filepath.Join(caseDir, "result.json")
-				runErr := runJSONMode(
+				_, runErr := runJSONModeDeck(
 					inputPath,    // jsonPath
 					resultPath,   // jsonOutputPath
 					templatesDir, // templatesDir

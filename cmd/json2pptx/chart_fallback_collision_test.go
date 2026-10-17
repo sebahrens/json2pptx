@@ -114,7 +114,7 @@ func TestGenerate_DuplicatePlaceholderResolutionErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	resultPath := filepath.Join(dir, "result.json")
-	err = runJSONMode(inputPath, resultPath, templatesDir, dir, "", false, false, "midnight-blue", "off", false, "off", "free", false)
+	_, err = runJSONModeDeck(inputPath, resultPath, templatesDir, dir, "", false, false, "midnight-blue", "off", false, "off", "free", false)
 	if err == nil {
 		t.Fatal("expected generation to fail when body_2 and body resolve to the same placeholder")
 	}
@@ -147,7 +147,7 @@ func TestGenerate_HumanPathRefusesDroppedTextBlock(t *testing.T) {
 	if err := os.WriteFile(inputPath, []byte(deck), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	err = runJSONMode(inputPath, "", templatesDir, dir, "", false, false, "midnight-blue", "off", false, "", "free", false)
+	_, err = runJSONModeDeck(inputPath, "", templatesDir, dir, "", false, false, "midnight-blue", "off", false, "", "free", false)
 	if err == nil || !strings.Contains(err.Error(), "CONTENT_DROPPED") || !strings.Contains(err.Error(), "/slides/0/content/2") {
 		t.Fatalf("expected a CONTENT_DROPPED failure naming /slides/0/content/2, got %v", err)
 	}
@@ -157,7 +157,7 @@ func TestGenerate_HumanPathRefusesDroppedTextBlock(t *testing.T) {
 		t.Fatalf("a refused deck was written: %v", written)
 	}
 	// output_validation off keeps the documented opt-out.
-	if err := runJSONMode(inputPath, "", templatesDir, dir, "", false, false, "midnight-blue", "off", false, "off", "free", false); err != nil {
+	if _, err := runJSONModeDeck(inputPath, "", templatesDir, dir, "", false, false, "midnight-blue", "off", false, "off", "free", false); err != nil {
 		t.Fatalf("output_validation off must not fail: %v", err)
 	}
 }

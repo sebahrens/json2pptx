@@ -253,7 +253,7 @@ func TestLayerIconDeckGeneratesWithTheIconEmbedded(t *testing.T) {
 	}
 
 	outDir := t.TempDir()
-	if err := runJSONMode(path, "", testutil.TemplatesDir(), outDir, "", false, false, "", "warn", false, "strict", "", false); err != nil {
+	if _, err := runJSONModeDeck(path, "", testutil.TemplatesDir(), outDir, "", false, false, "", "warn", false, "strict", "", false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	matches, _ := filepath.Glob(filepath.Join(outDir, "*.pptx"))

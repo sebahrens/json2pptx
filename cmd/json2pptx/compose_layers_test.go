@@ -71,7 +71,7 @@ func layerFractions(t *testing.T, cells []shapegrid.ResolvedCell) [][4]float64 {
 // slide, in a 50% horizontal compose segment, in a vertical segment and in a
 // nested grid cell: frames are relative to the square the cell gets there.
 func TestLayeredCellKeepsItsGeometryInSplitLayouts(t *testing.T) {
-	horizontal, _, err := mergeHorizontal([]*jsonschema.ShapeGridInput{ringCellGrid(), textGrid("Beside the ring")}, []float64{50, 50}, 16)
+	horizontal, _, err := mergeHorizontalIn([]*jsonschema.ShapeGridInput{ringCellGrid(), textGrid("Beside the ring")}, []float64{50, 50}, 16, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

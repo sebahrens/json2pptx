@@ -99,7 +99,7 @@ func TestInheritedTextContrast_WhiteOnWhite(t *testing.T) {
 	}
 
 	slide := bodySlide("Financial Performance Summary", "Customer Growth Metrics")
-	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), bgHex, theme, 1, override)
+	swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithTx1Body), bgHex, theme, 1, override, nil)
 
 	if len(swaps) != 1 {
 		t.Fatalf("got %d swaps, want 1 (one per shape, not one per run)", len(swaps))
@@ -150,7 +150,7 @@ func TestInheritedTextContrast_ReadableIsLeftAlone(t *testing.T) {
 	bgHex := extractLayoutBackgroundColor(layout, theme)
 
 	slide := bodySlide("Readable already")
-	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), bgHex, theme, 0, nil)
+	swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithTx1Body), bgHex, theme, 0, nil, nil)
 	if len(swaps) != 0 {
 		t.Fatalf("readable text should be left alone, got swaps=%+v", swaps)
 	}
@@ -173,7 +173,7 @@ func TestInheritedTextContrast_LayoutStyleWins(t *testing.T) {
 	</p:spTree></p:cSld></p:sldLayout>`)
 
 	slide := bodySlide("White on white from the layout")
-	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", theme, 0, nil)
+	swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", theme, 0, nil, nil)
 	if len(swaps) != 1 {
 		t.Fatalf("got %d swaps, want 1", len(swaps))
 	}
@@ -189,7 +189,7 @@ func TestInheritedTextContrast_UsesPlaceholderSolidFillBeforeSlideCanvas(t *test
 		<p:txBody><a:lstStyle/></p:txBody></p:sp>
 	</p:spTree></p:cSld></p:sldLayout>`)
 	slide := bodySlide("Black text on a dark placeholder")
-	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", modernLikeTheme(), 0, nil)
+	swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", modernLikeTheme(), 0, nil, nil)
 	if len(swaps) != 1 || swaps[0].BackgroundColor != "#1B2A4A" || swaps[0].RatioAfter < 4.5 {
 		t.Fatalf("layout placeholder fill must supersede white canvas: %+v", swaps)
 	}
@@ -213,7 +213,7 @@ func TestExplicitTextContrast_UsesPlaceholderSolidFillWithoutSlideCanvas(t *test
 	</p:spTree></p:cSld></p:sldLayout>`)
 	slide := bodySlide("Black run on dark placeholder")
 	slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.Paragraphs[0].Runs[0].RunProperties.Inner = `<a:solidFill><a:schemeClr val="dk1"/></a:solidFill>`
-	swaps := enforceTextContrastInSlide(slide, "", modernLikeTheme(), 0, nil, false, layout)
+	swaps := enforceTextContrastInSlideExcept(slide, "", modernLikeTheme(), 0, nil, false, nil, layout)
 	if len(swaps) != 1 || swaps[0].BackgroundColor != "#1B2A4A" || swaps[0].RatioAfter < 4.5 {
 		t.Fatalf("explicit text must use its layout placeholder fill even without p:bg: %+v", swaps)
 	}
@@ -226,7 +226,7 @@ func TestInheritedTextContrast_MapsPlaceholderFillThroughLayoutColorMap(t *testi
 	</p:spTree></p:cSld><p:clrMapOvr><a:overrideClrMapping bg1="dk1"/></p:clrMapOvr></p:sldLayout>`)
 	slide := bodySlide("Black text on mapped dark fill")
 	bg := "#FFFFFF"
-	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), bg, modernLikeTheme(), 0, parseLayoutColorMapOverride(layout))
+	swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithTx1Body), bg, modernLikeTheme(), 0, parseLayoutColorMapOverride(layout), nil)
 	if len(swaps) != 1 || swaps[0].BackgroundColor != "#000000" {
 		t.Fatalf("layout color map was not applied to placeholder fill: %+v", swaps)
 	}
@@ -238,8 +238,7 @@ func TestInheritedTextContrast_ColorlessLayoutInheritsMasterColor(t *testing.T) 
 		<p:txBody><a:lstStyle><a:lvl1pPr><a:defRPr sz="1200"/></a:lvl1pPr></a:lstStyle></p:txBody></p:sp>
 		</p:spTree></p:cSld><p:clrMapOvr><a:overrideClrMapping tx1="lt1"/></p:clrMapOvr></p:sldLayout>`)
 	slide := bodySlide("Inherited white text")
-	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", modernLikeTheme(), 0,
-		parseLayoutColorMapOverride(layout))
+	swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", modernLikeTheme(), 0, parseLayoutColorMapOverride(layout), nil)
 	if len(swaps) != 1 {
 		t.Fatalf("got %d swaps, want one master-color repair: %+v", len(swaps), swaps)
 	}
@@ -250,7 +249,7 @@ func TestInheritedTextContrast_ColorlessLayoutInheritsMasterColor(t *testing.T) 
 		t.Errorf("repair was not pinned onto the slide's run: %q", slideRunFills(slide)[0])
 	}
 	withoutMaster := bodySlide("Unknown inherited color")
-	if missing := enforceInheritedTextContrast(withoutMaster, layout, nil, "#FFFFFF", modernLikeTheme(), 0, nil); len(missing) != 0 {
+	if missing := enforceInheritedTextContrastExcept(withoutMaster, layout, nil, "#FFFFFF", modernLikeTheme(), 0, nil, nil); len(missing) != 0 {
 		t.Errorf("colorless layout without master cannot justify a swap: %+v", missing)
 	}
 }
@@ -267,7 +266,7 @@ func TestInheritedTextContrast_SkipsStatedColors(t *testing.T) {
 		slide := bodySlide("Stated")
 		slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.Paragraphs[0].Runs[0].RunProperties.Inner =
 			`<a:solidFill><a:schemeClr val="tx1"/></a:solidFill>`
-		swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", theme, 0, override)
+		swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", theme, 0, override, nil)
 		if len(swaps) != 0 {
 			t.Errorf("a shape with a stated run color is the other pass's job, got %+v", swaps)
 		}
@@ -277,7 +276,7 @@ func TestInheritedTextContrast_SkipsStatedColors(t *testing.T) {
 		slide := bodySlide("Stated")
 		slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner =
 			`<a:lvl1pPr><a:defRPr><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl1pPr>`
-		swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", theme, 0, override)
+		swaps := enforceInheritedTextContrastExcept(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", theme, 0, override, nil)
 		if len(swaps) != 0 {
 			t.Errorf("a shape with a stated lstStyle color is the other pass's job, got %+v", swaps)
 		}
@@ -294,12 +293,12 @@ func TestInheritedTextContrast_NonPlaceholdersAndEmptyText(t *testing.T) {
 
 	noPlaceholder := bodySlide("Free text box")
 	noPlaceholder.CommonSlideData.ShapeTree.Shapes[0].NonVisualProperties.NvPr.Placeholder = nil
-	if swaps := enforceInheritedTextContrast(noPlaceholder, layout, []byte(masterWithTx1Body), "#FFFFFF", theme, 0, override); len(swaps) != 0 {
+	if swaps := enforceInheritedTextContrastExcept(noPlaceholder, layout, []byte(masterWithTx1Body), "#FFFFFF", theme, 0, override, nil); len(swaps) != 0 {
 		t.Errorf("non-placeholder shape should be skipped, got %+v", swaps)
 	}
 
 	empty := bodySlide("   ")
-	if swaps := enforceInheritedTextContrast(empty, layout, []byte(masterWithTx1Body), "#FFFFFF", theme, 0, override); len(swaps) != 0 {
+	if swaps := enforceInheritedTextContrastExcept(empty, layout, []byte(masterWithTx1Body), "#FFFFFF", theme, 0, override, nil); len(swaps) != 0 {
 		t.Errorf("shape with no text should be skipped, got %+v", swaps)
 	}
 }
@@ -321,7 +320,7 @@ func TestInheritedTextContrast_HostilePaletteStillReads(t *testing.T) {
 	</p:spTree></p:cSld></p:sldLayout>`)
 
 	slide := bodySlide("Grey on grey")
-	swaps := enforceInheritedTextContrast(slide, layout, nil, "#767676", theme, 2, nil)
+	swaps := enforceInheritedTextContrastExcept(slide, layout, nil, "#767676", theme, 2, nil, nil)
 	if len(swaps) != 1 {
 		t.Fatalf("got %d swaps, want 1", len(swaps))
 	}

@@ -485,7 +485,7 @@ func TestRunJSONMode_PartialSkipsDesignModeViolations(t *testing.T) {
 	}
 
 	// partial=true: must succeed, skip slide 1, generate slide 2
-	err := runJSONMode(jsonPath, outputJSON, templatesDir, tmpDir, "", false, false, "", "off", true, "off", "", false)
+	_, err := runJSONModeDeck(jsonPath, outputJSON, templatesDir, tmpDir, "", false, false, "", "off", true, "off", "", false)
 	if err != nil {
 		t.Fatalf("runJSONMode (partial=true): unexpected error: %v", err)
 	}
@@ -558,7 +558,7 @@ func TestRunJSONMode_PartialDropWarningsSurfacedOnStdout(t *testing.T) {
 	defer slog.SetDefault(prev)
 
 	// jsonOutputPath is empty -> exercises the human-readable summary branch.
-	err := runJSONMode(jsonPath, "", templatesDir, tmpDir, "", false, false, "", "off", true, "off", "", false)
+	_, err := runJSONModeDeck(jsonPath, "", templatesDir, tmpDir, "", false, false, "", "off", true, "off", "", false)
 	if err != nil {
 		t.Fatalf("runJSONMode (partial=true): unexpected error: %v", err)
 	}
@@ -597,7 +597,7 @@ func TestRunJSONMode_NoPartialAbortsOnDesignModeViolation(t *testing.T) {
 	}
 
 	// partial=false: must return error.
-	err := runJSONMode(jsonPath, outputJSON, templatesDir, tmpDir, "", false, false, "", "off", false, "off", "", false)
+	_, err := runJSONModeDeck(jsonPath, outputJSON, templatesDir, tmpDir, "", false, false, "", "off", false, "off", "", false)
 	if err == nil {
 		t.Fatal("expected runJSONMode to return error without --partial on design_mode violation")
 	}

@@ -107,7 +107,7 @@ func TestCLIActualSourceLossRetainsRepairWithoutPublishing(t *testing.T) {
 					t.Fatal(err)
 				}
 				report := filepath.Join(dir, "result.json")
-				if err := runJSONMode(input, report, testutil.TemplatesDir(), outputDir, "", false, false, "", mode, false, "strict", "", false); err == nil {
+				if _, err := runJSONModeDeck(input, report, testutil.TemplatesDir(), outputDir, "", false, false, "", mode, false, "strict", "", false); err == nil {
 					t.Fatal("source-loss input unexpectedly published")
 				}
 				reportData, err := os.ReadFile(report)
@@ -165,7 +165,7 @@ func TestCLIFittingParagraphsStillPublishCompleteSource(t *testing.T) {
 			}
 			report := filepath.Join(dir, "result.json")
 			outputDir := filepath.Join(dir, "output")
-			if err := runJSONMode(input, report, testutil.TemplatesDir(), outputDir, "", false, false, "", mode, false, "strict", "", false); err != nil {
+			if _, err := runJSONModeDeck(input, report, testutil.TemplatesDir(), outputDir, "", false, false, "", mode, false, "strict", "", false); err != nil {
 				t.Fatal(err)
 			}
 			reportData, err := os.ReadFile(report)

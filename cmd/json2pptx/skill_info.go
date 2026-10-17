@@ -580,14 +580,6 @@ func runSkillInfo() error {
 	return nil
 }
 
-// analyzeTemplateForSkillInfo analyzes a single template and returns skill
-// info. Layout-preview generation (which writes PNG cache files) is enabled;
-// for a side-effect-free read-only analysis use analyzeTemplateForSkillInfoOpts
-// with skillInfoOptions{NoPreview: true}.
-func analyzeTemplateForSkillInfo(templatePath string, cache types.TemplateCache, mode string) (skillTemplateInfo, error) {
-	return analyzeTemplateForSkillInfoOpts(templatePath, cache, mode, skillInfoOptions{})
-}
-
 // analyzeTemplateForSkillInfoOpts analyzes a single template and returns skill
 // info, honoring opts. When opts.NoPreview is set, layout-preview PNG
 // generation is skipped entirely so the call writes no files; preview_png_path

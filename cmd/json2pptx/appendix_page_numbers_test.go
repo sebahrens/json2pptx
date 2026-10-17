@@ -96,8 +96,7 @@ func renderRawAppendixDeck(t *testing.T, tpl string, input map[string]any) []str
 	if err := os.WriteFile(inputPath, data, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := runJSONMode(inputPath, filepath.Join(dir, "result.json"), "../../templates", dir,
-		"", false, false, tpl, "off", false, "off", "", false); err != nil {
+	if _, err := runJSONModeDeck(inputPath, filepath.Join(dir, "result.json"), "../../templates", dir, "", false, false, tpl, "off", false, "off", "", false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	return pageLabelSequence(t, filepath.Join(dir, "appendix.pptx"))

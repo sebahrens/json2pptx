@@ -279,12 +279,6 @@ var unknownKindRE = regexp.MustCompile(`^unknown slide kind "([^"]*)"`)
 // choices are the region kinds (internal/semantic.validateRegion).
 var unknownRegionKindRE = regexp.MustCompile(`^unknown region kind "`)
 
-// semanticizeFindings gives the findings of a DeckSpec envelope their remedy
-// without trying any patch; see remedyEnvelope.
-func semanticizeFindings(envelope *diagnostics.FindingEnvelope, data []byte, deckID string) {
-	newRemedyContext("spec.json", data, deckID).remedyEnvelope(envelope, nil)
-}
-
 // findingFixParams returns a finding's raw action and its DeckSpec-safe params.
 func findingFixParams(r *diagnostics.Remediation) (diagnostics.Action, map[string]any) {
 	if r == nil || r.Primary == nil {

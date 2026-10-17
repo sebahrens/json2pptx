@@ -204,18 +204,18 @@ func TestApplySmartAutofit(t *testing.T) {
 
 	t.Run("nil TextBody", func(t *testing.T) {
 		shape := &shapeXML{}
-		applySmartAutofit(shape) // should not panic
+		applySmartAutofitWithOptions(shape) // should not panic
 	})
 
 	t.Run("nil BodyProperties", func(t *testing.T) {
 		shape := &shapeXML{TextBody: &textBodyXML{}}
-		applySmartAutofit(shape) // should not panic
+		applySmartAutofitWithOptions(shape) // should not panic
 	})
 
 	t.Run("skip if normAutofit already present", func(t *testing.T) {
 		shape := shapeWithText(5*914400, 3*914400, "text")
 		shape.TextBody.BodyProperties.Inner = `<a:normAutofit/>`
-		applySmartAutofit(shape)
+		applySmartAutofitWithOptions(shape)
 		if shape.TextBody.BodyProperties.Inner != `<a:normAutofit/>` {
 			t.Errorf("should not modify existing autofit, got %q", shape.TextBody.BodyProperties.Inner)
 		}
@@ -224,7 +224,7 @@ func TestApplySmartAutofit(t *testing.T) {
 	t.Run("skip if noAutofit present", func(t *testing.T) {
 		shape := shapeWithText(5*914400, 3*914400, "text")
 		shape.TextBody.BodyProperties.Inner = `<a:noAutofit/>`
-		applySmartAutofit(shape)
+		applySmartAutofitWithOptions(shape)
 		if shape.TextBody.BodyProperties.Inner != `<a:noAutofit/>` {
 			t.Errorf("should not modify existing noAutofit, got %q", shape.TextBody.BodyProperties.Inner)
 		}
@@ -232,7 +232,7 @@ func TestApplySmartAutofit(t *testing.T) {
 
 	t.Run("short text no scaling needed", func(t *testing.T) {
 		shape := shapeWithText(5*914400, 3*914400, "Short text")
-		applySmartAutofit(shape)
+		applySmartAutofitWithOptions(shape)
 		// normAutofit is always added as a safety net (preserves master's shrink-to-fit)
 		// but should NOT have fontScale or lnSpcReduction attributes
 		if !strings.Contains(shape.TextBody.BodyProperties.Inner, "normAutofit") {
@@ -252,7 +252,7 @@ func TestApplySmartAutofit(t *testing.T) {
 				},
 			},
 		}
-		applySmartAutofit(shape)
+		applySmartAutofitWithOptions(shape)
 		// Should fall back to basic normAutofit (no fontScale) for few paragraphs
 		if !strings.Contains(shape.TextBody.BodyProperties.Inner, "normAutofit") {
 			t.Error("no-dimensions shape should get basic normAutofit fallback")
@@ -274,7 +274,7 @@ func TestApplySmartAutofit(t *testing.T) {
 				Paragraphs:     paragraphs,
 			},
 		}
-		applySmartAutofit(shape)
+		applySmartAutofitWithOptions(shape)
 		inner := shape.TextBody.BodyProperties.Inner
 		if !strings.Contains(inner, "normAutofit") {
 			t.Error("many paragraphs without dimensions should get normAutofit")
@@ -294,7 +294,7 @@ func TestApplySmartAutofit(t *testing.T) {
 			texts[i] = "This is a bullet point with descriptive text"
 		}
 		shape := shapeWithText(3*914400, 2*914400, texts...)
-		applySmartAutofit(shape)
+		applySmartAutofitWithOptions(shape)
 		inner := shape.TextBody.BodyProperties.Inner
 		if !strings.Contains(inner, "normAutofit") {
 			t.Error("many bullets should trigger autofit")

@@ -57,7 +57,7 @@ func TestChartBackgroundTransparentUnlessAuthored(t *testing.T) {
 			} else {
 				spec.Style = nil
 			}
-			rendered, err := RenderDiagramSpecWithMetadata(spec, theme, 0, false)
+			rendered, err := renderDiagramSpecFull(spec, theme, 0, false, "", "", nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -114,7 +114,7 @@ func TestAbstractChartPaletteUsesVisibleFirstAccent(t *testing.T) {
 	if got := guide.Palette.Accent1.Hex(); got != "#8E8172" {
 		t.Errorf("first chart color = %s, want abstract theme accent1 #8E8172", got)
 	}
-	rendered, err := RenderDiagramSpecWithMetadata(spec, theme, 0, true)
+	rendered, err := renderDiagramSpecFull(spec, theme, 0, true, "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +181,7 @@ func TestChartStyleUnresolvedColorsFallBackWithFindings(t *testing.T) {
 			t.Errorf("unresolved color finding = %+v", f)
 		}
 	}
-	rendered, err := RenderDiagramSpecWithMetadata(spec, theme, 0, true)
+	rendered, err := renderDiagramSpecFull(spec, theme, 0, true, "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +227,7 @@ func TestChartStyleSevenSeriesColorsSurviveThemeBridge(t *testing.T) {
 	if got := accents[6].Hex(); got != "#BADA55" {
 		t.Errorf("seventh series accent = %s, want #BADA55", got)
 	}
-	rendered, err := RenderDiagramSpecWithMetadata(spec, theme, 0, true)
+	rendered, err := renderDiagramSpecFull(spec, theme, 0, true, "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -872,7 +872,7 @@ func TestRenderDiagramSpecWithMetadata_Treemap(t *testing.T) {
 		Height: 600,
 	}
 
-	result, err := RenderDiagramSpecWithMetadata(spec, nil, 0, false)
+	result, err := renderDiagramSpecFull(spec, nil, 0, false, "", "", nil)
 	if err != nil {
 		t.Fatalf("RenderDiagramSpecWithMetadata() error = %v", err)
 	}
@@ -1019,7 +1019,7 @@ func TestChartDataSchemeColorsReachRenderedSVG(t *testing.T) {
 		},
 	}
 	theme := []types.ThemeColor{{Name: "accent1", RGB: "#A12B3C"}, {Name: "accent2", RGB: "#3478A2"}}
-	got, err := RenderDiagramSpecWithMetadata(spec, theme, 0, true)
+	got, err := renderDiagramSpecFull(spec, theme, 0, true, "", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

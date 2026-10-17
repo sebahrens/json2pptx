@@ -123,7 +123,7 @@ func TestChromeFillPinsColorOnlyWhenAsked(t *testing.T) {
 	pos := computeDefaultFooterPositions(6858000)
 	cfg := &FooterConfig{Enabled: true, LeftText: "Confidential", PageNumberFormat: "{current} / {total}", TotalSlides: 10}
 
-	inherited := generateFooterShapes(pos, cfg, 100, "", "", 0)
+	inherited := generateFooterShapesAvoiding(pos, cfg, 100, "", "", 0, nil, 0)
 	if !strings.Contains(inherited, `<a:schemeClr val="tx1"/>`) {
 		t.Errorf("default chrome should inherit schemeClr tx1:\n%s", inherited)
 	}
@@ -131,7 +131,7 @@ func TestChromeFillPinsColorOnlyWhenAsked(t *testing.T) {
 		t.Errorf("default chrome should not pin an explicit color:\n%s", inherited)
 	}
 
-	pinned := generateFooterShapes(pos, cfg, 100, "", "#2C3932", 0)
+	pinned := generateFooterShapesAvoiding(pos, cfg, 100, "", "#2C3932", 0, nil, 0)
 	if strings.Contains(pinned, `<a:schemeClr val="tx1"/>`) {
 		t.Errorf("pinned chrome still carries the scheme color that would be invisible:\n%s", pinned)
 	}
@@ -168,7 +168,7 @@ func TestInsertFootersUsesPerSlideText(t *testing.T) {
 		{1, "Confidential — Acme | Market context"},
 		{9, "Confidential — Acme"}, // past the end: deck-wide line, not a panic
 	} {
-		out, err := insertFooters(base, cfg, positions, "", "", tc.slideIndex)
+		out, err := insertFootersAvoiding(base, cfg, positions, "", "", tc.slideIndex, nil, 0)
 		if err != nil {
 			t.Fatalf("slide %d: insertFooters: %v", tc.slideIndex, err)
 		}

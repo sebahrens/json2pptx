@@ -22,7 +22,7 @@ func noRenderRuntime() getStartedRuntime {
 func TestGetStartedCarriesRuntime(t *testing.T) {
 	for _, task := range getStartedAvailableTasks() {
 		t.Run(task+"/ready", func(t *testing.T) {
-			resp := buildGetStartedResponse(task, testRenderReady())
+			resp := buildGetStartedResponseOpts(task, testRenderReady(), true)
 			if !resp.Runtime.RenderAvailable {
 				t.Error("runtime.render_available should be true on a ready server")
 			}
@@ -53,8 +53,8 @@ func TestGetStartedDegradesWithoutRenderTooling(t *testing.T) {
 
 	for _, task := range getStartedAvailableTasks() {
 		t.Run(task, func(t *testing.T) {
-			ready := buildGetStartedResponse(task, testRenderReady())
-			resp := buildGetStartedResponse(task, noRenderRuntime())
+			ready := buildGetStartedResponseOpts(task, testRenderReady(), true)
+			resp := buildGetStartedResponseOpts(task, noRenderRuntime(), true)
 
 			if resp.Runtime.RenderAvailable {
 				t.Fatal("runtime.render_available should be false")

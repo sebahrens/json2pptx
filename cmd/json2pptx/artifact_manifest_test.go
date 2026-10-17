@@ -351,7 +351,7 @@ func TestGenerate_JSONOutputManifest(t *testing.T) {
 	}
 
 	resultPath := filepath.Join(caseDir, "result.json")
-	if err := runJSONMode(inputPath, resultPath, templatesDir, caseDir, "", false, false, "midnight-blue", "off", false, "off", "free", false); err != nil {
+	if _, err := runJSONModeDeck(inputPath, resultPath, templatesDir, caseDir, "", false, false, "midnight-blue", "off", false, "off", "free", false); err != nil {
 		t.Fatalf("runJSONMode: %v", err)
 	}
 

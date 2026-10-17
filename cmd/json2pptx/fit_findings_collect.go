@@ -498,12 +498,6 @@ func convertTextFitFinding(tf fitFinding) patterns.FitFinding {
 	return f
 }
 
-// collectStructuralFindings runs placeholder overflow, title wraps, footer
-// collision, and bounds overflow detectors using template layout data.
-func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []patterns.FitFinding {
-	return collectStructuralFindingsWithTheme(input, layouts, slideWidth, slideHeight, nil)
-}
-
 // collectStructuralFindingsWithTheme is collectStructuralFindings with the
 // theme the patterns nested in grid cells are expanded with for the
 // sparse-layout measure; nil measures them in the fallback font.
@@ -1949,14 +1943,6 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 	return sourcePreservingPreflightParagraphRepairs(findings, input)
 }
 
-// collectContrastPreflightFindings walks shape_grid cells that author both a
-// fill color and a text color, and emits contrast_predicted findings where
-// the renderer would auto-replace the text color. It also covers placeholder
-// text on authored or template backgrounds and footer/page-number chrome.
-func collectContrastPreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor) []patterns.FitFinding {
-	return collectContrastPreflightFindingsAt(input, layouts, &types.ThemeInfo{Colors: themeColors}, 0, 0)
-}
-
 // collectContrastPreflightFindingsAt is collectContrastPreflightFindings on a
 // slide of the given size (0 = the 16:9 default). The size matters: each grid
 // is resolved in the geometry generation renders it in, because resolution
@@ -2433,27 +2419,6 @@ func extractShapeTextColors(raw json.RawMessage) []shapeTextColor {
 // prediction can offer a repair against the correct JSON field.
 type shapeTextColor struct {
 	Color string
-}
-
-// expandComposeForPreflight returns a shallow copy of input where each slide
-// whose Compose envelope has not yet been materialized into ShapeGrid has its
-// ShapeGrid populated by running the compose merge. This lets preflight
-// detectors (checkShapeGridStructural in particular) see post-merge cell
-// geometry, so a diagram in a horizontally-narrowed compose segment trips
-// grid_diagram_narrow and diagram_aspect_* findings rather than passing
-// silently.
-//
-// The expansion uses a minimal ExpandContext (no template metadata, default
-// accent strategy) because the structural detectors targeted by this pass
-// depend only on cell rectangles. Compose envelopes that fail to expand are
-// left as-is — render-time will surface the parse error separately, and we
-// avoid masking it here.
-//
-// When no slide has an unexpanded compose envelope, the original input is
-// returned unchanged (no allocation).
-func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight int64, layoutSets ...types.LayoutMetadata) *PresentationInput {
-	expanded, _ := expandComposeForPreflightWithTheme(input, slideWidth, slideHeight, nil, layoutSets...)
-	return expanded
 }
 
 func expandComposeForPreflightWithTheme(input *PresentationInput, slideWidth, slideHeight int64, theme *types.ThemeInfo, layoutSets ...types.LayoutMetadata) (*PresentationInput, []patterns.FitFinding) {

@@ -63,7 +63,7 @@ func TestCycleNodesMatrixAcrossTemplates(t *testing.T) {
 						SlideType: "content", LayoutID: "blank-title",
 						Pattern: &PatternInput{Name: "cycle-nodes", Values: encoded, Overrides: overrides},
 					}}}
-					for _, f := range collectReadabilityFindings(input, geom.layouts, geom.width, geom.height) {
+					for _, f := range collectReadabilityFindingsWithTheme(input, geom.layouts, geom.width, geom.height, nil) {
 						t.Errorf("readability finding: %s %s", f.Code, f.Message)
 					}
 					if n := writtenRoleViolations(t, input, geom); n > 0 {

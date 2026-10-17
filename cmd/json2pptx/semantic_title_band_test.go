@@ -72,7 +72,7 @@ func TestSemanticExamplesReserveTwoLineTitle(t *testing.T) {
 			if err := os.WriteFile(in, data, 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if err := runJSONMode(in, filepath.Join(dir, "result.json"), templatesDir, dir, "", false, false, "", "off", false, "off", "", false); err != nil {
+			if _, err := runJSONModeDeck(in, filepath.Join(dir, "result.json"), templatesDir, dir, "", false, false, "", "off", false, "off", "", false); err != nil {
 				t.Fatalf("runJSONMode: %v", err)
 			}
 			top := topmostPatternShapeY(t, filepath.Join(dir, "deck.pptx"))

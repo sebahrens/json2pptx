@@ -80,7 +80,7 @@ func TestOverlaysPaintAboveMedia(t *testing.T) {
 
 	templatesDir := filepath.Join("..", "..", "templates")
 	resultPath := filepath.Join(dir, "result.json")
-	if err := runJSONMode(deckPath, resultPath, templatesDir, dir, "", false, false, "", "off", false, "off", "", false); err != nil {
+	if _, err := runJSONModeDeck(deckPath, resultPath, templatesDir, dir, "", false, false, "", "off", false, "off", "", false); err != nil {
 		t.Fatalf("runJSONMode: %v", err)
 	}
 
@@ -132,7 +132,7 @@ func TestOverlaysStayAboveGridCells(t *testing.T) {
 		t.Fatal(err)
 	}
 	resultPath := filepath.Join(dir, "result.json")
-	if err := runJSONMode(deckPath, resultPath, filepath.Join("..", "..", "templates"), dir, "", false, false, "", "off", false, "off", "", false); err != nil {
+	if _, err := runJSONModeDeck(deckPath, resultPath, filepath.Join("..", "..", "templates"), dir, "", false, false, "", "off", false, "off", "", false); err != nil {
 		t.Fatalf("runJSONMode: %v", err)
 	}
 

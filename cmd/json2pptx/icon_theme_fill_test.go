@@ -107,7 +107,7 @@ func TestPatternIconsRenderWithHexPaint(t *testing.T) {
 		t.Fatal(err)
 	}
 	resPath := filepath.Join(dir, "res.json")
-	if err := runJSONMode(inPath, resPath, templatesDir, dir, "", false, false, "midnight-blue", "off", false, "warn", "free", false); err != nil {
+	if _, err := runJSONModeDeck(inPath, resPath, templatesDir, dir, "", false, false, "midnight-blue", "off", false, "warn", "free", false); err != nil {
 		t.Fatalf("runJSONMode: %v", err)
 	}
 	zr, err := zip.OpenReader(filepath.Join(dir, "icons.pptx"))

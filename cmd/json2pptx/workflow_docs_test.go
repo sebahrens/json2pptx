@@ -43,7 +43,7 @@ func TestCanonicalWorkflowDocs(t *testing.T) {
 	if desc := getStartedToolDescription(); !strings.Contains(desc, "Default for content-bearing decks:") || !strings.Contains(desc, "`validate_deck_spec` → `render_deck_spec`") {
 		t.Error("get_started tool description does not carry the canonical workflow contract")
 	}
-	resp := buildGetStartedResponse("brief", getStartedRuntime{RenderAvailable: true})
+	resp := buildGetStartedResponseOpts("brief", getStartedRuntime{RenderAvailable: true}, true)
 	for _, note := range resp.Notes {
 		if strings.Contains(note, "validate_input is mandatory per SKILL.md") || strings.Contains(note, "This is the canonical new-deck workflow") {
 			t.Errorf("brief notes still make the raw path globally mandatory: %q", note)

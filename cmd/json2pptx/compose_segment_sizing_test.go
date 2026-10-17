@@ -116,7 +116,7 @@ func TestComposeHorizontalSegmentsHaveIndependentRows(t *testing.T) {
 		{MinHeight: 60, MaxHeight: 60, Cells: []*GridCellInput{cell()}},
 	}}
 	right := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{cell()}}}}
-	merged, warnings, err := mergeHorizontal([]*ShapeGridInput{left, right}, []float64{50, 50}, 8)
+	merged, warnings, err := mergeHorizontalIn([]*ShapeGridInput{left, right}, []float64{50, 50}, 8, 0)
 	if err != nil || len(warnings) > 0 {
 		t.Fatalf("mergeHorizontal: %v, warnings: %v", err, warnings)
 	}
@@ -155,7 +155,7 @@ func TestComposeHorizontalNestedTextIsCheckedByPreflight(t *testing.T) {
 	longText, _ := json.Marshal(map[string]any{"content": strings.Repeat("word ", 900), "size": 14})
 	left := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{MaxHeight: 35, Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect", Text: longText}}}}}}
 	right := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}}}}
-	merged, _, err := mergeHorizontal([]*ShapeGridInput{left, right}, []float64{50, 50}, 8)
+	merged, _, err := mergeHorizontalIn([]*ShapeGridInput{left, right}, []float64{50, 50}, 8, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,7 +178,7 @@ func TestGridCellAtResolvedSkipsEarlierRowSpans(t *testing.T) {
 		t.Fatalf("resolved row 1 column 1 maps to %p, want nested cell %p", got, want)
 	}
 	right := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}}}}
-	merged, _, err := mergeHorizontal([]*ShapeGridInput{grid, right}, []float64{60, 40}, 8)
+	merged, _, err := mergeHorizontalIn([]*ShapeGridInput{grid, right}, []float64{60, 40}, 8, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestComposeHorizontalNestedTableGetsPreflight(t *testing.T) {
 	}
 	left := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Table: &TableInput{Headers: []string{"Metric"}, Rows: rows}}}}}}
 	right := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}}}}
-	merged, _, err := mergeHorizontal([]*ShapeGridInput{left, right}, []float64{50, 50}, 8)
+	merged, _, err := mergeHorizontalIn([]*ShapeGridInput{left, right}, []float64{50, 50}, 8, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -210,7 +210,7 @@ func TestComposeHorizontalNestedTableGetsPreflight(t *testing.T) {
 func TestComposeHorizontalNestedImageGetsAltFinding(t *testing.T) {
 	left := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Image: &GridImageInput{Path: "/missing.png"}}}}}}
 	right := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}}}}
-	merged, _, err := mergeHorizontal([]*ShapeGridInput{left, right}, []float64{50, 50}, 8)
+	merged, _, err := mergeHorizontalIn([]*ShapeGridInput{left, right}, []float64{50, 50}, 8, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

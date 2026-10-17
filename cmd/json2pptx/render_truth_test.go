@@ -201,7 +201,7 @@ func TestRenderTruthExemplars(t *testing.T) {
 				t.Fatal(err)
 			}
 			resultPath := filepath.Join(dir, "result.json")
-			if err := runJSONMode(inputPath, resultPath, templatesDir, dir, "", false, false, tpl, "off", false, "off", "free", false); err != nil {
+			if _, err := runJSONModeDeck(inputPath, resultPath, templatesDir, dir, "", false, false, tpl, "off", false, "off", "free", false); err != nil {
 				t.Fatalf("generate: %v", err)
 			}
 			resBytes, err := os.ReadFile(resultPath)

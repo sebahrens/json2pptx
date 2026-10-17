@@ -136,14 +136,6 @@ func withFindingsCollector(findings *[]patterns.FitFinding, path string) autofit
 	}
 }
 
-func applySmartAutofit(shape *shapeXML, themeFontName ...string) {
-	var opts []autofitOption
-	if len(themeFontName) > 0 && themeFontName[0] != "" {
-		opts = append(opts, withThemeFont(themeFontName[0]))
-	}
-	applySmartAutofitWithOptions(shape, opts...)
-}
-
 func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	cfg := autofitConfig{
 		readabilityMinScale: 62500, // 62.5% default

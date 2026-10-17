@@ -175,7 +175,7 @@ func TestContrastPredictionSharesGenerationShapeList(t *testing.T) {
 		t.Fatal("premise: white on accent1 (#F28C28) and dk1 on dk2 need a repair")
 	}
 	input := &PresentationInput{Slides: []SlideInput{{ShapeGrid: &grid}}}
-	findings := contrastPredictions(collectContrastPreflightFindings(input, nil, contrastResolvedTheme))
+	findings := contrastPredictions(collectContrastPreflightFindingsAt(input, nil, &types.ThemeInfo{Colors: contrastResolvedTheme}, 0, 0))
 	authoredText := 0
 	for _, f := range findings {
 		if strings.Contains(f.Path, "/shapes/") {
@@ -284,7 +284,7 @@ func TestContrastAutofixedOnDeckSpecSlideMapsToItsSemanticPath(t *testing.T) {
 	}
 	applyDefaults(input)
 	theme := []types.ThemeColor{{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"}, {Name: "dk2", RGB: "#1B2A4A"}}
-	predicted := contrastPredictions(collectContrastPreflightFindings(input, nil, theme))
+	predicted := contrastPredictions(collectContrastPreflightFindingsAt(input, nil, &types.ThemeInfo{Colors: theme}, 0, 0))
 	if len(predicted) != 1 || predicted[0].Path != "/slides/1/shape_grid/rows/0/cells/0/shape/text" {
 		t.Fatalf("predictions = %+v; want one at the authored cell text", predicted)
 	}

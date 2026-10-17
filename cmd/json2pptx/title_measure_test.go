@@ -48,7 +48,7 @@ func TestTitlePlaceholderInheritsModernTemplateStyle(t *testing.T) {
 		t.Run(tc.layout, func(t *testing.T) {
 			s := titleSlide(vjwnLongTitle)
 			s.LayoutID = tc.layout
-			ph := titlePlaceholderFor(&s, "title", a.Layouts)
+			ph := titlePlaceholderIn(layoutForSlideResolved(&s, a.Layouts), "title")
 			if ph == nil {
 				t.Fatal("native title placeholder not resolved")
 			}
@@ -63,7 +63,7 @@ func TestModernCoverTitleDoesNotClaimTruncationWhenMeasuredFitSucceeds(t *testin
 	a := loadTemplateAnalysis(t, "modern-template")
 	title := "Entering DACH: A partner-led go-to-market for Northwind Analytics"
 	slide := SlideInput{LayoutID: "title", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr(title)}}}
-	ph := titlePlaceholderFor(&slide, "title", a.Layouts)
+	ph := titlePlaceholderIn(layoutForSlideResolved(&slide, a.Layouts), "title")
 	if ph == nil {
 		t.Fatal("modern cover title placeholder was not resolved")
 	}
@@ -234,7 +234,7 @@ func TestMeasuredTitleFindingsUseAuthoredContentIndex(t *testing.T) {
 func TestMeasureTitleFlaggedCarriesMaxChars(t *testing.T) {
 	a := loadTemplateAnalysis(t, "modern-template")
 	s := titleSlide(vjwnLongTitle)
-	m := measureTitleInPlaceholder(vjwnLongTitle, titlePlaceholderFor(&s, "title", a.Layouts))
+	m := measureTitleInPlaceholder(vjwnLongTitle, titlePlaceholderIn(layoutForSlideResolved(&s, a.Layouts), "title"))
 	if !m.Flagged() {
 		t.Fatalf("expected flagged measurement, got %+v", m)
 	}
@@ -372,7 +372,7 @@ func TestTitlePlaceholderMaxCharsIsMeasured(t *testing.T) {
 	slides := []SlideInput{titleSlide(vjwnShortTitle)}
 	resolveCanonicalLayoutIDs(slides, a.Layouts)
 
-	ph := titlePlaceholderFor(&slides[0], "title", a.Layouts)
+	ph := titlePlaceholderIn(layoutForSlideResolved(&slides[0], a.Layouts), "title")
 	if ph == nil {
 		t.Fatal("title placeholder not resolved")
 	}

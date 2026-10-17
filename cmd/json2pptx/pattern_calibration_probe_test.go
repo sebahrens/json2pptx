@@ -33,7 +33,7 @@ func TestHorizontalBarBudgetProbe(t *testing.T) {
 			SlideType: "content", LayoutID: "blank-title",
 			Pattern: &PatternInput{Name: pat.Name(), Values: maximumJSON},
 		}}}
-		for _, finding := range collectReadabilityFindings(deck, layouts, width, height) {
+		for _, finding := range collectReadabilityFindingsWithTheme(deck, layouts, width, height, nil) {
 			t.Logf("schema maximum on %s: %s", templateName, finding.Message)
 		}
 		withoutCallouts := *maximum.(*patterns.HorizontalBarCalloutsValues)
@@ -47,7 +47,7 @@ func TestHorizontalBarBudgetProbe(t *testing.T) {
 		}
 		deck.Slides[0].Pattern.Values = noCalloutJSON
 		t.Logf("schema maximum without callouts on %s: readability findings=%d", templateName,
-			len(collectReadabilityFindings(deck, layouts, width, height)))
+			len(collectReadabilityFindingsWithTheme(deck, layouts, width, height, nil)))
 	}
 	for _, bars := range []int{3, 4, 5, 6, 7, 8} {
 		for _, withCallouts := range []bool{false, true} {
@@ -1045,7 +1045,7 @@ func TestStatHeroBudgetProbe(t *testing.T) {
 	for _, templateName := range schemaMaximaTemplateNames(t) {
 		layouts, width, height := schemaMaximaLayouts(t, templateName)
 		deck := &PresentationInput{Template: templateName, Slides: []SlideInput{{SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "stat-hero", Values: maximumJSON}}}}
-		for _, finding := range collectReadabilityFindings(deck, layouts, width, height) {
+		for _, finding := range collectReadabilityFindingsWithTheme(deck, layouts, width, height, nil) {
 			t.Logf("schema maximum on %s: %s", templateName, finding.Message)
 		}
 	}
@@ -1716,7 +1716,7 @@ func TestPatternBudgetProbe(t *testing.T) {
 		input := &PresentationInput{Template: name, Slides: []SlideInput{{
 			SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: pat.Name(), Values: encoded},
 		}}}
-		for _, finding := range collectReadabilityFindings(input, layouts, width, height) {
+		for _, finding := range collectReadabilityFindingsWithTheme(input, layouts, width, height, nil) {
 			t.Logf("pull-quote %s: %s", name, finding.Message)
 		}
 	}
@@ -1901,7 +1901,7 @@ func TestKPIInlineBudgetProbe(t *testing.T) {
 	for _, templateName := range schemaMaximaTemplateNames(t) {
 		layouts, width, height := schemaMaximaLayouts(t, templateName)
 		input := &PresentationInput{Template: templateName, Slides: []SlideInput{{SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "kpi-inline", Values: encodedMaximum}}}}
-		for _, finding := range collectReadabilityFindings(input, layouts, width, height) {
+		for _, finding := range collectReadabilityFindingsWithTheme(input, layouts, width, height, nil) {
 			t.Logf("kpi-inline schema max %s: %s", templateName, finding.Message)
 		}
 	}
@@ -2006,7 +2006,7 @@ func probeReadableBudget(t *testing.T, pattern string, maxChars int, payload fun
 			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
 				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: pattern, Values: encoded, Overrides: encodedOverrides},
 			}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 || writtenRoleViolations(t, input, geom) > 0 {
+			if len(collectReadabilityFindingsWithTheme(input, geom.layouts, geom.width, geom.height, nil)) > 0 || writtenRoleViolations(t, input, geom) > 0 {
 				return false
 			}
 		}

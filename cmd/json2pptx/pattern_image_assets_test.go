@@ -132,7 +132,7 @@ func TestImageTextSplit_GeneratesCoverCroppedPicture(t *testing.T) {
 	}
 	templatesDir, _ := filepath.Abs(filepath.Join("..", "..", "templates"))
 	resultPath := filepath.Join(dir, "result.json")
-	if err := runJSONMode(jsonPath, resultPath, templatesDir, dir, "", false, false, "", "off", false, "strict", "", false); err != nil {
+	if _, err := runJSONModeDeck(jsonPath, resultPath, templatesDir, dir, "", false, false, "", "off", false, "strict", "", false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	zr, err := zip.OpenReader(filepath.Join(dir, "its.pptx"))
@@ -319,7 +319,8 @@ func TestComposeSegmentImage_GeneratesPicture(t *testing.T) {
 		if err := os.WriteFile(jsonPath, []byte(deck(file)), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		return runJSONMode(jsonPath, filepath.Join(dir, "result.json"), templatesDir, dir, "", false, false, "", "off", false, "strict", "", false)
+		_, err := runJSONModeDeck(jsonPath, filepath.Join(dir, "result.json"), templatesDir, dir, "", false, false, "", "off", false, "strict", "", false)
+		return err
 	}
 
 	if err := generate("assets/console.png"); err != nil {

@@ -88,8 +88,8 @@ func TestNewSinglePassContext(t *testing.T) {
 			// Verify MediaContext
 			if ctx.media == nil {
 				t.Error("media allocator is nil, want initialized")
-			} else if ctx.nextMediaNum() != 1 {
-				t.Errorf("nextMediaNum() = %d, want 1", ctx.nextMediaNum())
+			} else if ctx.media.NextImageNum() != 1 {
+				t.Errorf("nextMediaNum() = %d, want 1", ctx.media.NextImageNum())
 			}
 			if ctx.mediaFiles == nil {
 				t.Error("mediaFiles is nil, want initialized map")

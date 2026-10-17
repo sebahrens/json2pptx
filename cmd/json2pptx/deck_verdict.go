@@ -10,7 +10,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
-	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -479,23 +478,6 @@ func deckStructuralRefusal(input *PresentationInput, layouts []types.LayoutMetad
 		return nil
 	}
 	return &deckRefusal{Diagnostics: errs, cause: convErr}
-}
-
-// deckPolicyDiagnostics are the deck-content refusals that need no template:
-// enum values outside their set, design-mode violations and emoji in text.
-// Every surface that accepts a deck reports them from here.
-func deckPolicyDiagnostics(input *PresentationInput) []diagnostics.Diagnostic {
-	var ds []diagnostics.Diagnostic
-	if enumErrs := checkInputEnumValues(input); len(enumErrs) > 0 {
-		ds = append(ds, diagnostics.FromValidationErrors(enumErrs)...)
-	}
-	if violations := validateDesignMode(input); len(violations) > 0 {
-		ds = append(ds, designModeDiagnostics(violations)...)
-	}
-	if emojiViolations := emoji.ValidateNoEmojiInText(input); len(emojiViolations) > 0 {
-		ds = append(ds, noEmojiDiagnostics(emojiViolations)...)
-	}
-	return ds
 }
 
 // deckTemplateFieldDiagnostics reports a deck that names no template, or names

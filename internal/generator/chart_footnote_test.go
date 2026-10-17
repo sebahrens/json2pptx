@@ -32,7 +32,7 @@ func TestChartValueSubtitleAndFootnoteRender(t *testing.T) {
 			if chart.Footnote != footnote || chart.Subtitle != subtitle {
 				t.Fatalf("decoded subtitle/footnote = %q / %q", chart.Subtitle, chart.Footnote)
 			}
-			res, err := RenderDiagramSpecWithMetadata(chart.ToDiagramSpec(), nil, 0, true)
+			res, err := renderDiagramSpecFull(chart.ToDiagramSpec(), nil, 0, true, "", "", nil)
 			if err != nil {
 				t.Fatal(err)
 			}

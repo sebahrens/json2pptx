@@ -240,8 +240,7 @@ func TestGenerateRelativeJSONPathResolvesIconPath(t *testing.T) {
 
 	outDir := t.TempDir()
 	// The relative -json path is the crux: filepath.Dir("deck.json") == "." pre-fix.
-	genErr := runJSONMode("deck.json", filepath.Join(outDir, "out.json"), absTemplates, outDir,
-		"", false, false, "", "off", false, "off", "", false)
+	_, genErr := runJSONModeDeck("deck.json", filepath.Join(outDir, "out.json"), absTemplates, outDir, "", false, false, "", "off", false, "off", "", false)
 	if genErr != nil {
 		t.Fatalf("generate with relative -json path: expected success, got: %v", genErr)
 	}
@@ -266,8 +265,7 @@ func TestValidateGenerateAssetParity(t *testing.T) {
 		}
 
 		outDir := t.TempDir()
-		genErr := runJSONMode(deckPath, filepath.Join(outDir, "out.json"), absTemplates, outDir,
-			"", false, false, "", "off", false, "off", "", false)
+		_, genErr := runJSONModeDeck(deckPath, filepath.Join(outDir, "out.json"), absTemplates, outDir, "", false, false, "", "off", false, "off", "", false)
 		if genErr != nil {
 			t.Fatalf("generate: expected success, got: %v", genErr)
 		}
@@ -285,8 +283,7 @@ func TestValidateGenerateAssetParity(t *testing.T) {
 		}
 
 		outDir := t.TempDir()
-		genErr := runJSONMode(deckPath, filepath.Join(outDir, "out.json"), absTemplates, outDir,
-			"", false, false, "", "off", false, "off", "", false)
+		_, genErr := runJSONModeDeck(deckPath, filepath.Join(outDir, "out.json"), absTemplates, outDir, "", false, false, "", "off", false, "off", "", false)
 		if genErr == nil {
 			t.Fatal("generate: expected failure for a missing relative asset")
 		}

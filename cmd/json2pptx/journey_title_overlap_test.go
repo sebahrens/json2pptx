@@ -57,7 +57,7 @@ func TestJourneyMaturityModelTitleNoOverlap(t *testing.T) {
 			}
 
 			resultPath := filepath.Join(outputDir, "result.json")
-			if err := runJSONMode(tmpJSON, resultPath, templatesDir, outputDir, "", false, false, "", "off", false, "off", "", false); err != nil {
+			if _, err := runJSONModeDeck(tmpJSON, resultPath, templatesDir, outputDir, "", false, false, "", "off", false, "off", "", false); err != nil {
 				t.Fatalf("runJSONMode failed: %v", err)
 			}
 

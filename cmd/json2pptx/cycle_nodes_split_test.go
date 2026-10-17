@@ -121,7 +121,7 @@ func TestCycleNodesSplitLayoutsAcrossTemplates(t *testing.T) {
 			for n := 3; n <= 8; n++ {
 				t.Run(fmt.Sprintf("%s/%s/%d", templateName, l.name, n), func(t *testing.T) {
 					input := &PresentationInput{Template: geom.name, Slides: []SlideInput{l.slide(cycleNodesSplitPattern(t, n, l.descriptions(n)))}}
-					for _, f := range collectReadabilityFindings(input, geom.layouts, geom.width, geom.height) {
+					for _, f := range collectReadabilityFindingsWithTheme(input, geom.layouts, geom.width, geom.height, nil) {
 						t.Errorf("readability finding: %s %s", f.Code, f.Message)
 					}
 					if v := writtenRoleViolations(t, input, geom); v > 0 {

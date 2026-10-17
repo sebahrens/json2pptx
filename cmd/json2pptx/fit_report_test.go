@@ -303,7 +303,7 @@ func TestStrictFit_Off(t *testing.T) {
 	}
 
 	templatesDir := filepath.Join("..", "..", "templates")
-	err := runJSONMode(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "off", false, "off", "", false)
+	_, err := runJSONModeDeck(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "off", false, "off", "", false)
 	// off mode must not fail due to density; a generation error here was
 	// previously only logged, hiding the regression (go-slide-creator-gdi5r).
 	if err != nil {
@@ -337,7 +337,7 @@ func TestStrictFit_Strict_RefusesUnfittable(t *testing.T) {
 	}
 
 	templatesDir := filepath.Join("..", "..", "templates")
-	err := runJSONMode(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "strict", false, "off", "", false)
+	_, err := runJSONModeDeck(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "strict", false, "off", "", false)
 	if err == nil {
 		t.Fatal("expected error in strict mode for unfittable content")
 	}
@@ -372,7 +372,7 @@ func TestStrictFit_Warn_Succeeds(t *testing.T) {
 	}
 
 	templatesDir := filepath.Join("..", "..", "templates")
-	err := runJSONMode(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "warn", false, "off", "", false)
+	_, err := runJSONModeDeck(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "warn", false, "off", "", false)
 	// Warn mode should not fail due to fit issues — generation proceeds.
 	if err != nil {
 		t.Fatalf("warn mode should not error on unfittable content: %v", err)
@@ -536,7 +536,7 @@ func TestStrictFit_ChartNoFindings_NoRejection(t *testing.T) {
 	}
 
 	templatesDir := filepath.Join("..", "..", "templates")
-	err := runJSONMode(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "strict", false, "off", "", false)
+	_, err := runJSONModeDeck(jsonPath, outputPath, templatesDir, tmpDir, "", false, false, "", "strict", false, "off", "", false)
 	if err != nil {
 		t.Fatalf("strict-fit=strict with zero chart findings should not reject: %v", err)
 	}

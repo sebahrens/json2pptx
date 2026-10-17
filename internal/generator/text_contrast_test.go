@@ -155,7 +155,7 @@ func TestTintedLayoutBackgroundKeepsReadableWhiteText(t *testing.T) {
 			Paragraphs: []paragraphXML{{Runs: []runXML{{Text: "Thank You"}}}},
 		},
 	}}}}}
-	swaps := enforceTextContrastInSlide(slide, bgHex, theme, 0, nil, false)
+	swaps := enforceTextContrastInSlideExcept(slide, bgHex, theme, 0, nil, false, nil)
 	if len(swaps) != 0 {
 		t.Errorf("readable white text was wrongly recolored on dark layout background: %+v", swaps)
 	}
@@ -322,7 +322,7 @@ func TestEnforceTextContrastInSlide(t *testing.T) {
 		},
 	}
 
-	enforceTextContrastInSlide(slide, bgHex, tc, 0, nil, false)
+	enforceTextContrastInSlideExcept(slide, bgHex, tc, 0, nil, false, nil)
 
 	lstInner := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 
@@ -367,7 +367,7 @@ func TestEnforceTextContrastInSlide_NoBackground(t *testing.T) {
 	original := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 
 	// No background = should not change anything
-	enforceTextContrastInSlide(slide, "", tc, 0, nil, false)
+	enforceTextContrastInSlideExcept(slide, "", tc, 0, nil, false, nil)
 
 	after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 	if after != original {
@@ -397,7 +397,7 @@ func TestEnforceTextContrastInSlide_GoodContrastUnchanged(t *testing.T) {
 	}
 
 	original := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
-	enforceTextContrastInSlide(slide, "#FFFFFF", tc, 0, nil, false)
+	enforceTextContrastInSlideExcept(slide, "#FFFFFF", tc, 0, nil, false, nil)
 
 	after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
 	if after != original {
@@ -817,7 +817,7 @@ func TestContrastCheckOptOut(t *testing.T) {
 		// nil ContrastCheck → enforce (default behavior)
 		var cc *bool
 		if cc == nil || *cc {
-			enforceTextContrastInSlide(slide, bgHex, tc, 0, nil, false)
+			enforceTextContrastInSlideExcept(slide, bgHex, tc, 0, nil, false, nil)
 		}
 
 		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
@@ -835,7 +835,7 @@ func TestContrastCheckOptOut(t *testing.T) {
 
 		cc := boolPtr(true)
 		if cc == nil || *cc {
-			enforceTextContrastInSlide(slide, bgHex, tc, 0, nil, false)
+			enforceTextContrastInSlideExcept(slide, bgHex, tc, 0, nil, false, nil)
 		}
 
 		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
@@ -850,7 +850,7 @@ func TestContrastCheckOptOut(t *testing.T) {
 
 		cc := boolPtr(false)
 		if cc == nil || *cc {
-			enforceTextContrastInSlide(slide, bgHex, tc, 0, nil, false)
+			enforceTextContrastInSlideExcept(slide, bgHex, tc, 0, nil, false, nil)
 		}
 
 		after := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner
@@ -912,7 +912,7 @@ func TestEnforceTextContrastInSlide_ReturnsSwaps(t *testing.T) {
 		},
 	}
 
-	swaps := enforceTextContrastInSlide(slide, bgHex, tc, 0, nil, false)
+	swaps := enforceTextContrastInSlideExcept(slide, bgHex, tc, 0, nil, false, nil)
 
 	if len(swaps) == 0 {
 		t.Fatal("expected at least 1 contrast swap, got 0")
@@ -1250,7 +1250,7 @@ func TestEnforceTextContrastInSlide_RecordsSwapLocation(t *testing.T) {
 	}
 
 	const slideIndex = 5
-	swaps := enforceTextContrastInSlide(slide, "#FFFFFF", tc, slideIndex, nil, false)
+	swaps := enforceTextContrastInSlideExcept(slide, "#FFFFFF", tc, slideIndex, nil, false, nil)
 
 	if len(swaps) == 0 {
 		t.Fatal("expected at least one swap for accent3 text on white background")

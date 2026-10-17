@@ -19,7 +19,7 @@ var parityTheme = []types.ThemeColor{
 func renderParitySVG(t *testing.T, spec *types.DiagramSpec) []byte {
 	t.Helper()
 	spec.Width, spec.Height = 800, 450
-	res, err := RenderDiagramSpecWithMetadata(spec, parityTheme, 0, true)
+	res, err := renderDiagramSpecFull(spec, parityTheme, 0, true, "", "", nil)
 	if err != nil {
 		t.Fatalf("render: %v", err)
 	}

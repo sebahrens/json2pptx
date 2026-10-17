@@ -224,8 +224,7 @@ func TestGenerateAcceptsAStructureOnlyDeck(t *testing.T) {
 	inputPath := writeTestFile(t, dir, "structure.json", deck)
 
 	reportPath := filepath.Join(dir, "result.json")
-	if err := runJSONMode(inputPath, reportPath, filepath.Join("..", "..", "templates"), dir,
-		"", false, false, "midnight-blue", "off", false, "off", "", false); err != nil {
+	if _, err := runJSONModeDeck(inputPath, reportPath, filepath.Join("..", "..", "templates"), dir, "", false, false, "midnight-blue", "off", false, "off", "", false); err != nil {
 		t.Fatalf("generate rejected a structure-only deck: %v", err)
 	}
 
@@ -260,8 +259,7 @@ func TestGenerateStillRequiresContent(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			inputPath := writeTestFile(t, dir, strings.ReplaceAll(name, " ", "_")+".json", deck)
-			err := runJSONMode(inputPath, filepath.Join(dir, "r.json"), filepath.Join("..", "..", "templates"), dir,
-				"", false, false, "midnight-blue", "off", false, "off", "", false)
+			_, err := runJSONModeDeck(inputPath, filepath.Join(dir, "r.json"), filepath.Join("..", "..", "templates"), dir, "", false, false, "midnight-blue", "off", false, "off", "", false)
 			if err == nil {
 				t.Error("expected an error for a deck with no content")
 			}

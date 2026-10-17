@@ -32,7 +32,7 @@ func TestGaugeSmallDimensions(t *testing.T) {
 				Height: d.height,
 			}
 
-			result, err := RenderDiagramSpecWithMetadata(spec, nil, 0, false)
+			result, err := renderDiagramSpecFull(spec, nil, 0, false, "", "", nil)
 			if err != nil {
 				t.Fatalf("Render failed: %v", err)
 			}

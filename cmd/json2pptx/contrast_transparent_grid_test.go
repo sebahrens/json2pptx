@@ -36,7 +36,7 @@ func TestParagraphFormContrastIgnoresUnusedOuterColor(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			slide := transparentGridSlide(nil, `"#FFFFFF"`, "#FFFFFF")
 			slide.ShapeGrid.Rows[0].Cells[0].Shape.Text = json.RawMessage(`{"color":"#FFFFFF","paragraphs":[{"content":"Visible","color":"` + tc.paragraphColor + `","size":12}]}`)
-			findings := contrastPredictions(collectContrastPreflightFindings(&PresentationInput{Slides: []SlideInput{slide}}, nil, theme))
+			findings := contrastPredictions(collectContrastPreflightFindingsAt(&PresentationInput{Slides: []SlideInput{slide}}, nil, &types.ThemeInfo{Colors: theme}, 0, 0))
 			if len(findings) != tc.wantFindings {
 				t.Fatalf("got %d contrast predictions, want %d: %+v", len(findings), tc.wantFindings, findings)
 			}
@@ -72,7 +72,7 @@ func TestTransparentGridContrastPreflightUsesEffectiveBackground(t *testing.T) {
 			layouts := []types.LayoutMetadata{{ID: "slideLayout1", BackgroundHex: tc.layoutBackground}}
 			tc.slide.LayoutID = "slideLayout1"
 			in := &PresentationInput{Slides: []SlideInput{tc.slide}}
-			findings := contrastPredictions(collectContrastPreflightFindings(in, layouts, theme))
+			findings := contrastPredictions(collectContrastPreflightFindingsAt(in, layouts, &types.ThemeInfo{Colors: theme}, 0, 0))
 			if tc.wantBackground == "" {
 				if len(findings) != 0 {
 					t.Errorf("unknown photo background yielded predictions: %+v", findings)
@@ -110,8 +110,7 @@ func TestAlphaGridContrastPreflightUsesEffectiveBackground(t *testing.T) {
 				background = &BackgroundInput{Image: "photo.png"}
 			}
 			slide := transparentGridSlide(background, tc.fill, "#000000")
-			findings := contrastPredictions(collectContrastPreflightFindings(
-				&PresentationInput{Slides: []SlideInput{slide}}, nil, tintTestTheme))
+			findings := contrastPredictions(collectContrastPreflightFindingsAt(&PresentationInput{Slides: []SlideInput{slide}}, nil, &types.ThemeInfo{Colors: tintTestTheme}, 0, 0))
 			if !tc.wantPrediction {
 				if len(findings) != 0 {
 					t.Errorf("unexpected predictions: %+v", findings)
@@ -136,7 +135,7 @@ func TestGridContrastPreflightRespectsSlideOptOut(t *testing.T) {
 	slide := transparentGridSlide(&BackgroundInput{Color: "#FFFFFF"}, `"#FFFFFF"`, "#FFFFFF")
 	slide.ContrastCheck = &off
 	in := &PresentationInput{Slides: []SlideInput{slide}}
-	if findings := contrastPredictions(collectContrastPreflightFindings(in, nil, s7wmhCmdTheme)); len(findings) != 0 {
+	if findings := contrastPredictions(collectContrastPreflightFindingsAt(in, nil, &types.ThemeInfo{Colors: s7wmhCmdTheme}, 0, 0)); len(findings) != 0 {
 		t.Errorf("contrast_check:false predicted a shape-grid swap: %+v", findings)
 	}
 }
@@ -168,7 +167,7 @@ func TestTransparentGridPreflightReResolvesLayoutBackgroundAfterThemeOverride(t 
 		{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"},
 		{Name: "accent1", RGB: "#000000"}, // effective deck theme
 	}
-	findings := contrastPredictions(collectContrastPreflightFindings(in, layouts, modifiedTheme))
+	findings := contrastPredictions(collectContrastPreflightFindingsAt(in, layouts, &types.ThemeInfo{Colors: modifiedTheme}, 0, 0))
 	if len(findings) != 1 {
 		t.Fatalf("got %d predictions, want one against overridden accent1", len(findings))
 	}
@@ -189,7 +188,7 @@ func TestTransparentGridPreflightAppliesLayoutLumModAfterThemeOverride(t *testin
 		{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"},
 		{Name: "accent6", RGB: "#60A2F5"},
 	}
-	findings := contrastPredictions(collectContrastPreflightFindings(in, layouts, theme))
+	findings := contrastPredictions(collectContrastPreflightFindingsAt(in, layouts, &types.ThemeInfo{Colors: theme}, 0, 0))
 	if len(findings) != 1 {
 		t.Fatalf("tinted-layout predictions = %+v, want one black-text correction", findings)
 	}
@@ -214,7 +213,7 @@ func TestRunPresentationTransparentGridContrastMatchesPreflight(t *testing.T) {
 				Slides: []SlideInput{slide},
 			}
 			applyDefaults(input)
-			predictions := contrastPredictions(collectContrastPreflightFindings(input, nil, s7wmhCmdTheme))
+			predictions := contrastPredictions(collectContrastPreflightFindingsAt(input, nil, &types.ThemeInfo{Colors: s7wmhCmdTheme}, 0, 0))
 			if len(predictions) != 1 {
 				t.Fatalf("preflight predictions = %d, want 1", len(predictions))
 			}
@@ -258,7 +257,7 @@ func TestRunPresentationAlphaGridContrastMatchesPreflight(t *testing.T) {
 				Slides: []SlideInput{slide},
 			}
 			applyDefaults(input)
-			predictions := contrastPredictions(collectContrastPreflightFindings(input, nil, tintTestTheme))
+			predictions := contrastPredictions(collectContrastPreflightFindingsAt(input, nil, &types.ThemeInfo{Colors: tintTestTheme}, 0, 0))
 			if len(predictions) != 1 || predictions[0].Fix.Params["background_color"] != tc.wantBackground {
 				t.Fatalf("preflight predictions = %+v, want one against %s", predictions, tc.wantBackground)
 			}

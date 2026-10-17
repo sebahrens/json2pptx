@@ -88,8 +88,7 @@ func TestNumbersUnitsAndHighlightRenderAsWritten(t *testing.T) {
 			if err := os.WriteFile(inputPath, []byte(strings.Replace(renderAsWrittenDeck, "TEMPLATE", name, 1)), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if err := runJSONMode(inputPath, filepath.Join(dir, "result.json"), testutil.TemplatesDir(), dir,
-				"", false, false, name, "off", false, "off", "", false); err != nil {
+			if _, err := runJSONModeDeck(inputPath, filepath.Join(dir, "result.json"), testutil.TemplatesDir(), dir, "", false, false, name, "off", false, "off", "", false); err != nil {
 				t.Fatalf("generate: %v", err)
 			}
 			slides := slideParagraphs(t, filepath.Join(dir, "written.pptx"))

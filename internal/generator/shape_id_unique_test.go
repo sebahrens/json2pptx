@@ -24,11 +24,11 @@ func TestLateInjectionShapeIDsUnique(t *testing.T) {
 		`</p:spTree></p:cSld></p:sld>`)
 
 	var err error
-	slide, err = insertTakeaway(slide, "Headline answer", pptx.RectEmu{X: 838200, Y: 5700000, CX: 10515600, CY: 360000})
+	slide, err = insertStyledTakeaway(slide, "Headline answer", pptx.RectEmu{X: 838200, Y: 5700000, CX: 10515600, CY: 360000}, takeawayStyle{})
 	if err != nil {
 		t.Fatalf("insertTakeaway: %v", err)
 	}
-	slide, err = insertSourceNote(slide, "Annual Report 2025", pptx.RectEmu{X: 838200, Y: 6100000, CX: 10515600, CY: 200000})
+	slide, err = insertLinkedSourceNote(slide, "Annual Report 2025", pptx.RectEmu{X: 838200, Y: 6100000, CX: 10515600, CY: 200000}, "", false)
 	if err != nil {
 		t.Fatalf("insertSourceNote: %v", err)
 	}
@@ -43,7 +43,7 @@ func TestLateInjectionShapeIDsUnique(t *testing.T) {
 			Extent: extentXML{CX: 3200400, CY: 365125},
 		},
 	}
-	slide, err = insertFooters(slide, &FooterConfig{Enabled: true, LeftText: "Confidential"}, positions, "", "", 0)
+	slide, err = insertFootersAvoiding(slide, &FooterConfig{Enabled: true, LeftText: "Confidential"}, positions, "", "", 0, nil, 0)
 	if err != nil {
 		t.Fatalf("insertFooters: %v", err)
 	}

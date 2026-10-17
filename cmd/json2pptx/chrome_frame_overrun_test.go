@@ -130,8 +130,7 @@ func generateDeckForChromeTest(t *testing.T, templatesDir, tpl string, slide map
 	if err := os.WriteFile(inputPath, data, 0o600); err != nil {
 		t.Fatalf("write input: %v", err)
 	}
-	if err := runJSONMode(inputPath, filepath.Join(dir, "result.json"), templatesDir, dir,
-		"", false, false, tpl, "off", false, "off", "", false); err != nil {
+	if _, err := runJSONModeDeck(inputPath, filepath.Join(dir, "result.json"), templatesDir, dir, "", false, false, tpl, "off", false, "off", "", false); err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	return filepath.Join(dir, "chrome.pptx")

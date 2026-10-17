@@ -54,7 +54,7 @@ func TestTypeScaleGrowsSparseBodyToRoleCap(t *testing.T) {
 				t.Errorf("rendered body size = %.2fpt, want %.2fpt", got, tc.want)
 			}
 			if tc.mode == "presentation" {
-				xml, err := GenerateShapeXML(spec, 1, pptx.RectEmu{CX: PtToEMU(360), CY: PtToEMU(180)})
+				xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: pptx.RectEmu{CX: PtToEMU(360), CY: PtToEMU(180)}})
 				if err != nil {
 					t.Fatal(err)
 				}

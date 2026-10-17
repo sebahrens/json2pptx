@@ -57,7 +57,7 @@ func TestTitleAndFooterFollowEdgeArtInset(t *testing.T) {
 // (go-slide-creator-cuszt): 9pt italic, the text colour muted to ~60%, left
 // aligned with the title and footer text on the content grid.
 func TestSourceNoteZoneStyle(t *testing.T) {
-	xml := generateSourceNoteShapeInBounds("Company filings", 7, pptx.RectEmu{X: 1234200, Y: 6000000, CX: 10000000, CY: 200000})
+	xml := generateLinkedSourceNoteShapeInBounds("Company filings", 7, pptx.RectEmu{X: 1234200, Y: 6000000, CX: 10000000, CY: 200000}, "", false)
 	for _, want := range []string{
 		`sz="900"`,
 		`<a:schemeClr val="` + patterns.SourceNoteScheme + `">`,

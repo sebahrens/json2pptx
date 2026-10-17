@@ -153,7 +153,7 @@ func renderForDeterminism(t *testing.T, templatesDir, examplePath, tmpl, tag str
 	resultJSON := filepath.Join(caseDir, "result_"+tag+".json")
 	// design_mode=free matches corpus_headless_test.go — the determinism
 	// guarantee is orthogonal to the constrained-mode validator.
-	if err := runJSONMode(patchedJSON, resultJSON, templatesDir, caseDir, "", false, false, tmpl, "off", false, "off", "free", false); err != nil {
+	if _, err := runJSONModeDeck(patchedJSON, resultJSON, templatesDir, caseDir, "", false, false, tmpl, "off", false, "off", "free", false); err != nil {
 		t.Fatalf("runJSONMode (%s, %s) failed: %v", tmpl, tag, err)
 	}
 

@@ -104,7 +104,7 @@ func TestModernSubtitleGradientPreflightBlocksFalseContrastFix(t *testing.T) {
 			t.Errorf("gradient stop %d contrast = %.2f:1, want only orange to fail 3:1", i, ratio)
 		}
 	}
-	findings := collectContrastPreflightFindings(input, analysis.Layouts, analysis.Theme.Colors)
+	findings := collectContrastPreflightFindingsAt(input, analysis.Layouts, &types.ThemeInfo{Colors: analysis.Theme.Colors}, 0, 0)
 	var unresolved *patterns.FitFinding
 	for i := range findings {
 		if findings[i].Code == patterns.ErrCodeContrastUnresolved {
