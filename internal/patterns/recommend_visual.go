@@ -1048,9 +1048,9 @@ func composeNameFor(left, right string) string {
 // scoreCompose returns compose-envelope candidates. Two signals fire:
 //
 //  1. The intent contains an explicit "combine these two things" keyword
-//     (composeIntentKeywords). In that case the top two ComposesWith-bearing
+//     (composeIntentKeywords). In that case the highest-scoring compatible
 //     pattern candidates are paired into a compose suggestion.
-//  2. The top two pattern candidates declare mutual compose-affinity via
+//  2. The highest-scoring compatible pair declares compose-affinity via
 //     PatternTaxonomy.ComposesWith. This surfaces compose even when the user
 //     did not name it, because the underlying patterns are known sibling-
 //     compatible (e.g., stylish-panels ↔ pull-quote).
@@ -1063,6 +1063,17 @@ func scoreCompose(reg *Registry, intentLower string, patternCandidates []VisualC
 		return nil
 	}
 
+	// Scoring starts from a map-backed universe, so callers need not arrive in
+	// score order. Sort a private copy before the first-compatible-pair scan;
+	// names break ties deterministically without mutating caller candidates.
+	patternCandidates = append([]VisualCandidate(nil), patternCandidates...)
+	sort.Slice(patternCandidates, func(i, j int) bool {
+		if patternCandidates[i].Score != patternCandidates[j].Score {
+			return patternCandidates[i].Score > patternCandidates[j].Score
+		}
+		return patternCandidates[i].Name < patternCandidates[j].Name
+	})
+
 	// Detect explicit compose intent.
 	explicitIntent := false
 	for _, kw := range composeIntentKeywords {
@@ -1072,9 +1083,9 @@ func scoreCompose(reg *Registry, intentLower string, patternCandidates []VisualC
 		}
 	}
 
-	// Find the top two pattern candidates that declare mutual compose-affinity.
-	// patternCandidates is already in registry-scored order; iterate to find
-	// the first pair where each declares the other in its ComposesWith axis.
+	// Find the highest-scoring compatible pair.
+	// patternCandidates is now in scored order; iterate to find
+	// the first pair where either declares the other in its ComposesWith axis.
 	type pairCand struct {
 		left, right string
 		score       float64
@@ -1087,17 +1098,14 @@ func scoreCompose(reg *Registry, intentLower string, patternCandidates []VisualC
 			continue
 		}
 		ciWith := pi.Taxonomy().ComposesWith
-		if len(ciWith) == 0 {
-			continue
-		}
 		for j := i + 1; j < len(patternCandidates); j++ {
 			pj, ok := reg.Get(patternCandidates[j].Name)
 			if !ok {
 				continue
 			}
 			if !sliceContains(ciWith, patternCandidates[j].Name) {
-				// One-way affinity isn't enough — require mutual to avoid
-				// recommending a pair the second pattern doesn't endorse.
+				// Either side may declare affinity, matching pairAffinity and
+				// caller-only shortlist scoring.
 				if !sliceContains(pj.Taxonomy().ComposesWith, patternCandidates[i].Name) {
 					continue
 				}
@@ -1126,13 +1134,13 @@ func scoreCompose(reg *Registry, intentLower string, patternCandidates []VisualC
 	// Boost the score when the user explicitly asked for a composed layout.
 	score := bestPair.score
 	rationale := fmt.Sprintf(
-		"Compose envelope combining %q and %q — both patterns declare mutual compose-affinity in their taxonomy.",
+		"Compose envelope combining %q and %q — the pair declares compose-affinity in its taxonomy.",
 		bestPair.left, bestPair.right,
 	)
 	if explicitIntent {
 		score += 0.10
 		rationale = fmt.Sprintf(
-			"Compose envelope combining %q and %q — the intent requests a multi-pattern layout and the pair declares mutual compose-affinity.",
+			"Compose envelope combining %q and %q — the intent requests a multi-pattern layout and the pair declares compose-affinity.",
 			bestPair.left, bestPair.right,
 		)
 	}

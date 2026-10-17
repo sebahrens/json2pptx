@@ -39,6 +39,10 @@ discovery expose structural placement metadata from `patterns.SegmentFitFor`.
 The metadata uses the same constants as the builders; compact listings omit it.
 `recommend_visual` carries it as `segment_fit` on named candidates and named
 composition leaves, including nested compositions; it omits empty contracts.
+Repeated recommendations and candidate shortlists retain each composition's
+score, rationale and region order for the same intent and layout context.
+Equal-score pairs use a deterministic order while preserving declared
+body/band placement preferences.
 Compact-band recipes are
 isolated illustrations: place their content in a supporting segment for a real
 deck. Explicit narrow figure-eight requests identify the placement conflict;

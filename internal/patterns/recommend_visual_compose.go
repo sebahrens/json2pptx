@@ -255,6 +255,11 @@ func bandRank(reg *Registry, name string) (rank int, band bool) {
 // body pattern; stacked, both halves get 50% (a KPI row squeezed below half
 // the height shrinks its labels under the readable minimum).
 func pairComposition(reg *Registry, a, b, intentLower string) *VisualComposition {
+	// Canonical names settle only otherwise-unspecified ordering. The role
+	// rules below still put a body before a band, or a banner above a callout.
+	if b < a {
+		a, b = b, a
+	}
 	rankA, bandA := bandRank(reg, a)
 	rankB, bandB := bandRank(reg, b)
 	first, second := a, b

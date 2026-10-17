@@ -110,7 +110,8 @@
       "go-slide-creator-l8q3b",
       "go-slide-creator-ihs5f",
       "go-slide-creator-1vail",
-      "go-slide-creator-sj90w"
+      "go-slide-creator-sj90w",
+      "go-slide-creator-r6pi5"
     ]
   },
   "templates": [
@@ -139,24 +140,25 @@
       "compact_templates_bytes": 14800,
       "first_contact_bytes": 37986,
       "all_profile_bytes": 138298,
-      "recommendation_max_bytes": 15690,
+      "recommendation_max_bytes": 16080,
       "caps_increased": false,
       "core_profile_bytes": 101804,
-      "recommendation_mean_bytes": 7179,
-      "recommendation_headroom_bytes": 694
+      "recommendation_mean_bytes": 7419,
+      "recommendation_headroom_bytes": 304
     },
     "previews": {
       "layouts_refreshed": 108,
       "tracked_pngs": 101,
       "pixel_changes": 0,
-      "manifest_changes": 13
+      "manifest_changes": 13,
+      "all_pngs_compared": 108
     },
     "agent_journey": "Recorded TestAgentJourneyMetrics: clean spec2calls,12flaw deck4calls/3validates,16paritypairs/0disagreements,16patches offered/9verified/0failing",
     "registry_contracts": "New consulting patterns satisfy direct typed-exemplar expansion, closed referenced schemas, declared motifs, selection guidance, type-scale constants and canonical size goldens; all focused registry guards pass.",
     "discovery_parity": "Canonical aliases retain native hosts and generated two-column fallbacks; agenda discovery requires a real host. Image-hero planning, discovery and compilation all use blank. Region guidance covers the live9kinds/10arrangements. Agenda aliases resolve real slideLayoutN hosts by tag, including case/whitespace variants, and retain literal-ID fallback without inventing missing hosts.",
     "preview_asset_isolation": "Built-in image-hero previews, make_deck MustInclude examples and composed native recipes explicitly bind an illustrative image; actual generated media bytes and both CI-template LibreOffice round-trips pass. Render-truth, peer typography and semantic parity positive fixtures opt in at their owned constructors. Canonical exemplars and authored missing paths remain unchanged; sample write failures propagate and clear stale runnable recipes.",
     "stress_coverage": "15 generated scenarios for Mekko/combo/butterfly cover minimum/dense/edge data, validate and render successfully.",
-    "recommendation_consistency": "One contextual scoring pass precedes shortlist selection; score/band/rationale/composition stay consistent across pattern/chart/diagram/compose. Caller-only alternatives remain available;72/72 exact top-one evaluation passes.",
+    "recommendation_consistency": "One contextual scoring pass precedes shortlist selection; score/band/rationale/composition stay consistent across pattern/chart/diagram/compose. Caller-only alternatives remain available;72/72 exact top-one evaluation passes. Private score/name ordering at composition scoring removes map iteration effects, including one-sided declared affinity and highest compatible pair selection. Seventy-two permutations preserve caller slices and full metadata; six role/geometry checks and 25 repeated open/shortlist comparisons pass. Existing72/72 ranking, runnable recipes and response-budget checks pass. A code-indexer/direct-caller audit confirms other map-backed scoring consumers explicitly sort before order-sensitive work or use only per-candidate/keyed reductions.",
     "chart_discovery": "Mekko/combo/butterfly recommendation contracts match authoritative required/optional data keys, point at slides[0].chart.data, and provide examples that validate/render without degrading.",
     "readable_maxima": "19 new patterns \u00d7 5 templates (including local p-style): 95 actual writer/geometry or explicit fit-refusal checks pass. Native numeric heatmap axes and stakeholder labels retain 12pt; dense numeric values use the documented 10pt-minimum caption role, promoted to 12pt in actual native output. Fishbone framework refuses actual SVG content loss. The consulting maxima test is registered in the full corpus runner; exact non-short test and registration guard pass.",
     "authored_paths": "New layout review findings map merged-grid coordinates to authored JSON pointers, including nested layers; template-qa-deck validate/render parity passes on both templates. Measured compose provenance now unwraps band body grids, seam spacer rows/cells and heading/caption frames across both axes and nested/native leaves; dedicated locator regressions pass.",

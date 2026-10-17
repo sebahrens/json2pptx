@@ -74,6 +74,7 @@ unclear) → `list_patterns` / `show_pattern` → `expand_pattern` →
 `get_input_schema` has the raw fields. How patterns fit text and
 report `BODY_TOO_LONG` / `TEXT_EXCEEDS_SHAPE` is in [PATTERNS.md](PATTERNS.md);
 Read `segment_fit` placement constraints on recommendations (TOOLS.md).
+Shortlists retain scores, rationale and composition order.
 Patterns spend at most one solid accent block, in `color_roles.primary_fill`.
 
 Both render tools return `deterministic_ready` (a precondition, not proof),

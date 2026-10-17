@@ -19,6 +19,11 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md),
 and the full menu with every form, pattern, chart and diagram is
 [layout-catalog.md](layout-catalog.md).
 
+Repeated `recommend_visual` calls and candidate shortlists retain each
+composition's score, rationale and region order for the same intent and
+layout context. Equal-score pairs have a deterministic order; declared
+body/band placement preferences still apply.
+
 ## Inline evidence and footnote markers
 
 Raw `shape_grid` text supports `<b>bold</b>`, `<i>italic</i>`,
