@@ -315,14 +315,6 @@ func pyramidApexRatio(panels []nativePanelData, bounds types.BoundingBox, labelS
 	return pyramidMaxApexRatio
 }
 
-// pyramidLevelHeights gives narrow, text-heavy tiers more of the fixed
-// placeholder height. Text is measured at its authored font size against the
-// trapezoid's midpoint width, not the much wider bounding rectangle.
-func pyramidLevelHeights(panels []nativePanelData, bounds types.BoundingBox, labelSize, descSize int, fontName string) ([]int64, int64) {
-	heights, gap, _, _ := pyramidLevelLayout(panels, bounds, labelSize, descSize, fontName)
-	return heights, gap
-}
-
 // pyramidLevelLayout sizes the tiers at the first top / bottom text margin of
 // nativeVerticalPadSteps at which every tier holds its text at the authored
 // size: a pyramid gives up the air in its tiers before its type. One that fits

@@ -1118,17 +1118,6 @@ func countGenericItems(data map[string]any) int {
 	return total
 }
 
-// resolveDiagramBytes renders a DiagramSpec via svggen.
-// The placeholderBounds parameter provides the placeholder dimensions for sizing the output.
-// Returns the PNG bytes and true if successful, or false with a warning added on failure.
-func (ctx *singlePassContext) resolveDiagramBytes(slideNum int, item ContentItem, placeholderBounds types.BoundingBox) ([]byte, bool) {
-	result, ok := ctx.resolveDiagramWithMetadata(slideNum, item, placeholderBounds)
-	if !ok {
-		return nil, false
-	}
-	return result.PNG, true
-}
-
 // resolveDiagramWithMetadata renders a DiagramSpec via svggen and returns full metadata.
 // The placeholderBounds parameter provides the placeholder dimensions for sizing the output.
 // Returns the render result (PNG bytes + fit metadata) and true if successful,

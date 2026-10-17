@@ -1895,11 +1895,11 @@ func TestResolveDiagramBytes(t *testing.T) {
 				Data:  map[string]any{"categories": []string{"A", "B"}, "series": []map[string]any{{"name": "Data", "values": []float64{10, 20}}}},
 			},
 		}
-		gotBytes, gotOK := ctx.resolveDiagramBytes(1, item, types.BoundingBox{})
+		result, gotOK := ctx.resolveDiagramWithMetadata(1, item, types.BoundingBox{})
 		if !gotOK {
 			t.Error("resolveDiagramBytes() expected ok=true for valid DiagramSpec")
 		}
-		if len(gotBytes) == 0 {
+		if result == nil || len(result.PNG) == 0 {
 			t.Error("resolveDiagramBytes() returned empty bytes for valid DiagramSpec")
 		}
 	})
@@ -1911,12 +1911,12 @@ func TestResolveDiagramBytes(t *testing.T) {
 			Type:          ContentDiagram,
 			Value:         "invalid-string-value",
 		}
-		gotBytes, gotOK := ctx.resolveDiagramBytes(2, item, types.BoundingBox{})
+		result, gotOK := ctx.resolveDiagramWithMetadata(2, item, types.BoundingBox{})
 		if gotOK {
 			t.Error("resolveDiagramBytes() expected ok=false for invalid value type")
 		}
-		if gotBytes != nil {
-			t.Errorf("resolveDiagramBytes() expected nil bytes, got %d bytes", len(gotBytes))
+		if result != nil {
+			t.Errorf("resolveDiagramWithMetadata() expected nil result, got %+v", result)
 		}
 		if len(ctx.warnings) != 1 {
 			t.Errorf("resolveDiagramBytes() expected 1 warning, got %d", len(ctx.warnings))
@@ -3294,7 +3294,7 @@ func TestWriteNativeSVGOnlyRelationships(t *testing.T) {
 		{pngRelID: "rId5", svgRelID: "rId6", pngMediaFile: "image1.png", svgMediaFile: "image2.svg"},
 	}
 
-	err = ctx.writeNativeSVGOnlyRelationships(5, ctx.nativeSVGInserts[5])
+	err = ctx.writeNewSlideRelationships(5, "slideLayout1")
 	if err != nil {
 		t.Fatalf("writeNativeSVGOnlyRelationships() error = %v", err)
 	}

@@ -45,7 +45,7 @@ func TestPreviewToolIdentityFailsClosed(t *testing.T) {
 	if _, err := previewToolIdentity(filepath.Join(t.TempDir(), "missing")); err == nil {
 		t.Fatal("missing renderer accepted")
 	}
-	if _, err := currentPreviewCacheIdentity(filepath.Join(t.TempDir(), "missing.pptx"), &types.TemplateAnalysis{}, nil); err == nil || !strings.Contains(err.Error(), "hash template") {
+	if _, err := currentPreviewCacheIdentityContext(context.Background(), filepath.Join(t.TempDir(), "missing.pptx"), &types.TemplateAnalysis{}, nil); err == nil || !strings.Contains(err.Error(), "hash template") {
 		t.Fatalf("missing template not reported: %v", err)
 	}
 	path := filepath.Join(t.TempDir(), "not-executable")

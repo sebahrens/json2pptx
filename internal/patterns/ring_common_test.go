@@ -18,7 +18,7 @@ func ringNear(a, b float64) bool { return math.Abs(a-b) <= ringTol }
 
 func ringMustItems(t *testing.T, s ringSpec) []ringItem {
 	t.Helper()
-	items, err := ringItems(s)
+	items, err := (s).items()
 	if err != nil {
 		t.Fatalf("ringItems(%+v): %v", s, err)
 	}
@@ -94,7 +94,7 @@ func TestRingItems_DirectionReversesOrder(t *testing.T) {
 
 func TestRingItems_Rejects(t *testing.T) {
 	for _, n := range []int{-1, 0, 1, 2, 9, 20} {
-		if _, err := ringItems(newRingSpec(n)); err == nil {
+		if _, err := (newRingSpec(n)).items(); err == nil {
 			t.Errorf("full ring of %d items accepted", n)
 		}
 	}
@@ -109,7 +109,7 @@ func TestRingItems_Rejects(t *testing.T) {
 	for name, mut := range bad {
 		s := newRingSpec(8)
 		mut(&s)
-		if _, err := ringItems(s); err == nil {
+		if _, err := (s).items(); err == nil {
 			t.Errorf("%s: accepted", name)
 		}
 		if name != "gap eats segments" {
@@ -118,10 +118,10 @@ func TestRingItems_Rejects(t *testing.T) {
 			}
 		}
 	}
-	if _, err := ringItems(newRingArcSpec(9, 0, 180, true)); err == nil {
+	if _, err := (newRingArcSpec(9, 0, 180, true)).items(); err == nil {
 		t.Error("open arc of 9 items accepted")
 	}
-	if _, err := ringItems(newRingArcSpec(0, 0, 180, true)); err == nil {
+	if _, err := (newRingArcSpec(0, 0, 180, true)).items(); err == nil {
 		t.Error("open arc of 0 items accepted")
 	}
 }

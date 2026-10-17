@@ -554,12 +554,6 @@ func generateBMCBodyShapeXML(name string, rect pptx.RectEmu, shapeID uint32, tin
 	return string(b)
 }
 
-// generateBMCCellBodyXML produces the body shape of a one-column BMC cell.
-func generateBMCCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint, pad int64, fontName string) string {
-	return generateBMCBodyShapeXML("BMC Body", pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy}, shapeID, &tint,
-		bmcBodyText(body, tint.scheme, pad, fontName))
-}
-
 // bmcBodyText is the text body of a BMC cell body with a bottom margin of pad.
 // The writer and bmcLayoutCells' measurement share it, so what is measured is
 // what is written. fontName is the template's body face: the measure is taken

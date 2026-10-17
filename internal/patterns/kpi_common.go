@@ -628,13 +628,6 @@ type kpiCardGeometry struct {
 	wPt, hPt float64
 }
 
-// kpiCardGeometryFor estimates the card size for n cards spread across the
-// content area with the tile gap. The height is the kpiBaseCardHeightFrac
-// estimate; layoutKPIRow sizes the rendered row to its content.
-func kpiCardGeometryFor(ctx ExpandContext, n int) kpiCardGeometry {
-	return kpiCardGeometryWithGap(ctx, n, ctx.Gap(kpiCardGapPt))
-}
-
 func kpiCardGeometryWithGap(ctx ExpandContext, n int, gapPt float64) kpiCardGeometry {
 	w, h := contentAreaPt(ctx)
 	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, gapPt), hPt: h * kpiBaseCardHeightFrac}

@@ -127,7 +127,7 @@ func TestKPI3up_ValueSingleLineCentred(t *testing.T) {
 		{Big: "12 days", Small: "Median sales cycle", Icon: &IconRef{Name: "clock"}},
 	}
 	grid := expandKPIForTest(t, 3, cells)
-	geo := kpiCardGeometryFor(kpiTestCtx(), 3)
+	geo := kpiCardGeometryWithGap(kpiTestCtx(), 3, kpiTestCtx().Gap(kpiCardGapPt))
 	for i, c := range grid.Rows[0].Cells {
 		var txt kpiTextObj
 		if err := json.Unmarshal(c.Shape.Text, &txt); err != nil {

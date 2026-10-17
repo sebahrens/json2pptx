@@ -86,21 +86,6 @@ func specDesignModeViolations(violations []diagnostics.Diagnostic, result *seman
 	return out
 }
 
-// specDesignModeDiagnostics compiles a spec far enough to judge its design
-// mode. A spec that cannot be parsed or compiled reports nothing here: those
-// failures are the validation pass's own to describe.
-func specDesignModeDiagnostics(filename string, data []byte, strict semantic.Strictness) []diagnostics.Diagnostic {
-	spec, parseDiags := semantic.Parse(filename, data)
-	if spec == nil || parseDiags.HasErrors() {
-		return nil
-	}
-	input, _, err := semantic.Compile(spec, semantic.CompileOptions{Strict: strict})
-	if err != nil || input == nil {
-		return nil
-	}
-	return compiledDesignModeDiagnostics(input)
-}
-
 // blockingDesignModeError summarises the violations for a caller that refuses
 // the deck, mirroring the generate path's message.
 func blockingDesignModeError(diags []diagnostics.Diagnostic) error {

@@ -97,10 +97,6 @@ func previewCacheIdentity(templateHash, engineHash, officeHash, rasterHash strin
 	return hex.EncodeToString(sum[:]), nil
 }
 
-func currentPreviewCacheIdentity(templatePath string, analysis *types.TemplateAnalysis, opts *Options) (string, error) {
-	return currentPreviewCacheIdentityContext(context.Background(), templatePath, analysis, opts)
-}
-
 func currentPreviewCacheIdentityContext(ctx context.Context, templatePath string, analysis *types.TemplateAnalysis, opts *Options) (string, error) {
 	templateHash, err := fileHash(templatePath)
 	if err != nil {

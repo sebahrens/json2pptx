@@ -29,7 +29,7 @@ func TestCollectShapeTree_NestedGroups(t *testing.T) {
 		t.Fatal(err)
 	}
 	slide := &Slide{}
-	collectShapeTree(slide, &sld.CSld.SpTree, identityTransform)
+	collectShapeTreeCtx(slide, &sld.CSld.SpTree, identityTransform, nil)
 
 	want := map[string]Rect{
 		"Strong brand": {X: 1200, Y: 2200, Width: 400, Height: 600},

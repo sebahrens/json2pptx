@@ -84,7 +84,7 @@ func TestNativeDiagramBuildersEmitAccentTints(t *testing.T) {
 			return generateSWOTHeaderXML("Strengths", 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000})
 		}},
 		{"PESTEL", func() string {
-			return generatePESTELHeaderXML("Political", 0, 0, 2000000, 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000})
+			return generatePESTELShapeXML("PESTEL "+"Political", pptx.RectEmu{X: 0, Y: 0, CX: 2000000, CY: 500000}, 1, &taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000}, pestelHeaderText("Political", taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000}, pptx.ShapeTextInsetEMU, ""))
 		}},
 		{"nine box", func() string {
 			return nineBoxTestLabelXML("Star", 500000, 1, taxonomyTint{scheme: "accent4", lumMod: 20000, lumOff: 80000})
@@ -117,14 +117,14 @@ func TestAuthoredTaxonomyPanelsUseReadableTextAndBullets(t *testing.T) {
 			return generateSWOTBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, taxonomyTint{scheme: c})
 		}},
 		{"PESTEL", func(c string) string {
-			return generatePESTELHeaderXML("Title", 0, 0, 2000000, 400000, 1, taxonomyTint{scheme: c})
+			return generatePESTELShapeXML("PESTEL "+"Title", pptx.RectEmu{X: 0, Y: 0, CX: 2000000, CY: 400000}, 1, &taxonomyTint{scheme: c}, pestelHeaderText("Title", taxonomyTint{scheme: c}, pptx.ShapeTextInsetEMU, ""))
 		}, func(c string) string {
-			return generatePESTELBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, taxonomyTint{scheme: c})
+			return generatePESTELShapeXML("PESTEL Body", pptx.RectEmu{X: 0, Y: 0, CX: 2000000, CY: 1000000}, 2, &taxonomyTint{scheme: c}, pestelColumnText("- Detail", 0, 1, 2000000, pptx.ShapeTextInsetEMU, taxonomyTint{scheme: c}, ""))
 		}},
 		{"business canvas", func(c string) string {
 			return generateBMCCellHeaderXML("Title", 0, 0, 2000000, 400000, 1, taxonomyTint{scheme: c})
 		}, func(c string) string {
-			return generateBMCCellBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, taxonomyTint{scheme: c}, pptx.ShapeTextInsetEMU, "")
+			return generateBMCBodyShapeXML("BMC Body", pptx.RectEmu{X: 0, Y: 0, CX: 2000000, CY: 1000000}, 2, &taxonomyTint{scheme: c}, bmcBodyText("- Detail", (taxonomyTint{scheme: c}).scheme, pptx.ShapeTextInsetEMU, ""))
 		}},
 		{"nine box", func(c string) string {
 			return nineBoxTestLabelXML("Title", 400000, 1, taxonomyTint{scheme: c})

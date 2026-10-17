@@ -105,7 +105,7 @@ func TestFormatWaterfallBridgeValue_UnitPlacement(t *testing.T) {
 		{9, "", false, "9"},
 	}
 	for _, c := range cases {
-		if got := formatWaterfallBridgeValue(c.v, c.unit, c.signed); got != c.want {
+		if got := FormatMagnitudeLabel(c.v, c.unit, c.signed); got != c.want {
 			t.Errorf("format(%v, %q, %v) = %q, want %q", c.v, c.unit, c.signed, got, c.want)
 		}
 	}

@@ -261,14 +261,6 @@ func (rc *readContext) hyperlinks(nv cnvPr, txBody *textBody) []string {
 	return out
 }
 
-// collectShapeTree appends the placeholders, shapes and tables of a shape
-// tree to slide, recursing into p:grpSp groups so grouped text (native
-// diagrams) is read and reported at slide coordinates
-// (go-slide-creator-s1uvj.27).
-func collectShapeTree(slide *Slide, tree *shapeTree, tf childTransform) {
-	collectShapeTreeCtx(slide, tree, tf, nil)
-}
-
 // collectShapeTreeCtx is collectShapeTree with relationship resolution for
 // hyperlinks and picture media. Besides p:sp, p:graphicFrame tables and
 // p:grpSp groups it reads p:pic pictures, p:cxnSp connectors and the content

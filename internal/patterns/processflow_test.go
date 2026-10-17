@@ -71,7 +71,7 @@ func TestProcessFlow_BodySizeOverrideWinsOverScaling(t *testing.T) {
 
 func TestProcessFlowDenseLabelsKeepConservativeScale(t *testing.T) {
 	steps := []ProcessFlowStep{{Label: "A detailed handoff requiring review"}, {Label: "Approve"}, {Label: "Close"}}
-	if got := processFlowFullFontPt(steps); got != 12 {
+	if got := processFlowFullFontPtFor(steps, len(steps)); got != 12 {
 		t.Errorf("dense full flow font = %g, want 12", got)
 	}
 	if got := processFlowDefaultFontPt(3); got != 12 {

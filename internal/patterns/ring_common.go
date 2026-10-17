@@ -243,11 +243,6 @@ func (s ringSpec) items() ([]ringItem, error) {
 	return out, nil
 }
 
-// ringItems is the bead's name for ringSpec.items.
-func ringItems(s ringSpec) ([]ringItem, error) {
-	return s.items()
-}
-
 // ringNode is one circle centred on the ring's centreline, with the arc that
 // joins it to the next node.
 type ringNode struct {

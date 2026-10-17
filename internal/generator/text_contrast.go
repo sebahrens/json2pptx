@@ -475,17 +475,6 @@ func pickThemeTextColor(bg svggen.Color, themeColors []types.ThemeColor, thresho
 	return best
 }
 
-// pickFlippedTextColor returns a clean high-contrast replacement for white/black
-// text against bg, chosen from the template palette by pickThemeTextColor.
-// Rather than lerping to an intermediate gray, it snaps to a theme text color
-// (lt1 / dk2 / dk1) or a tonal shade of the background.
-//
-// The returned hex string is upper-case with a leading "#".
-func pickFlippedTextColor(bg svggen.Color, themeColors []types.ThemeColor, threshold float64) (svggen.Color, string) {
-	c := pickThemeTextColor(bg, themeColors, threshold)
-	return c.Color, c.Hex
-}
-
 // isNeutralExtremeHex reports whether a 6-hex color value is pure white or
 // pure black — the two foregrounds for which a clean flip (rather than a
 // lerped gray) is the correct contrast fix.

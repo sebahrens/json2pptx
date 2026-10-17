@@ -41,14 +41,6 @@ func semanticPointer(path string) (string, bool) {
 	return "/" + strings.Join(segments, "/"), true
 }
 
-func semanticPatchCall(data []byte, deckID, path, code string) *patterns.ToolCallSuggestion {
-	ops := semanticPatchOps(data, path, code, nil)
-	if deckID == "" || len(ops) == 0 {
-		return nil
-	}
-	return semanticPatchSuggestion(deckID, ops)
-}
-
 func semanticPatchSuggestion(deckID string, ops []any) *patterns.ToolCallSuggestion {
 	return &patterns.ToolCallSuggestion{
 		Tool:         "validate_deck_spec",

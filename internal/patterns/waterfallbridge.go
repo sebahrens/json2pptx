@@ -627,13 +627,6 @@ func buildWaterfallBridgeLabelText(label string, size float64) json.RawMessage {
 	return data
 }
 
-// formatWaterfallBridgeValue renders a numeric value with optional unit suffix
-// and a leading "+" / "-" sign for deltas so positive vs. negative direction is
-// unambiguous in the label.
-func formatWaterfallBridgeValue(v float64, unit string, signed bool) string {
-	return FormatMagnitudeLabel(v, unit, signed)
-}
-
 // wbColumnLayout describes one waterfall column's vertical split (percent of
 // the bar area) and bridge-line attachment.
 type wbColumnLayout struct {

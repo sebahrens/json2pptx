@@ -31,12 +31,6 @@ var reviewApp []byte
 
 func regexpBlindID() *regexp.Regexp { return regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`) }
 
-// Only the reviewer-safe CSV and explicitly listed PNGs are read. Never serve
-// the evidence directory: it contains the blind key and configuration names.
-func newReviewHandler(dir string) (http.Handler, error) {
-	return newReviewHandlerWithReport(dir, "")
-}
-
 type reviewSheets struct {
 	ids    []string
 	paths  map[string]string

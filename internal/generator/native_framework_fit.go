@@ -1,21 +1,8 @@
 package generator
 
 import (
-	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
-
-// fitNativeFramework is fitNativeFrameworkAt for a body placeholder: the
-// sparse finding, if any, is emitted against the authored content item.
-func (ctx *singlePassContext) fitNativeFramework(slideNum, contentIdx int, kind string, bounds types.BoundingBox, panels []nativePanelData, meta houseDiagramMeta) types.BoundingBox {
-	fit, f := fitNativeFrameworkAt(kind, bounds, panels, meta, ctx.themeFontName, nativeDiagramSite{
-		slideIndex: slideNum - 1, path: slidepath.ContentIndex(slideNum-1, contentIdx),
-	})
-	if f != nil {
-		ctx.emitFitFinding(*f)
-	}
-	return fit
-}
 
 // nativeFrameworkSize measures a content-sized framework's height, or returns
 // the zero size for a kind that keeps the placeholder geometry.

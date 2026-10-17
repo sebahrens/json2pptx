@@ -251,16 +251,6 @@ func Calculate(p Params) (FitResult, error) {
 	}, nil
 }
 
-// estimateTextHeight estimates the total height in points for the given paragraphs
-// when rendered at the specified font size within the given width, with word wrapping.
-// extraSpacingPt is the default per-paragraph spacing (e.g., spcBef + spcAft from slide master).
-// perParaSpacings overrides extraSpacingPt for each corresponding paragraph index.
-// leftMargins is per-paragraph left margin in points (from bullet marL); reduces available width.
-func estimateTextHeight(ff *canvas.FontFamily, paragraphs []string, fontSizePt, widthPt, lineSpacing, extraSpacingPt float64, perParaSpacings, leftMargins []float64) float64 {
-	h, _ := estimateTextHeightUpTo(ff, paragraphs, fontSizePt, widthPt, lineSpacing, 0, extraSpacingPt, perParaSpacings, leftMargins, math.Inf(1))
-	return h
-}
-
 // estimateTextHeightUpTo is estimateTextHeight that stops measuring once the
 // running height exceeds limitPt and returns that partial (already too tall)
 // height. Calculate only compares the result against the box height, so the

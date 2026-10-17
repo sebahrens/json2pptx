@@ -257,7 +257,7 @@ func TestScaleImageToFit(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := scaleImageToFit(testImage, tt.bounds)
+			result, err := utils.ScaleImageToFit(testImage, tt.bounds)
 			if err != nil {
 				t.Fatalf("scaleImageToFit failed: %v", err)
 			}
@@ -293,7 +293,7 @@ func TestScaleImageToFit_InvalidImage(t *testing.T) {
 	}
 
 	// Test with non-existent file
-	_, err := scaleImageToFit("nonexistent.png", bounds)
+	_, err := utils.ScaleImageToFit("nonexistent.png", bounds)
 	if err == nil {
 		t.Error("Expected error for non-existent file")
 	}
@@ -306,7 +306,7 @@ func TestScaleImageToFit_InvalidImage(t *testing.T) {
 	_, _ = tmpFile.WriteString("this is not an image")
 	_ = tmpFile.Close()
 
-	_, err = scaleImageToFit(tmpFile.Name(), bounds)
+	_, err = utils.ScaleImageToFit(tmpFile.Name(), bounds)
 	if err == nil {
 		t.Error("Expected error for non-image file")
 	}
@@ -327,7 +327,7 @@ func TestScaleImageToFit_AspectRatio(t *testing.T) {
 		Height: 1000000,  // Short
 	}
 
-	result, err := scaleImageToFit(testImage, bounds)
+	result, err := utils.ScaleImageToFit(testImage, bounds)
 	if err != nil {
 		t.Fatalf("scaleImageToFit failed: %v", err)
 	}

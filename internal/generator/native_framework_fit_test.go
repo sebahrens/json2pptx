@@ -22,8 +22,7 @@ func TestNativeFrameworkSparseContentShrinksAndReports(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.kind, func(t *testing.T) {
-			ctx := &singlePassContext{}
-			got := ctx.fitNativeFramework(2, 3, tc.kind, bounds, tc.panels, tc.meta)
+			got, f := fitNativeFrameworkAt(tc.kind, bounds, tc.panels, tc.meta, "", nativeDiagramSite{slideIndex: 1, path: "/slides/1/content/3"})
 			if got.Height >= bounds.Height || got.Height <= 0 {
 				t.Fatalf("diagram not content-sized: height=%d, original=%d", got.Height, bounds.Height)
 			}
@@ -32,10 +31,9 @@ func TestNativeFrameworkSparseContentShrinksAndReports(t *testing.T) {
 			if got.Width != bounds.Width || got.X != bounds.X || got.Y != bounds.Y {
 				t.Fatalf("diagram not top-anchored within original width: %+v", got)
 			}
-			if len(ctx.fitFindings) != 1 {
-				t.Fatalf("want one sparse finding, got %+v", ctx.fitFindings)
+			if f == nil {
+				t.Fatalf("want one sparse finding, got %+v", f)
 			}
-			f := ctx.fitFindings[0]
 			if f.Code != patterns.ErrCodeSparseLayout || f.Pattern != tc.kind || f.Path != "/slides/1/content/3" || f.Fix == nil || f.Fix.Kind != "add_detail_or_resize" {
 				t.Fatalf("wrong actionable finding: %+v", f)
 			}
@@ -58,37 +56,36 @@ func TestNativeFrameworkDenseContentKeepsBoundsAndNoSparseFinding(t *testing.T) 
 	}
 	for _, tc := range cases {
 		t.Run(tc.kind, func(t *testing.T) {
-			ctx := &singlePassContext{}
-			if got := ctx.fitNativeFramework(1, 0, tc.kind, bounds, tc.panels, tc.meta); got != bounds {
+			got, f := fitNativeFrameworkAt(tc.kind, bounds, tc.panels, tc.meta, "", nativeDiagramSite{slideIndex: 0, path: "/slides/0/content/0"})
+			if got != bounds {
 				t.Errorf("dense diagram shrank: got %+v, want %+v", got, bounds)
 			}
-			if len(ctx.fitFindings) != 0 {
-				t.Errorf("dense diagram reported sparse: %+v", ctx.fitFindings)
+			if f != nil {
+				t.Errorf("dense diagram reported sparse: %+v", f)
 			}
 		})
 	}
 }
 
 func TestNativeFrameworkInvalidBoundsPreserved(t *testing.T) {
-	ctx := &singlePassContext{}
 	bounds := types.BoundingBox{Width: 0, Height: 100}
-	if got := ctx.fitNativeFramework(1, 0, "pestel", bounds, []nativePanelData{{title: "Political"}}, houseDiagramMeta{}); got != bounds {
+	got, f := fitNativeFrameworkAt("pestel", bounds, []nativePanelData{{title: "Political"}}, houseDiagramMeta{}, "", nativeDiagramSite{slideIndex: 0, path: "/slides/0/content/0"})
+	if got != bounds {
 		t.Fatalf("invalid bounds changed: %+v", got)
 	}
-	if len(ctx.fitFindings) != 0 {
-		t.Fatalf("invalid bounds emitted findings: %+v", ctx.fitFindings)
+	if f != nil {
+		t.Fatalf("invalid bounds emitted findings: %+v", f)
 	}
 }
 
 func TestNativeFrameworkEmptyKPIReportsSparse(t *testing.T) {
-	ctx := &singlePassContext{}
 	bounds := types.BoundingBox{Width: 8000000, Height: 4000000}
-	got := ctx.fitNativeFramework(1, 0, "kpi_dashboard", bounds, []nativePanelData{{}}, houseDiagramMeta{})
+	got, f := fitNativeFrameworkAt("kpi_dashboard", bounds, []nativePanelData{{}}, houseDiagramMeta{}, "", nativeDiagramSite{slideIndex: 0, path: "/slides/0/content/0"})
 	if got.Height >= bounds.Height {
 		t.Fatalf("empty KPI did not shrink: %+v", got)
 	}
-	if len(ctx.fitFindings) != 1 || ctx.fitFindings[0].Code != patterns.ErrCodeSparseLayout || ctx.fitFindings[0].OverflowRatio != 0 {
-		t.Fatalf("empty KPI did not produce zero-ink sparse finding: %+v", ctx.fitFindings)
+	if f == nil || f.Code != patterns.ErrCodeSparseLayout || f.OverflowRatio != 0 {
+		t.Fatalf("empty KPI did not produce zero-ink sparse finding: %+v", f)
 	}
 }
 
@@ -96,15 +93,14 @@ func TestNativeFrameworkSkewedContentUsesAverageInk(t *testing.T) {
 	// One busy quadrant must not mask three near-empty ones. The painted card
 	// height follows the busiest quadrant, but sparse detection estimates
 	// visible text area across all four equally wide quadrants.
-	ctx := &singlePassContext{}
 	bounds := types.BoundingBox{Width: 8000000, Height: 4200000}
 	panels := []nativePanelData{
 		{title: "Strengths", body: strings.Repeat("- Detailed strength supporting the strategy\n", 5)},
 		{title: "Weaknesses"}, {title: "Opportunities"}, {title: "Threats"},
 	}
-	ctx.fitNativeFramework(1, 0, "swot", bounds, panels, houseDiagramMeta{})
-	if len(ctx.fitFindings) != 1 || ctx.fitFindings[0].OverflowRatio >= sparseLayoutThreshold {
-		t.Fatalf("skewed diagram should report sparse ink, got %+v", ctx.fitFindings)
+	_, f := fitNativeFrameworkAt("swot", bounds, panels, houseDiagramMeta{}, "", nativeDiagramSite{slideIndex: 0, path: "/slides/0/content/0"})
+	if f == nil || f.OverflowRatio >= sparseLayoutThreshold {
+		t.Fatalf("skewed diagram should report sparse ink, got %+v", f)
 	}
 }
 
@@ -121,8 +117,7 @@ func TestNativeFrameworkPESTELTwoBulletsPreserveBodyFont(t *testing.T) {
 		{title: "Legal", body: "- Data privacy laws\n- IP protection"},
 	}
 	bounds := types.BoundingBox{Width: 10803850, Height: 3600000}
-	ctx := &singlePassContext{}
-	fit := ctx.fitNativeFramework(1, 1, "pestel", bounds, panels, houseDiagramMeta{})
+	fit, _ := fitNativeFrameworkAt("pestel", bounds, panels, houseDiagramMeta{}, "", nativeDiagramSite{slideIndex: 0, path: "/slides/0/content/1"})
 	cellW := (fit.Width - 2*pestelGap) / 3
 	cellH := (fit.Height - pestelGap) / 2
 	headerH := int64(float64(cellH) * pestelHeaderHeightRatio)

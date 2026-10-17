@@ -34,7 +34,7 @@ func TestKPINupCatalogValuesFitAsAtomicTokens(t *testing.T) {
 			if len(cells) == 0 {
 				t.Fatalf("%s has no exemplar values", name)
 			}
-			geo := kpiCardGeometryFor(ctx, k.cfg.Count)
+			geo := kpiCardGeometryWithGap(ctx, k.cfg.Count, ctx.Gap(kpiCardGapPt))
 			pos := geo.iconPosition()
 			size := kpiFitBigSize(ctx, cells, resolveKPIBigSize(nil), geo, pos)
 			if size < 24 {

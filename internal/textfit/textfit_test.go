@@ -1,6 +1,7 @@
 package textfit
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -14,8 +15,8 @@ func TestCalculate_TriesNonGridMinimumBeforeReducingLineSpacing(t *testing.T) {
 	}
 	paragraphs := []string{strings.Repeat("Revenue growth across regions ", 5)}
 	usableWidthPt := 300.0
-	at90 := estimateTextHeight(ff, paragraphs, 32*0.90, usableWidthPt, 1.2, 0, nil, nil)
-	at88 := estimateTextHeight(ff, paragraphs, 32*0.88, usableWidthPt, 1.2, 0, nil, nil)
+	at90, _ := estimateTextHeightUpTo(ff, paragraphs, 32*0.90, usableWidthPt, 1.2, 0, 0, nil, nil, math.Inf(1))
+	at88, _ := estimateTextHeightUpTo(ff, paragraphs, 32*0.88, usableWidthPt, 1.2, 0, 0, nil, nil, math.Inf(1))
 	if at90 <= at88 {
 		t.Fatalf("fixture must distinguish 90%% and 88%%: %.2f vs %.2f", at90, at88)
 	}

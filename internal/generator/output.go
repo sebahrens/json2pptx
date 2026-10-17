@@ -1192,16 +1192,6 @@ func (ctx *singlePassContext) writeNewSlideRelationships(slideNum int, layoutID 
 	return ctx.writeRelationshipsFile(relsFileName, rels)
 }
 
-// writeNativeSVGOnlyRelationships writes the relationships file for a slide with only native SVG inserts.
-func (ctx *singlePassContext) writeNativeSVGOnlyRelationships(slideNum int, nativeSVGs []nativeSVGInsert) error {
-	relsFileName := SlideRelsPath(slideNum)
-
-	existingRels := ctx.loadOrCreateRelationships(relsFileName)
-	ctx.appendNativeSVGRelationships(&existingRels, nativeSVGs)
-
-	return ctx.writeRelationshipsFile(relsFileName, existingRels)
-}
-
 // loadOrCreateRelationships loads existing relationships from the template or creates a new empty one.
 func (ctx *singlePassContext) loadOrCreateRelationships(relsFileName string) pptx.RelationshipsXML {
 	var existingRels pptx.RelationshipsXML

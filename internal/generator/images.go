@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
@@ -23,12 +22,6 @@ import (
 // Returns nil if the path is safe, or an error describing the security issue.
 func ValidateImagePathWithConfig(imagePath string, allowedPaths []string) error {
 	return utils.ValidatePath(imagePath, allowedPaths)
-}
-
-// scaleImageToFit scales an image to fit within bounds while maintaining aspect ratio.
-// AC6: Image Scaling
-func scaleImageToFit(imagePath string, bounds types.BoundingBox) (types.BoundingBox, error) {
-	return utils.ScaleImageToFit(imagePath, bounds)
 }
 
 // XML structures for relationships and content types are defined in internal/pptx package.

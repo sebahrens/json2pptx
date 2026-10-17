@@ -1278,7 +1278,7 @@ func TestPickFlippedTextColor(t *testing.T) {
 
 	t.Run("light_bg_picks_dk1", func(t *testing.T) {
 		bg := svggen.MustParseColor("#E8A838") // light yellow
-		_, hex := pickFlippedTextColor(bg, tc, svggen.WCAGAALarge)
+		hex := pickThemeTextColor(bg, tc, svggen.WCAGAALarge).Hex
 		if hex != "#000000" {
 			t.Errorf("expected dk1 (#000000) for light bg, got %s", hex)
 		}
@@ -1286,7 +1286,7 @@ func TestPickFlippedTextColor(t *testing.T) {
 
 	t.Run("dark_bg_picks_lt1", func(t *testing.T) {
 		bg := svggen.MustParseColor("#1B2A4A") // dark navy
-		_, hex := pickFlippedTextColor(bg, tc, svggen.WCAGAALarge)
+		hex := pickThemeTextColor(bg, tc, svggen.WCAGAALarge).Hex
 		if hex != "#FFFFFF" {
 			t.Errorf("expected lt1 (#FFFFFF) for dark bg, got %s", hex)
 		}
@@ -1294,7 +1294,7 @@ func TestPickFlippedTextColor(t *testing.T) {
 
 	t.Run("empty_theme_falls_back_to_pure_extremes", func(t *testing.T) {
 		bg := svggen.MustParseColor("#E8A838")
-		_, hex := pickFlippedTextColor(bg, nil, svggen.WCAGAALarge)
+		hex := pickThemeTextColor(bg, nil, svggen.WCAGAALarge).Hex
 		if hex != "#000000" {
 			t.Errorf("expected fallback #000000 with nil theme, got %s", hex)
 		}

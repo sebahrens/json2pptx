@@ -33,7 +33,15 @@ const rawEscapeHatchSpec = `{
 func TestDeckSpecEnforcesConstrainedDesignMode(t *testing.T) {
 	data := []byte(strings.Replace(rawEscapeHatchSpec, "%s", "", 1))
 
-	viaSpec := specDesignModeDiagnostics("spec.json", data, semantic.StrictnessWarn)
+	parsed, parseDiags := semantic.Parse("spec.json", data)
+	if parsed == nil || parseDiags.HasErrors() {
+		t.Fatalf("parse: %+v", parseDiags)
+	}
+	input, _, err := semantic.Compile(parsed, semantic.CompileOptions{Strict: semantic.StrictnessWarn})
+	if err != nil {
+		t.Fatal(err)
+	}
+	viaSpec := compiledDesignModeDiagnostics(input)
 	if len(viaSpec) == 0 {
 		t.Fatal("a raw slide with hand-set sizes and hex fills drew no design_mode_violation through the DeckSpec path")
 	}
@@ -67,9 +75,6 @@ func TestDeckSpecEnforcesConstrainedDesignMode(t *testing.T) {
 // the raw values are deliberate on this path at all.
 func TestDeckSpecDesignModeFreeOptsOut(t *testing.T) {
 	data := []byte(strings.Replace(rawEscapeHatchSpec, "%s", `, "design_mode": "free"`, 1))
-	if d := specDesignModeDiagnostics("spec.json", data, semantic.StrictnessWarn); len(d) != 0 {
-		t.Errorf("design_mode \"free\" still drew %d violations: %+v", len(d), d)
-	}
 
 	// And it reaches the compiled deck rather than being dropped on the floor.
 	spec, diags := semantic.Parse("spec.json", data)
@@ -79,6 +84,9 @@ func TestDeckSpecDesignModeFreeOptsOut(t *testing.T) {
 	input, _, err := semantic.Compile(spec, semantic.CompileOptions{Strict: semantic.StrictnessWarn})
 	if err != nil {
 		t.Fatalf("compile: %v", err)
+	}
+	if d := compiledDesignModeDiagnostics(input); len(d) != 0 {
+		t.Errorf("design_mode free still drew %d violations: %+v", len(d), d)
 	}
 	if input.DesignMode != "free" {
 		t.Errorf("compiled design_mode = %q, want free", input.DesignMode)

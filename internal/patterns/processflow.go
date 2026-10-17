@@ -620,13 +620,6 @@ func processFlowContentHeight(need, cellW, aspect, limit float64) float64 {
 	return math.Round(h)
 }
 
-// processFlowFullFontPt uses the taller full-size row to promote short labels.
-// Dense labels keep the conservative scale; compact flows retain their own
-// 9–12pt scale via processFlowDefaultFontPt.
-func processFlowFullFontPt(steps []ProcessFlowStep) float64 {
-	return processFlowFullFontPtFor(steps, len(steps))
-}
-
 // processFlowFullFontPtFor is processFlowFullFontPt for steps laid out perRow
 // to a row: the box width, and so the size, follows the row's step count.
 func processFlowFullFontPtFor(steps []ProcessFlowStep, perRow int) float64 {

@@ -326,7 +326,7 @@ func TestPyramidAllocatesHeightToNarrowTextHeavyApex(t *testing.T) {
 		{title: "Capabilities", body: "Build core services"},
 		{title: "Initiatives", body: "Quarterly targets"},
 	}
-	heights, gap := pyramidLevelHeights(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, "Arial")
+	heights, gap, _, _ := pyramidLevelLayout(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, "Arial")
 	if heights[0] <= heights[len(heights)-1] {
 		t.Fatalf("text-heavy narrow apex = %d EMU, base = %d EMU; apex should receive more height", heights[0], heights[len(heights)-1])
 	}
@@ -382,7 +382,7 @@ func TestPyramidAllocatesHeightToNarrowTextHeavyApex(t *testing.T) {
 func TestPyramidTierHeightsStayWithinShortPlaceholder(t *testing.T) {
 	bounds := types.BoundingBox{Width: 8000000, Height: 300000}
 	panels := []nativePanelData{{title: "A"}, {title: "B"}, {title: "C"}, {title: "D"}}
-	heights, gap := pyramidLevelHeights(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, "Arial")
+	heights, gap, _, _ := pyramidLevelLayout(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, "Arial")
 	if gap != 0 {
 		t.Errorf("short placeholder gap = %d, want 0", gap)
 	}
@@ -405,7 +405,7 @@ func TestPyramidLongApexDoesNotCollapseBase(t *testing.T) {
 		{title: "Middle"},
 		{title: "Base"},
 	}
-	heights, gap := pyramidLevelHeights(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, "Arial")
+	heights, gap, _, _ := pyramidLevelLayout(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, "Arial")
 	minimum := 2*nativeVerticalPadSteps[len(nativeVerticalPadSteps)-1] + int64(12*1.2*float64(types.EMUPerPoint))
 	if heights[1] < minimum || heights[2] < minimum {
 		t.Errorf("long apex starved other tiers below one readable line: %v", heights)

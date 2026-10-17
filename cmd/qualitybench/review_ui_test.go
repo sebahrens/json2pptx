@@ -31,7 +31,7 @@ func reviewFixture(t *testing.T) string {
 }
 
 func TestReviewHandlerBlindAllowlist(t *testing.T) {
-	h, err := newReviewHandler(reviewFixture(t))
+	h, err := newReviewHandlerWithReport(reviewFixture(t), "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +56,7 @@ func TestReviewHandlerBlindAllowlist(t *testing.T) {
 func TestReviewManifestChangesWithPixels(t *testing.T) {
 	dir := reviewFixture(t)
 	manifest := func() map[string]any {
-		h, err := newReviewHandler(dir)
+		h, err := newReviewHandlerWithReport(dir, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,7 +105,7 @@ func TestReviewBundleRejectsBrokenOrEscapingSheets(t *testing.T) {
 					t.Skip(err)
 				}
 			}
-			if _, err := newReviewHandler(dir); err == nil {
+			if _, err := newReviewHandlerWithReport(dir, ""); err == nil {
 				t.Fatal("invalid bundle accepted")
 			}
 		})

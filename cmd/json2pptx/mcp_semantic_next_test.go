@@ -17,7 +17,7 @@ func TestSemanticPatchCallOnlyForExistingStringFields(t *testing.T) {
 		{"slides[0].title", "/slides/0/title"},
 		{"meta.template", "/meta/template"},
 	} {
-		call := semanticPatchCall(data, "deck_123", tc.path, "FIT.title_wrap")
+		call := semanticPatchSuggestion("deck_123", semanticPatchOps(data, tc.path, "FIT.title_wrap", nil))
 		if call == nil || call.Tool != "validate_deck_spec" {
 			t.Fatalf("%s: missing semantic patch call: %+v", tc.path, call)
 		}
@@ -27,8 +27,8 @@ func TestSemanticPatchCallOnlyForExistingStringFields(t *testing.T) {
 		}
 	}
 	for _, path := range []string{"slides[2].kpis", "slides[99].title", "slides[0].missing", "slides[0].title/other"} {
-		if call := semanticPatchCall(data, "deck_123", path, "FIT.title_wrap"); call != nil {
-			t.Errorf("%s: unsafe patch suggestion: %+v", path, call)
+		if ops := semanticPatchOps(data, path, "FIT.title_wrap", nil); len(ops) != 0 {
+			t.Errorf("%s: unsafe patch operations: %+v", path, ops)
 		}
 	}
 }

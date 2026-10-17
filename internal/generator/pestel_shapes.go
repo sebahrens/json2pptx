@@ -493,15 +493,3 @@ func generatePESTELShapeXML(name string, rect pptx.RectEmu, shapeID uint32, tint
 	}
 	return string(b)
 }
-
-// generatePESTELHeaderXML produces the header shape of a PESTEL segment.
-func generatePESTELHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
-	return generatePESTELShapeXML("PESTEL "+title, pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy}, shapeID, &tint,
-		pestelHeaderText(title, tint, pptx.ShapeTextInsetEMU, ""))
-}
-
-// generatePESTELBodyXML produces the body shape of a one-column PESTEL segment.
-func generatePESTELBodyXML(body string, x, y, cx, cy int64, shapeID uint32, tint taxonomyTint) string {
-	return generatePESTELShapeXML("PESTEL Body", pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy}, shapeID, &tint,
-		pestelColumnText(body, 0, 1, cx, pptx.ShapeTextInsetEMU, tint, ""))
-}

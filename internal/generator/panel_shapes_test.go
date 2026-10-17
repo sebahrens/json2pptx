@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"regexp"
@@ -13,14 +14,22 @@ import (
 )
 
 func TestPanelBulletsToOOXML_Empty(t *testing.T) {
-	result := panelBulletsToOOXML("", panelBodyFontSize)
+	var serialized bytes.Buffer
+	for _, paragraph := range panelBulletsParagraphs("", panelBodyFontSize) {
+		paragraph.WriteXML(&serialized)
+	}
+	result := serialized.String()
 	if result != "" {
 		t.Errorf("empty input should return empty string, got %q", result)
 	}
 }
 
 func TestPanelBulletsToOOXML_BulletLines(t *testing.T) {
-	result := panelBulletsToOOXML("- First bullet\n- Second bullet", panelBodyFontSize)
+	var serialized bytes.Buffer
+	for _, paragraph := range panelBulletsParagraphs("- First bullet\n- Second bullet", panelBodyFontSize) {
+		paragraph.WriteXML(&serialized)
+	}
+	result := serialized.String()
 
 	// Should contain bullet character reference
 	if !strings.Contains(result, `buChar char=`) {
@@ -61,7 +70,11 @@ func TestPanelBulletsToOOXML_BulletLines(t *testing.T) {
 }
 
 func TestPanelBulletsToOOXML_PlainLines(t *testing.T) {
-	result := panelBulletsToOOXML("Plain text line", panelBodyFontSize)
+	var serialized bytes.Buffer
+	for _, paragraph := range panelBulletsParagraphs("Plain text line", panelBodyFontSize) {
+		paragraph.WriteXML(&serialized)
+	}
+	result := serialized.String()
 
 	// Should NOT contain bullet elements
 	if strings.Contains(result, "buChar") {
@@ -75,7 +88,11 @@ func TestPanelBulletsToOOXML_PlainLines(t *testing.T) {
 }
 
 func TestPanelBulletsToOOXML_MixedLines(t *testing.T) {
-	result := panelBulletsToOOXML("Header text\n- Bullet one\n- Bullet two\nFooter text", panelBodyFontSize)
+	var serialized bytes.Buffer
+	for _, paragraph := range panelBulletsParagraphs("Header text\n- Bullet one\n- Bullet two\nFooter text", panelBodyFontSize) {
+		paragraph.WriteXML(&serialized)
+	}
+	result := serialized.String()
 
 	// Count bullet chars — should be exactly 2
 	count := strings.Count(result, `buChar char=`)
@@ -91,7 +108,11 @@ func TestPanelBulletsToOOXML_MixedLines(t *testing.T) {
 }
 
 func TestPanelBulletsToOOXML_XMLEscaping(t *testing.T) {
-	result := panelBulletsToOOXML("- Smith & Jones <2025>", panelBodyFontSize)
+	var serialized bytes.Buffer
+	for _, paragraph := range panelBulletsParagraphs("- Smith & Jones <2025>", panelBodyFontSize) {
+		paragraph.WriteXML(&serialized)
+	}
+	result := serialized.String()
 
 	if !strings.Contains(result, "Smith &amp; Jones &lt;2025&gt;") {
 		t.Error("special XML characters should be escaped")

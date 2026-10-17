@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"bytes"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -430,21 +429,6 @@ func panelBulletsParagraphs(text string, fontSizeHundredths int) []pptx.Paragrap
 		BulletColor: pptx.SchemeFill(panelBulletSchemeColor),
 		SpaceAfter:  panelBulletSpaceAfter,
 	})
-}
-
-// panelBulletsToOOXML converts body text into OOXML paragraph elements.
-// Lines starting with "- " become bulleted paragraphs with accent1 bullet color;
-// other lines become plain paragraphs. Empty input returns an empty string.
-func panelBulletsToOOXML(text string, fontSizeHundredths int) string {
-	paras := panelBulletsParagraphs(text, fontSizeHundredths)
-	if len(paras) == 0 {
-		return ""
-	}
-	var buf bytes.Buffer
-	for _, p := range paras {
-		p.WriteXML(&buf)
-	}
-	return buf.String()
 }
 
 // generatePanelHeaderXML produces a p:sp element for a panel header rectangle:
