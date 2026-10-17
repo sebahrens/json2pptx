@@ -47,17 +47,7 @@ var stringLiteralCodes = map[string]string{
 
 // knownFitDocDrift lists codes emitted in Go but not yet documented in
 // docs/FIT_FINDINGS.md. These are warnings with a staleness check.
-var knownFitDocDrift = map[string]string{
-	// Chart codes — documented in SKILL.md's chart-codes table but not
-	// yet in FIT_FINDINGS.md.
-	"chart.all_zero_series":        "chart code, documented in SKILL.md only",
-	"chart.auto_log_scale_applied": "chart code, documented in SKILL.md only",
-	"chart.invalid_numeric":        "chart code, documented in SKILL.md only",
-	"chart.negative_on_log":        "chart code, documented in SKILL.md only",
-	"chart.overflow_suppressed":    "chart code, documented in SKILL.md only",
-	"chart.scatter_label_skipped":  "chart code, documented in SKILL.md only",
-	"chart.zero_sum_pie":           "chart code, documented in SKILL.md only",
-}
+var knownFitDocDrift = map[string]string{}
 
 // ---------------------------------------------------------------------------
 // TestSkillSyncDoctor_FindingCodes — bidirectional finding-code reconciliation

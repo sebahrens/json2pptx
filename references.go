@@ -14,11 +14,13 @@ import (
 )
 
 // Keep the list explicit: the snapshot is what the skills link to, not the
-// repository. TestSkillInstallReferencesResolve fails when an installed link
-// has no file behind it.
+// repository. The wiki is one linked reference collection: include its whole
+// tree so catalogues, hub pages and their transitive links travel together.
+// TestInstalledSkillReferencesAreSelfContained follows installed Markdown links
+// outside the checkout and fails when a reference is missing.
 //
 //go:embed docs/INPUT_FORMAT.md docs/INPUT_FORMAT_ADVANCED.md docs/FIT_FINDINGS.md docs/SEMANTIC_COMPILER.md docs/TEMPLATE_SPEC.md docs/PATH_GRAMMAR.md docs/PATTERNS.md docs/TEMPLATE_ANALYSIS.md
-//go:embed all:examples/semantic all:internal/tokens
+//go:embed all:docs/wiki all:examples/semantic all:internal/tokens
 //go:embed examples/full-slide-images.json examples/images/full-slide.svg examples/images/full-slide.png
 //go:embed tests/quality/evidence/connectors/midnight-blue/source-aware-evidence-route.json
 //go:embed tests/quality/evidence/connectors/midnight-blue/readable-source-companion-route.json

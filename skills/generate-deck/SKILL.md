@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.178.0
+schema_version: 5.0.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -11,7 +11,7 @@ description: >-
 
 **Visual standard:** Apply [native slide composition](RULES.md#native-slide-composition).
 
-Call `get_started(skill_version:"4.178.0")` first. On `skill_warning`,
+Call `get_started(skill_version:"5.0.0")` first. On `skill_warning`,
 run `json2pptx skill install`; `skill status` checks installed files.
 Without runtime render tooling, deliver as **UNREVIEWED**. Use live schemas:
 `get_started(tool:"<name>")` returns a full schema; `tools/list` is abridged.
