@@ -119,7 +119,8 @@ use an intentional family change to serve the argument.
 - **Empty bands under one-line titles.** Most kinds and `regions` start
   content at the native body line; under a one-line title, look for a band
   the content could use. `executive_summary` starts below the measured title
-  text, including wrapped titles.
+  text, including wrapped titles. Balance advice uses that effective body
+  anchor and the existing allowance for normal whitespace below anchored content.
 
 ## The second-template pass
 
@@ -137,6 +138,9 @@ second template.
   `patch_verified` fix as given.
   Compose findings map through bands and gaps to the authored segment,
   heading or caption.
+- Replace sample copy at the reported field. Placeholder messages quote the
+  sample's origin; `evidence.placeholder` retains its marker identity. Repeated
+  copies of one marker may be grouped; distinct markers stay separate.
 - Prefer the repair that keeps the visual: shorten → drop a detail line → add
   a region or slide → change the kind. Dropping to bullets (`layout: content`)
   is the last resort, even when a verified fix offers it first.

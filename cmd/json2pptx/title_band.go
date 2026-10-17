@@ -167,6 +167,13 @@ func reserveBodyAnchor(g GridGeometry, slide SlideInput, layouts []types.LayoutM
 	// A conclusion list hangs directly below its measured title text. Keeping
 	// the native bullet anchor would restore the tall title box's empty band.
 	if isExecSummarySlide(slide) {
+		if g.Zone != nil {
+			// Record the actual reclaimed body line for generic balance checks.
+			// It is already the grid's top edge, so this does not move content.
+			zone := *g.Zone
+			zone.BodyTop = contentRelativeBoundsBase(g.OverrideBounds, g.Zone, 0, 0).Y
+			g.Zone = &zone
+		}
 		return g
 	}
 

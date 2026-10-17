@@ -2729,6 +2729,11 @@ Findings are printed to stderr grouped by slide. Exit code is nonzero only if an
 
 Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
 
+Placeholder-copy findings quote where the sample originated and retain the
+registered marker identity in `evidence.placeholder`. Repeated occurrences of
+one marker can be grouped; distinct marker identities remain separate so their
+authored fields and repair calls stay attributable.
+
 ## Measured layout review findings
 
 These advisory findings use resolved geometry, written text sizes or known

@@ -78,7 +78,19 @@ func causeKey(d semanticDiagnostic) string {
 	if !diagnosticBlocks(d) {
 		msg = kindNames().ReplaceAllString(quotedRE.ReplaceAllString(msg, `"…"`), "<kind>")
 	}
-	return d.Code + "\x00" + d.Severity + "\x00" + d.Action + "\x00" + d.Waived + "\x00" + msg
+	marker := placeholderMarkerIdentity(d.Evidence)
+	if marker == "" && d.diag != nil {
+		marker = placeholderMarkerIdentity(d.diag.Details)
+	}
+	return d.Code + "\x00" + d.Severity + "\x00" + d.Action + "\x00" + d.Waived + "\x00" + msg + "\x00" + marker
+}
+
+// Placeholder families share readable prose, but their stable provenance is
+// a distinct cause. Keep that identity through both raw deduplication and
+// cross-field compaction; unrelated evidence does not change grouping.
+func placeholderMarkerIdentity(facts map[string]any) string {
+	marker, _ := facts[semantic.PlaceholderDetail].(string)
+	return marker
 }
 
 // collapsible reports whether a diagnostic may be folded with others of its

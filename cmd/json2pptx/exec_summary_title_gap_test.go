@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -106,6 +108,64 @@ func TestExecutiveSummaryMeasuredTitleClearanceAndGenerationParity(t *testing.T)
 				}
 				if !found {
 					t.Fatal("generated first point missing")
+				}
+			}
+		})
+	}
+}
+
+// The summary deliberately uses the reclaimed title edge as its body line.
+// Recording that line must change balance metadata, never the written shapes.
+func TestExecutiveSummaryEffectiveBodyAnchorPreservesOOXML(t *testing.T) {
+	for _, name := range []string{"midnight-blue", "p-style"} {
+		t.Run(name, func(t *testing.T) {
+			path := filepath.Join("..", "..", "templates", name+".pptx")
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				t.Skip("local template unavailable")
+			}
+			ctx, err := loadPreviewTemplate(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = ctx.reader.Close() }()
+			for _, count := range []int{3, 4, 5} {
+				for _, lines := range []int{1, 2, 3} {
+					t.Run(fmt.Sprintf("%dpoints/%dlines", count, lines), func(t *testing.T) {
+						title := strings.TrimSuffix(strings.Repeat("Accountable owners close every case\n", lines), "\n")
+						points := make([]map[string]string, count)
+						for i := range points {
+							points[i] = map[string]string{"lead": fmt.Sprintf("Assign owner %d", i+1), "support": "Record one accountable person for every case."}
+						}
+						values, _ := json.Marshal(map[string]any{"points": points, "bottom_line": "Assign owners and reviewers before the pilot starts."})
+						slide := SlideInput{LayoutID: "blank-title", Pattern: &PatternInput{Name: "exec-summary", Values: values}, Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &title}}}
+						expanded, _ := expandPatternsForFit(&PresentationInput{Slides: []SlideInput{slide}}, ctx.slideWidth, ctx.slideHeight, nil, ctx.layouts...)
+						actual := expanded.Slides[0]
+						geom := resolveGridGeometry(actual, ctx.layouts, ctx.slideWidth, ctx.slideHeight)
+						safe := contentRelativeBoundsBase(geom.OverrideBounds, geom.Zone, ctx.slideWidth, ctx.slideHeight)
+						if geom.Zone == nil || geom.Zone.BodyTop != safe.Y {
+							t.Fatalf("effective anchor does not match content top: %+v vs %+v", geom.Zone, safe)
+						}
+						beforeZone := *geom.Zone
+						beforeZone.BodyTop = 0
+						before, err := resolveShapeGrid(actual.ShapeGrid, pptx.NewShapeIDAllocator(nil), geom.OverrideBounds, &beforeZone, ctx.slideWidth, ctx.slideHeight, nil)
+						if err != nil {
+							t.Fatal(err)
+						}
+						after, err := resolveShapeGrid(actual.ShapeGrid, pptx.NewShapeIDAllocator(nil), geom.OverrideBounds, geom.Zone, ctx.slideWidth, ctx.slideHeight, nil)
+						if err != nil {
+							t.Fatal(err)
+						}
+						if !reflect.DeepEqual(before.Shapes, after.Shapes) {
+							t.Fatal("anchor metadata changed generated OOXML")
+						}
+						for _, emptyPct := range []int64{35, 45} {
+							ink := []pptx.RectEmu{{X: safe.X, Y: safe.Y, CX: safe.CX, CY: safe.CY * (100 - emptyPct) / 100}}
+							finding := checkVerticalImbalance(ink, safe, &actual, 0, "exec-summary", geom.Zone.BodyTop, true)
+							if (finding != nil) != (emptyPct > 40) {
+								t.Fatalf("%d%% empty: finding=%v", emptyPct, finding)
+							}
+						}
+					})
 				}
 			}
 		})

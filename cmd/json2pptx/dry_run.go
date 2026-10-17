@@ -117,16 +117,17 @@ func (o *dryRunOutput) buildFindingsEnvelope() {
 // severity saw the same table in two different work lists
 // (go-slide-creator-7xyy).
 //
-// Identity is (code, path, message): same words about the same field. The
+// Identity is (code, path, message, placeholder marker): same words about the
+// same field with the same registered placeholder provenance. The
 // survivor is the richer record — a remediation, then a next_tool_call, then the
 // higher severity — so nothing actionable is lost to the collapse. Order is
 // otherwise preserved.
 func dedupeDiagnostics(ds []diagnostics.Diagnostic) []diagnostics.Diagnostic {
-	type key struct{ code, path, message string }
+	type key struct{ code, path, message, placeholder string }
 	seen := make(map[key]int, len(ds))
 	out := make([]diagnostics.Diagnostic, 0, len(ds))
 	for _, d := range ds {
-		k := key{d.Code, d.Path, d.Message}
+		k := key{d.Code, d.Path, d.Message, placeholderMarkerIdentity(d.Details)}
 		if idx, ok := seen[k]; ok {
 			if richerDiagnostic(d, out[idx]) {
 				out[idx] = d
