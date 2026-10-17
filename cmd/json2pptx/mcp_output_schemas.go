@@ -832,7 +832,7 @@ var outputSchemaInspectSlideImages = json.RawMessage(`{
                 "description": {"type": "string"},
                 "location":    {"type": "string"},
                 "bbox":        {"type": "object", "description": "Optional defect region as fractions (0-1) of the slide; propose_repairs hit-tests it against generated cell bounds to target an element path.", "properties": {"x": {"type": "number"}, "y": {"type": "number"}, "w": {"type": "number"}, "h": {"type": "number"}}, "required": ["x", "y", "w", "h"]},
-                "source":      {"type": "string", "enum": ["vision", "heuristic"], "description": "Which checker produced this finding. Heuristic findings are advisory and may have higher false-positive rates."},
+                "source":      {"type": "string", "enum": ["vision", "heuristic", "deterministic"], "description": "Which checker produced this finding. Deterministic checks measure rendered geometry or pixels; heuristic findings are advisory and may have higher false-positive rates."},
                 "suggested_fixes": {
                   "type": "array",
                   "description": "repair_slide fix kinds pre-mapped from category (via SuggestedFixesForCategory). Empty for review-only categories (image_quality, aspect_ratio, border_style).",
