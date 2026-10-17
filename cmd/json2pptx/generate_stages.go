@@ -110,6 +110,7 @@ func (mc *mcpConfig) runGenerateRequest(ctx context.Context, request mcp.CallToo
 	if tplDiag != nil {
 		if override, _ := request.RequireString("template"); override != "" {
 			tplDiag.Path = "template"
+			tplDiag = withTemplateRetry(tplDiag, request, "generate_presentation", "template")
 		}
 		return rendered, authored.mcpError([]diagnostics.Diagnostic{*tplDiag})
 	}

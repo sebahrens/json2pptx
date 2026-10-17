@@ -397,15 +397,17 @@ func TestCLIErrorEnvelopeOnStdoutWithCommandName(t *testing.T) {
 
 // validateJSONShape is what every `validate --format json` answer decodes to.
 type validateJSONShape struct {
-	Valid    *bool `json:"valid"`
-	Findings struct {
+	TopOK       *bool `json:"ok"`
+	TopFindings []any `json:"findings"`
+	Valid       *bool `json:"valid"`
+	Findings    struct {
 		OK       *bool `json:"ok"`
 		Findings []struct {
 			Code     string         `json:"code"`
 			Message  string         `json:"message"`
 			Evidence map[string]any `json:"evidence"`
 		} `json:"findings"`
-	} `json:"findings"`
+	} `json:"legacy_findings"`
 }
 
 const unrenderableChartDeck = `{
@@ -454,6 +456,9 @@ func TestCLIValidateJSONHasOneShape(t *testing.T) {
 		if err := json.Unmarshal([]byte(stdout), &shape); err != nil {
 			t.Errorf("%s: stdout does not decode to the validate shape: %v\nstdout=%.300s\nstderr=%s", tc.file, err, stdout, stderr)
 			continue
+		}
+		if shape.TopOK == nil || shape.TopFindings == nil || (shape.TopOK != nil && *shape.TopOK != tc.wantValid) {
+			t.Errorf("%s: flat envelope missing or inconsistent: %.300s", tc.file, stdout)
 		}
 		if shape.Valid == nil || shape.Findings.OK == nil {
 			t.Errorf("%s: valid / findings.ok missing from %.300s", tc.file, stdout)

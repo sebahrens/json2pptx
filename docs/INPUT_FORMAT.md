@@ -31,7 +31,7 @@ The raw schema is generated from the Go input structs in `internal/deckinput` (a
 }
 ```
 A presentation is a top-level object with a `template` and a non-empty `slides` array. Each slide pins a layout via `layout_id` (canonical id, e.g. `title`, `content`, `two-column`, `section`, `blank`) or hints `slide_type` (`title`, `content`, `chart`, `section`, `two-column`, `diagram`, `image`, `comparison`, `blank`). At least one of the two must be set. `template` is a registered template NAME (a `.pptx` in the templates directory or the embedded set, without the extension) and never takes a path; `template_path` is the bring-your-own form — `{"template_path": "./client-brand.pptx", "slides": [...]}` — for a `.pptx` the engine has not registered. Set exactly one. On the CLI a relative `template_path` resolves against the deck JSON's own directory; over MCP against the call's `base_dir` (server CWD when omitted), and it must stay inside it after `~`/`$VAR` and symlink expansion — an escape is refused with `INVALID_PATH`. `examine_template`, `list_templates`, `validate_input`, `preview_presentation_plan`, `generate_presentation`, `score_deck` and `render_deck_spec` all accept it, and a `render_deck_spec` `deck_id` keeps the file and its `base_dir` for later deck_id-only calls; `get_started(task:"onboard-template")` walks the vetting sequence. Copying the file into the templates directory registers it live, no restart, as a normal `template`.
-To preview the same input against another registered template without editing the deck, pass `json2pptx validate --template NAME --fit-report` (also works with `--json` / `--json-output`) or the top-level `template` argument to MCP `validate_input`. The override takes precedence over the presentation's `template` or `template_path` for that validation call only.
+To preview the same input against another registered template without editing the deck, pass `json2pptx validate --template NAME --fit-report` (also works with `--json` / `--json-output`) or the top-level `template` argument to MCP `validate_input` / `generate_presentation`. The override takes precedence over the presentation's `template` or `template_path` for that call only.
 
 ## A typical content slide
 
@@ -241,7 +241,7 @@ The patch envelope (`base` + `operations`) and the `~` / `$VAR` expansion rules 
 
 - CLI: `json2pptx validate <input.json>` — same validator the engine runs. It also dry-renders every chart and diagram: one that cannot render (an unknown type such as `stacked-bar` for `stacked_bar`, data the renderer rejects) is reported as `diagram_render_failed` at the chart's path with the renderer's suggestion, and the deck is invalid — no flag needed.
 - CLI: `json2pptx validate <input.json> --fit-report` — adds the layout-fit diagnostics (text overflow, density, contrast, chart label fit).
-- CLI: `json2pptx validate <input.json> --format json` — one JSON shape whether the deck passes or not: `{"valid": bool, …, "findings": {"ok": bool, "summary": "…", "findings": [ … ]}}`. A refused deck, a file that is not JSON (`INVALID_JSON`, with line and column) and a missing file (`FILE_NOT_FOUND`) answer `{"valid": false, "findings": {…}}` on stdout, so `findings.findings` is always the list.
+- CLI: `json2pptx validate <input.json> --format json` — the same flat envelope on success and refusal: `{"valid": bool, "ok": bool, "schema_version": "…", "summary": "…", "findings": [ … ]}`. Malformed JSON and missing files use this shape too. `legacy_findings` retains the former nested envelope during the migration cycle.
 - MCP: `validate_input` — wraps both; with `fit_report: false` it still refuses an unrenderable chart or diagram.
 
 `json2pptx generate` exits non-zero and writes no deck when a chart or diagram fails to render, at every `--strict-fit` level and with `--partial`: a slide carrying a "Data unavailable" placeholder is never a result.
@@ -255,3 +255,19 @@ Errors carry structured `code` fields catalogued in `docs/FIT_FINDINGS.md` (with
 - `docs/FIT_FINDINGS.md` — finding-code catalogue.
 - `docs/STYLE_DEFAULTS.md` — deck-level defaults for table and cell styles.
 - `skills/generate-deck/` — agent-facing workflow, rules, and pattern recommendations.
+
+## Generation policies and full findings
+
+`json2pptx generate deck.json --out deck.pptx --fit-report` prints the full JSON
+render report. Add `--verbose-fit` to bypass the per-slide finding budget.
+`--placeholder-policy off|warn|strict` shares validation's unfinished-copy policy;
+`strict` refuses unresolved `__FILL__` tokens before writing an artifact.
+`--base-dir /absolute/assets` selects the root for relative templates and assets
+in both generation and `--dry-run`; by default the deck file's directory is used
+(stdin uses the current working directory). These flags use the same boundary
+checks and merged finding collection as MCP generation.
+
+MCP `generate_presentation` exposes `ok`, `pptx_path`, `quality_summary` and
+`diagnostics` alongside the compatibility keys `success`, `output_path`,
+`quality` and `fit_findings`. `ok` means the file was written; consult
+`deterministic_ready` and `publishable` for the delivery verdict.

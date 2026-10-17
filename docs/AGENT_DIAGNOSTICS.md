@@ -246,16 +246,19 @@ fit findings ship as a `FindingEnvelope` under the `findings` key (replacing the
 legacy `new_findings []FitFinding` array), always present so an agent can branch
 on `findings.ok`.
 
-`validate_input` / CLI `validate` and `generate -dry-run` have migrated too: the
-success-path response collapses the legacy `warnings[]`, `validation_warnings[]`,
-`errors[]`, `diagnostics[]`, and `fit_findings[]` arrays into a single
-`FindingEnvelope` under the `findings` key (built from the boundary + slide
-diagnostics plus the fit-report findings, with fit findings carrying category
-`FIT`). The structural fields (`valid`, the `*_count` totals, `slides[]`,
-`response_fingerprint`) are unchanged. Note that `findings.ok` reflects
-finding severity (it is `false` when any error-severity finding, including a
-`refuse`-action fit finding, is present), which can legitimately differ from the
+`validate_input`, CLI `validate` and `generate -dry-run` expose the shared
+`FindingEnvelope` at the top level: `schema_version`, `ok`, `summary` and
+`findings[]`. Boundary, structural and fit findings share that list. Counts,
+`valid`, `slides[]` and `response_fingerprint` remain available. The old nested
+envelope is retained as `legacy_findings` for the migration cycle; read the
+canonical top-level `findings` as an array. CLI malformed-input and file errors
+use this same shape. `ok` reflects finding severity and can differ from the
 structural `valid` flag.
+
+Raw MCP generation also exposes the semantic render names `ok`, `pptx_path`,
+`quality_summary` and `diagnostics`. Its original `success`, `output_path`,
+`quality` and `fit_findings` keys remain compatibility aliases for this cycle.
+Both raw validation and generation accept a top-level `template` override.
 
 **One structural verdict** (go-slide-creator-9k5fh, -ni65k). `validate` /
 `validate_input`, `generate -dry-run`, `preflight`, `generate` /

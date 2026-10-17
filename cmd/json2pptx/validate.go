@@ -43,8 +43,8 @@ func runValidate() error { //nolint:gocognit
 		fmt.Fprintf(os.Stderr, "Output shapes:\n")
 		fmt.Fprintf(os.Stderr, "  - human (default): human-readable summary on stdout, fit findings on stderr\n")
 		fmt.Fprintf(os.Stderr, "  - --format=json (--json, --json-output): MCP validate_input dryRunOutput shape;\n")
-		fmt.Fprintf(os.Stderr, "    a refused deck answers {\"valid\": false, \"findings\": {ok, summary, findings: [...]}},\n")
-		fmt.Fprintf(os.Stderr, "    so findings.findings is the list in both cases\n")
+		fmt.Fprintf(os.Stderr, "    a refused deck answers {\"valid\": false, ok, summary, findings: [...]},\n")
+		fmt.Fprintf(os.Stderr, "    so findings is the list in both cases\n")
 		fmt.Fprintf(os.Stderr, "  - --format=ndjson: MCP dryRunOutput, one object per line per file\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx validate slides.json\n")
@@ -616,18 +616,20 @@ func runValidateMCPFormat(files []string, templatesDir, baseDirOverride string, 
 	return nil
 }
 
-// writeValidateFailure writes a refused validation in the SAME top-level shape
-// a passing one has: {"valid": false, "findings": {ok, summary, findings: [...]}}.
-// validate_input answers a refusal with the bare finding envelope, so the CLI
-// used to print an object whose "findings" was an array on failure and an
-// object on success, and a one-liner written against a passing deck crashed on
-// a failing one (go-slide-creator-pikfw).
+// writeValidateFailure preserves the same flat envelope on every CLI outcome.
+// legacy_findings carries the previous nested envelope for the migration cycle.
 func writeValidateFailure(w io.Writer, envelope any, format string) error {
-	shape := map[string]any{"valid": false, "findings": envelope}
-	var (
-		data []byte
-		err  error
-	)
+	encoded, err := json.Marshal(envelope)
+	if err != nil {
+		return err
+	}
+	var shape map[string]any
+	if err := json.Unmarshal(encoded, &shape); err != nil {
+		return err
+	}
+	shape["valid"] = false
+	shape["legacy_findings"] = envelope
+	var data []byte
 	if format == "ndjson" {
 		data, err = json.Marshal(shape)
 	} else {
