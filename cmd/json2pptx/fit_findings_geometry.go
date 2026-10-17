@@ -365,7 +365,7 @@ func isKPIStripGrid(grid *ShapeGridInput) bool {
 
 func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveResult, basePath string, depth int) {
 	outerGap, outerPattern := a.reviewGridGap, a.reviewPattern
-	a.reviewGridGap, a.reviewPattern = 8, ""
+	a.reviewGridGap, a.reviewPattern = 8, outerPattern
 	if input != nil {
 		a.reviewGridGap = input.RowGap
 		if a.reviewGridGap == 0 {
@@ -374,7 +374,9 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 		if a.reviewGridGap == 0 {
 			a.reviewGridGap = 8
 		}
-		a.reviewPattern = strings.TrimPrefix(input.Source, patternSourcePrefix)
+		if strings.HasPrefix(input.Source, patternSourcePrefix) {
+			a.reviewPattern = strings.TrimPrefix(input.Source, patternSourcePrefix)
+		}
 	}
 	defer func() { a.reviewGridGap, a.reviewPattern = outerGap, outerPattern }()
 	outerOpen, outerCells := a.openCells, a.gridCells
@@ -412,7 +414,7 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 			a.tables++
 		case shapegrid.CellKindImage, shapegrid.CellKindDiagram, shapegrid.CellKindComposite:
 			a.addInk(cell.Bounds)
-			a.reviewVisuals = append(a.reviewVisuals, layoutReviewVisual{path: cellPath, frame: cell.Bounds})
+			a.reviewVisuals = append(a.reviewVisuals, layoutReviewVisual{path: cellPath, frame: cell.Bounds, portrait: cell.Kind == shapegrid.CellKindImage && (a.reviewPattern == "team-bios" || a.reviewPattern == "contact-directory")})
 		case shapegrid.CellKindSubGrid:
 			a.reviewPanes = append(a.reviewPanes, layoutReviewPane{path: cellPath, frame: cell.Bounds})
 			a.subGrid(input, cell, cellPath, depth, result.SubGridPeers)

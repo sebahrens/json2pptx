@@ -9,7 +9,7 @@ meta:
     confidentiality: Confidential
   date: October 2026
   source: Nordbolt information memorandum; market model desk research, 2026
-  template: p-style
+  template: midnight-blue
   title: "Project Falcon: commercial due diligence proposal"
 slides:
   - id: cover
@@ -105,19 +105,19 @@ slides:
     source: Nordbolt management accounts 2023-2025
     takeaway: The bid rests on whether EUR 6.5M of price sticks.
     title: EUR 6.5M of the EUR 7.0M EBITDA gain since 2023 is price
-  - body: Last year's commercial due diligence on Project Keel interviewed 22 customers of a European fastener distributor. The interviews showed the target's prices sat nine points above the market on its core SKUs and that two of its top five accounts were already re-tendering.
+  - body: In 2025, Project Keel CDD interviewed 22 customers of a European fastener distributor. Core SKU prices were nine points above market; two of its five largest accounts were re-tendering.
     bullets:
       - Price gap confirmed in both interview waves
       - Run-rate EBITDA restated before the IC
       - Bid lowered by EUR 40M and the deal still closed
     caption: Keel's central distribution site, 2025
-    eyebrow: "Comparable: Project Keel"
-    heading: A fastener distributor priced on a margin that did not hold
+    heading: Comparable case - the margin did not hold
     id: keel
     image:
       alt: Keel distribution site
       path: "../../images/site-photo-sample.png"
     image_side: left
+    image_width_pct: 55
     kind: image_case
     metrics:
       - label: price gap found

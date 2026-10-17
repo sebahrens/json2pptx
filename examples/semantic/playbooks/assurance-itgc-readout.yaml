@@ -36,7 +36,7 @@ slides:
         description: Scoping of 5 domains and 9 applications; risk assessment selected 48 key controls
       - label: Walkthroughs
         description: Confirmed how each control operates with control owners across the 9 applications
-      - label: Design evaluation
+      - label: Design
         description: Assessed whether each control, as designed, addresses the financial-reporting risk
       - label: Testing
         description: Operating-effectiveness testing of 1,160 samples across the year; exceptions assessed for root cause and severity
@@ -224,7 +224,7 @@ slides:
         orientation: horizontal
         highlight:
           - Today (FY26)
-        data_labels: true
+        data_labels: false
     insights:
       - Computer operations already meets the level-4 target.
       - Access and third-party / cloud sit at level 2 and need the biggest step-up.
@@ -237,7 +237,7 @@ slides:
       - name: Quick wins
         date_label: Q4 2026
         description: Close both high findings
-        milestone: Both high findings closed by 31 Dec 2026
+        milestone: "2 high findings closed: 31 Dec 2026"
         items:
           - Recertify privileged access, 9 apps
           - Review 2 outstanding SOC 2 reports

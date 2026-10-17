@@ -23,8 +23,9 @@ type layoutReviewText struct {
 	baseline, widthPt float64
 }
 type layoutReviewVisual struct {
-	path  string
-	frame pptx.RectEmu
+	path     string
+	frame    pptx.RectEmu
+	portrait bool
 }
 type layoutReviewPane struct {
 	path  string
@@ -73,8 +74,14 @@ func layoutReviewFinding(code, path, action, hint string, params map[string]any)
 func (a *geomAccumulator) layoutReviewFindings(safe pptx.RectEmu, patternName string) []patterns.FitFinding {
 	out := a.baselineReviewFindings()
 	out = append(out, a.paneFillReviewFindings()...)
-	if len(a.reviewVisuals) == 1 && safe.CX > 0 && safe.CY > 0 {
-		v := a.reviewVisuals[0]
+	var exhibits []layoutReviewVisual
+	for _, visual := range a.reviewVisuals {
+		if !visual.portrait {
+			exhibits = append(exhibits, visual)
+		}
+	}
+	if len(exhibits) == 1 && safe.CX > 0 && safe.CY > 0 {
+		v := exhibits[0]
 		box := intersectRect(v.frame, safe)
 		share := float64(box.CX) * float64(box.CY) / (float64(safe.CX) * float64(safe.CY))
 		if share > 0 && share < 0.35 {
@@ -117,6 +124,10 @@ func (a *geomAccumulator) baselineReviewFindings() []patterns.FitFinding {
 		if len(group) < 2 {
 			continue
 		}
+		reference := peerTextAlignmentReference(group)
+		for i := range group {
+			group[i].baseline = peerTextAlignmentPosition(group[i], reference)
+		}
 		low, high := group[0], group[0]
 		for _, text := range group[1:] {
 			if text.baseline < low.baseline {
@@ -130,7 +141,7 @@ func (a *geomAccumulator) baselineReviewFindings() []patterns.FitFinding {
 		if math.Abs(float64(low.frame.Y-high.frame.Y))/emuPerPt > 2 || math.Abs(float64(low.frame.CY-high.frame.CY))/emuPerPt > 2 || high.baseline-low.baseline <= 2 {
 			continue
 		}
-		f := layoutReviewFinding(patterns.ErrCodeBaselineMisalign, high.path+"/shape/text", "review", "Peer text starts on baselines more than 2pt apart; align the peers' text anchors and top insets.", map[string]any{"cells": []string{low.path, high.path}, "baseline_spread_pt": round1(high.baseline - low.baseline)})
+		f := layoutReviewFinding(patterns.ErrCodeBaselineMisalign, high.path+"/shape/text", "review", "Peer text alignment points differ by more than 2pt; align the peers' text anchors and insets.", map[string]any{"cells": []string{low.path, high.path}, "baseline_spread_pt": round1(high.baseline - low.baseline), "alignment_reference": reference})
 		f.Fix = &patterns.FixSuggestion{Kind: "align_top_insets", Params: f.Fix.Params}
 		out = append(out, f)
 	}
@@ -402,4 +413,36 @@ func layoutReviewFindingsAtAuthoredPaths(input *PresentationInput, findings []pa
 		}
 	}
 	return findings
+}
+
+// Explicitly centered blocks and bottom-aligned labels share centers or final
+// lines, not first lines. Compare the actual ink positions so unequal insets
+// still surface. Implicit/default centering retains the first-line review.
+func peerTextAlignmentReference(group []layoutReviewText) string {
+	reference := ""
+	for _, text := range group {
+		anchor := "first_baseline"
+		switch text.anchor {
+		case "ctr", "center":
+			anchor = "block_center"
+		case "b", "bottom":
+			anchor = "block_bottom"
+		}
+		if reference == "" {
+			reference = anchor
+		} else if reference != anchor {
+			return "first_baseline"
+		}
+	}
+	return reference
+}
+func peerTextAlignmentPosition(text layoutReviewText, reference string) float64 {
+	switch reference {
+	case "block_center":
+		return (float64(text.ink.Y) + float64(text.ink.CY)/2) / emuPerPt
+	case "block_bottom":
+		return float64(text.ink.Y+text.ink.CY) / emuPerPt
+	default:
+		return text.baseline
+	}
 }
