@@ -60,16 +60,25 @@ func TestBulletGroupsEmptyContentRefusalParity(t *testing.T) {
 						t.Fatal(err)
 					}
 					result := mustCall(t, testMCPConfig(t).handleValidate, map[string]any{"presentation": presentation, "fit_report": false})
-					var output dryRunOutput
-					structuredInto(t, result.StructuredContent, &output)
-					if output.Valid != tc.valid {
-						t.Fatalf("valid=%v want %v: %s", output.Valid, tc.valid, resultText(result))
+					var findings diagnostics.FindingEnvelope
+					valid := false
+					if result.IsError {
+						structuredInto(t, result.StructuredContent, &findings)
+					} else {
+						var output dryRunOutput
+						structuredInto(t, result.StructuredContent, &output)
+						valid = output.Valid
+						findings = output.Findings
 					}
+					if valid != tc.valid {
+						t.Fatalf("valid=%v want %v: %s", valid, tc.valid, resultText(result))
+					}
+
 					if tc.valid {
 						return
 					}
 					found := false
-					for _, f := range output.Findings.Findings {
+					for _, f := range findings.Findings {
 						if f.Severity == diagnostics.SeverityError && f.Evidence["path"] == wantPath {
 							found = true
 						}
