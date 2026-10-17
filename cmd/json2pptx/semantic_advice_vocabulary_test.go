@@ -147,6 +147,9 @@ var remedyParamNames = func() map[string]bool {
 	for _, name := range remedyFactKeys {
 		out[name] = true
 	}
+	for name := range scaleAdviceFactKeys {
+		out[name] = true
+	}
 	return out
 }()
 
@@ -251,6 +254,7 @@ func TestDeckSpecAdviceNamesOnlyFieldsOfTheKind(t *testing.T) {
 						for _, k := range semantic.AllSlideKinds() {
 							known[string(k)] = true
 						}
+						addScaleAdviceVocabulary(known, f)
 						code, _ := f["code"].(string)
 						for _, text := range adviceTexts(f) {
 							checked++
@@ -321,4 +325,25 @@ var sparseFlowSlides = map[string]string{
 var sparseFlowRemedied = map[string]string{
 	"sparse process with an explicit flow": `{"kind":"process","title":"Four steps take a request to production","takeaway":"Approval is the only step that waits on a person.","steps":[{"label":"Request","description":"A team files the change with its risk class"},{"label":"Review","description":"Two engineers read the diff and the rollout plan"},{"label":"Approve","description":"The service owner signs off within a day"},{"label":"Deploy","description":"The pipeline rolls it out region by region"}]}`,
 	"sparse timeline":                      `{"kind":"timeline","title":"Four milestones take the plan to production","takeaway":"Every quarter of 2026 ends on a milestone.","milestones":[{"label":"Plan","date":"Q1 2026","body":"Scope and budget agreed with the board"},{"label":"Build","date":"Q2 2026","body":"Core services built and tested with pilots"},{"label":"Ship","date":"Q3 2026","body":"General availability in the first two regions"},{"label":"Scale","date":"Q4 2026","body":"Remaining regions and the partner channel"}]}`,
+}
+
+// Open chart.data objects carry public renderer axis controls. Recognize them
+// only on the authored chart-data location of a published scale advisory.
+func addScaleAdviceVocabulary(known map[string]bool, f map[string]any) {
+	edit, _ := f["recommended_edit"].(map[string]any)
+	params, _ := edit["params"].(map[string]any)
+	if r, ok := f["remediation"].(map[string]any); ok {
+		if primary, ok := r["primary"].(map[string]any); ok {
+			params, _ = primary["params"].(map[string]any)
+		}
+	}
+	if params["fix_kind"] != explicitScaleAdvice {
+		return
+	}
+	known[explicitScaleAdvice] = true
+	path, _ := f["path"].(string)
+	field, _ := params["field"].(string)
+	if strings.Contains(path, "/chart/data/") && (field == "data.y_min" || field == "data.y_max") {
+		known[strings.TrimPrefix(field, "data.")] = true
+	}
 }

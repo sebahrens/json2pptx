@@ -1160,6 +1160,8 @@ func attachFixParams(d *semanticDiagnostic, fix *patterns.FixSuggestion) {
 	}
 	if d.RecommendedEdit == nil {
 		switch {
+		case fix.Kind == explicitScaleAdvice && params["field"] != nil && params["value"] != nil:
+			d.RecommendedEdit = &semantic.SemanticEdit{Kind: explicitScaleAdvice, Hint: "Consider the suggested bound at this chart data field; retain the authored scale when the zero comparison matters."}
 		case params["max_items"] != nil:
 			d.RecommendedEdit = &semantic.SemanticEdit{Kind: semantic.EditReduceItems, Hint: "Remove or merge items to fit the max_items budget."}
 		case params["max_chars"] != nil || params["max_length"] != nil || params["max_words"] != nil:
@@ -1259,6 +1261,7 @@ func semanticDiagFromFitField(sm *semantic.SourceMap, ir *semantic.DeckIR, f pat
 		decorateReadabilityRefusal(d.diag, ir, sm, f)
 	}
 	narrowWrapBoxPaths(&d, ir, f)
+	locateScaleAdvice(&d, sm, ir, f)
 	return d
 }
 

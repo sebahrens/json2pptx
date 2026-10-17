@@ -70,6 +70,9 @@ func remedyFacts(raw map[string]any) map[string]any {
 	var out map[string]any
 	for k, v := range raw {
 		name, ok := remedyFactKeys[k]
+		if raw["fix_kind"] == explicitScaleAdvice && raw["field"] != nil && raw["value"] != nil && scaleAdviceFactKeys[k] {
+			name, ok = k, true
+		}
 		if !ok || v == nil {
 			continue
 		}
@@ -404,6 +407,10 @@ func patchIsTemplate(ops []any) bool {
 
 // plan lists the patches that could resolve a finding, best first.
 func (rc *remedyContext) plan(t *remedyTarget) {
+	// Scale bounds are an author choice, never an automatically proposed patch.
+	if t.raw["fix_kind"] == explicitScaleAdvice {
+		return
+	}
 	if rc.deckID == "" {
 		return
 	}
