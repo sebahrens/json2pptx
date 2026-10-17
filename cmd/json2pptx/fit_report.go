@@ -618,7 +618,7 @@ func aggregateUnderfilledFinding(slideIdx int, cells []underfilledCell, measured
 }
 
 // writeFitReportNDJSON writes fit findings as NDJSON to the given writer.
-func writeFitReportNDJSON(w io.Writer, findings []fitFinding) {
+func writeFitReportNDJSON[T any](w io.Writer, findings []T) {
 	enc := json.NewEncoder(w)
 	for _, f := range findings {
 		_ = enc.Encode(f)

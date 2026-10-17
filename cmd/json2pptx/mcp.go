@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -19,12 +18,10 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/policy/emoji"
-	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/templatepreview"
-	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/svggen/icons"
@@ -223,7 +220,7 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 
 // --- Tool handlers ---
 
-func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) { //nolint:gocyclo,gocognit
+func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Idempotency: if a matching key is already in the cache AND the request
 	// fingerprint matches, replay the cached response instead of regenerating.
 	// The cache is per-process and only holds successful responses, so retries
@@ -252,429 +249,25 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		// fall through and generate.
 	}
 
-	jsonStr, sourceDeckID, paramErr := mc.presentationForTool("generate_presentation", request)
-	if paramErr != nil {
-		return paramErr, nil
+	parsed, failure := mc.parseGenerateRequest(request)
+	if failure != nil {
+		return failure, nil
 	}
-	if jsonStr == "" {
-		return argRequired(request, "generate_presentation", "presentation", "object", map[string]any{
-			"template": "<template-name>",
-			"slides":   []any{},
-		}, nextCallGetInputSchema()), nil
+	rendered, failure := mc.runGenerateRequest(ctx, request, parsed)
+	defer rendered.close()
+	if failure != nil {
+		return failure, nil
 	}
-
-	// Parse JSON input — reject trailing data.
-	var input PresentationInput
-	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
-		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
-	}
-
-	// Apply deck-level defaults before any validation or conversion.
-	applyDefaults(&input)
-
-	// Resolve named style references from template settings (priority 3).
-	mc.resolveInputNamedSettings(&input)
-
-	// Expand structure block into flat slides (mutually exclusive with
-	// top-level slides). Mirrors the CLI path so MCP and CLI agree on the
-	// effective slide list before any slide-count checks.
-	if structDiags := applyStructureExpansion(&input); len(structDiags) > 0 {
-		return api.MCPDiagnosticsError(structDiags), nil
-	}
-	// Every finding this call returns is addressed to the deck the caller
-	// sent, not to the expanded slide list the engine works on.
-	authored := newAuthoredPaths(&input)
-
-	// Collect all boundary diagnostics before proceeding.
-	var boundaryDiags []diagnostics.Diagnostic
-
-	// Required fields. template_path stands in for template (go-slide-creator-ydbk).
-	if input.Template == "" && input.TemplatePath == "" {
-		boundaryDiags = append(boundaryDiags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "/template", Message: "template is required in presentation: a registered name, or template_path for a local .pptx inside base_dir",
-			Severity:     diagnostics.SeverityError,
-			ExpectedType: "string",
-			ExampleValue: "midnight-blue",
-			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
-			NextToolCall: nextCallListTemplates(),
-		})
-	}
-	if len(input.Slides) == 0 {
-		boundaryDiags = append(boundaryDiags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "/slides", Message: "at least one slide is required",
-			Severity:     diagnostics.SeverityError,
-			ExpectedType: "array",
-			ExampleValue: []any{map[string]any{"layout_id": "title", "content": []any{}}},
-			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
-			NextToolCall: nextCallGetInputSchema(),
-		})
-	}
-
-	// Unknown keys — warnings by default, errors when strict_unknown_keys=true.
-	strictUnknownKeys, _ := request.GetArguments()["strict_unknown_keys"].(bool)
-	boundaryDiags = append(boundaryDiags, unknownKeyDiags([]byte(jsonStr), strictUnknownKeys)...)
-
-	// Enum validation — reject unknown values for transition, transition_speed, build, background.fit.
-	if enumErrs := checkInputEnumValues(&input); len(enumErrs) > 0 {
-		boundaryDiags = append(boundaryDiags, diagnostics.FromValidationErrors(enumErrs)...)
-	}
-
-	// Design mode constraints — reject raw hex colors and absolute sizes in constrained mode.
-	if violations := validateDesignMode(&input); len(violations) > 0 {
-		boundaryDiags = append(boundaryDiags, designModeDiagnostics(violations)...)
-	}
-
-	// Diagram data colors silently dropped in constrained mode — advisory warning
-	// (never blocks) so the agent knows custom colors were ignored and can opt
-	// into design_mode "free" to honor them.
-	if dropped := collectDroppedDiagramColorWarnings(&input); len(dropped) > 0 {
-		boundaryDiags = append(boundaryDiags, droppedDiagramColorDiagnostics(dropped)...)
-	}
-
-	// No-emoji policy — reject emoji codepoints anywhere in user-supplied text.
-	// Authors must use bundled SVG icons (see svggen/icons) or user-provided icons.
-	if emojiViolations := emoji.ValidateNoEmojiInText(&input); len(emojiViolations) > 0 {
-		boundaryDiags = append(boundaryDiags, noEmojiDiagnostics(emojiViolations)...)
-	}
-
-	// Unresolved skeleton placeholders (__FILL__) — warnings by default so the
-	// agent sees which fields still need real content; placeholder_policy=strict
-	// refuses generation (publishable/gated output) until every token is
-	// replaced. plan_deck skeletons are draft scaffolding, not finished decks.
-	if phDiags, _ := scanPlaceholderDiagnostics(&input, placeholderPolicyFromRequest(request)); len(phDiags) > 0 {
-		boundaryDiags = append(boundaryDiags, phDiags...)
-	}
-
-	// Fail fast if any boundary diagnostic is an error.
-	if diagnostics.HasErrors(boundaryDiags) {
-		return authored.mcpError(boundaryDiags), nil
-	}
-
-	// strict_fit parameter (default: warn) — parsed up front so it can be
-	// forwarded to generation (StrictFit below) even though the text-fit gate
-	// itself now runs after template analysis (see below).
-	strictFit := "warn"
-	if sf, err := request.RequireString("strict_fit"); err == nil && sf != "" {
-		strictFit = sf
-	}
-
-	// Create output directory
-	if err := os.MkdirAll(mc.outputDir, 0755); err != nil {
-		return api.MCPSimpleError("OUTPUT_DIR", fmt.Sprintf("failed to create output directory: %v", err)), nil
-	}
-
-	// Resolve template: a registered name, or a guarded local .pptx.
-	templatePath, templateCleanup, tplDiag := mc.resolveTemplateSource(request, "generate_presentation",
-		"presentation.template", "presentation.template_path", input.Template, input.TemplatePath)
-	if tplDiag != nil {
-		return authored.mcpError([]diagnostics.Diagnostic{*tplDiag}), nil
-	}
-	defer templateCleanup()
-
-	// Analyze template
-	var syntheticFiles map[string][]byte
-	var templateMetadata *types.TemplateMetadata
-	reader, err := template.OpenTemplate(templatePath)
-	if err != nil {
-		return api.MCPSimpleError("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err)), nil
-	}
-	defer func() { _ = reader.Close() }()
-	layouts, err := template.ParseLayouts(reader)
-	if err != nil {
-		return api.MCPSimpleError("TEMPLATE_ERROR", fmt.Sprintf("template analysis failed: %v", err)), nil
-	}
-	theme := template.ParseTheme(reader)
-	// Apply the deck's theme_override BEFORE anything derives colours from the
-	// theme. The chart data palette and the svggen theme colours both resolve
-	// scheme names through this struct, so resolving them against the
-	// pre-override theme painted chart series in the template's original
-	// palette while the artifact's theme part carried the override
-	// (go-slide-creator-p327).
-	var themeOverrideWarnings []string
-	if input.ThemeOverride != nil {
-		theme, themeOverrideWarnings = theme.ApplyOverride(input.ThemeOverride.ToThemeOverride())
-	}
-	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
-	analysis := &types.TemplateAnalysis{
-		TemplatePath: templatePath,
-		SlideWidth:   slideWidth,
-		SlideHeight:  slideHeight,
-		Layouts:      layouts,
-		Theme:        theme,
-	}
-	synthesisFindings := template.SynthesizeIfNeeded(reader, analysis)
-	templateLayouts := analysis.Layouts
-	if analysis.Synthesis != nil {
-		syntheticFiles = analysis.Synthesis.SyntheticFiles
-	}
-	templateMetadata, _ = template.ParseMetadata(reader)
-	if templateMetadata != nil {
-		theme.SemanticAccents = templateMetadata.SemanticAccents
-		analysis.Theme = theme
-	}
-
-	// Resolve canonical layout names (e.g. "title", "content", "blank") to
-	// concrete layout IDs using tag-based matching against the target template.
-	resolveCanonicalLayoutIDs(input.Slides, templateLayouts)
-
-	// Text-fit checking via strict_fit. Runs AFTER template analysis and
-	// canonical-layout resolution so shape_grid fit checks resolve against the
-	// SAME layout-aware bounds generation renders (go-slide-creator-ur3z). In
-	// warn mode, findings are merged into the structured fit_findings response
-	// below so MCP clients see them without separately passing fit_report=true.
-	// In strict mode, refuse-class findings abort generation with a diagnostics
-	// error.
-	var strictFitFindings []patterns.FitFinding
-	if strictFit != "off" {
-		rawFindings, refuseErr := evaluateStrictFit(&input, strictFit, templateLayouts, slideWidth, slideHeight, &theme)
-		if refuseErr != nil {
-			// Preserve historical stderr NDJSON dump on refuse for CLI/log parity.
-			enc := json.NewEncoder(os.Stderr)
-			for _, f := range rawFindings {
-				_ = enc.Encode(f)
-			}
-			return authored.mcpError(diagnostics.FromFitFindings(rawFindings)), nil
-		}
-		strictFitFindings = append(strictFitFindings, rawFindings...)
-	}
-
-	// Resolve URL references (background.url, image_value.url, grid image.url,
-	// icon.url, nested shape.icon.url). Mirrors the CLI generate path so MCP
-	// and CLI agree on which URL fields are supported. Failures become
-	// per-field URL_FETCH_FAILED diagnostics. The cache cleanup is deferred
-	// for the rest of this handler — closing it earlier would invalidate the
-	// local paths now embedded in the slides. The authored URLs are restored
-	// before the deck handle is stored (go-slide-creator-b7qqg.9).
-	urls, urlErr := mc.materializeURLs(input.Slides)
-	defer urls.Cleanup()
-	if urlErr != nil {
-		return api.MCPSimpleError("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr)), nil
-	}
-	if len(urls.Findings) > 0 {
-		return authored.mcpError(urls.Findings), nil
-	}
-	urlCacheDir := urls.CacheDir
-
-	// Resolve relative asset paths (icons, content images, grid images,
-	// background images) against base_dir. MCP receives inline JSON, not a
-	// file path, so callers pass base_dir to specify the directory relative
-	// paths should resolve against. When omitted we fall back to the server
-	// process CWD — historical behaviour that is not portable across MCP
-	// launch configurations.
-	//
-	// All per-asset failures are collected into structured diagnostics so
-	// the caller can fix each broken reference independently instead of
-	// seeing one bag-of-strings error.
-	baseDir, baseDirErr := resolveBaseDir(request)
-	if baseDirErr != nil {
-		return baseDirErr, nil
-	}
-	assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths, urlCacheDir)...)
-	if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
-		return authored.mcpError(assetErrors), nil
-	}
-
-	// Resolve deck-level rhythm grid when configured.
-	var rhythmGrid *resolvedGrid
-	if input.Grid != nil {
-		if refusal := rhythmGridRefusal(input.Grid); refusal != nil {
-			return authored.mcpError(refusalDiagnostics(refusal)), nil
-		}
-		rhythmGrid = resolveGrid(input.Grid, templateLayouts, slideWidth, slideHeight)
-	}
-
-	// Convert slides
-	mcpDiagCtx := &GridDiagramContext{
-		TableStyleResolver: reader,
-		ThemeColors:        theme.Colors,
-		DataPalette:        resolveDataPalette(templateMetadata, theme.Colors),
-		FontFamily:         theme.BodyFont,
-		TitleFont:          theme.TitleFont,
-		ViewingMode:        tokens.ParseViewingMode(input.ViewingMode),
-	}
-	slideSpecs, gridDiagWarnings, gridVisualFindings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), mcpDiagCtx, false)
-	// The structural verdict validate_input reports: generation refuses what
-	// validation rejects, with the same findings (go-slide-creator-9k5fh).
-	if refusal := deckStructuralRefusal(&input, templateLayouts, theme, templateMetadata, slideWidth, slideHeight, err); refusal != nil {
-		return authored.mcpError(refusalDiagnostics(refusal)), nil
-	}
-	if err != nil {
-		// A pattern failure knows which slide and which field it came from, so it
-		// is reported as one finding per problem at /slides/i/pattern/values/…
-		// rather than as one INVALID_SLIDE carrying every message in a string
-		// (go-slide-creator-20jm).
-		// Any other refusal is reported as validate_input reports it: the
-		// one reading of a conversion error (go-slide-creator-9k5fh).
-		if ds := refusalDiagnostics(err); len(ds) > 0 {
-			return authored.mcpError(ds), nil
-		}
-		return api.MCPSimpleError("INVALID_SLIDE", fmt.Sprintf("invalid slide specification: %v", err)), nil
-	}
-
-	// Pre-validate chart/diagram data (unknown keys already caught at boundary).
-	inputWarnings := validateSlidesChartData(input.Slides)
-	inputWarnings = append(inputWarnings, gridDiagWarnings...)
-	// Surface non-blocking asset findings (e.g. ICON_FILL_IGNORED_ON_INLINE)
-	// as warnings so generation proceeds while the agent still sees them.
-	for _, d := range authored.diagnostics(assetFindings) {
-		if d.Severity != diagnostics.SeverityError {
-			inputWarnings = append(inputWarnings, fmt.Sprintf("%s at %s: %s", d.Code, d.Path, d.Message))
-		}
-	}
-	chartDiagFindings := validateSlidesChartDiagnostics(input.Slides)
-
-	// Determine output filename. Without an explicit name, derive one from a
-	// digest of the input so concurrent calls for different decks cannot
-	// overwrite each other's output.pptx (go-slide-creator-csclk.132).
-	var outputFilename string
-	if input.OutputFilename != "" {
-		outputFilename = sanitizeOutputFilename(input.OutputFilename)
-	} else {
-		outputFilename = deckSpecOutputFilename("presentation", []byte(jsonStr), input.Template)
-	}
-	// Check for override from MCP request
-	if reqFilename, err := request.RequireString("output_filename"); err == nil && reqFilename != "" {
-		outputFilename = sanitizeOutputFilename(reqFilename)
-	}
-	outputPath := filepath.Join(mc.outputDir, outputFilename)
-
-	// Generate
-	startTime := time.Now()
-	// Post-generation output validation via output_validation parameter (default: strict).
-	// Strict mode is the standing guarantee for the 'zero needs repair' contract
-	// (see go-slide-creator-0myv): every successful generate_presentation response
-	// implies a clean output-validation pass.
-	outputValidation := "strict"
-	if ov, ovErr := request.RequireString("output_validation"); ovErr == nil && ov != "" {
-		outputValidation = ov
-	}
-	// The slides with the footer/chrome configuration and theme override every
-	// render path uses.
-	genReq := deckGenerationRequest(&input, slideSpecs, templateLayouts, generator.GenerationRequest{
-		TemplatePath:      templatePath,
-		OutputPath:        outputPath,
-		SVGStrategy:       string(mc.cfg.SVG.Strategy),
-		SVGScale:          mc.cfg.SVG.Scale,
-		SVGNativeCompat:   string(mc.cfg.SVG.NativeCompatibility),
-		MaxPNGWidth:       mc.cfg.SVG.MaxPNGWidth,
-		SyntheticFiles:    syntheticFiles,
-		StrictFit:         strictFit,
-		DataPalette:       resolveDataPalette(templateMetadata, theme.Colors),
-		AllowedImagePaths: imageAllowList(mc.cfg.Images.AllowedBasePaths, urlCacheDir),
-		// A block the slide would drop refuses the deck before a file is
-		// written, as validate_input reports it (go-slide-creator-ni65k).
-		RefuseDroppedContent: outputValidation == "strict",
-	})
-
-	// Hold the target path across the write and the hash read-back, so two
-	// calls aimed at one file cannot report a content_hash that is not on disk.
-	unlockOutput := lockOutputPath(outputPath)
-	result, err := generator.Generate(ctx, genReq)
-	unlockOutput()
-	if err != nil {
-		if loss := generationRefusal(err); loss != nil {
-			// Name the authored slide, its layout and pattern / diagram, not
-			// only the element kind (go-slide-creator-ygaln).
-			if _, location := locateRefusal(&input, slideSpecs, templateLayouts, nil, loss); location != "" {
-				loss.Message = location + ": " + loss.Message
-			}
-		}
-		// The findings validate_input reports for the same deck: the block
-		// generation would drop, the source its text fit would lose.
-		if ds := generationRefusalDiagnostics(err); len(ds) > 0 {
-			return authored.mcpError(ds), nil
-		}
-		return api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("generation failed: %v", err)), nil
-	}
-
-	duration := time.Since(startTime)
-
-	var outputValidationFindings []pptx.Finding
-	if outputValidation != "off" {
-		report, valErr := pptx.ValidateOutputFile(outputPath)
-		if valErr != nil {
-			return api.MCPSimpleError("OUTPUT_VALIDATION_ERROR", fmt.Sprintf("output validation failed: %v", valErr)), nil
-		}
-		outputValidationFindings = report.Findings
-
-		// In strict mode, fail if any blocking findings exist.
-		if outputValidation == "strict" && !report.IsValid() {
-			return mcpOutputValidationError(report), nil
-		}
-	}
-
-	// Merge input-layer warnings with generation warnings.
-	allWarnings := append(inputWarnings, result.Warnings...)
-	allWarnings = append(allWarnings, themeOverrideWarnings...)
-	allWarnings = append(allWarnings, themeFontSubstitutionWarnings(theme)...)
-	// Surface deprecation warnings for legacy field usage.
-	allWarnings = append(allWarnings, deprecationWarnings(&input)...)
-	// Surface boundary warnings (e.g. unknown keys) in the response.
-	for _, d := range boundaryDiags {
-		if d.Severity == diagnostics.SeverityWarning {
-			allWarnings = append(allWarnings, d.Message)
-		}
-	}
-
-	// Collect fit findings when requested.
-	var fitFindings []patterns.FitFinding
-	if fitReport, _ := request.GetArguments()["fit_report"].(bool); fitReport {
-		fitFindings = collectFitFindings(&input, templateLayouts, slideWidth, slideHeight, &analysis.Theme)
-	} else {
-		fitFindings = unresolvedPlaceholderContrastFindings(&input, templateLayouts, analysis.Theme.Colors)
-	}
-
-	// Append render-time fit findings from the generator (overflow, truncation, clamping).
-	fitFindings = append(fitFindings, result.FitFindings...)
-
-	// Append chart data diagnostics (coerced values, inferred shapes, empty data).
-	fitFindings = append(fitFindings, chartDiagFindings...)
-
-	// Append contrast auto-fix findings (always emitted, not gated by fit_report).
-	fitFindings = append(fitFindings, contrastSwapsToFindings(result.ContrastSwaps, &input, analysis.Theme.Colors)...)
-
-	// Append grid visual findings (diagram narrow-cell, etc.) — always emitted.
-	fitFindings = append(fitFindings, gridVisualFindings...)
-
-	// Append strict_fit findings unconditionally so MCP clients see warn-mode
-	// overflow diagnostics without needing to separately pass fit_report=true.
-	// When fit_report=true also collected text-fit findings via
-	// collectFitFindings, dedupFitFindings removes the duplicates by
-	// (Code, Path, Action, Message).
-	fitFindings = append(fitFindings, strictFitFindings...)
-	fitFindings = supersedeRealizedContrastPredictions(dedupFitFindings(fitFindings))
-
-	// Apply per-slide finding budget.
-	verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
-	fitFindings = BudgetFitFindings(fitFindings, DefaultFindingBudget, verboseFit)
-
-	// Append synthesis findings (template-level, always emitted, not subject to
-	// per-slide budget).
-	fitFindings = append(fitFindings, synthesisFindings...)
-
-	// Build per-slide resolution summary
-	slideResolutions := buildSlideResolutions(input.Slides, slideSpecs, templateLayouts, syntheticFiles,
-		droppedPlaceholdersBySlide(fitFindings))
-
-	// Build response
-	output := JSONOutput{
-		Success:                  renderSucceeded(fitFindings, outputValidation),
-		OutputPath:               outputPath,
-		SlideCount:               result.SlideCount,
-		ContentHash:              result.ContentHash,
-		DurationMs:               duration.Milliseconds(),
-		Warnings:                 allWarnings,
-		Quality:                  computeQualityScoreWithLayouts(input.Slides, allWarnings, templateLayouts, fitFindings...),
-		ValidationErrors:         result.ValidationErrors,
-		FitFindings:              authored.fitFindings(fitFindings),
-		Slides:                   slideResolutions,
-		OutputValidationFindings: outputValidationFindings,
-	}
+	output, fitFindings := assembleGenerateOutput(parsed, rendered, request)
+	input, authored := parsed.input, parsed.authored
+	sourceDeckID, jsonStr, strictFit := parsed.sourceDeckID, parsed.jsonStr, parsed.strictFit
+	result, outputPath := rendered.run.GenResult, rendered.run.OutputPath
+	outputValidation, outputValidationFindings := rendered.outputValidation, rendered.run.OutputValidationFindings
 	// The handle outlives this request, but the URL download cache does not:
 	// store the authored URLs, not the soon-deleted cached paths, so a
 	// deck_id regeneration / score / repair re-fetches them through the safe
 	// resolver (go-slide-creator-b7qqg.9).
-	urls.RestoreAuthoredURLs(input.Slides)
+	rendered.urls.RestoreAuthoredURLs(input.Slides)
 	rawDeck, marshalErr := json.Marshal(input)
 	if marshalErr != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to store generated deck: %v", marshalErr)), nil
@@ -1211,25 +804,9 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		inputSHA256: diagnostics.ComputeInputSHA256([]byte(jsonStr)),
 	}
 
-	// Validate required fields. template_path stands in for template (ydbk).
-	if input.Template == "" && input.TemplatePath == "" {
-		output.Valid = false
-		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "/template", Message: "template is required: a registered name, or template_path for a local .pptx inside base_dir",
-			Severity:     diagnostics.SeverityError,
-			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
-			NextToolCall: nextCallListTemplates(),
-		})
-	}
-	if len(input.Slides) == 0 {
-		output.Valid = false
-		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "/slides", Message: "at least one slide is required",
-			Severity:     diagnostics.SeverityError,
-			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "slides"}},
-			NextToolCall: nextCallGetInputSchema(),
-		})
-	}
+	output.Diagnostics = append(output.Diagnostics, deckRequiredFieldDiagnostics(&input)...)
+	output.Valid = !diagnostics.HasErrors(output.Diagnostics)
+
 	if !output.Valid {
 		return marshalValidateResult(ctx, output)
 	}

@@ -60,20 +60,29 @@ func (r *recordingResolver) ResolveSVG(rawURL string) (string, error) {
 // rewrites the fields to cached local paths, recording the mapping so the
 // authored URLs can be restored. A resolver init failure is returned as err.
 func (mc *mcpConfig) materializeURLs(slides []SlideInput) (*urlMaterialization, error) {
+	m, resolve, err := mc.prepareURLs(slides)
+	if err == nil {
+		resolve()
+	}
+	return m, err
+}
+
+// prepareURLs allocates a guarded cache without downloading. The returned
+// operation runs inside RunPresentation's pre-conversion asset stage.
+func (mc *mcpConfig) prepareURLs(slides []SlideInput) (*urlMaterialization, func(), error) {
 	m := &urlMaterialization{Cleanup: func() {}}
 	if !hasURLReferences(slides) {
-		return m, nil
+		return m, func() {}, nil
 	}
 	resolver, err := resource.NewResolver(mc.resolverOpts)
 	if err != nil {
-		return m, err
+		return m, func() {}, err
 	}
 	rec := &recordingResolver{inner: resolver, urls: map[string]string{}}
-	m.Findings = resolveURLs(slides, rec)
 	m.Cleanup = resolver.Close
 	m.CacheDir = resolver.Dir()
 	m.urls = rec.urls
-	return m, nil
+	return m, func() { m.Findings = resolveURLs(slides, rec) }, nil
 }
 
 // RestoreAuthoredURLs puts the authored URL back on every field that
