@@ -82,7 +82,10 @@ directory, outside immutable source files.
 The main Docker image ships the wiki source. The optional companion image is
 built from an explicit trusted 0.5.0 source context with its Cargo.lock, rather
 than an unverified release download. See [`deploy/README.md`](../../deploy/README.md)
-for the build and MCP transport examples.
+for the build and MCP transport examples. Compose names the local image
+`json2pptx-wiki:0.5.0`; after building it from a trusted local checkout, use
+`up -d --no-build --pull never wiki` to start the companion beside an existing
+Go deployment without contacting the upstream source or image registry.
 
 ## Verified capabilities and current limits
 

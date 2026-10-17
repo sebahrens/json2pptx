@@ -2,6 +2,7 @@
 # Streamable HTTP is opt-in and requires a bearer token, as the engine enforces.
 services:
   wiki:
+    image: json2pptx-wiki:0.5.0
     build:
       context: .
       dockerfile: Dockerfile.wiki

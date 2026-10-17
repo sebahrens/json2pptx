@@ -63,6 +63,19 @@ export JSON2PPTX_WIKI_HTTP_TOKEN='replace-with-a-dedicated-token-of-at-least-32-
 docker compose -f docker-compose.yml -f deploy/docker-compose.wiki.yml up --build
 ```
 
+If the upstream Git context requires credentials, use the trusted local build
+above instead. With the existing Go deployment already running, start only the
+companion from that local image, without rebuilding or pulling:
+
+```sh
+docker compose -f docker-compose.yml -f deploy/docker-compose.wiki.yml \
+  up -d --no-build --pull never wiki
+```
+
+The Compose service uses the explicit `json2pptx-wiki:0.5.0` tag produced by the
+local build. The default `up --build` command still builds from the pinned remote
+source context.
+
 The wiki endpoint is `http://localhost:8081/mcp`; supply
 `Authorization: Bearer <your token>`. The host port binds only to loopback.
 The engine requires authentication for the container's non-loopback listener;
