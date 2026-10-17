@@ -6,6 +6,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
 
 const (
@@ -72,7 +73,7 @@ func registerConsultingVisualKind(kind SlideKind, name string) {
 	kindFieldShapes[kind] = shapes
 	slideKindRegistry[kind] = KindInfo{Kind: kind, Summary: p.Description(), RequiredFields: append([]string{"title"}, values.RequiredNames()...), TypicalFields: []string{"takeaway"}}
 	plan := consultingVisualPlan(kind)
-	plan.layout = "blank-title"
+	plan.layout = slides.ConsultingVisualLayout(name)
 	plan.pattern = func(map[string]any) string { return name }
 	kindPlanRegistry[kind] = plan
 	patternReach[name] = kind

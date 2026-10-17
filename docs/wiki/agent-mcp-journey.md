@@ -43,6 +43,8 @@ and a second template; the four journey runs took 23, 28, 27 and 44.
 `runtime.render_available`: without LibreOffice the deck cannot be reviewed and
 must be delivered as **unreviewed**. `get_started(tool: "<name>")` returns any
 tool's full description and schema — use it instead of guessing an argument.
+The `core` and `all` listings use concise descriptions with that lookup link;
+their tool input schemas retain the full constraints.
 
 ### 2. Discover, then write the storyline
 
@@ -194,7 +196,7 @@ by name.
 | Before / after with connectors | `comparison` could not pass `connectors` / `highlight_column` | Fixed: `comparison.connectors`, `highlight_column`, `highlight_row`; [playbook-technology-and-data.md](playbook-technology-and-data.md) uses them. The screenshot's `image_case.image_width_pct` landed in the same change. |
 | Footer client name truncated | `meta.chrome.client` plus `project_code` plus date overflowed the footer silently on 11 slides | Fixed: the line drops `project_code`, then the date, before any ellipsis, and `CHROME_TRUNCATED` reports it with the characters that fit (`go-slide-creator-m2tlt`). Still look at the footer on the second template. |
 | Waterfall axis started at 22 | The opening total drew as a stub | Fixed: non-negative bars, lines and waterfalls start at zero; `data.y_min` / `y_max` zoom deliberately (`go-slide-creator-929jm`). |
-| `--tools all` first contact | 224 KB then; 49 tools and ~148 KB now, 11 used | Stay on the default profile; `get_started(tool:"<hidden tool>")` reaches any hidden tool by name. |
+| `--tools all` first contact | 224 KB then; 49 tools and ~138 KB now, 11 used | Stay on the default profile; `get_started(tool:"<hidden tool>")` reaches any hidden tool by name. |
 | Thumbnail bytes | ~2 MB of images across a run | Render all once, then `known_hashes`; `density: 100` only for the slide you cannot read. |
 | Info notes in strict reviews | `table_font_scaled`, `contrast_predicted` are notes | Act on them only when the image shows a problem; a strict standard splits the table instead of accepting 11pt. |
 

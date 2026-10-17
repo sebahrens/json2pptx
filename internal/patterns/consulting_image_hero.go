@@ -64,14 +64,14 @@ func drawConsultingHero(c *consultingCanvas, v map[string]any) error {
 	c.layers[len(c.layers)-1].Shape.Fill = fill
 	lines := []visualParagraph{}
 	if eyebrow := visualStr(v, "eyebrow"); eyebrow != "" {
-		lines = append(lines, visualParagraph{Content: eyebrow, Size: 12, Bold: true, Color: "#FFFFFF"})
+		lines = append(lines, visualParagraph{Content: eyebrow, Size: scaleBodyPt, Bold: true, Color: "#FFFFFF"})
 	}
-	lines = append(lines, visualParagraph{Content: visualStr(v, "headline"), Size: 28, Bold: true, Color: "#FFFFFF"})
+	lines = append(lines, visualParagraph{Content: visualStr(v, "headline"), Size: scaleDisplayPt, Bold: true, Color: "#FFFFFF"})
 	if takeaway := visualStr(v, "takeaway"); takeaway != "" {
-		lines = append(lines, visualParagraph{Content: takeaway, Size: 14, Color: "#FFFFFF"})
+		lines = append(lines, visualParagraph{Content: takeaway, Size: scaleSubheadPt, Color: "#FFFFFF"})
 	}
 	if source := visualStr(v, "source"); source != "" {
-		lines = append(lines, visualParagraph{Content: source, Size: 10, Color: "#FFFFFF"})
+		lines = append(lines, visualParagraph{Content: source, Size: scaleCaptionPt, Color: "#FFFFFF"})
 	}
 	return c.text(x, y, w, h, lines)
 }

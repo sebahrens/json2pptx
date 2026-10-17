@@ -282,14 +282,15 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindRegions: {
 		Kind: KindRegions,
-		Summary: "One slide, one title, 2–3 typed regions: the chart on the left with the KPI and the timeline stacked on the right. " +
-			"arrangement is columns or rows (2–3 regions; size_pct is each one's width / height) or main_left / main_right / main_top / main_bottom " +
-			"(exactly 3: regions[0] is the main region and its size_pct its share, default 60; regions[1..2] stack beside it and split that side by their own size_pct). " +
-			"Each region is {kind, size_pct?, heading?, source?, …} with kind chart (chart, unit), stat (value, label, unit, context), kpis (2–4 kpis), " +
-			"table (headers, rows, column_widths?; ≤4 columns × 5 rows), timeline (3–7 milestones), image (image, caption), cycle (phases, style), process (3–6 steps {label, description?}) or text (body, bullets) — the fields of the like-named slide kind. " +
-			"Region sources join the slide's source line. Use it only when the content types must be read together; one kind per slide stays the default.",
+		Summary: "One slide, one title, 2–4 typed regions read together. " +
+			"columns or rows take 2–3; main_left / main_right / main_top / main_bottom take 3 (first main, two adjacent); " +
+			"quad takes 4; main_left_3 / main_top_3 take 4 (first main, three adjacent); tiles_over_panels takes 3 (first kpis, two below). " +
+			"Each region is {kind, size_pct?, heading?, source?, …}: chart (chart, unit), stat (value, label, unit, context), kpis (2–4 kpis), " +
+			"table (headers, rows, column_widths?; ≤4 columns × 5 rows), timeline (milestones, orientation?), image (image, caption), " +
+			"cycle (phases, style), process (3–6 ordered steps {label, description?}) or text (body, bullets). " +
+			"gap sets nonnegative point spacing; divider adds vertical column-seam rules. Region sources join the slide's source line.",
 		RequiredFields: []string{"regions"},
-		TypicalFields:  []string{"title", "arrangement", "takeaway", "source"},
+		TypicalFields:  []string{"title", "arrangement", "gap", "divider", "takeaway", "source"},
 	},
 	KindRawJSON2pptx: {
 		Kind:           KindRawJSON2pptx,

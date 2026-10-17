@@ -58,6 +58,14 @@ func TestRecommendVisualComposeRecipes(t *testing.T) {
 				}
 				rec := recommendVisualFor(t, mc, args)
 				top := rec.Candidates[0]
+				if _, shortlisted := tc.args["candidates"]; shortlisted {
+					if tc.id == "kpi+process" && tpl == "midnight-blue" && rec.Candidates[0].Name != "kpi-3up" {
+						t.Errorf("template-aware global KPI lead changed: %+v", rec.Candidates)
+					}
+					// Filtering preserves global scores; this test verifies the explicit
+					// composition remains authorable, not an artificial shortlist boost.
+					top = candidateNamed(t, rec, tc.want)
+				}
 				// Views the regions kind can hold lead with that kind; the
 				// compose recipe is the next candidate (go-slide-creator-3ujfq).
 				if top.Category == patterns.VisualCategoryKind && len(rec.Candidates) > 1 {

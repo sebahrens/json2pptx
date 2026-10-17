@@ -12,6 +12,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
@@ -365,10 +366,24 @@ func TestRecommendVisualStatusBoardContractNamesRAGScale(t *testing.T) {
 		"content_hints": map[string]any{"item_count": 5, "columns": 4, "has_metrics": true},
 	})
 	top := rec.Candidates[0]
-	if top.Name != "table-highlight" || top.DeckSpec == nil || top.DeckSpec.Kind != "option_matrix" {
-		t.Fatalf("top = %s %q deckspec %+v, want table-highlight as option_matrix", top.Category, top.Name, top.DeckSpec)
+	if top.Name != "status-board" || top.DeckSpec == nil || top.DeckSpec.Kind != "status_board" {
+		t.Fatalf("top=%s %q deckspec%+v,want native status-board", top.Category, top.Name, top.DeckSpec)
 	}
-	desc := top.DataContract.Description
+	if top.DataContract == nil {
+		t.Fatal("native status-board lacks its data contract")
+	}
+	for _, key := range []string{"columns", "rows"} {
+		found := false
+		for _, required := range top.DataContract.RequiredKeys {
+			found = found || required == key
+		}
+		if !found {
+			t.Errorf("status-board contract omits required %s", key)
+		}
+	}
+	// The rated-table alternative still describes its distinct scale and limits.
+	alternative := candidateNamed(t, rec, "table-highlight")
+	desc := alternative.DataContract.Description
 	for _, want := range []string{"status board", `scale`, "rag", "limit", "recommended"} {
 		if !strings.Contains(strings.ToLower(desc), want) {
 			t.Errorf("option_matrix contract does not say %q for a status board: %s", want, desc)
@@ -605,6 +620,7 @@ func TestRecommendVisualResponseSizeStaysInCheck(t *testing.T) {
 	mc := semanticTestConfig(t)
 	roots := checkoutRootPrefixes(t)
 	total, n, largest := 0, 0, 0
+	largestIntent := ""
 	for _, tc := range recommendVisualEvalCases(t) {
 		args := map[string]any{"intent": tc.Intent, "template": "midnight-blue"}
 		if tc.Hints != nil {
@@ -628,6 +644,7 @@ func TestRecommendVisualResponseSizeStaysInCheck(t *testing.T) {
 		n++
 		if len(raw) > largest {
 			largest = len(raw)
+			largestIntent = tc.Intent
 		}
 	}
 	t.Logf("recommend_visual response size over %d intents, checkout root removed: mean %d B, largest %d B", n, total/n, largest)
@@ -635,7 +652,7 @@ func TestRecommendVisualResponseSizeStaysInCheck(t *testing.T) {
 	// 30 bytes of the budget on CI, so any added word failed an unrelated
 	// change.
 	if headroom := recommendVisualMaxResponseBytes - largest; headroom < recommendVisualMinHeadroomBytes {
-		t.Errorf("largest response is %d bytes, %d under the %d budget; keep at least %d bytes of headroom", largest, headroom, recommendVisualMaxResponseBytes, recommendVisualMinHeadroomBytes)
+		t.Errorf("largest response for %q is %d bytes, %d under the %d budget; keep at least %d bytes of headroom", largestIntent, largest, headroom, recommendVisualMaxResponseBytes, recommendVisualMinHeadroomBytes)
 	}
 }
 
@@ -658,4 +675,98 @@ func checkoutRootPrefixes(t *testing.T) []string {
 	}
 	sort.Slice(prefixes, func(i, j int) bool { return len(prefixes[i]) > len(prefixes[j]) })
 	return prefixes
+}
+
+func TestRegionsRecommendationGuidanceMatchesLiveContract(t *testing.T) {
+	contract := kindDataContract(semantic.KindRegions)
+	if contract == nil {
+		t.Fatal("regions contract missing")
+	}
+	for _, name := range append(append([]string{}, slides.RegionKinds...), slides.RegionArrangements...) {
+		if !strings.Contains(contract.Description, name) {
+			t.Errorf("guidance omits live capability %s", name)
+		}
+	}
+	for _, field := range []string{"2–4", "gap:", "divider:", "column_widths?", "positive relative weights", "one per header", "steps:3–6", "label,description?", "quad (4)", "main_left_3 | main_top_3 (4", "tiles_over_panels (3: first kpis"} {
+		if !strings.Contains(contract.Description, field) {
+			t.Errorf("guidance omits %s", field)
+		}
+	}
+	if len(contract.Description) > 1100 {
+		t.Errorf("guidance exceeds concise budget: %d bytes", len(contract.Description))
+	}
+}
+
+func TestConsultingChartRecommendationsPublishExactDataContract(t *testing.T) {
+	for _, name := range []string{"butterfly_chart", "mekko_chart", "combo_chart"} {
+		t.Run(name, func(t *testing.T) {
+			rec := recommendVisualFor(t, semanticTestConfig(t), map[string]any{"intent": strings.ReplaceAll(name, "_", " "), "candidates": []any{name}})
+			if len(rec.Candidates) != 1 {
+				t.Fatalf("expected one requested chart, got%+v", rec.Candidates)
+			}
+			candidate := rec.Candidates[0]
+			if candidate.Category != patterns.VisualCategoryChart || candidate.Name != name || candidate.DeckSpec == nil || candidate.DeckSpec.Kind != "chart_insight" {
+				t.Fatalf("wrong chart recipe: %+v", candidate)
+			}
+			contract := candidate.DataContract
+			if contract == nil || contract.FieldPath != "slides[0].chart.data" || contract.Form != patterns.ContractFormKind {
+				t.Fatalf("imprecise chart data contract: %+v", contract)
+			}
+			for _, key := range contract.RequiredKeys {
+				if !strings.Contains(contract.Description, key) {
+					t.Errorf("data description does not explain required %s: %s", key, contract.Description)
+				}
+			}
+			diagram := svggen.DefaultRegistry().Get(name)
+			if diagram == nil {
+				t.Fatal("chart not registered")
+			}
+			provider, ok := diagram.(interface{ DataSchema() *svggen.DataSchema })
+			if !ok {
+				t.Fatal("chart has no typed data schema")
+			}
+			schema := provider.DataSchema()
+			required := map[string]bool{}
+			for _, key := range schema.Required {
+				required[key] = true
+			}
+			for _, key := range contract.RequiredKeys {
+				if !required[key] {
+					t.Errorf("wrong required key %s", key)
+				}
+				delete(required, key)
+			}
+			if len(required) != 0 {
+				t.Errorf("missing required keys: %v", required)
+			}
+			keys := map[string]bool{}
+			for _, key := range append(append([]string(nil), contract.RequiredKeys...), contract.OptionalKeys...) {
+				if keys[key] {
+					t.Errorf("duplicate key %s", key)
+				}
+				keys[key] = true
+				if schema.Properties[key] == nil {
+					t.Errorf("unsupported contract key %s", key)
+				}
+			}
+			if len(keys) != len(schema.Properties) {
+				t.Errorf("contract keys%v differ from exact typed schema properties", keys)
+			}
+			result := assertRecipeValidates(t, semanticTestConfig(t), candidate)
+			if strings.Contains(resultText(result), "DEGRADED") {
+				t.Fatalf("typed chart recipe degraded: %s", resultText(result))
+			}
+			slide := recipeArgs(t, candidate)["spec"].(map[string]any)["slides"].([]any)[0].(map[string]any)
+			chart := slide["chart"].(map[string]any)
+			if chart["type"] != name {
+				t.Fatalf("recipe changes chart type: %v", chart["type"])
+			}
+			data := chart["data"].(map[string]any)
+			for _, key := range contract.RequiredKeys {
+				if _, ok := data[key]; !ok {
+					t.Errorf("offered example omits required data key%s", key)
+				}
+			}
+		})
+	}
 }

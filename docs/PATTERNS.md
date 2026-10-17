@@ -1230,6 +1230,7 @@ RACI/status matrices, progress and image hero) share closed live schemas and
 measured native text. Their contracts are mapped to semantic kinds in
 [the wiki catalog](https://github.com/sebahrens/json2pptx/blob/main/docs/wiki/consulting-visual-additions.md). Refuse an impossible
 frame instead of silently reducing readable type or deleting values.
+Built-in image-hero previews use an illustrative image; authored missing paths still fail asset validation.
 
 Compose supports native grid/table/text/image leaves alongside patterns and
 diagrams, heading/caption slots, content-sized vertical segments, measured

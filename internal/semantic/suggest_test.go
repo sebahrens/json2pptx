@@ -17,7 +17,7 @@ func TestSuggestKind(t *testing.T) {
 		{"waterfall", "bridge", "waterfall", "chart"},
 		{"swot", "framework", "swot", "diagram"},
 		{"org_chart", "org", "org_chart", "diagram"},
-		{"venn", "raw_json2pptx", "venn", "diagram"},
+		{"venn", "venn", "", ""},
 		{"metric_hero", "stat", "", ""},
 		{"kpi", "kpi_snapshot", "", ""},
 		{"proces", "process", "", ""},
@@ -177,5 +177,21 @@ func TestDegradeFindingsCarryTheirLimits(t *testing.T) {
 	count, ok := byPath["slides[1].kpis"]
 	if !ok || count.Fix == nil || count.Fix.Params["max_items"] != 6 || count.Fix.Params["min_items"] != 2 {
 		t.Errorf("count finding = %+v", count)
+	}
+}
+
+func TestVennSuggestionIsAnAuthorableRegisteredKind(t *testing.T) {
+	suggestion := SuggestKind("Venn")
+	if suggestion.DidYouMean != KindVenn || !suggestion.DidYouMean.Valid() {
+		t.Fatalf("invalid semantic suggestion: %+v", suggestion)
+	}
+	body := KindExample(suggestion.DidYouMean)
+	delete(body, "kind")
+	input, result, err := Compile(&DeckSpec{Meta: DeckMeta{Title: "Overlap", Template: "midnight-blue"}, Slides: []SlideSpec{{Kind: suggestion.DidYouMean, Body: body}}}, CompileOptions{Strict: StrictnessWarn})
+	if err != nil {
+		t.Fatalf("suggested kind cannot compile: %v %+v", err, result)
+	}
+	if len(input.Slides) != 1 || input.Slides[0].Pattern == nil || input.Slides[0].Pattern.Name != "venn-framework" {
+		t.Fatalf("suggestion did not reach native Venn pattern: %+v", input.Slides)
 	}
 }

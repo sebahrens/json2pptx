@@ -90,6 +90,15 @@ var kpiMotif = patternMotif{base: MotifOpenColumns, overrideStyles: map[string]M
 // what the pattern renders today (the exemplar of each, generated and looked
 // at). A pattern registered without an entry fails TestEveryPatternDeclaresMotif.
 var patternMotifs = map[string]patternMotif{
+	"checklist": {base: MotifOpenList}, "sources-list": {base: MotifOpenList},
+	"prose-2col": {base: MotifOpenColumns}, "image-hero": {base: MotifImage},
+	"raci-matrix": {base: MotifTable}, "status-board": {base: MotifTable},
+	"issue-tree": {base: MotifDiagram}, "decision-tree": {base: MotifDiagram},
+	"venn-framework": {base: MotifDiagram}, "fishbone-framework": {base: MotifDiagram},
+	"pestel-framework": {base: MotifOpenColumns}, "talent-nine-box": {base: MotifTable},
+	"numeric-heatmap": {base: MotifChart}, "stakeholder-map": {base: MotifDiagram},
+	"progress-list": {base: MotifChart}, "ipo-flow": {base: MotifFlow},
+	"three-horizons": {base: MotifTiles}, "timeline-vertical": {base: MotifFlow}, "spectrum": {base: MotifDiagram},
 	"agenda":             {base: MotifOpenList},
 	"agenda-with-images": {base: MotifOpenList},
 	"arch-stack":         {base: MotifDiagram},

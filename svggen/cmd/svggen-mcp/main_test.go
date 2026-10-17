@@ -695,8 +695,10 @@ func TestHandleGetDiagramSchemaKnown(t *testing.T) {
 // the renderer's accepted shape (e.g. pie slices vs labels/values) fails here.
 func TestGetDiagramSchemaExampleValuesAllTypes(t *testing.T) {
 	names := svggen.Types()
-	if len(names) != 22 {
-		t.Fatalf("expected 22 registered diagram types, got %d: %v", len(names), names)
+	want := []string{"area_chart", "bar_chart", "bubble_chart", "butterfly_chart", "combo_chart", "donut_chart", "fishbone", "funnel_chart", "gantt", "gauge_chart", "grouped_bar_chart", "line_chart", "matrix_2x2", "mekko_chart", "org_chart", "pie_chart", "radar_chart", "scatter_chart", "small_multiples_chart", "stacked_area_chart", "stacked_bar_chart", "timeline", "treemap_chart", "venn", "waterfall"}
+	slices.Sort(names)
+	if !slices.Equal(names, want) {
+		t.Fatalf("registered diagram catalog differs: got %v; want %v", names, want)
 	}
 	for _, canonical := range svggen.Types() {
 		names = append(names, svggen.Aliases(canonical)...)

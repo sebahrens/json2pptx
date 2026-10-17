@@ -834,7 +834,7 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 // compositionCandidates leaves out.
 func otherCompositionCandidates(kind SlideKind) []CompositionCandidate {
 	if name, ok := consultingVisualKinds[kind]; ok {
-		return []CompositionCandidate{{Pattern: name, Layout: "blank-title", Reason: "Native measured consulting visual, with no text-only fallback."}}
+		return []CompositionCandidate{{Pattern: name, Layout: slides.ConsultingVisualLayout(name), Reason: "Native measured consulting visual, with no text-only fallback."}}
 	}
 	// cycle lists none: its style field is the composition choice, and a
 	// pattern listed here would have to be accepted as a pattern override.

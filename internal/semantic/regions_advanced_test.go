@@ -102,3 +102,34 @@ func TestSectionShowChaptersUsesCurrentAgendaTracker(t *testing.T) {
 		}
 	}
 }
+
+func TestRegionsLiveDiscoveryGuidanceMatchesContract(t *testing.T) {
+	info, _ := LookupKind(KindRegions)
+	for _, kind := range slides.RegionKinds {
+		if !strings.Contains(info.Summary, kind) {
+			t.Errorf("summary omits kind %s", kind)
+		}
+	}
+	fields := kindPayloadFields[KindRegions]
+	for _, arrangement := range slides.RegionArrangements {
+		for name, text := range map[string]string{"summary": info.Summary, "arrangement": fields["arrangement"].desc} {
+			if !strings.Contains(text, arrangement) {
+				t.Errorf("%s omits arrangement %s", name, arrangement)
+			}
+		}
+	}
+	if !strings.Contains(info.Summary, "2–4") || !strings.Contains(fields["regions"].desc, "2–4") {
+		t.Fatal("discovery understates region count")
+	}
+	for _, key := range []string{"gap", "divider"} {
+		if !strings.Contains(info.Summary, key) || fields[key].desc == "" {
+			t.Errorf("discovery omits %s", key)
+		}
+	}
+	if !strings.Contains(info.Summary, "column_widths") || !strings.Contains(info.Summary, "3–6 ordered steps") {
+		t.Fatal("summary omits table widths or process contract")
+	}
+	if !strings.Contains(fields["divider"].desc, "vertical") || !strings.Contains(fields["divider"].desc, "row-only") {
+		t.Fatal("divider guidance must describe actual column seams")
+	}
+}

@@ -66,6 +66,19 @@
       "mekko_chart",
       "combo_chart",
       "butterfly_chart"
+    ],
+    "ci_followups": [
+      "go-slide-creator-2khqp",
+      "go-slide-creator-a42ft",
+      "go-slide-creator-ylupu",
+      "go-slide-creator-pc2pl",
+      "go-slide-creator-du7gp",
+      "go-slide-creator-81kxj",
+      "go-slide-creator-i3cew",
+      "go-slide-creator-27dsr",
+      "go-slide-creator-gl185",
+      "go-slide-creator-vg99y",
+      "go-slide-creator-eky0z"
     ]
   },
   "templates": [
@@ -85,7 +98,7 @@
     "lint": "make lint: both modules pass pinned golangci-lint v2.12.2",
     "integration": "136 CLI,241 semantic,28 pattern,8 QA tests/subtests pass in bounded affected selections; exact49 tool input schemas preserved",
     "geometry": "All77 pattern exemplars clear baseline/orphan review; nested peers and geometry inspected conservatively",
-    "matrix_pipeline": "Actual semantic RACI/status_board output on both templates retains all10rows and table font floor12pt; JSON cannot forge the internal floor",
+    "matrix_pipeline": "Actual semantic RACI/status_board output on both templates retains all10rows and12pt text; row pitch matches native compact measurement and includes the real legend gap. Boundary frames and larger template gutters refuse overflow; JSON cannot forge the internal floor.",
     "image_pipeline": "Native raster/SVG/fallback image layers keep ordering and full-cell frames; full-photo footer suppression and contained-photo footer retention verified; raw/semantic hero source/takeaway remain inside measured scrim",
     "related_scenarios": "Merged table units are not guessed; currencies/scales stay separate; used status colours only; deliberate gaps and unlike peer roles excluded; balanced splits preserve merged rows and source offsets",
     "wiki_and_skills": "Wiki YAML and live region catalog validate; installed skill/reference,doc/metadata contracts and100KiB guide budget pass",
@@ -93,9 +106,12 @@
       "kind_catalog_bytes": 6014,
       "compact_templates_bytes": 14962,
       "first_contact_bytes": 37986,
-      "all_profile_bytes": 139706,
-      "recommendation_max_bytes": 15635,
-      "caps_increased": false
+      "all_profile_bytes": 138298,
+      "recommendation_max_bytes": 16080,
+      "caps_increased": false,
+      "core_profile_bytes": 101804,
+      "recommendation_mean_bytes": 7418,
+      "recommendation_headroom_bytes": 304
     },
     "previews": {
       "layouts_refreshed": 108,
@@ -103,7 +119,13 @@
       "pixel_changes": 0,
       "manifest_changes": 13
     },
-    "agent_journey": "Recorded TestAgentJourneyMetrics: clean spec2calls,12flaw deck4calls/3validates,16paritypairs/0disagreements,16patches offered/9verified/0failing"
+    "agent_journey": "Recorded TestAgentJourneyMetrics: clean spec2calls,12flaw deck4calls/3validates,16paritypairs/0disagreements,16patches offered/9verified/0failing",
+    "registry_contracts": "New consulting patterns satisfy direct typed-exemplar expansion, closed referenced schemas, declared motifs, selection guidance, type-scale constants and canonical size goldens; all focused registry guards pass.",
+    "discovery_parity": "Canonical aliases retain native hosts and generated two-column fallbacks; agenda discovery requires a real host. Image-hero planning, discovery and compilation all use blank. Region guidance covers the live9kinds/10arrangements.",
+    "preview_asset_isolation": "Built-in image-hero previews explicitly bind an illustrative image; canonical exemplars and authored missing paths remain unchanged and normal asset refusal remains enforced.",
+    "stress_coverage": "15 generated scenarios for Mekko/combo/butterfly cover minimum/dense/edge data, validate and render successfully.",
+    "recommendation_consistency": "One contextual scoring pass precedes shortlist selection; score/band/rationale/composition stay consistent across pattern/chart/diagram/compose. Caller-only alternatives remain available;72/72 exact top-one evaluation passes.",
+    "chart_discovery": "Mekko/combo/butterfly recommendation contracts match authoritative required/optional data keys, point at slides[0].chart.data, and provide examples that validate/render without degrading."
   },
   "visual_acceptance": {
     "native_regions_chapters_stickers": "18 rendered slides inspected across both templates",

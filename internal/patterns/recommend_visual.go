@@ -403,6 +403,8 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	}
 	applyVariety := options != nil && options.PreferVariety && len(recencyCount) > 0
 
+	all := scoreVisualUniverse(reg, intentLower, hints, recencyCount, applyVariety)
+
 	// Explicit-candidates mode: rank only the supplied shortlist across all
 	// visual categories with no threshold cutoff and no truncation.
 	if options != nil && len(options.Candidates) > 0 {
@@ -411,59 +413,8 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 			// "bar_chart" and "bar" are one chart type (go-slide-creator-7sqof).
 			names[i] = canonicalCandidateName(reg, n)
 		}
-		return recommendVisualOnlyCandidates(reg, intentLower, hints, names, recencyCount, applyVariety)
+		return recommendVisualOnlyCandidates(reg, intentLower, hints, names, recencyCount, applyVariety, all)
 	}
-
-	var all []VisualCandidate
-
-	// 1. Score placeholder layouts.
-	all = append(all, scorePlaceholders(intentLower)...)
-
-	// 2. Score named patterns (reuse existing Recommend logic).
-	patternCandidates := scorePatterns(reg, intentLower, &hints.ContentHints, recencyCount, applyVariety)
-	for i := range patternCandidates {
-		patternCandidates[i].Score = roundScore(adjustVisualPatternScore(patternCandidates[i].Name, patternCandidates[i].Score, hints))
-		patternCandidates[i].ConfidenceBand = confidenceBand(patternCandidates[i].Score)
-	}
-	all = append(all, patternCandidates...)
-
-	// 3. Score chart types.
-	all = append(all, scoreCharts(intentLower, hints)...)
-
-	// 4. Score diagram types.
-	all = append(all, scoreDiagrams(intentLower)...)
-	preferNativeLabelledMatrix(all, intentLower)
-
-	// 5. Score compose envelopes — emitted when the intent suggests combining
-	// multiple patterns on one slide OR when the top pattern candidates have
-	// declared compose-affinity (PatternTaxonomy.ComposesWith).
-	all = append(all, scoreCompose(reg, intentLower, patternCandidates)...)
-	applyChartHint(all, hints, intentLower)
-	all = applyConsultingIntentRouting(all, intentLower, hints)
-
-	// Route ordered-steps / ToC intents away from the process_flow diagram. The
-	// process-flow *pattern* is already demoted inside scoreAndDedup; here we
-	// apply the same demotion to the flowchart diagram so a short numbered list
-	// doesn't surface a decision-diamond diagram as the top visual.
-	if processFlowDemotion(intentLower, &hints.ContentHints) {
-		for i := range all {
-			if all[i].Category == VisualCategoryDiagram && all[i].Name == "process_flow" {
-				all[i].Score = roundScore(math.Max(0, all[i].Score-processFlowDemotionPenalty))
-			}
-		}
-	}
-
-	// 6. A visual the intent names outright outranks incidental keyword
-	// matches, and an ability only one form of a visual has breaks the tie
-	// between its forms (go-slide-creator-bdvhj).
-	applyLiteralNameRouting(all, intentLower)
-	applyTwinCueRouting(all, intentLower)
-
-	// 7. An explicit same-slide request for several different views (a chart
-	// left, a KPI upper-right, a timeline lower-right) is one heterogeneous
-	// composition, ranked above every partial view (go-slide-creator-lp0o8).
-	all = scoreCompoundCompose(reg, intentLower, hints, all)
-	all = applyPatternPlacementGuidance(reg, intentLower, hints, all, false)
 
 	// Sort by score descending.
 	sort.Slice(all, func(i, j int) bool {
@@ -513,7 +464,7 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 // from the catalogs (placeholder rules, pattern registry, chart capabilities,
 // diagram capabilities); names not found anywhere are returned with category
 // raw_shape_grid and score 0, with a rationale noting the miss.
-func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *VisualHints, names []string, recencyCount map[string]int, applyVariety bool) RecommendVisualResult {
+func scoreVisualShortlistFallback(reg *Registry, intentLower string, hints *VisualHints, names []string, recencyCount map[string]int, applyVariety bool) RecommendVisualResult {
 	placeholderByType := make(map[string]placeholderRule, len(placeholderRules))
 	for _, r := range placeholderRules {
 		placeholderByType[r.slideType] = r
@@ -1252,4 +1203,94 @@ func suggestVisualQuestions(hints *VisualHints, intent string, candidates []Visu
 		qs = qs[:3]
 	}
 	return qs
+}
+
+// scoreVisualUniverse applies the same contextual ranking before either open
+// truncation or caller shortlist filtering.
+func scoreVisualUniverse(reg *Registry, intentLower string, hints *VisualHints, recencyCount map[string]int, applyVariety bool) []VisualCandidate {
+	var all []VisualCandidate
+
+	// 1. Score placeholder layouts.
+	all = append(all, scorePlaceholders(intentLower)...)
+
+	// 2. Score named patterns (reuse existing Recommend logic).
+	patternCandidates := scorePatterns(reg, intentLower, &hints.ContentHints, recencyCount, applyVariety)
+	for i := range patternCandidates {
+		patternCandidates[i].Score = roundScore(adjustVisualPatternScore(patternCandidates[i].Name, patternCandidates[i].Score, hints))
+		patternCandidates[i].ConfidenceBand = confidenceBand(patternCandidates[i].Score)
+	}
+	all = append(all, patternCandidates...)
+
+	// 3. Score chart types.
+	all = append(all, scoreCharts(intentLower, hints)...)
+
+	// 4. Score diagram types.
+	all = append(all, scoreDiagrams(intentLower)...)
+	preferNativeLabelledMatrix(all, intentLower)
+
+	// 5. Score compose envelopes — emitted when the intent suggests combining
+	// multiple patterns on one slide OR when the top pattern candidates have
+	// declared compose-affinity (PatternTaxonomy.ComposesWith).
+	all = append(all, scoreCompose(reg, intentLower, patternCandidates)...)
+	applyChartHint(all, hints, intentLower)
+	all = applyConsultingIntentRouting(all, intentLower, hints)
+
+	// Route ordered-steps / ToC intents away from the process_flow diagram. The
+	// process-flow *pattern* is already demoted inside scoreAndDedup; here we
+	// apply the same demotion to the flowchart diagram so a short numbered list
+	// doesn't surface a decision-diamond diagram as the top visual.
+	if processFlowDemotion(intentLower, &hints.ContentHints) {
+		for i := range all {
+			if all[i].Category == VisualCategoryDiagram && all[i].Name == "process_flow" {
+				all[i].Score = roundScore(math.Max(0, all[i].Score-processFlowDemotionPenalty))
+			}
+		}
+	}
+
+	// 6. A visual the intent names outright outranks incidental keyword
+	// matches, and an ability only one form of a visual has breaks the tie
+	// between its forms (go-slide-creator-bdvhj).
+	applyLiteralNameRouting(all, intentLower)
+	applyTwinCueRouting(all, intentLower)
+
+	// 7. An explicit same-slide request for several different views (a chart
+	// left, a KPI upper-right, a timeline lower-right) is one heterogeneous
+	// composition, ranked above every partial view (go-slide-creator-lp0o8).
+	all = scoreCompoundCompose(reg, intentLower, hints, all)
+	all = applyPatternPlacementGuidance(reg, intentLower, hints, all, false)
+
+	return all
+}
+
+// A shortlist is a projection of the already-scored universe. Only caller-only
+// candidates (including explicit compositions and zero-keyword alternatives)
+// need the fallback scorer, since the open model does not emit them.
+func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *VisualHints, names []string, recencyCount map[string]int, applyVariety bool, universe []VisualCandidate) RecommendVisualResult {
+	model := map[string]VisualCandidate{}
+	for _, candidate := range universe {
+		if _, exists := model[candidate.Name]; !exists {
+			model[candidate.Name] = candidate
+		}
+	}
+	out := make([]VisualCandidate, 0, len(names))
+	var missing []string
+	for _, name := range names {
+		if candidate, ok := model[name]; ok {
+			out = append(out, candidate)
+		} else {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		fallback := scoreVisualShortlistFallback(reg, intentLower, hints, missing, recencyCount, applyVariety)
+		out = append(out, fallback.Candidates...)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Score != out[j].Score {
+			return out[i].Score > out[j].Score
+		}
+		return out[i].Name < out[j].Name
+	})
+	AnnotateDiffersBy(reg, out)
+	return RecommendVisualResult{Candidates: out, QueryUnderstood: summarizeVisualIntent(intentLower, hints), DisambiguatingQuestions: patternPlacementQuestions(suggestVisualQuestions(hints, intentLower, out), out)}
 }

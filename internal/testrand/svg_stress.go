@@ -269,6 +269,8 @@ func (r *SVGStressRunner) generateData(typ string, v Variant) map[string]any {
 // dataForType generates data with n data points for a given type.
 func (r *SVGStressRunner) dataForType(typ string, n int) map[string]any { //nolint:gocyclo
 	switch typ {
+	case "butterfly_chart", "mekko_chart", "combo_chart":
+		return consultingStressData(typ, n, false)
 	// === CHART TYPES ===
 	case "bar_chart", "line_chart", "area_chart":
 		return r.categorySeries(n, 1)
@@ -741,6 +743,8 @@ func (r *SVGStressRunner) edgeData(typ string) map[string]any { //nolint:gocyclo
 	el := func(s []string) []any { return toAnyStr(s) }
 
 	switch typ {
+	case "butterfly_chart", "mekko_chart", "combo_chart":
+		return consultingStressData(typ, 3, true)
 	case "bar_chart", "line_chart", "area_chart":
 		vals := []any{-100.0, 0.0, 0.001, 999999.0, -0.5}
 		return map[string]any{

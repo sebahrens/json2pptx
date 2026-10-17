@@ -91,7 +91,7 @@ func run() error {
 
 func renderDiagramTool() mcp.Tool {
 	return mcp.NewTool("render_diagram",
-		mcp.WithDescription("Render a diagram or chart to SVG or PNG format. Supports 22 registered types: bar_chart, line_chart, small_multiples_chart, pie_chart, donut_chart, area_chart, radar_chart, scatter_chart, bubble_chart, stacked_bar_chart, stacked_area_chart, grouped_bar_chart, funnel_chart, gauge_chart, treemap_chart, waterfall, org_chart, gantt, timeline, venn, matrix_2x2, fishbone."),
+		mcp.WithDescription("Render a diagram or chart to SVG or PNG format. Supports 25 registered types: butterfly_chart, mekko_chart, combo_chart, bar_chart, line_chart, small_multiples_chart, pie_chart, donut_chart, area_chart, radar_chart, scatter_chart, bubble_chart, stacked_bar_chart, stacked_area_chart, grouped_bar_chart, funnel_chart, gauge_chart, treemap_chart, waterfall, org_chart, gantt, timeline, venn, matrix_2x2, fishbone."),
 		mcp.WithString("type",
 			mcp.Required(),
 			mcp.Description("Diagram type: a canonical name (e.g., bar_chart, pie_chart, org_chart, gantt, timeline, waterfall, venn, matrix_2x2, fishbone) or an alias (bar, pie, funnel, gauge, treemap, org, matrix). Use list_diagram_types for the full list with aliases."),
@@ -976,6 +976,49 @@ func getSchemaForType(typ string) diagramSchema {
 					map[string]any{"name": "Plan", "values": []any{100, 150, 120, 180}},
 					map[string]any{"name": "Actual", "values": []any{95, 160, 130, 175}},
 				},
+			},
+		},
+		"butterfly_chart": {
+			description: "Mirrored nonnegative bars: 2–12 shared categories, left/right named series with aligned values, and one common magnitude scale.",
+			minimal: map[string]any{
+				"categories": []any{"A", "B"},
+				"left":       map[string]any{"name": "Before", "values": []any{10, 20}},
+				"right":      map[string]any{"name": "After", "values": []any{15, 25}},
+			},
+			realistic: map[string]any{
+				"categories": []any{"North", "South", "West"},
+				"left":       map[string]any{"name": "Before", "values": []any{20, 40, 30}},
+				"right":      map[string]any{"name": "After", "values": []any{30, 45, 40}},
+			},
+		},
+		"mekko_chart": {
+			description: "Variable-width composition: 2–8 positive-width segments, each with the same 2–6 ordered part names and nonnegative values normalized to 100% height.",
+			minimal: map[string]any{
+				"segments": []any{
+					map[string]any{"name": "A", "width": 1, "parts": []any{map[string]any{"name": "X", "value": 6}, map[string]any{"name": "Y", "value": 4}}},
+					map[string]any{"name": "B", "width": 1, "parts": []any{map[string]any{"name": "X", "value": 4}, map[string]any{"name": "Y", "value": 6}}},
+				},
+			},
+			realistic: map[string]any{
+				"segments": []any{
+					map[string]any{"name": "Enterprise", "width": 60, "parts": []any{map[string]any{"name": "Product", "value": 60}, map[string]any{"name": "Service", "value": 40}}},
+					map[string]any{"name": "SMB", "width": 40, "parts": []any{map[string]any{"name": "Product", "value": 40}, map[string]any{"name": "Service", "value": 60}}},
+				},
+			},
+		},
+		"combo_chart": {
+			description: "Bars and lines over 2–12 shared categories: 1–3 bar series and 1–2 line series, explicit bar_unit/line_unit, and secondary_axis:true when units differ.",
+			minimal: map[string]any{
+				"categories": []any{"Q1", "Q2"},
+				"bars":       []any{map[string]any{"name": "Sales", "values": []any{10, 20}}},
+				"lines":      []any{map[string]any{"name": "Margin", "values": []any{2, 3}}},
+				"bar_unit":   "USD", "line_unit": "%", "secondary_axis": true,
+			},
+			realistic: map[string]any{
+				"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+				"bars":       []any{map[string]any{"name": "Revenue", "values": []any{20, 40, 30, 45}}},
+				"lines":      []any{map[string]any{"name": "Margin", "values": []any{10, 20, 15, 22}}},
+				"bar_unit":   "$M", "line_unit": "%", "secondary_axis": true,
 			},
 		},
 		"small_multiples_chart": {

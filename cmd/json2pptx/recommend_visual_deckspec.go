@@ -24,7 +24,7 @@ import (
 //     section / table → the layout), next_tool_call renders one slide of that
 //     kind, deckspec names the kind, its fields and aliases, and data_contract
 //     (form "deckspec_kind") describes the kind's payload.
-//   - When no kind does (the 22 raw-only patterns, most diagrams, a compose
+//   - When no kind does (raw-only patterns, most diagrams, a compose
 //     envelope), next_tool_call renders one raw_json2pptx slide and
 //     data_contract (form "raw_json2pptx") carries the shape inline: keys,
 //     item counts and character budgets from the pattern's own schema.
@@ -359,10 +359,13 @@ const cardGridContractDescription = "columns: 2–12 titled cards {header, items
 
 // regionsContractDescription is the regions kind's shape in one paragraph;
 // the kind's own summary runs to several.
-const regionsContractDescription = "2–3 regions under one title. arrangement: columns | rows (size_pct = each region's share) " +
-	"or main_left | main_right | main_top | main_bottom (3 regions: regions[0] main, [1..2] stacked beside it). " +
-	"Region = {kind, size_pct, heading, source} + its kind's fields: chart {chart {type, data}, unit}, stat {value, label, unit, context}, " +
-	"kpis {kpis 2–4}, table {headers, rows ≤4×5}, timeline {milestones 3–7}, image {image, caption}, text {body, bullets}."
+const regionsContractDescription = "2–4 typed regions; each may set heading, source, size_pct. " +
+	"arrangement: columns | rows (2–3); main_left | main_right | main_top | main_bottom (3: first main, two beside); " +
+	"quad (4); main_left_3 | main_top_3 (4: first main, three beside); tiles_over_panels (3: first kpis, two below). " +
+	"gap: nonnegative points; divider: boolean. Region kinds: chart {chart {type,data}, unit?}; stat {value,label,unit?,context?}; " +
+	"kpis {kpis:2–4}; table {headers:≤4, rows:≤5, column_widths?:positive relative weights, one per header}; " +
+	"timeline {milestones, orientation?:horizontal|vertical}; image {image,caption?}; text {body?,bullets?}; " +
+	"cycle {phases,style?}; process {steps:3–6 ordered {label,description?}}. Native fit is measured; shorten or split if refused."
 
 // rawPatternSlide hosts a pattern's exemplar values on a Blank + Title slide.
 func rawPatternSlide(reg *patterns.Registry, name string) (map[string]any, *patterns.VisualDataContract, error) {
@@ -774,8 +777,7 @@ func attachRegionsRecipe(c *patterns.VisualCandidate, templateName string) {
 			"source":      placeholder.RecipeSampleSource,
 			"takeaway":    placeholder.RecipeCopy(placeholder.SlotTakeaway),
 		}
-		c.Composition.Instructions = "Copy " + recipeExamplePath + " into your DeckSpec slides: one regions slide, arrangement " + arrangement +
-			". Each composition region's segment_path is its entry in regions[]; replace the sample content there and keep kind, arrangement and size_pct."
+		c.Composition.Instructions = "Use next_tool_call; replace each segment_path sample. Keep kind, arrangement and size_pct."
 		if setKindRecipe(c, slide, templateName, "") {
 			var notes []string
 			for i, r := range ordered {

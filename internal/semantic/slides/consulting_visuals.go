@@ -14,10 +14,9 @@ func CompileConsultingVisual(in Input, name string, values map[string]any) (*dec
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal %s values: %w", name, err)
 	}
-	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title", Pattern: &deckinput.PatternInput{Name: name, Values: raw}}
+	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: ConsultingVisualLayout(name), Pattern: &deckinput.PatternInput{Name: name, Values: raw}}
 	var links []SourceLink
 	if name == "image-hero" {
-		slide.LayoutID = "blank"
 		slide.SlideType = "title"
 		slide.Pattern.Bounds = &deckinput.GridBoundsInput{Width: 100, Height: 100}
 	} else {
@@ -30,4 +29,12 @@ func CompileConsultingVisual(in Input, name string, values map[string]any) (*dec
 		links = append(links, applyTakeaway(slide, in)...)
 	}
 	return slide, links, nil
+}
+
+// ConsultingVisualLayout keeps discovery, planning and compilation on the same host.
+func ConsultingVisualLayout(name string) string {
+	if name == "image-hero" {
+		return "blank"
+	}
+	return "blank-title"
 }

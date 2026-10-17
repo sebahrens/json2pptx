@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestConsultingNativeListContractsAndFit(t *testing.T) {
@@ -115,5 +117,36 @@ func TestConsultingProgressEightRowsNeedMeasuredHeight(t *testing.T) {
 				t.Fatal("an actual/target row was dropped")
 			}
 		}
+	}
+}
+
+func TestConsultingMatrixIncludesTemplateGutterInFit(t *testing.T) {
+	p, _ := Default().Get("raci-matrix")
+	for _, tc := range []struct {
+		name      string
+		height    int64
+		gutter    float64
+		wantError bool
+	}{{"gap-overflow", 138, 8, true}, {"fits-with-gap", 139, 8, false}, {"larger-template-gap", 139, 16, true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := ExpandContext{LayoutBounds: LayoutBounds{Width: 11000000, Height: tc.height * 12700}, Metadata: &types.TemplateMetadata{Grid: &types.TemplateGrid{GutterPt: tc.gutter}}}
+			grid, err := p.Expand(ctx, p.(interface{ ExemplarValues() any }).ExemplarValues(), nil, nil)
+			if tc.wantError {
+				if err == nil || !strings.Contains(err.Error(), "split") {
+					t.Fatalf("expected measured refusal, got %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			used := grid.Gap
+			for _, row := range grid.Rows {
+				used += row.MinHeight
+			}
+			if used > float64(tc.height) {
+				t.Fatalf("rows and gap use %gpt in %dpt frame", used, tc.height)
+			}
+		})
 	}
 }

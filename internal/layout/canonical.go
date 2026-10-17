@@ -132,6 +132,7 @@ func ResolveCanonicalLayoutID(name string, layouts []types.LayoutMetadata) (stri
 	}
 
 	normalized := strings.ToLower(strings.TrimSpace(name))
+	aliasName := normalized
 	switch normalized {
 	case "sidebar-right", "main-sidebar":
 		normalized = "two-column-70-30"
@@ -155,12 +156,17 @@ func ResolveCanonicalLayoutID(name string, layouts []types.LayoutMetadata) (stri
 	}
 
 	// Passthrough: generated layout IDs (content-2-50-50, grid-2x2, etc.)
-	if IsGeneratedLayout(name) {
+	if IsGeneratedLayout(name) && name != "agenda" {
 		return name, true
 	}
 
 	// Fall back to layout aliases (2-col → content-2-50-50, etc.)
-	if alias, ok := LayoutAliases[normalized]; ok {
+	if alias, ok := LayoutAliases[aliasName]; ok {
+		// Portable two-column aliases retain their generated fallback when no
+		// native host exists; unsupported multi-column aliases need a real host.
+		if strings.HasPrefix(alias, "content-2-") {
+			return alias, true
+		}
 		for _, candidate := range layouts {
 			if candidate.ID == alias {
 				return alias, true
@@ -179,7 +185,12 @@ func ResolveAllCanonicalLayouts(layouts []types.LayoutMetadata) map[string]strin
 	result := make(map[string]string, len(canonicalNames))
 	for name := range canonicalNames {
 		if id, found := ResolveCanonicalLayoutID(name, layouts); found {
-			result[name] = id
+			for _, candidate := range layouts {
+				if candidate.ID == id {
+					result[name] = id
+					break
+				}
+			}
 		}
 	}
 	return result

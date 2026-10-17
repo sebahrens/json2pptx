@@ -8,8 +8,14 @@ import (
 )
 
 func TestAllProfileAbridgesOnlyProseAndKeepsLiveDetails(t *testing.T) {
-	withToolProfile(t, toolProfileAll)
-	wire, tools := listToolsOverWire(t, newJSON2PPTXMCPServer(profileTestConfig(t), toolProfileAll))
+	for _, profile := range []string{toolProfileAll, toolProfileCore} {
+		t.Run(profile, func(t *testing.T) { assertProfileAbridgesOnlyProse(t, profile) })
+	}
+}
+func assertProfileAbridgesOnlyProse(t *testing.T, profile string) {
+	t.Helper()
+	withToolProfile(t, profile)
+	wire, tools := listToolsOverWire(t, newJSON2PPTXMCPServer(profileTestConfig(t), profile))
 	var envelope struct {
 		Result struct {
 			Tools []struct {

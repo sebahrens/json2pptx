@@ -100,7 +100,7 @@ repairs from advice.
 - [TOOLS.md](TOOLS.md): MCP discovery and composition recipes.
 - [RULES.md](RULES.md): grid, chart, table and contrast rules.
 - [PATTERNS.md](PATTERNS.md): pattern placement and capacity; live schemas:
-  `list_patterns` / `show_pattern`.
+  `list_patterns` / `show_pattern`. Hero previews are illustrative; supply your image.
 - [FINDINGS.md](FINDINGS.md): finding paths, actions and repairs.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):
   native layouts and full-slide images.

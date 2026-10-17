@@ -116,3 +116,18 @@ func keys(m map[string]any) []string {
 	}
 	return out
 }
+
+func TestSVGStressConsultingCharts(t *testing.T) {
+	for _, typ := range []string{"butterfly_chart", "mekko_chart", "combo_chart"} {
+		t.Run(typ, func(t *testing.T) {
+			runner := NewSVGStressRunner(42)
+			report := runner.Run(typ)
+			if report.Total != 5 {
+				t.Fatalf("expected all five variants, got %d", report.Total)
+			}
+			for _, failure := range report.Failures {
+				t.Errorf("%s: %s", failure.Variant, failure.Error)
+			}
+		})
+	}
+}

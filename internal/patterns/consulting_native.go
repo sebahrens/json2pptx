@@ -29,7 +29,7 @@ type consultingPattern struct {
 
 func (p *consultingPattern) Name() string        { return p.name }
 func (p *consultingPattern) Description() string { return p.description }
-func (p *consultingPattern) UseWhen() string     { return p.description }
+func (p *consultingPattern) UseWhen() string     { return consultingUseWhen[p.name] }
 func (p *consultingPattern) NotWhen() string {
 	return "Content does not match this visual's closed contract, or measured text cannot fit at the readable size; split the slide."
 }
@@ -38,7 +38,17 @@ func (p *consultingPattern) CellsHint() string    { return "bounded native shape
 func (p *consultingPattern) NewValues() any       { return &map[string]any{} }
 func (p *consultingPattern) NewOverrides() any    { return &map[string]any{} }
 func (p *consultingPattern) NewCellOverride() any { return nil }
-func (p *consultingPattern) ExemplarValues() any  { return p.example }
+func (p *consultingPattern) ExemplarValues() any {
+	raw, err := json.Marshal(p.example)
+	if err != nil {
+		panic(err)
+	}
+	values := p.NewValues()
+	if err := json.Unmarshal(raw, values); err != nil {
+		panic(err)
+	}
+	return values
+}
 func (p *consultingPattern) Taxonomy() PatternTaxonomy {
 	category := "structural"
 	switch p.name {
@@ -50,7 +60,7 @@ func (p *consultingPattern) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{Category: category, NarrativeRole: []string{"frame", "evidence"}, PairsWith: []string{"exec-summary", "chart-insights-split"}, DensityClass: "medium", AccentWeight: "subtle"}
 }
 func (p *consultingPattern) Schema() *Schema {
-	return ObjectSchema(map[string]*Schema{"values": p.valuesSchema, "overrides": ObjectSchema(nil, nil).WithAdditionalProperties(false)}, []string{"values"}).WithAdditionalProperties(false).AsRoot()
+	return ObjectSchema(map[string]*Schema{"values": p.valuesSchema, "overrides": RefSchema("overrides")}, []string{"values"}).WithAdditionalProperties(false).AsRoot().WithDefs(map[string]*Schema{"overrides": ObjectSchema(nil, nil).WithAdditionalProperties(false)})
 }
 func (p *consultingPattern) Validate(values, overrides any, cellOverrides map[int]any) error {
 	v, ok := values.(*map[string]any)
@@ -207,20 +217,21 @@ func (c *consultingCanvas) tableGrid() (*jsonschema.ShapeGridInput, error) {
 	}
 	need := 0.0
 	for _, row := range rows {
-		lines := 1
+		rowHeight := 12*1.2 + 7.2 // generator.compactRowHeight: 1.2 line height plus both cell margins
 		for i, text := range row {
 			m, err := textfit.MeasureRun(text, c.ctx.Theme.BodyFont, 12, widths[i]-91440, 0)
 			if err != nil {
 				return nil, err
 			}
-			lines = max(lines, m.Lines)
+			rowHeight = max(rowHeight, float64(m.RequiredEMU)/12700+3.6)
 		}
-		need += float64(lines)*15 + 8
+		need += rowHeight
 	}
 	legendH := 44.0
-	if need+legendH > c.h {
-		return nil, c.refuse(fmt.Sprintf("matrix needs %.0fpt at 12pt but the frame holds %.0fpt", need+legendH, c.h))
+	gap := c.ctx.Gap(8)
+	if need+legendH+gap > c.h {
+		return nil, c.refuse(fmt.Sprintf("matrix needs %.0fpt at 12pt but the frame holds %.0fpt", need+legendH+gap, c.h))
 	}
 	legend, _ := json.Marshal(map[string]any{"paragraphs": []visualParagraph{visualP(c.tableLegend, 10, false)}, "vertical_align": "ctr"})
-	return &jsonschema.ShapeGridInput{Source: "pattern:" + c.name, VerifiedMatrixPattern: c.name, Columns: json.RawMessage(`[100]`), VerticalAlign: "top", Rows: []jsonschema.GridRowInput{{MinHeight: need, MaxHeight: need, Cells: []*jsonschema.GridCellInput{{Table: c.table}}}, {MinHeight: legendH, MaxHeight: legendH, Cells: []*jsonschema.GridCellInput{{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: visualRaw("none"), Text: legend}}}}}}, nil
+	return &jsonschema.ShapeGridInput{Gap: gap, Source: "pattern:" + c.name, VerifiedMatrixPattern: c.name, Columns: json.RawMessage(`[100]`), VerticalAlign: "top", Rows: []jsonschema.GridRowInput{{MinHeight: need, MaxHeight: need, Cells: []*jsonschema.GridCellInput{{Table: c.table}}}, {MinHeight: legendH, MaxHeight: legendH, Cells: []*jsonschema.GridCellInput{{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: visualRaw("none"), Text: legend}}}}}}, nil
 }

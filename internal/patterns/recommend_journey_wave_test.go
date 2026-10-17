@@ -41,8 +41,8 @@ func TestRecommendVisualWave_TopCandidates(t *testing.T) {
 		// below must rank under want when present.
 		below []string
 	}{
-		{"g status board", waveRiskAppetite, &VisualHints{ContentHints: ContentHints{ItemCount: 5, Columns: 4, HasMetrics: true}}, "table-highlight", []string{"kpi-5up", "kpi-inline", "metric-list"}},
-		{"g status board no hints", waveRiskAppetite, nil, "table-highlight", []string{"kpi-3up", "kpi-inline"}},
+		{"g status board", waveRiskAppetite, &VisualHints{ContentHints: ContentHints{ItemCount: 5, Columns: 4, HasMetrics: true}}, "status-board", []string{"kpi-5up", "kpi-inline", "metric-list"}},
+		{"g status board no hints", waveRiskAppetite, nil, "status-board", []string{"kpi-3up", "kpi-inline"}},
 		{"i results by domain", waveITGCResults, &VisualHints{ContentHints: ContentHints{ItemCount: 5, Columns: 3}}, "table-highlight", []string{"horizontal-bar-with-callouts", "card-grid"}},
 		{"i audit finding", waveAuditFinding, &VisualHints{ContentHints: ContentHints{ItemCount: 5}}, "labeled-rows", []string{"content", "next-steps"}},
 		{"i audit finding no hints", waveAuditFinding, nil, "labeled-rows", []string{"content"}},

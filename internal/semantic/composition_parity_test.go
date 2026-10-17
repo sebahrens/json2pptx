@@ -170,3 +170,15 @@ func TestProcessPatternOverrideSelectsItsCompiler(t *testing.T) {
 		t.Errorf("declined override: compiled %+v, planned %q", got, planned)
 	}
 }
+
+func TestImageHeroDiscoveryAndPlanUseFullCanvasHost(t *testing.T) {
+	body := KindExample(KindImageHero)
+	delete(body, "kind")
+	spec := &DeckSpec{Meta: DeckMeta{Title: "Hero", Template: "midnight-blue"}, Slides: []SlideSpec{{Kind: KindImageHero, Body: body}}}
+	actual := compiledOf(t, spec)
+	planned := Normalize(spec).Slides[0].Visual
+	candidates := SlideAlternatives(KindImageHero, body)
+	if actual.Layout != "blank" || planned.Layout != actual.Layout || len(candidates) != 1 || candidates[0].Layout != actual.Layout {
+		t.Fatalf("full canvas host disagrees: compiled=%+v planned=%+v advertised=%+v", actual, planned, candidates)
+	}
+}

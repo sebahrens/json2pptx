@@ -643,13 +643,13 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 	}, universalFields()),
 	KindRegions: withFields(map[string]payloadField{
 		"gap":      {typ: "number", desc: "Nonnegative finite gap between regions, in points."},
-		"divider":  {typ: "boolean", desc: "Draw a native vertical divider at column seams."},
+		"divider":  {typ: "boolean", desc: "Draw native vertical dividers at region column seams; row-only arrangements have no column seam."},
 		"title":    strField("Slide title: the one claim the regions argue together."),
 		"takeaway": strField("One-line takeaway footer."),
 		"arrangement": {typ: "string", enum: slides.RegionArrangements,
-			desc: "columns (default) or rows: 2–3 regions, size_pct is each one's width / height. main_left / main_right / main_top / main_bottom: exactly 3 regions, regions[0] is the main one (size_pct = its share, default 60) and regions[1..2] stack beside it, splitting that side by their own size_pct."},
+			desc: "columns (default) or rows: 2–3 regions. main_left / main_right / main_top / main_bottom: 3, first main and two adjacent. quad: 4. main_left_3 / main_top_3: 4, first main and three adjacent. tiles_over_panels: 3, first kpis and two below. size_pct sets axis shares; main defaults to60%, tiles strip30%."},
 		"regions": {typ: "array", schema: regionsSchema,
-			desc: "2–3 typed regions in reading order: {kind, size_pct?, heading?, source?, …kind fields}. Unset size_pct values share what the set ones leave; every region gets 15–85%."},
+			desc: "2–4 typed regions in reading order: {kind, size_pct?, heading?, source?, …kind fields}. Unset size_pct values share what the set ones leave; every region gets 15–85%."},
 	}, universalFields()),
 	KindRawJSON2pptx: withFields(map[string]payloadField{
 		"slide": {typ: "object", desc: "A raw json2pptx slide object (validated strictly as PresentationInput.slides[])."},

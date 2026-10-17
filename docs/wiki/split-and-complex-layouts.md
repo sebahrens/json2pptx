@@ -17,13 +17,14 @@ holds one number and a few short lines, never a paragraph.
 ## 1. Chart left, number and bullets right — `regions`, `main_left`
 
 The most-used consulting split: the exhibit on the left, the headline number
-over two or three bullets on the right. `regions` takes 2–3 typed regions:
-`chart`, `stat`, `kpis`, `table`, `timeline`, `image`, `text`, `cycle`. With
+over two or three bullets on the right. `regions` takes 2–4 typed regions,
+depending on arrangement: `chart`, `stat`, `kpis`, `table`, `timeline`, `image`,
+`text`, `cycle` or `process`. With
 `arrangement: main_left`, `regions[0]` is the main region (its `size_pct` is
 its width share, default 60) and `regions[1..2]` stack on the right, splitting
-that side by their own `size_pct`. The other arrangements — `columns`,
-`rows`, `main_right`, `main_top`, `main_bottom` — the share rules and the
-widths at which each visual still draws are in
+that side by their own `size_pct`. All ten arrangements, including the
+four-region layouts, share rules, `gap` / `divider` controls and widths at
+which each visual still draws are in
 [slide-estate-and-segments.md](slide-estate-and-segments.md). One title, one
 `source`, one `takeaway` cover the slide.
 

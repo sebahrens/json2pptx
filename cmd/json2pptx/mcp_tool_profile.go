@@ -262,9 +262,7 @@ func toolProfileFilter(profile string) server.ToolFilterFunc {
 					t.RawOutputSchema = nil
 					t.OutputSchema = mcp.ToolOutputSchema{}
 				}
-				if len([]rune(t.Description)) > 220 {
-					t.Description = cutSummaryAtWord(t.Description, 160) + fmt.Sprintf(` Full documentation: get_started tool:%q.`, t.Name)
-				}
+				t = withConciseToolDescription(t)
 				out = append(out, t)
 			}
 			return out
@@ -274,6 +272,11 @@ func toolProfileFilter(profile string) server.ToolFilterFunc {
 	deckSpec := profile == toolProfileDeckSpec
 	return func(_ context.Context, tools []mcp.Tool) []mcp.Tool {
 		out := filterCoreTools(tools, set)
+		if profile == toolProfileCore {
+			for i := range out {
+				out[i] = withConciseToolDescription(out[i])
+			}
+		}
 		if deckSpec {
 			for i := range out {
 				switch out[i].Name {
@@ -419,4 +422,13 @@ func toolIsAdvertised(name string) bool {
 	default:
 		return profileToolSet(profile)[name]
 	}
+}
+
+// Discovery keeps every input constraint; live named lookup serves the full
+// prose. This common policy bounds both raw/core and all-tools catalogues.
+func withConciseToolDescription(tool mcp.Tool) mcp.Tool {
+	if len([]rune(tool.Description)) > 220 {
+		tool.Description = cutSummaryAtWord(tool.Description, 128) + fmt.Sprintf(` Full documentation: get_started tool:%q.`, tool.Name)
+	}
+	return tool
 }

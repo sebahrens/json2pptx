@@ -8,6 +8,7 @@
   - Balanced table splits preserve merged groups and source offsets. Measured RACI/status matrix headers/body retain 12pt; ordinary raw table limits remain. Cell `text_color` validates colour syntax and constrained design rules consistently.
   - Image-plus-layer compositions retain z-order and full-cell geometry for raster/SVG sources. Grid images share photo-footer protection; image-hero supporting text stays inside its measured scrim.
   - Compact discovery projections retain existing response budgets. Shared-autofit regression fixtures assert the causal source; sparse readiness controls use substantive content.
+  - Consulting patterns integrate with shared exemplar, motif, schema and selection contracts. Open and shortlisted recommendations share contextual scores; region guidance and image-hero layout discovery match compilation. Built-in hero previews use an illustrative image while authored missing assets still fail.
 
 - **2026-10-17 — Schema 4.177.0 · Field-review follow-ups.** Input fingerprint: `865d239d81b07196` (additive table column widths).
   - Tables accept `column_widths`, one positive relative weight per column, on raw tables, the `table` kind and table regions. Rendering, preflight, strict fit and logical-row density use the same widths. `[1, 3]` gives a glossary's definition column three quarters of the width.

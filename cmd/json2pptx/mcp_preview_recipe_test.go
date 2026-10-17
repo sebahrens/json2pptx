@@ -302,7 +302,11 @@ func TestListSlideKindsPreviewMatchesRenderDeckSpec(t *testing.T) {
 					t.Errorf("preview of %s is referenced by a file path", p.Name)
 				}
 				// The same example through the authoring path.
-				deck := renderDeckSpecPath(t, mc, kindPreviewSpec(semantic.SlideKind(p.Name), tpl))
+				previewSpec, err := kindPreviewSpec(semantic.SlideKind(p.Name), tpl)
+				if err != nil {
+					t.Fatal(err)
+				}
+				deck := renderDeckSpecPath(t, mc, previewSpec)
 				thumbs, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{"pptx_path": deck, "density": float64(previewDensity)}))
 				if err != nil || thumbs.IsError {
 					t.Fatalf("render_deck_thumbnails: %v %s", err, textContent(thumbs))
@@ -425,7 +429,11 @@ func TestPreviewArgumentContract(t *testing.T) {
 func TestPreviewRecipesCoverEveryKind(t *testing.T) {
 	mc := semanticTestConfig(t)
 	for _, k := range semantic.AllSlideKinds() {
-		data, err := json.Marshal(kindPreviewSpec(k, "midnight-blue"))
+		previewSpec, err := kindPreviewSpec(k, "midnight-blue")
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := json.Marshal(previewSpec)
 		if err != nil {
 			t.Fatal(err)
 		}

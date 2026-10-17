@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -331,5 +332,33 @@ func TestResolveAllCanonicalLayouts_Empty(t *testing.T) {
 	got := ResolveAllCanonicalLayouts(nil)
 	if len(got) != 0 {
 		t.Errorf("expected empty map for nil layouts, got %v", got)
+	}
+}
+
+func TestCanonicalAliasesPreferNativeHostsAndKeepSafeFallbacks(t *testing.T) {
+	native := []types.LayoutMetadata{{ID: "native-two", Tags: []string{"two-column"}}}
+	for _, alias := range []string{"2-col", "2col", "split", "sidebar-right", "sidebar-left", "main-sidebar", "sidebar-main"} {
+		if id, ok := ResolveCanonicalLayoutID(alias, native); !ok || id != "native-two" {
+			t.Errorf("%s ignored native host: %q %v", alias, id, ok)
+		}
+		if id, ok := ResolveCanonicalLayoutID(alias, nil); !ok || !strings.HasPrefix(id, "content-2-") {
+			t.Errorf("%s lost generated fallback: %q %v", alias, id, ok)
+		}
+	}
+	for _, alias := range []string{"agenda", "contents", "outline", "toc", "3-col", "4-col", "5-col"} {
+		if id, ok := ResolveCanonicalLayoutID(alias, nil); ok {
+			t.Errorf("%s invented missing host %q", alias, id)
+		}
+	}
+	agenda := []types.LayoutMetadata{{ID: "agenda"}}
+	for _, alias := range []string{"agenda", "contents", "outline", "toc"} {
+		if id, ok := ResolveCanonicalLayoutID(alias, agenda); !ok || id != "agenda" {
+			t.Errorf("%s failed real host: %q %v", alias, id, ok)
+		}
+	}
+	for name, id := range ResolveAllCanonicalLayouts(native) {
+		if id != "native-two" {
+			t.Errorf("discovery invents %s: %s", name, id)
+		}
 	}
 }

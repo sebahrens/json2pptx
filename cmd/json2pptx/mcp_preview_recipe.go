@@ -124,6 +124,7 @@ func (mc *mcpConfig) renderSpecPreview(ctx context.Context, spec map[string]any,
 type previewRequest struct {
 	Name string
 	Spec map[string]any
+	Err  error
 }
 
 // renderPreviews renders up to maxStylePreviewImages recipes (callers hold
@@ -138,6 +139,11 @@ func (mc *mcpConfig) renderPreviews(ctx context.Context, reqs []previewRequest) 
 	var images []api.MCPImage
 	for _, r := range reqs {
 		p := patterns.VisualPreview{Name: r.Name, Template: previewSpecTemplate(r.Spec)}
+		if r.Err != nil {
+			p.Error = r.Err.Error()
+			out = append(out, p)
+			continue
+		}
 		img, err := mc.renderSpecPreview(ctx, r.Spec, previewDensity)
 		if err == nil {
 			var enc api.MCPImage
@@ -208,8 +214,14 @@ func previewCallFor(intent, templateName string, rec *patterns.RecommendVisualRe
 }
 
 // kindPreviewSpec wraps a kind's copy-ready example in a one-slide DeckSpec.
-func kindPreviewSpec(k semantic.SlideKind, templateName string) map[string]any {
-	return recipeSpec(strings.ReplaceAll(string(k), "_", " "), templateName, semantic.KindExample(k))
+func kindPreviewSpec(k semantic.SlideKind, templateName string) (map[string]any, error) {
+	slide := semantic.KindExample(k)
+	if k == semantic.KindImageHero {
+		if err := bindIllustrativeHeroImage(slide); err != nil {
+			return nil, fmt.Errorf("image-hero illustration: %w", err)
+		}
+	}
+	return recipeSpec(strings.ReplaceAll(string(k), "_", " "), templateName, slide), nil
 }
 
 // patternPreviewSpec is the one-slide DeckSpec that shows a pattern with its
@@ -218,6 +230,14 @@ func patternPreviewSpec(reg *patterns.Registry, name, templateName string) (map[
 	slide, _, err := rawPatternSlide(reg, name)
 	if err != nil {
 		return nil, err
+	}
+	if name == "image-hero" {
+		raw, _ := slide["slide"].(map[string]any)
+		pattern, _ := raw["pattern"].(map[string]any)
+		values, _ := pattern["values"].(map[string]any)
+		if err := bindIllustrativeHeroImage(values); err != nil {
+			return nil, fmt.Errorf("image-hero illustration: %w", err)
+		}
 	}
 	return recipeSpec(strings.ReplaceAll(name, "-", " "), templateName, slide), nil
 }
@@ -248,7 +268,33 @@ func kindPreviewRequests(kinds []string, templateName string) []previewRequest {
 	}
 	reqs := make([]previewRequest, 0, len(kinds))
 	for _, k := range kinds {
-		reqs = append(reqs, previewRequest{Name: k, Spec: kindPreviewSpec(semantic.SlideKind(k), templateName)})
+		spec, err := kindPreviewSpec(semantic.SlideKind(k), templateName)
+		reqs = append(reqs, previewRequest{Name: k, Spec: spec, Err: err})
 	}
 	return reqs
+}
+
+// bindIllustrativeHeroImage is only called by built-in exemplar constructors
+// and their matrix fixture. It is never part of compilation or asset loading:
+// an authored hero.jpg, or any other missing image, must still be refused.
+func bindIllustrativeHeroImage(values map[string]any) error {
+	image, _ := values["image"].(map[string]any)
+	if image == nil || image["path"] != "hero.jpg" {
+		return nil
+	}
+	if url, _ := image["url"].(string); url != "" {
+		return nil
+	}
+	path, err := sampleScreenshot()
+	if err != nil {
+		return err
+	}
+	copyImage := make(map[string]any, len(image))
+	for key, value := range image {
+		copyImage[key] = value
+	}
+	copyImage["path"] = path
+	copyImage["alt"] = "Illustrative operations console; replace with your image"
+	values["image"] = copyImage
+	return nil
 }

@@ -7,6 +7,10 @@ is the live closed contract. For a raw pattern use `show_pattern(name)`.
 These forms preserve authored text and refuse geometry that cannot hold it.
 Native shapes/text/tables stay editable; SVG charts are pictures, not Office
 chart objects.
+Built-in image-hero kind, pattern and gallery previews use an illustrative
+operations image. Replace it with your own image when authoring a deck;
+missing authored paths still produce an asset error. The hero composition
+uses the full-slide `blank` layout so its headline stays inside the image band.
 
 ## Native kinds and their matching patterns
 

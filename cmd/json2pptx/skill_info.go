@@ -1195,6 +1195,19 @@ func buildShapeGeometries() []string {
 func buildDataFormatHints() map[string]skillDataFormat {
 	return map[string]skillDataFormat{
 		// --- Charts ---
+		"butterfly_chart": {
+			RequiredKeys: []string{"categories", "left", "right"},
+			Description:  "categories: 2–12 center labels; left / right: {name, values:number[]} with one finite nonnegative value per category. Both sides use one shared magnitude scale; magnitudes are nonnegative (zero allowed), with left bars drawn to the left.",
+		},
+		"mekko_chart": {
+			RequiredKeys: []string{"segments"},
+			Description:  "segments: 2–8 {name, width, parts:[{name, value}]}; width is a positive finite segment weight. Each segment has the same ordered 2–6 part names with finite nonnegative values and a positive total. Widths determine horizontal share; each segment's parts sum to 100% vertically.",
+		},
+		"combo_chart": {
+			RequiredKeys: []string{"categories", "bars", "lines", "bar_unit", "line_unit"},
+			OptionalKeys: []string{"secondary_axis", "highlight"},
+			Description:  "categories: 2–12 shared labels; bars: 1–3 and lines: 1–2 {name, values:number[]} series, one finite nonnegative value per category. bar_unit / line_unit are explicit strings (empty means unitless). secondary_axis:true puts lines on a labeled right scale; different units require it. highlight names one bar series.",
+		},
 		"bar": {
 			RequiredKeys: []string{"categories", "series"},
 			OptionalKeys: []string{"colors", "x_label", "y_label", "annotations", "data_labels", "highlight", "sort", "orientation", "y_min", "y_max"},
