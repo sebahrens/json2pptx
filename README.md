@@ -277,8 +277,8 @@ Deck-level intent lives under `meta`; each slide is a `kind`-tagged payload whos
 
 ```sh
 json2pptx semantic validate --spec qbr.yaml
-json2pptx semantic compile --spec qbr.yaml --output qbr.compiled.json
-json2pptx semantic render --spec qbr.yaml --output qbr.pptx
+json2pptx semantic compile --spec qbr.yaml --out qbr.compiled.json
+json2pptx semantic render --spec qbr.yaml --out qbr.pptx
 json2pptx semantic explain --spec qbr.yaml
 json2pptx semantic schema
 ```
@@ -718,7 +718,7 @@ Every command follows one convention (`json2pptx help` prints it):
 | `analyze-rhythm` | Analyze deck visual rhythm and pattern repetition |
 | `render-slide` | Render a single slide to a PNG file (`--slide-index N` or `--slide-id ID`, `--out slide.png`; requires LibreOffice + ImageMagick) |
 | `render-slide-from-json` | Render one slide directly from JSON to a PNG file (no full deck render) |
-| `render-thumbnails` | Write every slide as `slide-<index>.png` into `--out-dir` and print a manifest (paths, sha256, sizes); `--slides 1,costs` narrows by index or slide id; `--known-hashes` skips slides whose `content_hash` you already hold; `--base64` for the old JSON envelope |
+| `render-thumbnails` | Write every slide as `slide-<index>.png` into `--out` and print a manifest (paths, sha256, sizes); `--slides 1,costs` narrows by index or slide id; `--known-hashes` skips slides whose `content_hash` you already hold; `--base64` for the old JSON envelope |
 | `purge-render-cache` | Reclaim the on-disk render cache and stale LibreOffice profile directories |
 | `audit-palette` | Render PPTX to PNG and report ΔE between chart pics and adjacent solid-filled shapes |
 | `template-settings` | Manage named styles (list/register/delete) |

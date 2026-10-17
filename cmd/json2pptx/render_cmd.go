@@ -182,16 +182,16 @@ func runRenderThumbnails() error {
 	base64Out := fs.Bool("base64", false, "Print the legacy JSON envelope with every image as png_base64 instead of a file manifest")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-thumbnails <file.pptx> --out-dir <dir> [options]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx render-thumbnails <file.pptx> --out <dir> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Render the slides of a PPTX as PNG files and print a small manifest\n")
 		fmt.Fprintf(os.Stderr, "(path, sha256, bytes, width, height per slide) on stdout.\n")
 		fmt.Fprintf(os.Stderr, "Files are named slide-0.png, slide-1.png, ... - what 'json2pptx inspect <dir>' reads.\n")
 		fmt.Fprintf(os.Stderr, "Requires LibreOffice and ImageMagick on PATH.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/ --density 100 --max-slides 10\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/ --slides 1,3\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out-dir slides/ --known-hashes <content_hash>,<content_hash>\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out slides/\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out slides/ --density 100 --max-slides 10\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out slides/ --slides 1,3\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails output/deck.pptx --out slides/ --known-hashes <content_hash>,<content_hash>\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}

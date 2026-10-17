@@ -78,7 +78,7 @@ then tightened by hand.
 ```bash
 json2pptx semantic validate examples/semantic/playbooks/deals-cdd-proposal.yaml --templates-dir templates
 json2pptx semantic render   examples/semantic/playbooks/deals-cdd-proposal.yaml --templates-dir templates --out /tmp/falcon.pptx
-json2pptx render-thumbnails /tmp/falcon.pptx --out-dir /tmp/falcon-slides/
+json2pptx render-thumbnails /tmp/falcon.pptx --out /tmp/falcon-slides/
 ```
 
 Through the MCP server (`json2pptx mcp`), the same deck is `render_deck_spec`

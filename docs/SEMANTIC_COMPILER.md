@@ -146,9 +146,9 @@ CLI:
 ```bash
 json2pptx semantic validate --spec deck.yaml
 json2pptx semantic validate --spec deck.yaml --template modern  # measure on the template you will render on
-json2pptx semantic compile --spec deck.yaml --output compiled.json
+json2pptx semantic compile --spec deck.yaml --out compiled.json
 json2pptx semantic compile --spec deck.yaml --envelope          # compiled_json + diagnostics
-json2pptx semantic render --spec deck.yaml --output deck.pptx
+json2pptx semantic render --spec deck.yaml --out deck.pptx
 json2pptx semantic explain --spec deck.yaml
 json2pptx semantic schema
 ```

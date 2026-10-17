@@ -423,6 +423,8 @@ func (rc *remedyContext) plan(t *remedyTarget) {
 			}
 		}
 		add(semanticPatchOps(rc.data, t.path, t.hintCode, t.raw))
+	case t.code == "SEMANTIC_DENSITY":
+		add(rc.tableSplitOps(t.path))
 	case len(t.members) > 1:
 		var ops []any
 		for _, m := range t.members {
@@ -489,7 +491,7 @@ func (rc *remedyContext) choose(targets []*remedyTarget) {
 			pending = append(pending, t)
 		}
 	}
-	if len(pending) > 1 {
+	if len(pending) > 1 && !hasSlideInsertion(pending) {
 		// Patches for separate findings rarely interact: one validation of them
 		// all settles the common case.
 		var all []any

@@ -4,8 +4,8 @@ For new agent-authored decks, prefer the semantic deck spec instead of hand-auth
 ```bash
 json2pptx semantic schema
 json2pptx semantic validate --spec deck.yaml
-json2pptx semantic compile --spec deck.yaml --output compiled.json
-json2pptx semantic render --spec deck.yaml --output deck.pptx
+json2pptx semantic compile --spec deck.yaml --out compiled.json
+json2pptx semantic render --spec deck.yaml --out deck.pptx
 ```
 Raw `PresentationInput` remains the power-user escape hatch, the compiler output format, and the contract for low-level MCP tools such as `validate_input`, `preview_presentation_plan`, `generate_presentation`, and `repair_slide`.
 ## Canonical schema (single source of truth)
