@@ -835,26 +835,11 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	var slideFitFindings []patterns.FitFinding
 	hasComposition := hasPatternContent(slide)
 	explicitLayout := slide.LayoutID != ""
-	if slide.LayoutID == "" && slide.SlideType == "image" && imageHasText(slide.Content) {
-		slide.LayoutID = "image-left"
-	}
-	if side := layout.ImageColumnFallback(slide.LayoutID, layouts); side != "" {
-		slide.ImageColumnSide = side
-		slide.ColumnLeftPercent = 50
-	}
-	if slide.ImageColumnSide != "" {
-		slide.Content = portableImageContent(slide.Content, slide.ImageColumnSide)
-	}
-	if layout.IsStackedName(slide.LayoutID) {
-		slide.StackedSplit = true
-	}
-	slide.ColumnLeftPercent = derivedColumnLeftPercent(slide)
-
-	if slide.LayoutID != "" && len(layouts) > 0 {
-		if resolved, ok := layout.ResolveCanonicalLayoutID(slide.LayoutID, layouts); ok {
-			slide.LayoutID = resolved
-		}
-	}
+	// Resolve the same canonical role, image fallback, and derived-column
+	// provenance used by validate, preview, and score.
+	normalized := []SlideInput{slide}
+	resolveCanonicalLayoutIDs(normalized, layouts)
+	slide = normalized[0]
 
 	// Visual compositions need a title-bearing canvas with the remainder of the
 	// slide available for shapes. Bind that role before heuristic scoring so
@@ -1332,8 +1317,8 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			return nil, cliSlideErrorAt(slidepath.ContentField(slideNum-1, j, "type"), "slide %d, content %d: type is required", slideNum, j+1)
 		}
 
-		if len([]rune(ci.Heading)) > 60 {
-			return nil, cliSlideErrorAt(slidepath.ContentField(slideNum-1, j, "heading"), "column heading holds at most 60 characters")
+		if len([]rune(ci.Heading)) > deckinput.MaxHeadingRunes {
+			return nil, cliSlideErrorAt(slidepath.ContentField(slideNum-1, j, "heading"), deckinput.HeadingLimitMessage)
 		}
 		item := generator.ContentItem{
 			PlaceholderID: ci.PlaceholderID,
@@ -1521,7 +1506,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			}
 
 		default:
-			return nil, cliSlideErrorAt(slidepath.ContentField(slideNum-1, j, "type"), "slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, body_and_lead, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, ci.Type)
+			return nil, cliSlideErrorAt(slidepath.ContentField(slideNum-1, j, "type"), "slide %d, content %d: %s", slideNum, j+1, deckinput.UnknownContentTypeMessage(ci.Type))
 		}
 
 		if image, ok := item.Value.(generator.ImageContent); ok {
@@ -2036,7 +2021,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			item.Value = convertBulletGroupsInput(&input)
 
 		default:
-			return nil, cliSlideErrorAt(slidepath.ContentField(slideNum-1, j, "type"), "slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, body_and_lead, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, jsonItem.Type)
+			return nil, cliSlideErrorAt(slidepath.ContentField(slideNum-1, j, "type"), "slide %d, content %d: %s", slideNum, j+1, deckinput.UnknownContentTypeMessage(jsonItem.Type))
 		}
 
 		items = append(items, item)

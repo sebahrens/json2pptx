@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -242,16 +243,9 @@ func TestWriteFitReport_NDJSON(t *testing.T) {
 		},
 	}
 
-	dir := t.TempDir()
-	path := filepath.Join(dir, "report.json")
-	if err := writeFitReport(path, findings); err != nil {
-		t.Fatalf("writeFitReport failed: %v", err)
-	}
-
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("failed to read report: %v", err)
-	}
+	var report bytes.Buffer
+	writeFitReportNDJSON(&report, findings)
+	data := report.Bytes()
 
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(lines) != 2 {

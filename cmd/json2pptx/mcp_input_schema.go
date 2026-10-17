@@ -13,6 +13,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -194,7 +195,7 @@ var enumMap = map[string]map[string][]string{
 		// accepts that branch. Capabilities advertises the slimmer
 		// generator.AllContentTypes() — alignment of these two surfaces is
 		// tracked as a separate task.
-		"type": {"text", "bullets", "body_and_bullets", "body_and_lead", "bullet_groups", "table", "chart", "diagram", "image"},
+		"type": deckinput.ContentTypes(),
 	},
 	"GridImageInput": {
 		"geometry": {"rect", "ellipse"},
@@ -231,9 +232,9 @@ var enumMap = map[string]map[string][]string{
 // reflection-derived property schema wholesale. Use for fields that need
 // discriminator-style oneOf branches or other shapes reflection cannot infer.
 var propertyOverrides = map[string]map[string]map[string]any{
-	"ContentInput":   {"heading": {"type": "string", "maxLength": 60}},
+	"ContentInput":   {"heading": {"type": "string", "maxLength": deckinput.MaxHeadingRunes}},
 	"ChromeInput":    {"sticker": {"type": "string", "maxLength": 20}},
-	"SegmentInput":   {"size": {"type": "string", "enum": []any{"content"}}, "heading": {"type": "string", "maxLength": 60}, "caption": {"type": "string", "maxLength": 120}},
+	"SegmentInput":   {"size": {"type": "string", "enum": []any{"content"}}, "heading": {"type": "string", "maxLength": deckinput.MaxHeadingRunes}, "caption": {"type": "string", "maxLength": 120}},
 	"ShapeGridInput": {"col_rule": {"oneOf": []any{map[string]any{"type": "string", "enum": []any{"all"}}, map[string]any{"type": "array", "items": map[string]any{"type": "integer", "minimum": 0}}}}},
 	"ChartSpec": {
 		// go-slide-creator-sdxii: a single-series bar chart paints its bars

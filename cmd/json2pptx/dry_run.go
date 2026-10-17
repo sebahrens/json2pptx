@@ -18,7 +18,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
-	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
@@ -48,7 +47,7 @@ type dryRunOutput struct {
 	// so a freshly built dryRunOutput (e.g. a unit test that calls
 	// validateSlidesAgainstTemplate directly) carries an empty envelope and
 	// populates the Diagnostics/FitFindings accumulators instead.
-	Findings diagnostics.FindingEnvelope `json:"findings"`
+	Findings diagnostics.FindingEnvelope `json:"legacy_findings"`
 
 	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
 	// response with the field zeroed. Agents may use it as a cache key.
@@ -229,29 +228,13 @@ func runJSONDryRunWithOptions(jsonPath, templateOverride, templatesDir, configPa
 	}
 	output.inputSHA256 = diagnostics.ComputeInputSHA256(inputData)
 
-	// Parse JSON as PresentationInput (superset of legacy JSONInput)
-	var patchInput PresentationPatchInput
-	if err := json.Unmarshal(inputData, &patchInput); err == nil && len(patchInput.Operations) > 0 {
-		patched, patchErr := applyPresentationPatch(patchInput)
-		if patchErr != nil {
-			output.Valid = false
-			output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-				Code: "PATCH_ERROR", Message: fmt.Sprintf("failed to apply patch: %v", patchErr),
-				Severity: diagnostics.SeverityError,
-			})
-			return writeDryRunOutputTo(output, writer)
-		}
-		input = *patched
-	} else {
-		if err := json.Unmarshal(inputData, &input); err != nil {
-			output.Valid = false
-			output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-				Code: "INVALID_JSON", Message: fmt.Sprintf("failed to parse JSON: %v", err),
-				Severity: diagnostics.SeverityError,
-			})
-			return writeDryRunOutputTo(output, writer)
-		}
+	parsed, parseDiag := decodeDryRunInput(inputData)
+	if parseDiag != nil {
+		output.Valid = false
+		output.Diagnostics = append(output.Diagnostics, *parseDiag)
+		return writeDryRunOutputTo(output, writer)
 	}
+	input = *parsed
 
 	// CLI --template override wins over the JSON field, exactly as
 	// parseJSONInput applies it for the real run, so a dry run validates the
@@ -554,7 +537,7 @@ func resolveCanonicalLayoutIDs(slides []SlideInput, layouts []types.LayoutMetada
 // per-slide details and accumulating diagnostics in output.Diagnostics (folded
 // into the Findings envelope at serialization). This is the shared validation
 // core used by both the CLI dry-run and the MCP validate_input handler.
-func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, analysis *types.TemplateAnalysis, source ...*PresentationInput) { //nolint:gocognit,gocyclo
+func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, analysis *types.TemplateAnalysis, source ...*PresentationInput) {
 	// A deck default every table adopts is one field in the deck: report a
 	// fault in it once, not once per table.
 	defer func() { output.Diagnostics = onePerDefaultsField(output.Diagnostics) }()
@@ -562,14 +545,6 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 	layoutByID := make(map[string]types.LayoutMetadata, len(analysis.Layouts))
 	for _, l := range analysis.Layouts {
 		layoutByID[l.ID] = l
-	}
-
-	type phKey struct{ layoutID, phID string }
-	phByKey := make(map[phKey]types.PlaceholderInfo)
-	for _, l := range analysis.Layouts {
-		for _, ph := range l.Placeholders {
-			phByKey[phKey{l.ID, ph.ID}] = ph
-		}
 	}
 
 	// Build table style lookup for style_id validation.
@@ -617,471 +592,15 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			Placeholders: []dryRunPlaceholder{},
 		}
 
-		// Check layout_id reference. layout_id and slide_type are alternatives:
-		// the generator auto-selects a layout when only slide_type is provided,
-		// so the validator only errors when BOTH are missing.
-		lm, layoutFound := layoutByID[slideInput.LayoutID]
-		if slideInput.LayoutID == "" {
-			if slideInput.SlideType == "" {
-				output.Valid = false
-				msg := fmt.Sprintf("slide %d: layout_id or slide_type is required", i+1)
-				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-					Code:     patterns.ErrCodeRequired,
-					Path:     slidepath.SlideField(i, "layout_id"),
-					Message:  msg,
-					Severity: diagnostics.SeverityError,
-					Fix: &diagnostics.Fix{
-						Kind:   "provide_value",
-						Params: map[string]any{"field": "layout_id_or_slide_type"},
-					},
-				})
-			}
-		} else if !layoutFound {
-			output.Valid = false
-			path := slidepath.SlideField(i, "layout_id")
-			var msg string
-			fix := &patterns.FixSuggestion{Kind: "use_one_of", Params: map[string]any{"path": "layout_id"}}
-			if hint := layout.UnsupportedNativeAliasHint(slideInput.LayoutID); hint != "" {
-				msg = fmt.Sprintf("slide %d: layout alias %q is unavailable on this template; %s", i+1, slideInput.LayoutID, hint)
-				fix = nil
-			} else if layout.IsCanonicalName(slideInput.LayoutID) {
-				availableMap := layout.ResolveAllCanonicalLayouts(analysis.Layouts)
-				available := make([]string, 0, len(availableMap))
-				for name := range availableMap {
-					available = append(available, name)
-				}
-				sort.Strings(available)
-				msg = fmt.Sprintf("slide %d: %s", i+1, generator.CanonicalLayoutNotFoundError(slideInput.LayoutID, available))
-				fix.Params["available"] = available
-				if suggestion := generator.SuggestedCanonicalLayout(slideInput.LayoutID, available); suggestion != "" {
-					fix.Params["did_you_mean"] = suggestion
-					fix.Params["value"] = suggestion
-				} else {
-					// No safe concrete target: the message still lists options, but
-					// repair_slide.use_one_of would reject a missing value.
-					fix = nil
-				}
-			} else {
-				available := make([]string, 0, len(layoutByID))
-				for id := range layoutByID {
-					available = append(available, id)
-				}
-				msg = fmt.Sprintf("slide %d: %s", i+1, generator.LayoutNotFoundError(slideInput.LayoutID, available))
-				fix.Params["available"] = generator.FormatAvailableIDs(available)
-				if match, _ := generator.ClosestMatch(slideInput.LayoutID, available, 3); match != "" {
-					fix.Params["did_you_mean"] = match
-					fix.Params["value"] = match
-				} else {
-					fix = nil
-				}
-			}
-			ve := &patterns.ValidationError{
-				Path:    path,
-				Code:    patterns.ErrCodeUnknownLayoutID,
-				Message: msg,
-				Fix:     fix,
-			}
-			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
-		} else {
+		lm, layoutFound, layoutDiags := validateSlideLayout(slideInput, i, analysis, layoutByID)
+		output.addValidationDiagnostics(layoutDiags...)
+		if layoutFound {
 			slide.LayoutName = lm.Name
 		}
 
-		// Validate content items using ContentInput.ResolveValue() for typed + legacy support
-		for j, item := range slideInput.Content {
-			if len([]rune(item.Heading)) > 60 {
-				output.Valid = false
-				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{Code: diagnostics.CodeInvalidParameter, Path: slidepath.ContentField(i, j, "heading"), Severity: diagnostics.SeverityError, Message: "heading holds at most 60 characters"})
-			}
-			ph := dryRunPlaceholder{
-				PlaceholderID: item.PlaceholderID,
-				ContentType:   item.Type,
-			}
+		slide.Placeholders = validateSlideContent(output, slideInput, i, lm, layoutFound, predictedLayouts, densityLayouts[i], analysis, tableStyleByID, availableStyleIDs)
 
-			if item.PlaceholderID == "" {
-				output.Valid = false
-				msg := fmt.Sprintf("slide %d, content %d: placeholder_id is required", i+1, j+1)
-				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-					Code:     patterns.ErrCodeRequired,
-					Path:     slidepath.ContentField(i, j, "placeholder_id"),
-					Message:  msg,
-					Severity: diagnostics.SeverityError,
-					Fix: &diagnostics.Fix{
-						Kind:   "provide_value",
-						Params: map[string]any{"field": "placeholder_id"},
-					},
-				})
-			} else if layoutFound {
-				// Check placeholder_id reference against layout
-				phInfo, phFound := phByKey[phKey{slideInput.LayoutID, item.PlaceholderID}]
-				if !phFound {
-					output.Valid = false
-					available := make([]string, 0, len(lm.Placeholders))
-					for _, ph := range lm.Placeholders {
-						available = append(available, ph.ID)
-					}
-					path := slidepath.ContentField(i, j, "placeholder_id")
-					msg := fmt.Sprintf("slide %d: %s", i+1, generator.PlaceholderNotFoundError(item.PlaceholderID, slideInput.LayoutID, available))
-					fix := &patterns.FixSuggestion{
-						Kind:   "use_one_of",
-						Params: map[string]any{"available": generator.FormatAvailableIDs(available)},
-					}
-					if match, _ := generator.ClosestMatch(item.PlaceholderID, available, 3); match != "" && item.PlaceholderID != "subtitle" {
-						fix.Params["did_you_mean"] = match
-					}
-					ve := &patterns.ValidationError{
-						Path:    path,
-						Code:    patterns.ErrCodePlaceholderNotFound,
-						Message: msg,
-						Fix:     fix,
-					}
-					output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
-				} else if !output.verdictOnly {
-					effectivePhInfo := authoredTitlePlaceholder(&phInfo, &item)
-					ph.MaxChars = generator.ReportedMaxChars(effectivePhInfo)
-
-					// Titles: measured fit against the resolved title box and
-					// inherited title style replaces the character estimate
-					// (go-slide-creator-vjwn). The capacity reported for the
-					// placeholder is measured too: estimateMaxChars claimed 29
-					// chars for a Blank+Title box that renders 96 comfortably,
-					// so agents shortened titles to a number the renderer never
-					// used (go-slide-creator-jcph).
-					titleMeasured := false
-					if item.Type == "text" && phInfo.Type == types.PlaceholderTitle {
-						resolved, _ := item.ResolveValue()
-						if text, ok := resolved.(string); ok {
-							m := measureTitleInPlaceholder(text, effectivePhInfo, isSectionSlideInput(slideInput, analysis.Layouts))
-							if m.OK {
-								titleMeasured = true
-								if d := m.diagnostic(i, j); d != nil {
-									output.Diagnostics = append(output.Diagnostics, *d)
-								}
-							}
-						}
-					}
-
-					// Check character limits for text content
-					if !titleMeasured && item.Type == "text" && phInfo.MaxChars > 0 { //nolint:nestif // mirrors the measured-title branch above
-						resolved, _ := item.ResolveValue()
-						if text, ok := resolved.(string); ok && len(text) > phInfo.MaxChars {
-							ph.Truncated = true
-							ph.TruncateAt = phInfo.MaxChars
-							msg := fmt.Sprintf("slide %d, content %d: text (%d chars) exceeds placeholder %q limit (%d chars)",
-								i+1, j+1, len(text), item.PlaceholderID, phInfo.MaxChars)
-							output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-								Code:     patterns.ErrCodeMaxLength,
-								Path:     contentValuePath(&item, i, j),
-								Message:  msg,
-								Severity: diagnostics.SeverityWarning,
-								Fix: &diagnostics.Fix{
-									Kind: "shrink_text",
-									Params: map[string]any{
-										"max_chars":     phInfo.MaxChars,
-										"current_chars": len(text),
-									},
-								},
-							})
-						}
-					}
-				}
-			}
-
-			// No layout_id: measure the title against the layout the generator
-			// will pick. Nothing else about the item is validated here — see the
-			// note on predictedLayouts (go-slide-creator-t64e).
-			if !output.verdictOnly && !layoutFound && slideInput.LayoutID == "" && item.Type == "text" && item.PlaceholderID != "" {
-				if phInfo := titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID); phInfo != nil {
-					resolved, _ := item.ResolveValue()
-					if text, ok := resolved.(string); ok {
-						effectivePhInfo := authoredTitlePlaceholder(phInfo, &item)
-						m := measureTitleInPlaceholder(text, effectivePhInfo, isSectionSlideInput(slideInput, analysis.Layouts))
-						if capacity := generator.TitlePlaceholderCapacityChars(effectivePhInfo); capacity > 0 {
-							ph.MaxChars = capacity
-						}
-						if d := m.diagnostic(i, j); d != nil {
-							output.Diagnostics = append(output.Diagnostics, *d)
-						}
-					}
-				}
-			}
-
-			// Validate content type
-			if item.Type == "" {
-				output.Valid = false
-				msg := fmt.Sprintf("slide %d, content %d: type is required", i+1, j+1)
-				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-					Code:     patterns.ErrCodeRequired,
-					Path:     slidepath.ContentField(i, j, "type"),
-					Message:  msg,
-					Severity: diagnostics.SeverityError,
-					Fix: &diagnostics.Fix{
-						Kind:   "provide_value",
-						Params: map[string]any{"field": "type"},
-					},
-				})
-			} else {
-				validTypes := []string{"text", "bullets", "body_and_bullets", "body_and_lead", "bullet_groups", "table", "image", "chart", "diagram"}
-				switch item.Type {
-				case "text", "bullets", "body_and_bullets", "body_and_lead", "bullet_groups", "table", "image", "chart", "diagram":
-					// valid types
-				default:
-					output.Valid = false
-					msg := fmt.Sprintf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, body_and_lead, bullet_groups, table, image, chart, or diagram)",
-						i+1, j+1, item.Type)
-					fix := &diagnostics.Fix{
-						Kind:   "use_one_of",
-						Params: map[string]any{"available": validTypes},
-					}
-					if match, _ := generator.ClosestMatch(item.Type, validTypes, 3); match != "" {
-						fix.Params["did_you_mean"] = match
-					}
-					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-						Code:     diagnostics.CodeUnknownEnum,
-						Path:     slidepath.ContentField(i, j, "type"),
-						Message:  msg,
-						Severity: diagnostics.SeverityError,
-						Fix:      fix,
-					})
-				}
-				// Count content types
-				switch item.Type {
-				case "chart", "diagram":
-					if item.Type == "chart" {
-						output.ChartCount++
-					} else {
-						output.DiagramCount++
-					}
-					if dd := contentDiagramValidationDiagnostics(item, i, j); len(dd) > 0 {
-						output.Valid = false
-						output.Diagnostics = append(output.Diagnostics, dd...)
-					}
-				case "table":
-					output.TableCount++
-					// Density check for content-level table.
-					table := resolveTableFromContent(&item)
-					if table != nil {
-						tablePath := slidepath.ContentIndex(i, j)
-						bounds := tablePlaceholderBounds(item.PlaceholderID, densityLayouts[i])
-						densityWarnings := pipeline.DetectTableDensity(table, tablePath, bounds.Width)
-						output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarnings(densityWarnings)...)
-
-						// Warn when both header_background and style_id are explicitly authored.
-						if table.Style != nil {
-							if w := generator.WarnStyleCollision(i,
-								table.Style.HeaderBackground != nil,
-								table.Style.StyleID != "",
-							); w != "" {
-								collisionVE := &patterns.ValidationError{
-									Path:    tablePath,
-									Code:    "style_collision",
-									Message: w,
-								}
-								output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(collisionVE))
-							}
-						}
-						// Reject style_id values that the renderer would drop because
-						// they are not GUID-shaped (typos or XML-metacharacter
-						// injection attempts). Error, since they can never render.
-						tableValuePath := contentTablePath(&item, i, j)
-						if d := invalidTableStyleIDDiagnostic(table, tableValuePath, i); d != nil {
-							output.Valid = false
-							output.Diagnostics = append(output.Diagnostics, *d)
-						}
-						// A row wider than the headers cannot render (the
-						// header count defines the table grid) and generate
-						// refuses it; short rows are padded
-						// (go-slide-creator-s1uvj.26).
-						if err := table.ToTableSpec().CheckRowWidths(); err != nil {
-							output.Valid = false
-							output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-								Code:     diagnostics.CodeInvalidParameter,
-								Path:     tableValuePath + "/" + tableGridErrorField(table.ToTableSpec()),
-								Message:  fmt.Sprintf("slide %d: %v", i+1, err),
-								Severity: diagnostics.SeverityError,
-							})
-						}
-						// Validate style_id against template's declared table styles.
-						// Advisory only — an unknown (but well-formed) style_id does
-						// not invalidate the deck (Valid is left unchanged).
-						if vw := validateTableStyleID(table, tableValuePath, i, tableStyleByID, availableStyleIDs); vw != nil {
-							output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(vw))
-						}
-						// Reject conditional-format fills that are neither a scheme
-						// color nor a 6-digit hex value. resolveConditionalFill drops
-						// such values to prevent malformed/injected OOXML, so surface
-						// a clear error instead of silently losing the fill.
-						for _, d := range invalidConditionalFillDiagnostics(table, tableValuePath, i) {
-							output.Valid = false
-							output.Diagnostics = append(output.Diagnostics, d)
-						}
-						// A rule outside the vocabulary, or a threshold the rule
-						// cannot use, applies no fill at all. Say which, with the
-						// allowed list, instead of leaving the cell quietly plain
-						// (go-slide-creator-6hlu).
-						for _, d := range conditionalRuleDiagnostics(table, tableValuePath, i) {
-							output.Valid = false
-							output.Diagnostics = append(output.Diagnostics, d)
-						}
-					}
-				}
-			}
-
-			// Validate content value is parseable using ResolveValue
-			if item.Type != "" {
-				_, valueErr := item.ResolveValue()
-				// ResolveValue deliberately leaves legacy chart/diagram "value"
-				// decoding to its callers. Dry-run must still reject malformed
-				// values before optional svggen warnings are collected.
-				if valueErr == nil && len(item.Value) > 0 {
-					switch item.Type {
-					case "chart":
-						if item.ChartValue == nil {
-							var chart types.ChartSpec //nolint:staticcheck // legacy input
-							valueErr = json.Unmarshal(item.Value, &chart)
-						}
-					case "diagram":
-						if item.DiagramValue == nil {
-							var diagram types.DiagramSpec
-							valueErr = json.Unmarshal(item.Value, &diagram)
-						}
-					}
-				}
-				if valueErr != nil {
-					output.Valid = false
-					msg := fmt.Sprintf("slide %d, content %d: %v", i+1, j+1, valueErr)
-					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-						Code:     diagnostics.CodeInvalidParameter,
-						Path:     contentValuePath(&item, i, j),
-						Message:  msg,
-						Severity: diagnostics.SeverityError,
-						Details:  map[string]any{"cause": valueErr.Error()},
-					})
-				}
-			}
-
-			// Detect legacy authoring form: "value" field instead of typed fields
-			if item.UsesLegacyValue() {
-				typedField := item.Type + "_value"
-				path := slidepath.ContentIndex(i, j)
-				legacyVE := &patterns.ValidationError{
-					Path:    path,
-					Code:    "legacy_authoring_form",
-					Message: fmt.Sprintf("slide %d, content %d: uses legacy \"value\" field; prefer \"%s\" for new decks", i+1, j+1, typedField),
-					Fix: &patterns.FixSuggestion{
-						Kind:   "rewrite_field",
-						Params: map[string]any{"from": "value", "to": typedField},
-					},
-				}
-				output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(legacyVE))
-			}
-
-			// Validate chart/diagram data structure via svggen
-			if item.Type == "chart" || item.Type == "diagram" {
-				chartWarnings := validateContentDiagramData(item, i+1, j+1)
-				for _, w := range chartWarnings {
-					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-						Code:     patterns.ErrCodeChartValueCoerced,
-						Path:     slidepath.ContentIndex(i, j),
-						Message:  w,
-						Severity: diagnostics.SeverityWarning,
-					})
-				}
-			}
-
-			slide.Placeholders = append(slide.Placeholders, ph)
-		}
-
-		// Validate shape_grid if present
-		if slideInput.ShapeGrid != nil {
-			geom, _ := patternExpansionGeometry(slideInput, analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight, rhythm)
-			resolved := resolveGridForStructural(slideInput.ShapeGrid, geom.OverrideBounds, geom.Zone, analysis.SlideWidth, analysis.SlideHeight)
-			gridCounts, gridWarnings, gridErrors, gridValWarnings := validateShapeGrid(slideInput.ShapeGrid, i+1, resolved)
-			slide.ShapeCount = gridCounts.Shapes
-			output.ShapeCount += gridCounts.Shapes
-			output.TableCount += gridCounts.Tables
-			output.DiagramCount += gridCounts.Diagrams
-			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarnings(gridValWarnings)...)
-			for _, w := range gridWarnings {
-				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-					Code:     diagnostics.CodeInvalidGrid,
-					Path:     slidepath.ShapeGrid(i),
-					Message:  w,
-					Severity: diagnostics.SeverityWarning,
-				})
-			}
-			if len(gridErrors) > 0 {
-				output.Valid = false
-				for _, e := range gridErrors {
-					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-						Code:     diagnostics.CodeInvalidGrid,
-						Path:     slidepath.ShapeGrid(i),
-						Message:  e,
-						Severity: diagnostics.SeverityError,
-					})
-				}
-			}
-
-			// A table in a shape_grid cell gets the style and
-			// conditional-format checks a placeholder table gets, nested
-			// sub-grids included (go-slide-creator-dln5i).
-			tableErrs, tableWarns := gridTableValueDiagnostics(slideInput.ShapeGrid, slidepath.ShapeGrid(i), i, tableStyleByID, availableStyleIDs)
-			if len(tableErrs) > 0 {
-				output.Valid = false
-				output.Diagnostics = append(output.Diagnostics, tableErrs...)
-			}
-			output.Diagnostics = append(output.Diagnostics, tableWarns...)
-
-			// A grid-cell table row wider than its headers cannot render and
-			// generate refuses it, exactly as for placeholder tables; check
-			// every grid-cell table, nested sub-grids included
-			// (go-slide-creator-csclk.5).
-			if rd := gridTableRowWidthDiagnostics(slideInput.ShapeGrid, slidepath.ShapeGrid(i), i); len(rd) > 0 {
-				output.Valid = false
-				output.Diagnostics = append(output.Diagnostics, rd...)
-			}
-		}
-
-		// Pattern values: generate validates every named pattern against the
-		// pattern's own value schema and refuses the deck on failure, so
-		// validate must run the same check rather than silently accepting a
-		// deck generate will reject (go-slide-creator-xvek).
-		patternCtx := patterns.ExpandContext{
-			Theme:       analysis.Theme,
-			Metadata:    analysis.Metadata,
-			SlideWidth:  analysis.SlideWidth,
-			SlideHeight: analysis.SlideHeight,
-			SlideIndex:  i,
-		}
-		if pd := slidePatternDiagnostics(&slideInput, i, patternCtx, patterns.Default()); len(pd) > 0 {
-			output.Valid = false
-			output.Diagnostics = append(output.Diagnostics, pd...)
-		}
-
-		// Grid diagram data: generate aborts on svggen validation failures in
-		// shape_grid diagrams, including those produced by pattern expansion
-		// (e.g. chart-insights-split), so report them as errors here.
-		gridDiags := gridDiagramValidationDiagnostics(slideInput.ShapeGrid, i, "shape_grid", slidepath.ShapeGrid(i))
-		if pg := expandSlidePatternGrid(&slideInput, i, analysis.SlideWidth, analysis.SlideHeight, &analysis.Theme); pg != nil {
-			gridDiags = append(gridDiags, gridDiagramValidationDiagnostics(pg, i, "pattern "+slideInput.Pattern.Name, slidepath.SlideField(i, "pattern"))...)
-		}
-		gridDiags = append(gridDiags, composeDiagramValidationDiagnostics(slideInput.Compose, i, slidepath.SlideField(i, "compose"))...)
-		if len(gridDiags) > 0 {
-			output.Valid = false
-			output.Diagnostics = append(output.Diagnostics, gridDiags...)
-		}
-
-		// Takeaway warning: a slide that argues from data and says nothing
-		// about what the data means loses most of its narrative value — the
-		// audience cannot tell what the chart is supposed to argue. Warn (do
-		// not error) when missing, and stay quiet when the title already
-		// carries the argument.
-		if slideMissesTakeaway(slideInput) {
-			// Advisory only — a missing takeaway does not invalidate the deck
-			// (Valid is left unchanged), so it is a warning. The fit report
-			// carries the same finding (same path and message) for score_deck's
-			// gate; the envelope dedupes the pair.
-			output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarning(takeawayMissingError(i)))
-		}
+		slide.ShapeCount = validateSlideVisuals(output, slideInput, i, analysis, rhythm, tableStyleByID, availableStyleIDs)
 
 		output.Slides = append(output.Slides, slide)
 	}
@@ -1889,4 +1408,21 @@ func writeDryRunOutputTo(output dryRunOutput, writer io.Writer) error {
 		return fmt.Errorf("dry-run validation failed")
 	}
 	return nil
+}
+
+// decodeDryRunInput handles the shared authoring model and its patch envelope.
+func decodeDryRunInput(data []byte) (*PresentationInput, *diagnostics.Diagnostic) {
+	var patch PresentationPatchInput
+	if err := json.Unmarshal(data, &patch); err == nil && len(patch.Operations) > 0 {
+		input, err := applyPresentationPatch(patch)
+		if err != nil {
+			return nil, &diagnostics.Diagnostic{Code: "PATCH_ERROR", Message: fmt.Sprintf("failed to apply patch: %v", err), Severity: diagnostics.SeverityError}
+		}
+		return input, nil
+	}
+	var input PresentationInput
+	if err := json.Unmarshal(data, &input); err != nil {
+		return nil, &diagnostics.Diagnostic{Code: "INVALID_JSON", Message: fmt.Sprintf("failed to parse JSON: %v", err), Severity: diagnostics.SeverityError}
+	}
+	return &input, nil
 }

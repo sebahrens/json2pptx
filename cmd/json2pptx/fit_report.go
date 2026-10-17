@@ -625,25 +625,6 @@ func writeFitReportNDJSON[T any](w io.Writer, findings []T) {
 	}
 }
 
-// writeFitReport writes fit findings as NDJSON to the given path.
-// Use "-" to write to stdout.
-func writeFitReport(path string, findings []fitFinding) error {
-	var w io.Writer
-	if path == "-" {
-		w = os.Stdout
-	} else {
-		f, err := os.Create(path)
-		if err != nil {
-			return fmt.Errorf("failed to create fit report file: %w", err)
-		}
-		defer f.Close()
-		w = f
-	}
-
-	writeFitReportNDJSON(w, findings)
-	return nil
-}
-
 // printFitFindingsBySlide prints fit findings grouped by slide index to stderr.
 func printFitFindingsBySlide(findings []fitFinding) {
 	if len(findings) == 0 {

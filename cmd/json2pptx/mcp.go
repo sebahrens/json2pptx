@@ -89,6 +89,9 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 			mcp.Enum("off", "warn", "strict"),
 			mcp.DefaultString("warn"),
 		),
+		mcp.WithString("template",
+			mcp.Description("Override the presentation's template with a registered template name for this call, as in validate_input. Also overrides presentation.template_path."),
+		),
 		mcp.WithBoolean("fit_report",
 			mcp.Description("When true, include fit_findings in the response with text overflow, placeholder overflow, footer collision, and bounds-check findings. Default: false."),
 			mcp.DefaultBool(false),
@@ -240,7 +243,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 					}
 				}
 				out.IdempotentReplay = true
-				return api.MCPSuccessResult(ctx, out)
+				return api.MCPSuccessResult(ctx, canonicalRawRender(out))
 			}
 		}
 	case idempotencyConflict:
@@ -294,7 +297,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 
 	mc.idempotency.Set("generate_presentation", idemKey, idemFingerprint, output)
 
-	mcpResult, err := api.MCPSuccessResult(ctx, output)
+	mcpResult, err := api.MCPSuccessResult(ctx, canonicalRawRender(output))
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
@@ -689,7 +692,7 @@ func addressDeckTemplateDiagnostic(d *diagnostics.Diagnostic, request mcp.CallTo
 	}
 }
 
-func applyValidationTemplateOverride(input *PresentationInput, request mcp.CallToolRequest) {
+func applyRequestTemplateOverride(input *PresentationInput, request mcp.CallToolRequest) {
 	if override, err := request.RequireString("template"); err == nil && override != "" {
 		input.Template = override
 		input.TemplatePath = ""
@@ -713,7 +716,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
 		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nextCallGetInputSchema()), nil
 	}
-	applyValidationTemplateOverride(&input, request)
+	applyRequestTemplateOverride(&input, request)
 
 	// Apply deck-level defaults before validation.
 	applyDefaults(&input)

@@ -12,7 +12,11 @@ import "encoding/json"
 var outputSchemaGenerate = json.RawMessage(`{
   "type": "object",
   "properties": {
-    "success":           {"type": "boolean"},
+    "success":           {"type": "boolean", "description": "Compatibility alias of ok."},
+    "ok":                {"type": "boolean"},
+    "pptx_path":         {"type": "string", "description": "Canonical path, also available as output_path during the compatibility cycle."},
+    "quality_summary":   {"$ref": "#/$defs/quality_score"},
+    "diagnostics":       {"type": "array", "items": {"$ref": "#/$defs/fit_finding"}},
     "deck_id":           {"type": "string", "description": "Per-process raw presentation handle for revision calls; expires after one hour."},
     "output_path":       {"type": "string"},
     "slide_count":       {"type": "integer"},
@@ -47,7 +51,7 @@ var outputSchemaGenerate = json.RawMessage(`{
       }
     }
   },
-  "required": ["success"],
+  "required": ["success", "ok", "diagnostics"],
   "$defs": {
     "quality_score": ` + qualityScoreSchema + `,
     "validation_error": {
@@ -89,6 +93,7 @@ var outputSchemaGenerate = json.RawMessage(`{
 // diagnostics/fit_findings) are collapsed into the single findings envelope.
 var outputSchemaValidate = json.RawMessage(`{
   "type": "object",
+  "allOf": [` + findingEnvelopeSchema + `],
   "properties": {
     "valid":               {"type": "boolean"},
     "slide_count":         {"type": "integer"},
@@ -97,7 +102,7 @@ var outputSchemaValidate = json.RawMessage(`{
     "table_count":         {"type": "integer"},
     "shape_count":         {"type": "integer"},
     "slides":              {"type": "array", "items": {"type": "object"}},
-    "findings":            ` + findingEnvelopeSchema + `,
+    "legacy_findings":     ` + findingEnvelopeSchema + `,
     "response_fingerprint": {"type": "string", "description": "Lowercase sha256 hex (64 chars) over the canonical JSON of this response (with the field zeroed). Use as cache key / drift detector."}
   },
   "required": ["valid", "findings"]

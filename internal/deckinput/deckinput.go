@@ -527,7 +527,7 @@ func (c *ContentInput) ResolveValue() (any, error) { //nolint:gocognit,gocyclo
 		return nil, nil
 
 	default:
-		return nil, fmt.Errorf("unknown content type: %q", c.Type)
+		return nil, fmt.Errorf("%s", UnknownContentTypeMessage(c.Type))
 	}
 }
 

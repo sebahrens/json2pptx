@@ -37,6 +37,8 @@ func (mc *mcpConfig) parseGenerateRequest(request mcp.CallToolRequest) (*parsedG
 		return nil, argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil)
 	}
 
+	applyRequestTemplateOverride(&input, request)
+
 	// Apply deck-level defaults before any validation or conversion.
 	applyDefaults(&input)
 
@@ -106,6 +108,9 @@ func (mc *mcpConfig) runGenerateRequest(ctx context.Context, request mcp.CallToo
 	templatePath, templateCleanup, tplDiag := mc.resolveTemplateSource(request, "generate_presentation",
 		"presentation.template", "presentation.template_path", input.Template, input.TemplatePath)
 	if tplDiag != nil {
+		if override, _ := request.RequireString("template"); override != "" {
+			tplDiag.Path = "template"
+		}
 		return rendered, authored.mcpError([]diagnostics.Diagnostic{*tplDiag})
 	}
 	rendered.templateCleanup = templateCleanup

@@ -98,7 +98,8 @@ func resolveAssetBaseDir(raw string) (string, *diagnostics.Diagnostic) {
 			"verify base_dir exists and is reachable from the server process", true)
 	}
 
-	info, err := os.Stat(resolved)
+	// Inspect the caller-selected asset root itself; no file contents are read.
+	info, err := os.Stat(resolved) //nolint:gosec // G703: absolute, symlink-resolved base_dir is intentionally caller-selected.
 	if err != nil {
 		return bad(fmt.Sprintf("base_dir %q: %v", raw, err),
 			"verify base_dir exists and is reachable from the server process", true)

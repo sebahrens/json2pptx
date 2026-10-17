@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
@@ -118,7 +119,7 @@ func validateComposeSegmentOptions(s SegmentInput, direction string, i int) erro
 	if s.Size == "content" && (direction != "vertical" || s.SizePct != 0) {
 		return fmt.Errorf("compose segment[%d] size content requires vertical direction and no size_pct", i)
 	}
-	if len([]rune(s.Heading)) > 60 || len([]rune(s.Caption)) > 120 {
+	if len([]rune(s.Heading)) > deckinput.MaxHeadingRunes || len([]rune(s.Caption)) > 120 {
 		return fmt.Errorf("compose segment[%d] heading/caption exceeds60/120 characters", i)
 	}
 	if s.Text != nil && strings.TrimSpace(s.Text.Body) == "" && len(s.Text.Bullets) == 0 {
