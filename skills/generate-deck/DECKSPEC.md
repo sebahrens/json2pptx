@@ -105,10 +105,10 @@ numbers do not say:
 | Kind | Authoring consequence |
 |---|---|
 | `executive_summary` | 3–5 points `{lead, support}`; a plain string spans the width. Conclusion band: `bottom_line`. Past the budgets it degrades to bullets. |
-| `kpi_snapshot` | 2–6 KPIs; give each its reference in `comparator` (alias `vs`, "vs plan +4 pts"). A value's 12 characters are the hard maximum, not the fit: five KPIs hold about 11 digits and six about 9 on the narrowest templates (the `kpis[].value` budget `note`). Past 12 the slide degrades; a value that will not fit one line is `BODY_TOO_LONG` at `/slides/N/kpis/i/value` with `max_chars`: shorten it or show fewer KPIs. |
+| `kpi_snapshot` | 2–6 KPIs with a `comparator` (alias `vs`, e.g. "vs plan +4 pts"). 2–3 accept ≤16 characters if they fit at ≥18pt; 4–6 accept ≤12. Narrow templates: five hold ~11 digits, six ~9. `BODY_TOO_LONG` gives `max_chars`: shorten or show fewer. |
 | `chart_insight` | Needs one stated implication: `insights[]` (1–6 beside the chart; more use a native chart), a scalar `insight`, or just `takeaway`, which is then the 18pt so-what callout beside a 75%-wide chart (not repeated in the band; not `takeaway_missing`). Every series needs one unquoted number per category (`CHART_SERIES_LENGTH_MISMATCH`, `CHART_VALUE_NOT_NUMERIC`). Chart types are short names (`bar`, `line`; `bar_chart` is accepted). |
 | `comparison` | 2 balanced columns of ≤10 rows compare; 3–5 columns are panels; 6–12 cards; beyond that, bullets. Two columns take `connectors: true` (a per-row today → target badge), `highlight_column` (`left` / `right` / a header) or `highlight_row` (0-based index or cell text) — one highlight, not both; 3+ columns ignore them. |
-| `table` | ≤6 headers × 9 body rows (10 logical rows with the header); one-line rows past 7 render at a compact pitch, nothing hidden. A row that cannot fit is `table_rows_truncated` (error): split at its `split_at_row`, titles `… (1/2)` / `… (2/2)`. |
+| `table` | ≤6 headers × 9 body rows (10 logical rows with the header); `column_widths: [1, 3]` gives relative widths; one positive weight per column. Dense rows use a compact pitch. A row that cannot fit is `table_rows_truncated` (error): split at its `split_at_row`, titles `… (1/2)` / `… (2/2)`. |
 | `option_matrix` | 2–6 criteria × 2–6 options; `scale` per criterion (`{label, scale}`: `harvey` 0–4, `rag`, `text`) — a status board is `rag` + `text` columns. `recommended` takes one option (name or 0-based index) or a list; a higher-scoring rival is `SEMANTIC_RECOMMENDATION_OUTSCORED`. One-line `detail`s fit at 5 options on every template; 6 need ~271pt. |
 | `decision` | 3–6 options are numbered boxes; exactly 2, or 7–12, each with a detail, are cards. Mark the recommended option `recommended: true` (or name it in slide-level `recommended`); two or more read "Recommended: A and B" when no `recommendation` is written. The ask goes in `recommendation`. |
 | `team` | 1–8 people, each with a role; a `photo` (path / url, or `{path|url, alt}`) or an initials `photo_label`. |
@@ -123,7 +123,7 @@ numbers do not say:
 | `pillars` | 3–5 pillars. A house needs `objective` and `foundation` (a string, or 1–3 levels, each a band or a row of 2–5 cells) and takes a `beam`; without them it is panels. |
 | `org` | One root, ≤7 nodes, 3 levels, ≤4 direct reports per node; larger trees degrade to attributed bullets. |
 | `architecture` | 3–6 tiers; a tier's `items` (1–12, ≤40 characters each) are drawn one block each, a `description` as one line. |
-| `cycle` | `style`: `ring` (4–8) / `nodes` (3–8) one loop, `intake` (+1–3 `intake` steps), `figure_eight` two loops (full width), `radial` round a `center`, `concentric` nested (3–5). One `highlight`. |
+| `cycle` | `style`: `ring` (4–8) / `nodes` (3–8) one loop, `intake` (+1–3 `intake` steps), `figure_eight` two loops (full width), `radial` round a `center`, `concentric` nested (3–5). One `highlight`; ring/figure-eight phases take `status: done|planned` (planned: dashed outline). |
 | `process` | 3–6 steps with descriptions are numbered rows (label ≤60, description ≤180); 7–8 steps (on two rows), or bare labels, are flow boxes (label and description together ≤80). |
 | `next_steps` | The closer: 2–6 `actions` `{action, owner, date}` and 0–3 `decisions`. Keep `closing` for a Q&A page; its title budget depends on the template. |
 
@@ -131,11 +131,10 @@ Prefer `list_slide_kinds` canonical field names over the `aliases` it lists.
 
 ## Several visuals on one slide
 
-For visuals read together, use `kind: regions`, not a raw compose: 2–3
-chart / stat / kpis / table / timeline / image / text regions in a
-bounded arrangement with `size_pct` shares (budgets: `list_slide_kinds`;
-`examples/semantic/regions.yaml`), each rule an error at
-`slides[N].regions[k]`. A stacked region holds one visual's worth; leave its
+Use `kind: regions` for 2–3 related chart / stat / kpis / table / timeline /
+image / text / cycle / process regions, with bounded `size_pct` shares.
+Process: 3–6 `{label, description?}` steps. Budgets: `list_slide_kinds`;
+example: `examples/semantic/regions.yaml`. Errors name `slides[N].regions[k]`. A stacked region holds one visual's worth; leave its
 share unset (raised to what its kind reads in; text stacked with a stat /
 kpis / timeline takes what it needs). On a readability refusal
 raise `size_pct` or cut; on `chart.plot_area_collapsed` put the chart

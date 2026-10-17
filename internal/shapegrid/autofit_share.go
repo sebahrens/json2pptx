@@ -57,12 +57,28 @@ func shareRowAutofitScale(cells []ResolvedCell) {
 	set := autofitSiblingSets(cells, members)
 	least := map[int]float64{}
 	count := map[int]int{}
+	causes := map[int][]AutofitCause{}
 	for i, m := range members {
 		g := set.find(i)
 		count[g]++
+		if m.scale < 1 {
+			c := cells[m.idx]
+			causes[g] = append(causes[g], AutofitCause{RowIdx: c.RowIdx, ColIdx: c.ColIdx, Scale: m.scale})
+		}
 		if cur, ok := least[g]; !ok || m.scale < cur {
 			least[g] = m.scale
 		}
+	}
+	for _, group := range causes {
+		slices.SortStableFunc(group, func(a, b AutofitCause) int {
+			if a.Scale < b.Scale {
+				return -1
+			}
+			if a.Scale > b.Scale {
+				return 1
+			}
+			return 0
+		})
 	}
 	for i, m := range members {
 		g := set.find(i)
@@ -71,6 +87,8 @@ func shareRowAutofitScale(cells []ResolvedCell) {
 		}
 		cells[m.idx].AutofitScale = least[g]
 		cells[m.idx].autofitGroup = g + 1
+		cells[m.idx].autofitCauses = causes[g]
+		cells[m.idx].autofitOriginalText = append(json.RawMessage(nil), cells[m.idx].ShapeSpec.Text...)
 	}
 }
 

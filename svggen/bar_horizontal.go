@@ -133,7 +133,7 @@ func (bc *BarChart) drawHorizontal(data ChartData) error {
 		footnoteConfig.Text = data.Footnote
 		NewFootnote(b, footnoteConfig).Draw(Rect{X: 0, Y: bc.config.Height - lay.footer, W: bc.config.Width, H: lay.footer})
 	}
-	return nil
+	return bc.validateGroupedValueLabels(data)
 }
 
 // horizontalLayout measures the category-name column, the value-label
@@ -349,8 +349,12 @@ func (bc *BarChart) drawHorizontalBars(data ChartData, plot Rect, cScale *Catego
 			if !labelled {
 				continue
 			}
-			bold := len(pointBold) == len(s.Values) && pointBold[i]
+			bold := (len(pointBold) == len(s.Values) && pointBold[i]) || (data.SeriesHighlightSet && seriesHighlighted(data, si))
+			textStart := len(b.textBoxes)
 			bc.drawHorizontalValueLabel(v, x1, y+band*0.46, bold, v < 0, valueFont, style)
+			for i := textStart; i < len(b.textBoxes); i++ {
+				bc.groupedValueBoxes = append(bc.groupedValueBoxes, i)
+			}
 		}
 	}
 }

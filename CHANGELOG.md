@@ -18,6 +18,12 @@ How to cut a release (tag, archives, container image) is described in
 
 ### Added
 
+- Field-review improvements (schema 4.177.0): weighted table columns, process
+  regions, planned cycle phases, longer measured KPI2/3 values, funnel stage
+  highlighting and neutral hero-detail headings. Grouped-bar labels avoid
+  collisions, RAG legends omit unused colours, executive summaries start at
+  the body line, and shared-autofit diagnostics name the overflowing peers.
+
 - MCP pattern placement metadata exposes hard dimensions, narrow-layout
   fallbacks and supporting-band guidance before rendering. The default tool
   profile now includes deck archetypes and storyline explanation (schema 4.176.0).

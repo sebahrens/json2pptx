@@ -471,15 +471,20 @@ type ResolvedCell struct {
 	// for a cell that shares none). writeSharedShrink writes the shrink of one
 	// group as one set of sizes.
 	autofitGroup int
-	ID           uint32
-	RowIdx       int                // Zero-based row index in the source grid
-	ColIdx       int                // Zero-based column index in the source grid
-	Group        bool               // Wrap cell content in a p:grpSp group shape
-	ShapeSpec    *ShapeSpec         // Set when Kind == CellKindShape
-	TableSpec    *types.TableSpec   // Set when Kind == CellKindTable
-	IconSpec     *IconSpec          // Set when Kind == CellKindIcon
-	ImageSpec    *ImageSpec         // Set when Kind == CellKindImage
-	DiagramSpec  *types.DiagramSpec // Set when Kind == CellKindDiagram
+	// autofitCauses retain the cells that needed shrink before it was shared.
+	// A short peer must not be offered as the text to cut merely because it
+	// inherited the group's scale.
+	autofitCauses       []AutofitCause
+	autofitOriginalText json.RawMessage
+	ID                  uint32
+	RowIdx              int                // Zero-based row index in the source grid
+	ColIdx              int                // Zero-based column index in the source grid
+	Group               bool               // Wrap cell content in a p:grpSp group shape
+	ShapeSpec           *ShapeSpec         // Set when Kind == CellKindShape
+	TableSpec           *types.TableSpec   // Set when Kind == CellKindTable
+	IconSpec            *IconSpec          // Set when Kind == CellKindIcon
+	ImageSpec           *ImageSpec         // Set when Kind == CellKindImage
+	DiagramSpec         *types.DiagramSpec // Set when Kind == CellKindDiagram
 	// Layer marks a shape of the cell's Layers: a CellKindShape entry that
 	// follows its cell's own entry (when the cell has one) and shares its
 	// RowIdx / ColIdx. LayerIdx is its index in Cell.Layers and LayerName the
@@ -495,6 +500,23 @@ type ResolvedCell struct {
 	peer     peerKey
 	peered   bool
 	peerGrow float64
+}
+
+// AutofitCause names a source cell whose own text requires shared shrink.
+type AutofitCause struct {
+	RowIdx, ColIdx int
+	Scale          float64
+}
+
+// AutofitOriginalText returns text before shared shrink was written into sizes.
+func (c ResolvedCell) AutofitOriginalText() json.RawMessage {
+	return append(json.RawMessage(nil), c.autofitOriginalText...)
+}
+
+// AutofitCauses returns the overflowing peers, worst first. The locations
+// belong to this cell's grid, including when that grid is nested.
+func (c ResolvedCell) AutofitCauses() []AutofitCause {
+	return append([]AutofitCause(nil), c.autofitCauses...)
 }
 
 // PathSuffix is the JSON-pointer tail that tells a layer from its host cell:

@@ -192,6 +192,10 @@ type FunnelData struct {
 	// Points are the funnel segments (top to bottom).
 	Points []FunnelDataPoint
 
+	// Highlight identifies stages to accent; absent preserves the sequential palette.
+	Highlight    []int
+	HighlightSet bool
+
 	// Footnote is an optional footnote text.
 	Footnote string
 }
@@ -293,6 +297,9 @@ func (fc *FunnelChart) Draw(data FunnelData) error {
 	fc.reportIncreasingStages(data)
 	style := b.StyleGuide()
 	colors := fc.getColors(style, len(data.Points))
+	if data.HighlightSet {
+		colors, _ = barHighlightColors(style.Palette, style.Palette.Accent1, len(data.Points), data.Highlight)
+	}
 
 	// Calculate plot area
 	plotArea := fc.config.PlotArea()
@@ -376,7 +383,7 @@ func (fc *FunnelChart) Draw(data FunnelData) error {
 
 		// Get color for this segment
 		color := colors[i%len(colors)]
-		if point.Color != nil {
+		if point.Color != nil && !data.HighlightSet {
 			color = *point.Color
 		}
 
@@ -594,7 +601,7 @@ func (fc *FunnelChart) drawSteps(data FunnelData, plotArea Rect, colors []Color)
 	for i, p := range data.Points {
 		y := ly.top + float64(i)*(ly.barH+ly.connH)
 		color := colors[i%len(colors)]
-		if p.Color != nil {
+		if p.Color != nil && !data.HighlightSet {
 			color = *p.Color
 		}
 		if i < ly.n-1 {
@@ -989,10 +996,11 @@ func (d *FunnelDiagram) Validate(req *RequestEnvelope) error {
 		return fmt.Errorf("funnel chart requires 'values', 'stages', or 'points' array in data. Expected: {\"values\": [{\"label\": \"Leads\", \"value\": 1000}, {\"label\": \"Converted\", \"value\": 200}]}")
 	}
 
-	if data, err := parseFunnelData(req); err == nil {
-		return validateFunnelNonNegative(data)
+	data, err := parseFunnelData(req)
+	if err != nil {
+		return err
 	}
-	return nil
+	return validateFunnelNonNegative(data)
 }
 
 // validateFunnelNonNegative rejects negative stage values: a negative width
@@ -1132,6 +1140,7 @@ func (d *FunnelDiagram) DataSchema() *DataSchema {
 		"stages":          ArrayDataSchema("Alias for values", stage, 0),
 		"points":          ArrayDataSchema("Stages as {label, value} objects", stage, 0),
 		"categories":      stringListSchema("Stage labels for numeric values"),
+		"highlight":       ArrayDataSchema("Stages to paint in accent1: 0-based stage indices or stage labels; others use dk1 at 38%. Omitted preserves sequential stage colors; [] accents none.", &DataSchema{Description: "Stage index or label"}, 0),
 		"footnote":        StringDataSchema("Footnote text"),
 		"neck_width":      NumberDataSchema("Neck width ratio"),
 		"gap":             NumberDataSchema("Gap between stages"),
@@ -1179,6 +1188,16 @@ func parseFunnelData(req *RequestEnvelope) (FunnelData, error) {
 	}
 
 	if err := validateFunnelNonNegative(data); err != nil {
+		return data, err
+	}
+
+	labels := make([]string, len(data.Points))
+	for i, point := range data.Points {
+		labels[i] = point.Label
+	}
+	var err error
+	data.Highlight, data.HighlightSet, err = resolveHighlight(req.Data, labels)
+	if err != nil {
 		return data, err
 	}
 

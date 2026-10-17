@@ -62,6 +62,17 @@ func fieldRepairBudget(f *patterns.FitFinding, scope fieldRepairScope, paras []c
 	if cellPath == "" {
 		return
 	}
+	// One edit cannot be certified against a moving worst peer. Until a
+	// whole affected-group repair is measured, report composition honestly.
+	if causes, ok := f.Fix.Params["shared_autofit_sources"].([]string); ok && len(causes) > 1 {
+		f.Fix.Params["repair"] = "composition"
+		delete(f.Fix.Params, "max_chars")
+		delete(f.Fix.Params, "field_max_chars")
+		if cands := fieldRepairCandidates(paras); len(cands) > 0 {
+			f.Fix.Params["edit_text"] = cands[0]
+		}
+		return
+	}
 	cands := fieldRepairCandidates(paras)
 	for i, cand := range cands {
 		if i == fieldRepairMaxCandidates {

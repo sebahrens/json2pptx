@@ -205,9 +205,10 @@ matter (breached metrics, the chosen option), `decisive_criterion` when one
 column decides a choice between options. On a RAG status board the dots
 already carry the emphasis, so leave `decisive_criterion` unset.
 
-**The legend row.** Any `rag` or `harvey` column draws a full-width legend
-row naming every level of the scale, including levels no row uses, and the
-kind cannot switch it off. To avoid it, make a two-valued column
+**The legend row.** A `rag` column lists only colours used by its scores,
+in red / amber / green order; `harvey` keeps the full scale. Both draw a
+full-width legend row, and the kind cannot switch it off. To avoid it, make
+a two-valued column
 `scale: text` ("Yes" / "Not examined"), or author the slide as raw
 `table-highlight` with `values.show_legend: false` and explain the colours
 in `source`.
@@ -561,7 +562,7 @@ slides:
                 - {label: "Dec: Rollout"}
 ```
 
-Prefer `regions` whenever its eight region kinds suffice: it is validated field
+Prefer `regions` whenever its nine region kinds suffice: it is validated field
 by field, degrades nowhere, and patches by `path`.
 
 ## 13. Cycle beside the narrative — `regions` with a `cycle` region

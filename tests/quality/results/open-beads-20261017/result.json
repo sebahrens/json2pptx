@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-17",
+  "base_commit": "2858d3ac1c6a461d4ee6342345bc6d1d1d07dcce",
+  "schema_version": "4.177.0",
+  "input_fingerprint": "865d239d81b07196",
+  "scope": "Implementation of all11 open field-review Beads, with adjacent-case fixes and independent cross-review. No broad local race suite rerun.",
+  "issues": {
+    "go-slide-creator-4r692": "Shared-autofit drivers retained through baked sizes, nested paths and validation/render findings; inherited text identified separately, already undersized text retains own source, multiple drivers do not promise a single-field repair.",
+    "go-slide-creator-4a791": "Positive relative column_widths propagate through semantic/raw/regions, renderer, strict fit, density and preflight; actual fitted/nested widths and correct raw error fields.",
+    "go-slide-creator-4hyd3": "3–6 native editable numbered process steps, closed schema and semantic source links, all six arrangements; first baselines aligned and dense text refused.",
+    "go-slide-creator-cpb4h": "Ring/figure-eight done/planned phase status independent of highlight; planned segments have native dashed outlines, unsupported/invalid statuses refused.",
+    "go-slide-creator-h0x4j": "Measured grouped-value separation, bold highlighted values, truthful category-highlight series palette/legend; impossible canvas/text geometry refuses with guidance.",
+    "go-slide-creator-jabvd": "RAG legend includes only used colours, ordered red/amber/green, custom labels retain their colour mapping.",
+    "go-slide-creator-o0sns": "Wiki documents all five inline tags and an independently generated/rendered complete YAML example with evidence emphasis and superscript markers.",
+    "go-slide-creator-scy3o": "KPI2/3 accept up to16 characters only with measured one-line fit at the18pt KPI reading floor; dense variants retain limits.",
+    "go-slide-creator-y6kcl": "Funnel accepts stage highlight labels/indices in steps/tapered styles, with neutral nonhighlighted stages and preserved absent-field defaults.",
+    "go-slide-creator-21p6k": "hero-detail detail_title_color accepts dk1/other valid colour references; default unchanged.",
+    "go-slide-creator-5eo92": "Exec-summary preserves measured-title clearance instead of restoring native body anchor; actual p-style first-point Y1946276→1014984 (73.3pt earlier), wrapped-title parity checked."
+  },
+  "parallel_agents": [
+    "charts_visual_options",
+    "table_process_regions",
+    "cycle_kpi_status"
+  ],
+  "code_indexer": "Symbol, implementation and caller queries used by root and implementation agents; direct current-source checks followed index navigation.",
+  "validation": {
+    "focused_tests": "Passed per-Bead behavioral regressions, invalid-input paths, actual-template geometry, schema/discovery and budget checks. Failed checks rechecked only after relevant fixes.",
+    "adversarial_followups": [
+      "baked shared shrink",
+      "multiple overflow sources",
+      "already undersized authored text",
+      "fitted/nested table frames",
+      "six described process steps",
+      "grouped labels beyond canvas/into text",
+      "category highlight legend consistency",
+      "wrapped executive titles"
+    ],
+    "build": "make passed; CLI refreshed for changed final rendering behavior.",
+    "lint": "Pinned2.12.2 root and svggen passed after focused decomposition fixes.",
+    "skill_bundle_bytes": 102299,
+    "installed_skill": "Version4.177.0, exact installed-copy contract passed.",
+    "previews": {
+      "layouts": 108,
+      "tracked_pngs": 101,
+      "tracked_png_changes": [],
+      "refresh": "Sequential make template-previews with established renderer; first font-fallback-changing refresh rejected, eight-layout probe established normal renderer reproduces original hashes, corrected refresh allPNG hashes identical."
+    }
+  },
+  "visual_acceptance": {
+    "primary_cases": 17,
+    "templates": {
+      "midnight-blue": {
+        "template_sha256": "64bb8dd9297450f2ba21737168ded9fe4b88182439e2d21614e67eb586a4b689",
+        "primary_slide_count": 17,
+        "recheck_slide_count": 8,
+        "reviewed": true
+      },
+      "p-style": {
+        "template_sha256": "87134dde6d741a594088314c84f22e1047e3dbcc79f6b68590685b673794444d",
+        "primary_slide_count": 17,
+        "recheck_slide_count": 8,
+        "reviewed": true
+      }
+    },
+    "focused_rechecks_per_template": 8,
+    "wiki_example": {
+      "generated": true,
+      "quality_gate": "pass after improving sparse composition",
+      "pixels_reviewed": true
+    },
+    "coverage": "All34 initial slides reviewed as contact sheets and critical full images; only executive summary, grouped chart and six process arrangements rerendered after their visual corrections. Final table/KPI/cycle/funnel/legend/hero cases remained unchanged.",
+    "renderer": "Bundled LibreOfficeDev with private profile and fontconfig; native OOXML retained. Existing template previews verified separately on the established native renderer.",
+    "local_evidence_dir": "/tmp/json2pptx-open-beads-20261017"
+  },
+  "limits": [
+    "Synthetic reproductions of the reported scenarios; original jeving deck not supplied.",
+    "This is targeted field-review acceptance, not a new exhaustive certification of every pattern or arbitrary text.",
+    "Font substitution and PowerPoint can differ from local LibreOffice pixels; content/geometry gates remain authoritative for new content."
+  ],
+  "integration_parent_commit": "8efdd7c228808dd4317df5fa590d2e1fe40d2f2f",
+  "concurrent_wiki_commit": "A separate docs-only commit landed in the shared checkout while implementation was in progress. It includes the pre-existing user wiki edits and the new inline-tags example; preserved intact as implementation parent."
+}

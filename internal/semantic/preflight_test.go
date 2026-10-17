@@ -21,7 +21,7 @@ func findDiag(ds []diagnostics.Diagnostic, code string) *diagnostics.Diagnostic 
 
 // TestCompileKPISnapshot_LongValueFallsBackToContent is the regression for the
 // field-report bug: a KPI value that is valid semantically but too long for the
-// full-size kpi-2up cards ("CHF 1,142.35M") must degrade to a content slide at
+// full-size kpi-2up cards ("CHF 1,142.35 million") must degrade to a content slide at
 // compile time, not compile clean and then fail at render.
 func TestCompileKPISnapshot_LongValueFallsBackToContent(t *testing.T) {
 	spec := &DeckSpec{
@@ -31,7 +31,7 @@ func TestCompileKPISnapshot_LongValueFallsBackToContent(t *testing.T) {
 			{Kind: KindKPISnapshot, Body: map[string]any{
 				"title": "Q2 Results",
 				"kpis": []any{
-					map[string]any{"value": "CHF 1,142.35M", "label": "Revenue"},
+					map[string]any{"value": "CHF 1,142.35 million", "label": "Revenue"},
 					map[string]any{"value": "23%", "label": "Growth"},
 				},
 			}},
@@ -91,7 +91,7 @@ func TestPreflightRawPatterns_MapsToSemanticWithEdit(t *testing.T) {
 				SlideType: "content",
 				Pattern: &deckinput.PatternInput{
 					Name:   "kpi-2up",
-					Values: json.RawMessage(`[{"big":"CHF 1,142.35M","small":"Revenue"},{"big":"23%","small":"Growth"}]`),
+					Values: json.RawMessage(`[{"big":"CHF 1,142.35 million","small":"Revenue"},{"big":"23%","small":"Growth"}]`),
 				},
 			},
 		},

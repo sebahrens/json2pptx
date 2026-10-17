@@ -187,7 +187,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	// Calculate widths before row capacity. Wrapped line counts depend on the
 	// actual column widths, so fixed-height capacity math can claim a table fits
 	// while PowerPoint or LibreOffice grows its rows beyond the frame.
-	colWidths, colWidthDeficit := calculateColumnWidthsWithDiag(numCols, config.Bounds.Width, table.Headers, table.Rows, config.DefaultSize)
+	colWidths, colWidthDeficit := tableSpecColumnWidths(table, config.Bounds.Width, config.DefaultSize)
 
 	// Determine how many measured rows fit. If the table still overflows at the
 	// minimum font size, truncate data rows and replace the last visible row
@@ -1575,7 +1575,7 @@ func measureTableCellsFit(table *types.TableSpec, config TableRenderConfig) erro
 	fontName := config.DefaultFont
 
 	// Estimate column widths — use the same proportional algorithm as rendering.
-	colWidths := calculateColumnWidths(numCols, config.Bounds.Width, table.Headers, table.Rows, config.DefaultSize)
+	colWidths, _ := tableSpecColumnWidths(table, config.Bounds.Width, config.DefaultSize)
 
 	// Row height for maxLines calculation.
 	var rowHeightEMU int64
@@ -1653,4 +1653,12 @@ func measureTableCellsFit(table *types.TableSpec, config TableRenderConfig) erro
 	}
 
 	return nil
+}
+
+// tableSpecColumnWidths is shared by strict fit and rendering.
+func tableSpecColumnWidths(table *types.TableSpec, width int64, fontSize int) ([]int64, bool) {
+	if widths := types.ResolveTableColumnWidths(table.ColumnWidths, len(table.Headers), width); widths != nil {
+		return widths, false
+	}
+	return calculateColumnWidthsWithDiag(len(table.Headers), width, table.Headers, table.Rows, fontSize)
 }

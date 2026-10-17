@@ -39,12 +39,13 @@ const (
 	RegionTimeline = "timeline"
 	RegionImage    = "image"
 	RegionText     = "text"
+	RegionProcess  = "process"
 	// RegionCycle is a loop, hub or nested rings: the cycle kind's fields.
 	RegionCycle = "cycle"
 )
 
 // RegionKinds lists the region kinds in a stable order.
-var RegionKinds = []string{RegionChart, RegionStat, RegionKPIs, RegionTable, RegionTimeline, RegionImage, RegionText, RegionCycle}
+var RegionKinds = []string{RegionChart, RegionStat, RegionKPIs, RegionTable, RegionTimeline, RegionImage, RegionText, RegionCycle, RegionProcess}
 
 // Region arrangements.
 const (
@@ -628,6 +629,8 @@ func compileRegion(in Input, idx int, r map[string]any, anchor string) (regionBu
 		content, err = regionTable(in, r)
 	case RegionTimeline:
 		content, err = regionTimeline(r)
+	case RegionProcess:
+		content, err = regionProcess(in, idx, r)
 	case RegionImage:
 		content, err = regionImage(r)
 	case RegionText:
@@ -812,20 +815,24 @@ func regionTable(in Input, r map[string]any) (regionBuild, error) {
 	if len(headers) == 0 || len(rows) == 0 {
 		return regionBuild{}, fmt.Errorf("table region needs headers and at least one row")
 	}
-	table := &jsonschema.TableInput{Headers: headers, Rows: rows, Alt: firstNonEmpty(RegionHeading(r), visualAltText(in))}
+	table := &jsonschema.TableInput{Headers: headers, Rows: rows, ColumnWidths: TableColumnWidths(r), Alt: firstNonEmpty(RegionHeading(r), visualAltText(in))}
 	if alignments := tableColumnAlignments(r, len(headers)); len(alignments) > 0 {
 		table.ColumnAlignments = alignments
 	}
 	if style := tableStyle(r, headers); style != nil {
 		table.Style = style
 	}
-	return regionBuild{
+	b := regionBuild{
 		cell: &deckinput.GridCellInput{Table: table},
 		links: []SourceLink{
 			{RawPath: ".table.headers", SemanticPath: "." + tableHeadersField(r)},
 			{RawPath: ".table.rows", SemanticPath: ".rows"},
 		},
-	}, nil
+	}
+	if len(table.ColumnWidths) > 0 {
+		b.links = append(b.links, SourceLink{RawPath: ".table.column_widths", SemanticPath: ".column_widths"})
+	}
+	return b, nil
 }
 
 func regionTimeline(r map[string]any) (regionBuild, error) {

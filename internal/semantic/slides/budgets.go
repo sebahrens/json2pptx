@@ -38,7 +38,7 @@ var kindBudgets = map[string][]Budget{
 	},
 	"kpi_snapshot": {
 		{Field: "kpis", MinItems: 2, MaxItems: 6},
-		{Field: "kpis[].value", MaxChars: patterns.KPIValueMax, Note: fmt.Sprintf("2–4 KPIs; on one line a value holds about %d digits with 5 KPIs and %d with 6 on the narrowest shipped template (measured per template)", patterns.KPIValueFiveMax, patterns.KPIValueSixMax)},
+		{Field: "kpis[].value", MaxChars: 16, Note: fmt.Sprintf("2–3 KPIs with measured fit at ≥18pt; 4–6 KPIs cap values at 12 chars; on one line a value holds about %d digits with 5 KPIs and %d with 6 on the narrowest shipped template (measured per template)", patterns.KPIValueFiveMax, patterns.KPIValueSixMax)},
 		{Field: "kpis[].delta", MaxChars: patterns.KPIDeltaMax},
 		{Field: "kpis[].comparator", MaxChars: patterns.KPIComparatorMax},
 	},

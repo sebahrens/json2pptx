@@ -159,7 +159,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindCycle: {
 		Kind:            KindCycle,
-		Summary:         "A loop, flywheel or lifecycle, a hub with spokes, or nested rings: the phases in order and a style. One ordered loop is ring (default; 4–8 segments) or nodes (3–8 circles joined by arrows); 1–3 one-off intake steps feeding a loop of 3–8 are intake; two coupled loops on a full-width slide are figure_eight (4–8); 4–8 peers around a center are radial; 3–5 things that contain one another are concentric (innermost first). highlight marks the one accent phase. Outside the style's count or text budgets it degrades to a numbered list. A sequence that does not loop back is process.",
+		Summary:         "A loop, flywheel or lifecycle, a hub with spokes, or nested rings: the phases in order and a style. One ordered loop is ring (default; 4–8 segments) or nodes (3–8 circles joined by arrows); 1–3 one-off intake steps feeding a loop of 3–8 are intake; two coupled loops on a full-width slide are figure_eight (4–8); 4–8 peers around a center are radial; 3–5 things that contain one another are concentric (innermost first). highlight marks the one accent phase; ring/figure_eight phases accept status done|planned (filled/dashed). Outside the style's count or text budgets it degrades to a numbered list. A sequence that does not loop back is process.",
 		RequiredFields:  []string{"phases"},
 		RequiredAliases: map[string][]string{"phases": {"steps", "items"}},
 		TypicalFields:   []string{"title", "style", "intake", "center", "highlight", "left_label", "right_label", "takeaway"},
@@ -286,7 +286,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 			"arrangement is columns or rows (2–3 regions; size_pct is each one's width / height) or main_left / main_right / main_top / main_bottom " +
 			"(exactly 3: regions[0] is the main region and its size_pct its share, default 60; regions[1..2] stack beside it and split that side by their own size_pct). " +
 			"Each region is {kind, size_pct?, heading?, source?, …} with kind chart (chart, unit), stat (value, label, unit, context), kpis (2–4 kpis), " +
-			"table (headers, rows; ≤4 columns × 5 rows), timeline (3–7 milestones), image (image, caption), cycle (phases, style) or text (body, bullets) — the fields of the like-named slide kind. " +
+			"table (headers, rows, column_widths?; ≤4 columns × 5 rows), timeline (3–7 milestones), image (image, caption), cycle (phases, style), process (3–6 steps {label, description?}) or text (body, bullets) — the fields of the like-named slide kind. " +
 			"Region sources join the slide's source line. Use it only when the content types must be read together; one kind per slide stays the default.",
 		RequiredFields: []string{"regions"},
 		TypicalFields:  []string{"title", "arrangement", "takeaway", "source"},

@@ -247,7 +247,35 @@ func TestFullPatternsOccupyContentZone(t *testing.T) {
 			if got > tc.max {
 				t.Errorf("block fills %.1f%% of content zone, want at most %.1f%% (content-sized, no stretch)", got*100, tc.max*100)
 			}
-			assertCentred(t, tc.name, res.Cells)
+			if tc.name == "exec-summary" {
+				if top != contentRect.Y {
+					t.Errorf("summary starts at %d, want body line %d", top, contentRect.Y)
+				}
+			} else {
+				assertCentred(t, tc.name, res.Cells)
+			}
+		})
+	}
+}
+
+func TestFivePointExecutiveSummaryStartsAtBodyLine(t *testing.T) {
+	points := make([]map[string]string, 5)
+	for i := range points {
+		points[i] = map[string]string{"lead": "Give every case an accountable owner", "support": "Review the result and record the decision."}
+	}
+	values, _ := json.Marshal(map[string]any{"points": points, "bottom_line": "Assign the owners before the pilot starts."})
+	for _, mode := range []string{"compact", "comfortable"} {
+		t.Run(mode, func(t *testing.T) {
+			_, grid := resolvePatternForTest(t, "exec-summary", string(values))
+			grid.TypeScale = mode
+			out, err := resolveShapeGrid(grid, pptx.NewShapeIDAllocator(nil), &contentRect, nil, 12192000, 6858000, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			top, bottom := blockExtent(out.Cells)
+			if top != contentRect.Y || bottom > contentRect.Y+contentRect.CY {
+				t.Fatalf("summary bounds %d..%d, want body line %d within %d", top, bottom, contentRect.Y, contentRect.Y+contentRect.CY)
+			}
 		})
 	}
 }

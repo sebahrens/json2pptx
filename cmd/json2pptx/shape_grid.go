@@ -79,10 +79,12 @@ type gridShapeSource = generator.RawShapeSource
 // the resolved cell and field, or the connector / accent-bar spec. It becomes
 // a gridShapeSource once the authored grid is at hand (authoredShapeSources).
 type gridShapeOrigin struct {
-	row, col  int
-	field     string
-	connector *shapegrid.ConnectorSpec
-	accentBar *shapegrid.AccentBarSpec
+	row, col            int
+	autofitCauses       []shapegrid.AutofitCause
+	autofitOriginalText json.RawMessage
+	field               string
+	connector           *shapegrid.ConnectorSpec
+	accentBar           *shapegrid.AccentBarSpec
 }
 
 // authoredShapeSources turns the origins of a grid's own shapes into authored
@@ -118,6 +120,11 @@ func authoredShapeSources(input *ShapeGridInput, rows []shapegrid.Row, links []s
 		case o.field != "":
 			field, text := authoredShapeText(gridCellAtResolved(input, o.row, o.col), o.field)
 			out[i] = gridShapeSource{Path: slidepath.Join(authoredGridCellPath(base, input, o.row, o.col), field), Text: text}
+			out[i].SharedAutofitOriginalSizes = originalParagraphSizes(o.autofitOriginalText)
+			for _, cause := range o.autofitCauses {
+				out[i].SharedAutofitSources = append(out[i].SharedAutofitSources,
+					slidepath.Join(authoredGridCellPath(base, input, cause.RowIdx, cause.ColIdx), "shape/text"))
+			}
 		}
 		if out[i].Path == "" {
 			out[i].Path = base // a row rule or band: it belongs to the grid, not to a cell
@@ -1193,6 +1200,9 @@ func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pp
 		nested.findings(sub.FitFindings)
 		for i := range sub.ShapeSources {
 			sub.ShapeSources[i].Path = nested(sub.ShapeSources[i].Path)
+			for j, path := range sub.ShapeSources[i].SharedAutofitSources {
+				sub.ShapeSources[i].SharedAutofitSources[j] = nested(path)
+			}
 		}
 		out.Shapes = append(out.Shapes, sub.Shapes...)
 		out.ShapeSources = append(out.ShapeSources, sub.ShapeSources...)
@@ -1746,11 +1756,11 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 			}
 			// The group is one entry; it stands for the cell's first shape.
 			shapes = append(shapes, grpXML)
-			origins = append(origins, gridShapeOrigin{row: cell.RowIdx, col: cell.ColIdx, field: c.fields[0]})
+			origins = append(origins, gridShapeOrigin{row: cell.RowIdx, col: cell.ColIdx, field: c.fields[0], autofitCauses: cell.AutofitCauses(), autofitOriginalText: cell.AutofitOriginalText()})
 		} else {
 			shapes = append(shapes, c.shapes...)
 			for _, field := range c.fields {
-				origins = append(origins, gridShapeOrigin{row: cell.RowIdx, col: cell.ColIdx, field: field})
+				origins = append(origins, gridShapeOrigin{row: cell.RowIdx, col: cell.ColIdx, field: field, autofitCauses: cell.AutofitCauses(), autofitOriginalText: cell.AutofitOriginalText()})
 			}
 		}
 		iconInserts = append(iconInserts, c.icons...)

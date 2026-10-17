@@ -67,18 +67,23 @@ slide title.
   `timeline` is refused rather than shrunk. Leave stacked shares unset unless
   the render shows a reason.
 
-### The eight region kinds and their contracts
+### The nine region kinds and their contracts
 
 | Region `kind` | Required | Also takes | Budget | Refused |
 |---|---|---|---|---|
 | `chart` | `chart {type, data}` | `heading` ≤60, `unit` ≤12, `alt`, `source` | any of the 16 chart types | a waterfall's totals off by >0.5% |
 | `stat` | `value` ≤20 | `label` ≤80, `unit` ≤10, `context` ≤120 | one number | — |
 | `kpis` | `kpis[]` 2–4 `{value, label, delta, comparator}` | `heading` | the `kpi-Nup` card fit of the column | one KPI ("one number is a stat region") |
-| `table` | `headers`, ≥1 row | `rows`, `column_alignments` | ≤4 columns × 6 logical rows (5 data rows) | more rows: a `table` slide |
+| `table` | `headers`, ≥1 row | `rows`, `column_alignments`, positive relative `column_widths` | ≤4 columns × 6 logical rows (5 data rows) | more rows: a `table` slide |
 | `timeline` | `milestones` 3–7 | `heading` | label ≤60, date ≤30, body ≤200; `end_date` → bars | — |
 | `image` | `image {path \| url, alt, fit}` | `caption` ≤120 | cover (default) or contain | `callouts` → use `image_case` |
 | `text` | `body` or `bullets` | `heading` | body ≤400 runes, ≤6 bullets | a column too long for what its neighbour can give up |
-| `cycle` | `phases` | `style`, `center`, `highlight`, `intake`, `left_label`, `right_label`, `left_count` | the style's phase counts (ring 4–8, nodes 3–8, intake 3–8, figure_eight 4–8, radial 4–8, concentric 3–5) | `figure_eight` anywhere but a full-width region |
+| `process` | `steps[] {label, description?}` | `heading`, `size_pct` | 3–6 steps; label ≤40, description ≤80 | text that does not fit the region |
+| `cycle` | `phases` | `style`, `center`, `highlight`, `intake`, `left_label`, `right_label`, `left_count`; per-phase `status: done` or `planned` in `ring` / `figure_eight` | the style's phase counts (ring 4–8, nodes 3–8, intake 3–8, figure_eight 4–8, radial 4–8, concentric 3–5) | `figure_eight` anywhere but a full-width region |
+
+A `process` region uses native numbered text: two columns, read row by row,
+in vertical arrangements; one row in horizontal bands. Step labels start on
+the same baseline within each row. Its fit is checked at the actual region size.
 
 Unknown region kinds are refused with the translation: `bridge` → a
 `chart` region of `type: waterfall`; `kpi_snapshot` → `kpis`;

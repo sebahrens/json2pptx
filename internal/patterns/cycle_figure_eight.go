@@ -209,6 +209,7 @@ func (p *cycleFigureEight) Schema() *Schema {
 	phase := ObjectSchema(map[string]*Schema{
 		"label":       StringSchema(cfeLabelMax).WithDescription("Phase name, bold beside its number (e.g. \"Release\")"),
 		"description": StringSchema(cfeDescMax).WithDescription("Optional muted line under the label. Budget: 60 characters while each lobe holds at most 3 phases, 40 once a lobe holds 4 (7-8 phases, or 6 split 2 + 4); expand_pattern reports BODY_TOO_LONG past it"),
+		"status":      EnumSchema("done", "planned").WithDescription("done: filled segment; planned: unfilled dashed segment, independent of highlight"),
 		"highlight":   BooleanSchema().WithDescription("Fill this phase's segment with the solid accent (at most one phase); the others stay neutral"),
 	}, []string{"label"}).WithAdditionalProperties(false)
 
@@ -285,6 +286,7 @@ func (p *cycleFigureEight) Validate(values, overrides any, cellOverrides map[int
 		if runeLen(ph.Description) > cfeDescMax {
 			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].description", i), cfeDescMax, runeLen(ph.Description)))
 		}
+		errs = append(errs, validateCyclePhaseStatus(name, i, ph.Status))
 		if ph.Highlight {
 			highlights++
 		}
@@ -623,8 +625,10 @@ func (p *cycleFigureEight) Expand(ctx ExpandContext, values, overrides any, _ ma
 
 	base := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	accents := make([]string, n)
+	statuses := make([]string, n)
 	highlight := -1
 	for i, ph := range v.Phases {
+		statuses[i] = ph.Status
 		accents[i] = ctx.ResolveCellAccent(base, i, ovr.CellAccentMode)
 		if ph.Highlight && highlight < 0 {
 			highlight = i
@@ -635,6 +639,7 @@ func (p *cycleFigureEight) Expand(ctx ExpandContext, values, overrides any, _ ma
 	for li, lobe := range lay.lobes {
 		paint := ringPaint{
 			Accents:    accents[lobe.from : lobe.from+len(lobe.items)],
+			Statuses:   statuses[lobe.from : lobe.from+len(lobe.items)],
 			Tinted:     ovr.CellAccentMode == "alternate" || ovr.CellAccentMode == "progressive",
 			Highlight:  -1,
 			BadgeDia:   lay.badgeDia,

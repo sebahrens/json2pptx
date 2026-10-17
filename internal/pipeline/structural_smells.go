@@ -322,13 +322,17 @@ func sortStrings(s []string) {
 // DetectTableDensity checks a single table against TDR density rules and returns
 // warnings as ValidationError values. The path is the JSON path prefix for the
 // table (e.g. "slides[0].content[1]").
-func DetectTableDensity(table *jsonschema.TableInput, path string) []*patterns.ValidationError {
+func DetectTableDensity(table *jsonschema.TableInput, path string, frameWidth ...int64) []*patterns.ValidationError {
 	if table == nil || len(table.Headers) == 0 {
 		return nil
 	}
 
 	numCols := len(table.Headers)
-	logicalRows := table.LogicalRowCount()
+	width := int64(8229600)
+	if len(frameWidth) > 0 && frameWidth[0] > 0 {
+		width = frameWidth[0]
+	}
+	logicalRows := table.LogicalRowCountAtWidth(width)
 
 	var warnings []*patterns.ValidationError
 

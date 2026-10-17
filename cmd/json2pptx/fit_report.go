@@ -231,7 +231,10 @@ func measureTable(table *jsonschema.TableInput, pathPrefix, tablePath string, sl
 	var colWidths []int64
 	if bounds.Width > 0 && bounds.Height > 0 {
 		spec := table.ToTableSpec()
-		colWidths = generator.TableColumnWidths(spec.Headers, spec.Rows, bounds.Width, fontSize)
+		colWidths = types.ResolveTableColumnWidths(spec.ColumnWidths, len(spec.Headers), bounds.Width)
+		if colWidths == nil {
+			colWidths = generator.TableColumnWidths(spec.Headers, spec.Rows, bounds.Width, fontSize)
+		}
 		// The most one row can take while the other rows stay at minimum height.
 		defaultRowHeightEMU = max(bounds.Height-int64(numRows-1)*minRowHeightEMU, minRowHeightEMU)
 	}
@@ -314,7 +317,7 @@ func measureTable(table *jsonschema.TableInput, pathPrefix, tablePath string, sl
 	// the same facts are also emitted by the validator, and hardcoding "review"
 	// here put one table's density in a single response as both a warning and an
 	// info (go-slide-creator-7xyy).
-	for _, ve := range pipeline.DetectTableDensity(table, pathPrefix) {
+	for _, ve := range pipeline.DetectTableDensity(table, pathPrefix, bounds.Width) {
 		findings = append(findings, fitFinding{
 			Code:    ve.Code,
 			Path:    ve.Path,

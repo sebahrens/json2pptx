@@ -47,6 +47,7 @@ var regionPayloadFields = map[string]map[string]payloadField{
 	}, regionCommonFields()),
 	slides.RegionTable: withFields(map[string]payloadField{
 		"headers":           textList("Column headers (≤4)."),
+		"column_widths":     {typ: "array", schema: tableColumnWidthsSchema, desc: "Positive relative widths, one per header."},
 		"rows":              {typ: "array", desc: "Data rows (≤5): a list of cells, or an object keyed by header label."},
 		"column_alignments": textList("Per-column alignment: left / center / right."),
 	}, regionCommonFields()),
@@ -63,6 +64,9 @@ var regionPayloadFields = map[string]map[string]payloadField{
 		"bullets": {typ: "array", itemStrings: true, desc: "Up to 6 bullets."},
 	}, regionCommonFields()),
 	slides.RegionCycle: withFields(cycleRegionFields(), regionCommonFields()),
+	slides.RegionProcess: withFields(map[string]payloadField{
+		"steps": {typ: "array", itemKeys: []string{"label", "description"}, itemRequired: []string{"label"}, desc: "3–6 ordered steps {label, description?}; Label ≤40 chars, description ≤80; use short labels and details for six steps. Native numbered steps in reading order; final fit is measured in the region."},
+	}, regionCommonFields()),
 }
 
 // regionRequired lists each region kind's required content field.
@@ -72,6 +76,7 @@ var regionRequired = map[string]string{
 	slides.RegionKPIs:     "kpis",
 	slides.RegionTable:    "headers",
 	slides.RegionTimeline: "milestones",
+	slides.RegionProcess:  "steps",
 	slides.RegionImage:    "image",
 	slides.RegionCycle:    "phases",
 }
@@ -85,6 +90,9 @@ func regionsSchema() map[string]any {
 		props := map[string]any{}
 		for name, f := range fields {
 			props[name] = payloadFieldSchema(f, "")
+		}
+		if kind == slides.RegionProcess {
+			props["steps"] = map[string]any{"type": "array", "minItems": 3, "maxItems": 6, "items": map[string]any{"type": "object", "additionalProperties": false, "required": []any{"label"}, "properties": map[string]any{"label": map[string]any{"type": "string", "minLength": 1, "maxLength": 40}, "description": map[string]any{"type": "string", "maxLength": 80}}}}
 		}
 		props["kind"] = map[string]any{"const": kind}
 		props["size_pct"] = map[string]any{"type": "number", "minimum": slides.RegionMinSizePct, "maximum": slides.RegionMaxSizePct}
@@ -346,6 +354,7 @@ var regionContentRules = map[string]func(regionCheck){
 	},
 	slides.RegionTable: func(c regionCheck) {
 		columns, rows := slides.UsableTableCounts(c.r)
+		validateTableColumnWidths(c.path, c.r, columns, c.s)
 		switch {
 		case columns == 0:
 			c.required("headers", "table region requires headers")
@@ -359,6 +368,11 @@ var regionContentRules = map[string]func(regionCheck){
 		}
 		if rows+1 > slides.RegionTableMaxRows {
 			c.dense("rows", fmt.Sprintf("table region has %d rows including the header; a region holds %d — give the table its own slide", rows+1, slides.RegionTableMaxRows))
+		}
+	},
+	slides.RegionProcess: func(c regionCheck) {
+		if reason := slides.RegionProcessIssue(c.r); reason != "" {
+			c.dense("steps", reason)
 		}
 	},
 	slides.RegionTimeline: func(c regionCheck) {
@@ -392,6 +406,10 @@ var regionContentRules = map[string]func(regionCheck){
 			c.s.hard(c.path+"."+d.Field, diagnostics.CodeSemanticUnknownField, d.Message)
 		}
 		for _, issue := range slides.CycleIssues(c.r) {
+			if issue.Invalid {
+				c.s.hard(c.path+"."+issue.Field, diagnostics.CodeSemanticFieldType, "cycle region: "+issue.Message)
+				continue
+			}
 			if issue.Required {
 				c.required(issue.Field, "cycle region: "+issue.Message)
 				continue
@@ -466,7 +484,7 @@ func regionsFamily(body map[string]any) VisualFamily {
 		return FamilyKPI
 	case slides.RegionTimeline:
 		return FamilyTimeline
-	case slides.RegionCycle:
+	case slides.RegionCycle, slides.RegionProcess:
 		return FamilyProcess
 	case slides.RegionTable:
 		return FamilyTable

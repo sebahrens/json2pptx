@@ -1779,11 +1779,12 @@ func collectTablePreflightFindings(input *PresentationInput, layouts []types.Lay
 			bounds := tablePlaceholderBounds(content.PlaceholderID, layout)
 			pathPrefix := slidepath.ContentIndex(si, ci)
 			findings = append(findings, generator.DetectTablePreflight(generator.TablePreflightInput{
-				Path:    pathPrefix,
-				Headers: spec.Headers,
-				Rows:    spec.Rows,
-				Style:   spec.Style,
-				Bounds:  bounds,
+				Path:         pathPrefix,
+				Headers:      spec.Headers,
+				ColumnWidths: spec.ColumnWidths,
+				Rows:         spec.Rows,
+				Style:        spec.Style,
+				Bounds:       bounds,
 			})...)
 		}
 
@@ -1836,16 +1837,17 @@ func collectGridTablePreflightResolved(grid *ShapeGridInput, result *shapegrid.R
 		// The authored cell (a JSON pointer into the row), as generation
 		// reports table_rows_truncated (go-slide-creator-epch2).
 		path := authoredGridCellPath(base, grid, rc.RowIdx, rc.ColIdx)
-		if cell.Table != nil {
+		if rc.Kind == shapegrid.CellKindTable && cell.Table != nil {
 			spec := cell.Table.ToTableSpec()
 			findings = append(findings, generator.DetectTablePreflight(generator.TablePreflightInput{
-				Path:    path + "/table",
-				Headers: spec.Headers,
-				Rows:    spec.Rows,
-				Style:   spec.Style,
+				Path:         path + "/table",
+				Headers:      spec.Headers,
+				ColumnWidths: spec.ColumnWidths,
+				Rows:         spec.Rows,
+				Style:        spec.Style,
 				Bounds: types.BoundingBox{
-					X: rc.CellBounds.X, Y: rc.CellBounds.Y,
-					Width: rc.CellBounds.CX, Height: rc.CellBounds.CY,
+					X: rc.Bounds.X, Y: rc.Bounds.Y,
+					Width: rc.Bounds.CX, Height: rc.Bounds.CY,
 				},
 			})...)
 		}

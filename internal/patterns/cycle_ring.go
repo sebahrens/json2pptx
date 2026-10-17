@@ -86,6 +86,7 @@ type CycleRingPhase struct {
 	Label       string `json:"label"`
 	Description string `json:"description,omitempty"`
 	Highlight   bool   `json:"highlight,omitempty"`
+	Status      string `json:"status,omitempty"`
 }
 
 // CycleRingCenter is the optional text in the ring's hole.
@@ -208,6 +209,7 @@ func (p *cycleRing) Schema() *Schema {
 	phase := ObjectSchema(map[string]*Schema{
 		"label":       StringSchema(cycleRingLabelMax).WithDescription("Phase name, bold beside its number (e.g. \"Plan\"). Budget: 28 characters with 4-6 phases, 24 with 7-8"),
 		"description": StringSchema(cycleRingDescMax).WithDescription("Optional muted line under the label. Budget by phase count: 4: 90 characters, 5-6: 70, 7-8: 50; expand_pattern reports BODY_TOO_LONG past it. Left off in the legend layout when its rows cannot hold it"),
+		"status":      EnumSchema("done", "planned").WithDescription("done: filled segment; planned: unfilled dashed segment, independent of highlight"),
 		"highlight":   BooleanSchema().WithDescription("Fill this phase's segment with the solid accent (at most one phase); the others stay neutral"),
 	}, []string{"label"}).WithAdditionalProperties(false)
 
@@ -294,6 +296,7 @@ func (p *cycleRing) Validate(values, overrides any, cellOverrides map[int]any) e
 		if runeLen(ph.Description) > cycleRingDescMax {
 			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].description", i), cycleRingDescMax, runeLen(ph.Description)))
 		}
+		errs = append(errs, validateCyclePhaseStatus(name, i, ph.Status))
 		if ph.Highlight {
 			highlights++
 		}
@@ -801,11 +804,13 @@ func (p *cycleRing) Expand(ctx ExpandContext, values, overrides any, _ map[int]a
 	paint := ringPaint{
 		Arrows:    ovr.Style == cycleRingStyleArrows,
 		Accents:   make([]string, len(v.Phases)),
+		Statuses:  make([]string, len(v.Phases)),
 		Tinted:    ovr.CellAccentMode == "alternate" || ovr.CellAccentMode == "progressive",
 		Highlight: -1,
 		BadgeDia:  lay.badgeDia,
 	}
 	for i, ph := range v.Phases {
+		paint.Statuses[i] = ph.Status
 		paint.Accents[i] = ctx.ResolveCellAccent(base, i, ovr.CellAccentMode)
 		if ph.Highlight && paint.Highlight < 0 {
 			paint.Highlight = i
@@ -869,4 +874,11 @@ func (l *cycleRingLayout) labelPlaces(ctx ExpandContext, phases []CycleRingPhase
 		ringProtectEdges(places, gapEdges)
 	}
 	return places
+}
+
+func validateCyclePhaseStatus(name string, i int, status string) error {
+	if status == "" || status == "done" || status == "planned" {
+		return nil
+	}
+	return errInvalidEnum(name, fmt.Sprintf("phases[%d].status", i), status, []string{"done", "planned"})
 }

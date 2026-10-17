@@ -253,9 +253,11 @@ func (d *StackedBarChartDiagram) DataSchema() *DataSchema {
 
 // DataSchema returns the JSON Schema for grouped_bar_chart data.
 func (d *GroupedBarChartDiagram) DataSchema() *DataSchema {
+	fields := barFamilyFields()
+	fields["highlight"].Description += " Highlighted value labels are bold. Entries that do not match series can name categories instead; those categories have bold value labels while preserving the series colours and legend. Series names and indices take precedence."
 	return ObjectDataSchema(
 		"Grouped bar chart data with categories and series.",
-		barFamilyFields(),
+		fields,
 		[]string{"categories", "series"},
 	)
 }

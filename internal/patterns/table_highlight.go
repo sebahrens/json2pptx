@@ -1372,7 +1372,7 @@ func thLegendKinds(v *TableHighlightValues) []string {
 	}
 	var kinds []string
 	for _, k := range []string{thScaleHarvey, thScaleRAG} {
-		if seen[k] {
+		if seen[k] && (k != thScaleRAG || len(thUsedRAG(v)) > 0) {
 			kinds = append(kinds, k)
 		}
 	}
@@ -1389,7 +1389,16 @@ func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbo
 	labels := thLegendLabelsFor(v, kind)
 	samples := []thNormalizedScore{{kind: thScaleHarvey, level: 4}, {kind: thScaleHarvey, level: 2}, {kind: thScaleHarvey, level: 0}}
 	if kind == thScaleRAG {
-		samples = []thNormalizedScore{{kind: thScaleRAG, rag: "green"}, {kind: thScaleRAG, rag: "amber"}, {kind: thScaleRAG, rag: "red"}}
+		samples = nil
+		ragLabels := labels
+		labels = nil
+		used := thUsedRAG(v)
+		for i, color := range []string{"red", "amber", "green"} {
+			if used[color] {
+				samples = append(samples, thNormalizedScore{kind: thScaleRAG, rag: color})
+				labels = append(labels, ragLabels[2-i])
+			}
+		}
 	} else if thHarveyUsesQuarters(v) {
 		// Quarter / three-quarter balls in the matrix need their own legend
 		// entries (go-slide-creator-csclk.100). The three authored labels stay
@@ -1473,4 +1482,20 @@ func thLegendLabelsFor(v *TableHighlightValues, kind string) []string {
 		return v.LegendLabels
 	}
 	return []string{"Fully meets", "Partially meets", "Does not meet"}
+}
+
+// thUsedRAG counts only scores rendered as RAG symbols, respecting column scales.
+func thUsedRAG(v *TableHighlightValues) map[string]bool {
+	used := map[string]bool{}
+	for _, option := range v.Options {
+		for j, raw := range option.Scores {
+			if j >= len(v.Criteria) || v.scaleFor(j) != thScaleRAG {
+				continue
+			}
+			if sc, ok := parseTableHighlightScore(raw, thScaleRAG); ok && sc.kind == thScaleRAG {
+				used[sc.rag] = true
+			}
+		}
+	}
+	return used
 }

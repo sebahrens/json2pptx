@@ -66,6 +66,8 @@ type ringPaint struct {
 	// Accents is the accent of each item, indexed like items: its badge's
 	// fill and, for the highlight, its segment's solid fill.
 	Accents []string
+	// Statuses leaves done/default segments filled and planned segments outlined.
+	Statuses []string
 	// Tinted fills a segment with the light tint of its own accent
 	// (cell_accent_mode alternate / progressive) instead of the neutral step.
 	Tinted bool
@@ -174,6 +176,10 @@ func ringSegmentLayers(ctx ExpandContext, spec ringSpec, items []ringItem, p rin
 	out := make([]jsonschema.LayerInput, 0, len(items))
 	for i, it := range items {
 		shape := &jsonschema.ShapeSpecInput{Fill: ringSegmentTone(ctx, p, i).fillJSON(), Line: noLine}
+		if i < len(p.Statuses) && p.Statuses[i] == "planned" {
+			shape.Fill = json.RawMessage(`"none"`)
+			shape.Line = json.RawMessage(fmt.Sprintf(`{"color":%q,"width":1.5,"dash":"dash"}`, p.accent(ctx, i)))
+		}
 		frame := spec.bandFrame()
 		if p.Arrows {
 			sweep := ringTravelDeg(it.StartDeg, it.EndDeg, spec.Clockwise)

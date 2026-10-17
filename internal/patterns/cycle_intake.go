@@ -421,7 +421,7 @@ func (v *CycleIntakeValues) centre() string {
 func (v *CycleIntakeValues) phases() *CycleRingValues {
 	out := &CycleRingValues{Phases: make([]CycleRingPhase, len(v.Loop))}
 	for i, ph := range v.Loop {
-		out.Phases[i] = CycleRingPhase(ph)
+		out.Phases[i] = CycleRingPhase{Label: ph.Label, Description: ph.Description, Highlight: ph.Highlight}
 	}
 	return out
 }

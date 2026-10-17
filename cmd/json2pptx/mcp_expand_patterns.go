@@ -64,7 +64,7 @@ func buildPatternExpansionResult(
 		return patternExpansionResult{}, err
 	}
 
-	densityWarnings := collectGridDensityWarnings(grid)
+	densityWarnings := collectGridDensityWarnings(grid, expandCtx)
 	attachNextToolCallsToValidationErrors(densityWarnings, pi.Name)
 
 	occupancy := computeGridOccupancy(grid, expandCtx)

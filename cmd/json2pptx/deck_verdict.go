@@ -398,7 +398,7 @@ func rhythmGridRefusal(cfg *GridConfig) error {
 // chart and diagram. output is filled as validateSlidesAgainstTemplate fills
 // it. The caller has resolved canonical layout names.
 func deckStructuralChecks(output *dryRunOutput, input *PresentationInput, analysis *types.TemplateAnalysis) {
-	validateSlidesAgainstTemplate(output, input.Slides, analysis)
+	validateSlidesAgainstTemplate(output, input.Slides, analysis, input)
 
 	// A chart or diagram that cannot render leaves the deck without its
 	// visual: no surface accepts that deck (go-slide-creator-gr64x). The CLI

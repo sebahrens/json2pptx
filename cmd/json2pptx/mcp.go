@@ -18,10 +18,10 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
-	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/render"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/templatepreview"
 	"github.com/sebahrens/json2pptx/internal/tokens"
@@ -2351,22 +2351,16 @@ func computeGridOccupancy(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCo
 }
 
 // collectGridDensityWarnings checks tables in the grid for density issues.
-func collectGridDensityWarnings(grid *jsonschema.ShapeGridInput) []patternValidationError {
+func collectGridDensityWarnings(grid *jsonschema.ShapeGridInput, contexts ...patterns.ExpandContext) []patternValidationError {
+	var result *shapegrid.ResolveResult
+	if len(contexts) > 0 {
+		result, _ = resolveCapacityGrid(grid, contexts[0])
+	} else {
+		result = resolveGridForStructural(grid, nil, nil, 0, 0)
+	}
 	var warnings []patternValidationError
-	for rowIdx, row := range grid.Rows {
-		for cellIdx, cell := range row.Cells {
-			if cell != nil && cell.Table != nil {
-				tablePath := fmt.Sprintf("shape_grid.rows[%d].cells[%d].table", rowIdx, cellIdx)
-				for _, ve := range pipeline.DetectTableDensity(cell.Table, tablePath) {
-					warnings = append(warnings, patternValidationError{
-						Field:   ve.Path,
-						Code:    ve.Code,
-						Message: ve.Message,
-						Fix:     ve.Fix,
-					})
-				}
-			}
-		}
+	for _, ve := range collectGridTableDensityResolved(grid, result, "/shape_grid", 0) {
+		warnings = append(warnings, patternValidationError{Field: ve.Path, Code: ve.Code, Message: ve.Message, Fix: ve.Fix})
 	}
 	return warnings
 }

@@ -388,9 +388,12 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	colsJSON, _ := json.Marshal(cols)
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		ColGap:  ctx.Gap(execSummaryColGapPt),
-		RowGap:  lay.rowGapPt,
-		Rows:    rows,
+		// Conclusions read down from the template body line. Optical centring
+		// leaves a blank band above the first point even with five messages.
+		VerticalAlign: "top",
+		ColGap:        ctx.Gap(execSummaryColGapPt),
+		RowGap:        lay.rowGapPt,
+		Rows:          rows,
 	}
 	fillCappedRows(ctx, grid.Rows, grid.RowGap, execSummaryMinFillPct/100, func(i int) bool {
 		return i < 2*n-1 && i%2 == 0

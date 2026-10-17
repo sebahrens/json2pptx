@@ -74,6 +74,7 @@ func (ctx *singlePassContext) reportGridReadability(shapes [][]byte, sources []R
 					f.Fix = nil
 					f.Source = source
 					f.Message = strings.TrimSuffix(strings.TrimSuffix(f.Message, "; shorten the text"), "; split the text") + "; preserve all source at a readable size"
+					ctx.attributeSharedGridReadability(f, sources, fi, pi, role, source)
 					ctx.emitFitFinding(*f)
 				}
 			}
@@ -127,4 +128,16 @@ func smallestPopulatedParagraphRunSizeHPt(paragraph paragraphXML) int {
 		}
 	}
 	return smallest
+}
+
+func (ctx *singlePassContext) attributeSharedGridReadability(f *patterns.FitFinding, sources []RawShapeSource, shapeIdx, paragraphIdx int, role tokens.TextRole, affected string) {
+	if shapeIdx >= len(sources) {
+		return
+	}
+	src := sources[shapeIdx]
+	if paragraphIdx >= len(src.SharedAutofitOriginalSizes) || src.SharedAutofitOriginalSizes[paragraphIdx] < tokens.MinReadableHPt(ctx.viewingMode, role) || len(src.SharedAutofitSources) == 0 {
+		return
+	}
+	f.Source = src.SharedAutofitSources[0]
+	f.Message += fmt.Sprintf("; shared autofit from %s affects %s", strings.Join(src.SharedAutofitSources, ", "), affected)
 }

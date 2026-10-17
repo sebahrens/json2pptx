@@ -353,6 +353,10 @@ type BarChart struct {
 	// yScaleForLabels is the linear value scale of the current Draw, kept for
 	// the stacked direct labels (nil on a log axis).
 	yScaleForLabels *LinearScale
+
+	// Value-label text boxes belonging to this render, used by the geometry guard.
+	groupedValueBoxes []int
+	groupedTextStart  int
 }
 
 // applyLabelledMode switches the chart to its labelled layout when every bar
@@ -453,6 +457,8 @@ func (bc *BarChart) Draw(data ChartData) error {
 	if len(data.Series) == 0 || len(data.Categories) == 0 {
 		return fmt.Errorf("bar chart requires at least one series and categories")
 	}
+	bc.groupedValueBoxes = nil
+	bc.groupedTextStart = len(bc.builder.textBoxes)
 	// Scale preparation can reserve an axis gutter or enable value labels for
 	// this render. Do not leak either override into a later Draw on the same
 	// chart instance (for example, a wide-range chart followed by a narrow one).
@@ -631,7 +637,7 @@ func (bc *BarChart) Draw(data ChartData) error {
 		})
 	}
 
-	return nil
+	return bc.validateGroupedValueLabels(data)
 }
 
 func (bc *BarChart) prepareValueScale(data ChartData) error {
@@ -1280,6 +1286,7 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 	valueFormat := autoValueFormat(bc.config.ValueFormat, chartDataValues(data))
 	pointColors, pointBold := bc.highlightFills(data, colors)
 
+	labelOffsets := bc.groupedLabelOffsets(data, adjustedYScale, bandwidth, valueFormat)
 	for seriesIdx, series := range data.Series {
 		barConfig := DefaultBarSeriesConfig()
 		barConfig.Color = colors[seriesIdx%len(colors)]
@@ -1291,6 +1298,13 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 		barConfig.SeriesCount = numSeries
 		barConfig.PointColors = pointColors
 		barConfig.PointBold = pointBold
+		if data.SeriesHighlightSet && seriesHighlighted(data, seriesIdx) {
+			barConfig.PointBold = make([]bool, len(series.Values))
+			for i := range barConfig.PointBold {
+				barConfig.PointBold[i] = true
+			}
+		}
+		barConfig.LabelOffsets = labelOffsets[seriesIdx]
 		if bc.labelledMode {
 			barConfig.LabelFontSize = labelledValueFont(b.StyleGuide())
 			barConfig.LabelGap = labelledValueGapPt
@@ -1339,7 +1353,11 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 		adjustedXScale.PaddingOuter(bc.config.GroupPadding)
 		adjustedXScale.PaddingInner(bc.config.GroupPadding)
 
+		textStart := len(b.textBoxes)
 		bs.DrawCategorical(points, adjustedXScale, adjustedYScale, baseY)
+		for i := textStart; i < len(b.textBoxes); i++ {
+			bc.groupedValueBoxes = append(bc.groupedValueBoxes, i)
+		}
 		_ = barWidth
 	}
 }
@@ -1350,8 +1368,16 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 // author's data.highlight wins; without one, a time series accents its last
 // bar and any other chart its largest (go-slide-creator-sdxii). Multi-series
 // charts, a series with its own colour and explicit data.colors (unless a
-// highlight is also given) keep their palette: nil, nil.
+// highlight is also given) keep their palette. A grouped category-name
+// highlight preserves the series palette and emphasizes only its value labels.
 func (bc *BarChart) highlightFills(data ChartData, colors []Color) ([]Color, []bool) {
+	if len(data.Series) > 1 && data.HighlightSet && !bc.config.Stacked && len(colors) > 0 {
+		bold := make([]bool, len(data.Categories))
+		for i := range bold {
+			bold[i] = containsHighlight(data.Highlight, i)
+		}
+		return nil, bold
+	}
 	if bc.config.Stacked || len(data.Series) != 1 || data.Series[0].Color != nil || len(colors) == 0 {
 		return nil, nil
 	}

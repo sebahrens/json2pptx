@@ -451,6 +451,12 @@ func buildInputSchema() map[string]any {
 		defs[entry.name] = reflectStructSchema(entry.name, entry.typ)
 	}
 
+	if tableDef, ok := defs["TableInput"].(map[string]any); ok {
+		if props, ok := tableDef["properties"].(map[string]any); ok {
+			props["column_widths"] = map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"type": "number", "exclusiveMinimum": 0}, "description": "Positive relative column widths, one per header."}
+		}
+	}
+
 	// Apply type-level overrides (descriptions, anyOf/allOf/oneOf constraints).
 	for typeName, overrides := range typeOverrides {
 		def, ok := defs[typeName].(map[string]any)

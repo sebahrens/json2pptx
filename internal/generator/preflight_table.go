@@ -17,6 +17,7 @@ import (
 // TablePreflightInput describes a table whose render-time fit behaviour
 // should be predicted at validate/preview time.
 type TablePreflightInput struct {
+	ColumnWidths []float64
 	// Path is the JSON pointer to the table, e.g. "/slides/0/content/1".
 	Path string
 	// Headers is the list of column header strings.
@@ -124,7 +125,7 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 
 		// Truncation uses the renderer's measured wrapped-row geometry so
 		// preflight and the generated <a:tr h> values cannot disagree.
-		colWidths := calculateColumnWidths(len(input.Headers), input.Bounds.Width, input.Headers, input.Rows, fontSize)
+		colWidths, _ := tableSpecColumnWidths(&types.TableSpec{Headers: input.Headers, Rows: input.Rows, ColumnWidths: input.ColumnWidths}, input.Bounds.Width, fontSize)
 		plan := planTableRows(&types.TableSpec{Headers: input.Headers, Rows: input.Rows}, colWidths, TableRenderConfig{
 			Bounds:            input.Bounds,
 			DefaultFont:       defaultFontFamily,
@@ -162,7 +163,7 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 	// signal without producing widths. The deficit fires when the total of
 	// per-column content-aware minimums exceeds the available width.
 	if input.Bounds.Width > 0 {
-		if hasColumnWidthDeficit(numCols, input.Bounds.Width, input.Headers, input.Rows, fontSize) {
+		if types.ResolveTableColumnWidths(input.ColumnWidths, numCols, input.Bounds.Width) == nil && hasColumnWidthDeficit(numCols, input.Bounds.Width, input.Headers, input.Rows, fontSize) {
 			findings = append(findings, patterns.FitFinding{
 				ValidationError: patterns.ValidationError{
 					Path: input.Path,

@@ -161,7 +161,7 @@ var archTierKeys = keyGroups(
 )
 
 // cyclePhaseKeys are the keys a cycle phase object may carry.
-var cyclePhaseKeys = keyGroups([]string{"label", "name", "title"}, []string{"description", "detail"}, []string{"highlight"})
+var cyclePhaseKeys = keyGroups([]string{"label", "name", "title"}, []string{"description", "detail"}, []string{"highlight", "status"})
 
 // cycleIntakeKeys are the keys a cycle intake step may carry.
 var cycleIntakeKeys = keyGroups([]string{"label", "name", "title"}, []string{"description", "detail"})
@@ -173,10 +173,10 @@ var cycleIntakeKeys = keyGroups([]string{"label", "name", "title"}, []string{"de
 func cycleShapeFields() map[string]payloadField {
 	phases := func(desc string) payloadField {
 		return payloadField{typ: "array", desc: desc, itemStrings: true, itemKeys: cyclePhaseKeys,
-			itemKeySchemas: map[string]any{"highlight": map[string]any{"type": "boolean"}}}
+			itemKeySchemas: map[string]any{"highlight": map[string]any{"type": "boolean"}, "status": map[string]any{"type": "string", "enum": []string{"done", "planned"}}}}
 	}
 	return map[string]payloadField{
-		"phases": phases("The phases in order: strings or {label, description?, highlight?}. ring 4–8 (label ≤28 chars, description ≤90), nodes 3–8 (≤28, ≤70), intake 3–8 (≤26, ≤70, less as steps and phases add up: about 30 with 2 intake steps and 6 phases), figure_eight 4–8 (≤26, ≤60; ≤40 once a loop holds four), radial 4–8 items around the center (≤26, ≤60), concentric 3–5 layers, innermost first (≤24, ≤70)."),
+		"phases": phases("The phases in order: strings or {label, description?, highlight?, status?}. status done|planned fills or outlines ring/figure_eight segments independently of highlight. ring 4–8 (label ≤28 chars, description ≤90), nodes 3–8 (≤28, ≤70), intake 3–8 (≤26, ≤70, less as steps and phases add up: about 30 with 2 intake steps and 6 phases), figure_eight 4–8 (≤26, ≤60; ≤40 once a loop holds four), radial 4–8 items around the center (≤26, ≤60), concentric 3–5 layers, innermost first (≤24, ≤70)."),
 		"steps":  phases("Alias for phases."),
 		"items":  phases("Alias for phases."),
 		"intake": {typ: "array", itemStrings: true, itemKeys: cycleIntakeKeys,
@@ -320,7 +320,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 	KindKPISnapshot: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
-		"kpis":     {typ: "array", desc: "2–6 KPI objects {value, label, delta?, comparator?}; value and delta ≤12 chars each (with 5 or 6 KPIs a value holds about 11 or 9 digits on one line on the narrowest template). comparator (alias vs, ≤24 chars) is the reference the number is read against, e.g. \"vs plan +4 pts\".", itemKeys: kpiItemKeys},
+		"kpis":     {typ: "array", desc: "2–6 KPI objects {value, label, delta?, comparator?}; value ≤16 chars with 2–3 KPIs (measured fit at ≥18pt), ≤12 with 4–6; delta ≤12 (with 5 or 6 KPIs a value holds about 11 or 9 digits on one line on the narrowest template). comparator (alias vs, ≤24 chars) is the reference the number is read against, e.g. \"vs plan +4 pts\".", itemKeys: kpiItemKeys},
 		"metrics":  {typ: "array", desc: "Alias for kpis.", itemKeys: kpiItemKeys},
 	}, compositionFields()), universalFields()),
 	KindChartInsight: withFields(withFields(map[string]payloadField{
@@ -376,6 +376,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 			typ:  "array",
 			desc: "Data rows (up to 9; 10 logical rows with the header). A row is a list of cell values, or an object keyed by header label. Short rows render blank cells.",
 		},
+		"column_widths":     {typ: "array", schema: tableColumnWidthsSchema, desc: "Positive relative widths, one per header; e.g. [1,3] for term/meaning."},
 		"column_alignments": textList("Per-column alignment: left / center / right (the engine's l / ctr / r are accepted too). Right-align numeric columns."),
 		"column_types":      textList("Per-column type hint for the renderer's number formatting, e.g. text / number / currency / percent."),
 		"highlight_column":  strField("The column to emphasise, named (matched against a header) or as a 0-based index."),

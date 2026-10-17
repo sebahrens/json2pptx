@@ -522,7 +522,7 @@ func resolveCanonicalLayoutIDs(slides []SlideInput, layouts []types.LayoutMetada
 // per-slide details and accumulating diagnostics in output.Diagnostics (folded
 // into the Findings envelope at serialization). This is the shared validation
 // core used by both the CLI dry-run and the MCP validate_input handler.
-func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, analysis *types.TemplateAnalysis) { //nolint:gocognit,gocyclo
+func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, analysis *types.TemplateAnalysis, source ...*PresentationInput) { //nolint:gocognit,gocyclo
 	// A deck default every table adopts is one field in the deck: report a
 	// fault in it once, not once per table.
 	defer func() { output.Diagnostics = onePerDefaultsField(output.Diagnostics) }()
@@ -561,6 +561,13 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 	if !output.verdictOnly {
 		predictedLayouts = predictSlideLayouts(&PresentationInput{Slides: slides}, analysis.Layouts)
 	}
+
+	densityInput := &PresentationInput{Slides: slides}
+	if len(source) > 0 && source[0] != nil {
+		densityInput = source[0]
+	}
+	rhythm := resolvedValidRhythmGrid(densityInput, analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight)
+	densityLayouts := predictSlideLayouts(densityInput, analysis.Layouts)
 
 	// Validate each slide
 	for i, slideInput := range slides {
@@ -807,7 +814,8 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					table := resolveTableFromContent(&item)
 					if table != nil {
 						tablePath := slidepath.ContentIndex(i, j)
-						densityWarnings := pipeline.DetectTableDensity(table, tablePath)
+						bounds := tablePlaceholderBounds(item.PlaceholderID, densityLayouts[i])
+						densityWarnings := pipeline.DetectTableDensity(table, tablePath, bounds.Width)
 						output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationWarnings(densityWarnings)...)
 
 						// Warn when both header_background and style_id are explicitly authored.
@@ -840,7 +848,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 							output.Valid = false
 							output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 								Code:     diagnostics.CodeInvalidParameter,
-								Path:     tableValuePath + "/rows",
+								Path:     tableValuePath + "/" + tableGridErrorField(table.ToTableSpec()),
 								Message:  fmt.Sprintf("slide %d: %v", i+1, err),
 								Severity: diagnostics.SeverityError,
 							})
@@ -938,7 +946,9 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 		// Validate shape_grid if present
 		if slideInput.ShapeGrid != nil {
-			gridCounts, gridWarnings, gridErrors, gridValWarnings := validateShapeGrid(slideInput.ShapeGrid, i+1)
+			geom, _ := patternExpansionGeometry(slideInput, analysis.Layouts, analysis.SlideWidth, analysis.SlideHeight, rhythm)
+			resolved := resolveGridForStructural(slideInput.ShapeGrid, geom.OverrideBounds, geom.Zone, analysis.SlideWidth, analysis.SlideHeight)
+			gridCounts, gridWarnings, gridErrors, gridValWarnings := validateShapeGrid(slideInput.ShapeGrid, i+1, resolved)
 			slide.ShapeCount = gridCounts.Shapes
 			output.ShapeCount += gridCounts.Shapes
 			output.TableCount += gridCounts.Tables
@@ -1301,7 +1311,7 @@ func validateGridColumns(raw json.RawMessage, slideNum int) ([]float64, string) 
 	return arr, ""
 }
 
-func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCounts, warnings []string, errors []string, valWarnings []*patterns.ValidationError) {
+func validateShapeGrid(grid *ShapeGridInput, slideNum int, resolved ...*shapegrid.ResolveResult) (counts gridContentCounts, warnings []string, errors []string, valWarnings []*patterns.ValidationError) {
 	if len(grid.Rows) == 0 {
 		errors = append(errors, fmt.Sprintf("slide %d: shape_grid has no rows", slideNum))
 		return
@@ -1352,9 +1362,7 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 			if cell.Table != nil {
 				counts.Shapes++
 				counts.Tables++
-				// Density check for embedded table.
-				tablePath := slidepath.GridCellField(slideNum-1, rowIdx, cellIdx, "table")
-				valWarnings = append(valWarnings, pipeline.DetectTableDensity(cell.Table, tablePath)...)
+
 			}
 			if cell.Diagram != nil {
 				counts.Shapes++
@@ -1366,6 +1374,13 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 		}
 	}
 
+	var result *shapegrid.ResolveResult
+	if len(resolved) > 0 {
+		result = resolved[0]
+	} else {
+		result = resolveGridForStructural(grid, nil, nil, 0, 0)
+	}
+	valWarnings = append(valWarnings, collectGridTableDensityResolved(grid, result, slidepath.ShapeGrid(slideNum-1), 0)...)
 	return
 }
 
@@ -1492,7 +1507,7 @@ func gridTableRowWidthDiagnostics(grid *ShapeGridInput, gridPath string, slideId
 				if err := cell.Table.ToTableSpec().CheckRowWidths(); err != nil {
 					out = append(out, diagnostics.Diagnostic{
 						Code:     diagnostics.CodeInvalidParameter,
-						Path:     cellPath + "/table/rows",
+						Path:     cellPath + "/table/" + tableGridErrorField(cell.Table.ToTableSpec()),
 						Message:  fmt.Sprintf("slide %d: %v", slideIdx+1, err),
 						Severity: diagnostics.SeverityError,
 					})

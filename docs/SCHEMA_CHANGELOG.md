@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-10-17 — Schema 4.177.0 · Field-review follow-ups.** Input fingerprint: `865d239d81b07196` (additive table column widths).
+  - Tables accept `column_widths`, one positive relative weight per column, on raw tables, the `table` kind and table regions. Rendering, preflight, strict fit and logical-row density use the same widths. `[1, 3]` gives a glossary's definition column three quarters of the width.
+  - Regions add `process`: 3–6 `{label, description?}` steps, rendered as native numbered steps in a row or a two-column reading order matched to the arrangement. All six arrangements preserve the linear sequence.
+  - Ring and figure-eight phases accept `status: done|planned` independently of their single `highlight`. Planned segments are unfilled with a dashed outline; omitted status preserves existing appearance.
+  - KPI2/3 values accept up to 16 characters when measured fit at a readable display size succeeds. KPI4/5/6 retain their limits; arbitrary long values are still refused rather than clipped.
+  - Funnel charts accept stage `data.highlight` labels or indices, with highlighted stages in the accent and the rest neutral. Grouped-bar values avoid collisions and use bold labels for highlights; category-name fallback applies when no series matches.
+  - `hero-detail.values.detail_title_color` accepts a colour reference such as `dk1`; omitted keeps accent headings. RAG legends include only used colours, in red / amber / green order. Executive summaries start below measured title text. Shared-autofit findings attribute shrink to the overflowing peers and identify affected text.
+
 - **2026-10-17 — Schema 4.176.0 · MCP planning and placement discovery (`go-slide-creator-su66d`).** Input fields and the input fingerprint are unchanged; response metadata is additive.
   - Default and core tool profiles now advertise `list_deck_archetypes` and `explain_deck_spec` within the existing payload budgets. Onboarding derives hidden-tool guidance from the active profile.
   - `show_pattern`, full `list_patterns`, CLI JSON and full skill-info expose builder-sourced minimum dimensions, narrow-layout fallbacks, segment-only placement guidance and conditional fit notes. Recommendations carry the same information in `segment_fit`, including named-pattern composition leaves. Missing minima never guarantee fit; `expand_pattern` checks the actual content and geometry.

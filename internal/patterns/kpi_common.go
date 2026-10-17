@@ -200,6 +200,14 @@ func resolveKPISmallSize(ovr *KPIOverrides) float64 {
 	return ResolveSize(ovr.SmallSize, scaleSubheadPt)
 }
 
+// kpiValueCharLimit keeps wider cards separate from dense KPI rows.
+func kpiValueCharLimit(n int) int {
+	if n == 2 || n == 3 {
+		return 16
+	}
+	return kpiNupBigMaxChars
+}
+
 // validateKPICells validates a slice of KPI cells for a pattern with the given
 // name and expected count. siblingHint is the name of the sibling pattern to
 // suggest when the count is off by one (e.g. "kpi-4up" when validating kpi-3up).
@@ -223,8 +231,8 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 		bigPath := fmt.Sprintf("values[%d].big", i)
 		if cell.Big == "" {
 			errs = append(errs, errRequired(patternName, bigPath))
-		} else if runeLen(cell.Big) > kpiNupBigMaxChars {
-			errs = append(errs, errMaxLength(patternName, bigPath, kpiNupBigMaxChars, runeLen(cell.Big)))
+		} else if runeLen(cell.Big) > kpiValueCharLimit(expectedCount) {
+			errs = append(errs, errMaxLength(patternName, bigPath, kpiValueCharLimit(expectedCount), runeLen(cell.Big)))
 		}
 		smallPath := fmt.Sprintf("values[%d].small", i)
 		if cell.Small == "" {

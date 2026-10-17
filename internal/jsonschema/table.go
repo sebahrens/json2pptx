@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -23,6 +24,7 @@ const (
 
 // TableInput represents a table with headers, rows, and optional styling.
 type TableInput struct {
+	ColumnWidths     []float64          `json:"column_widths,omitempty"`
 	Headers          []string           `json:"headers"`
 	Rows             [][]TableCellInput `json:"rows"`
 	Style            *TableStyleInput   `json:"style,omitempty"`
@@ -40,6 +42,7 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 	}
 	spec := &types.TableSpec{
 		Headers:          t.Headers,
+		ColumnWidths:     t.ColumnWidths,
 		ColumnAlignments: t.ColumnAlignments,
 		Alt:              t.Alt,
 	}
@@ -346,4 +349,42 @@ func expandCellSpans(rows [][]types.TableCell, numCols int) [][]types.TableCell 
 		out[i] = expanded
 	}
 	return out
+}
+
+// LogicalRowCountAtWidth measures authored column proportions at their actual
+// frame width. A row occupies its tallest cell, rather than summing every
+// cell's wrapping. Tables without explicit widths keep the legacy heuristic.
+func (t *TableInput) LogicalRowCountAtWidth(width int64) int {
+	if t == nil {
+		return 0
+	}
+	widths := types.ResolveTableColumnWidths(t.ColumnWidths, len(t.Headers), width)
+	if widths == nil {
+		return t.LogicalRowCount()
+	}
+	rowLines := func(cells []types.TableCell) int {
+		lines := 1
+		for i, cell := range cells {
+			if i >= len(widths) || cell.IsMerged {
+				continue
+			}
+			cellWidth := int64(0)
+			for j := i; j < i+max(cell.ColSpan, 1) && j < len(widths); j++ {
+				cellWidth += widths[j]
+			}
+			if measured, err := textfit.MeasureRun(cell.Content, "Calibri", 12, cellWidth, 0); err == nil {
+				lines = max(lines, measured.Lines)
+			}
+		}
+		return lines
+	}
+	headers := make([]types.TableCell, len(t.Headers))
+	for i, header := range t.Headers {
+		headers[i] = types.TableCell{Content: header}
+	}
+	total := rowLines(headers)
+	for _, row := range t.ToTableSpec().Rows {
+		total += rowLines(row)
+	}
+	return total
 }

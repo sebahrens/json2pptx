@@ -91,7 +91,7 @@ func TestKPISnapshotReportsBudgetDegrade(t *testing.T) {
 		t.Errorf("code = %q, want %q", found.Code, diagnostics.CodeSemanticPatternDegraded)
 	}
 	// The author needs the field and the budget, not just "it degraded".
-	for _, want := range []string{"kpi-3up", "values[0].big", "maxLength 12"} {
+	for _, want := range []string{"kpi-3up", "values[0].big", "maxLength 16"} {
 		if !strings.Contains(found.Message, want) {
 			t.Errorf("message %q does not name %q", found.Message, want)
 		}

@@ -134,7 +134,7 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	},
 	KindTable: {
 		"title": shapeString, "headers": shapeArray, "columns": shapeArray, "rows": shapeArray,
-		"column_alignments": shapeArray, "column_types": shapeArray, "takeaway": shapeString, "totals_row": shapeBoolean,
+		"column_widths": shapeArray, "column_alignments": shapeArray, "column_types": shapeArray, "takeaway": shapeString, "totals_row": shapeBoolean,
 	},
 	KindArchitecture: {
 		"title": shapeString, "tiers": shapeArray, "layers": shapeArray,
@@ -989,6 +989,8 @@ func validateCycle(path string, slide SlideSpec, s *semDiags) {
 	for _, issue := range slides.CycleIssues(slide.Body) {
 		at := path + "." + issue.Field
 		switch {
+		case issue.Invalid:
+			s.hard(at, diagnostics.CodeSemanticFieldType, issue.Message)
 		case issue.Max > 0:
 			s.degradeCount(at, "cycle "+issue.Message+tail, visual, degradeToBullets, issue.Min, issue.Max)
 		case issue.Allowed > 0:
@@ -2044,6 +2046,7 @@ func strPayloadField(body map[string]any, key string) string {
 // not render as a table at all.
 func validateTable(path string, slide SlideSpec, s *semDiags) {
 	columns, rows := slides.UsableTableCounts(slide.Body)
+	validateTableColumnWidths(path, slide.Body, columns, s)
 	headersField := "headers"
 	if !hasNonEmpty(slide.Body, "headers") && hasNonEmpty(slide.Body, "columns") {
 		headersField = "columns"

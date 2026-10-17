@@ -123,6 +123,9 @@ type BarSeriesConfig struct {
 	// PointBold marks the bars whose value label is drawn bold.
 	PointBold []bool
 
+	// LabelOffsets shifts colliding grouped labels away from the baseline.
+	LabelOffsets []float64
+
 	// LabelFontSize, when > 0, replaces the style's small size for value labels.
 	LabelFontSize float64
 
@@ -232,7 +235,11 @@ func (bs *BarSeries) DrawCategorical(points []DataPoint, xScale *CategoricalScal
 			if bold {
 				b.SetFontWeight(style.Typography.WeightBold)
 			}
-			bs.drawValueLabel(x, y, point.LabelValue(), barWidth, baseY)
+			labelY := y
+			if len(bs.config.LabelOffsets) == len(points) {
+				labelY += bs.config.LabelOffsets[i]
+			}
+			bs.drawValueLabel(x, labelY, point.LabelValue(), barWidth, baseY)
 			if bold {
 				b.SetFontWeight(style.Typography.WeightNormal)
 			}

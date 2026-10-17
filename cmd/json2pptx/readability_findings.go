@@ -82,7 +82,12 @@ func collectReadability(input *PresentationInput, layouts []types.LayoutMetadata
 			continue
 		}
 		var refit refitCells
-		for _, rc := range readabilityGridCells(grid, result, slidepath.ShapeGrid(si), slideWidth, slideHeight, 0) {
+		cells := readabilityGridCells(grid, result, slidepath.ShapeGrid(si), slideWidth, slideHeight, 0)
+		byPath := make(map[string]readabilityGridCell, len(cells))
+		for _, rc := range cells {
+			byPath[rc.path] = rc
+		}
+		for _, rc := range cells {
 			cell := rc.cell
 			if cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil || cell.Bounds.CX <= 0 || cell.Bounds.CY <= 0 {
 				continue
@@ -100,9 +105,10 @@ func collectReadability(input *PresentationInput, layouts []types.LayoutMetadata
 			cellPath := rc.path
 			path := slidepath.Join(cellPath, "shape/text")
 			roleOverride := patternCellReadabilityRole(slide, cell.RowIdx)
-			f := worstReadability(paras, scale, mode, path, roleOverride)
+			f := worstReadabilityWithOriginal(paras, parseCellParagraphs(cell.AutofitOriginalText()), scale, mode, path, roleOverride)
 			refit.note(f, cell, cellPath, paras, scale)
 			if f != nil {
+				cell, cellPath, paras = attributeSharedReadability(f, rc, byPath, mode, path, roleOverride, paras)
 				// Character-budget shaping is needed only for an actual finding,
 				// not every readable cell inspected by previews/recommendations.
 				maxChars, usable := populatedCellBudget(cell)
@@ -139,6 +145,29 @@ func collectReadability(input *PresentationInput, layouts []types.LayoutMetadata
 		}
 	}
 	return findings
+}
+
+// Attribute only inherited loss that restoring the authored size can repair.
+func attributeSharedReadability(f *patterns.FitFinding, rc readabilityGridCell, byPath map[string]readabilityGridCell, mode tokens.ViewingMode, path string, role tokens.TextRole, paras []cellParagraph) (shapegrid.ResolvedCell, string, []cellParagraph) {
+	cell := rc.cell
+	original := parseCellParagraphs(cell.AutofitOriginalText())
+	if len(rc.causes) == 0 || len(original) == 0 || worstReadability(original, 1, mode, path, role) != nil {
+		return cell, rc.path, paras
+	}
+	cause, ok := byPath[rc.causes[0]]
+	if !ok || cause.cell.ShapeSpec == nil || f == nil || f.Fix == nil {
+		return cell, rc.path, paras
+	}
+	f.Message += fmt.Sprintf("; shared autofit from %s affects %s", strings.Join(rc.causes, ", "), rc.path)
+	f.Path = slidepath.Join(cause.path, "shape/text")
+	paras = parseCellParagraphs(cause.cell.ShapeSpec.Text)
+	f.Fix.Params["measurement_source"] = "predicted"
+	if candidates := fieldRepairCandidates(paras); len(candidates) > 0 {
+		f.Fix.Params["paragraph_text"] = candidates[0]
+	}
+	f.Fix.Params["shared_autofit_sources"] = rc.causes
+	f.Fix.Params["affected_cell_path"] = rc.path
+	return cause.cell, cause.path, paras
 }
 
 // Text left to a stored autofit scale (go-slide-creator-217cd).
@@ -299,8 +328,14 @@ func (n nestedPatternCells) shapeSources(sources []gridShapeSource) []gridShapeS
 	}
 	out := make([]gridShapeSource, len(sources))
 	for i, src := range sources {
+		src.SharedAutofitSources = append([]string(nil), src.SharedAutofitSources...)
+		for j, cause := range src.SharedAutofitSources {
+			if path, _, ok := n.reroot(cause); ok {
+				src.SharedAutofitSources[j] = path
+			}
+		}
 		if path, _, ok := n.reroot(src.Path); ok {
-			src = gridShapeSource{Path: path}
+			src.Path, src.Text = path, nil
 		}
 		out[i] = src
 	}
@@ -367,8 +402,9 @@ func collectNestedPatternCells(grid *ShapeGridInput, base string, out nestedPatt
 
 // readabilityGridCell is one resolved grid cell with its JSON-pointer path.
 type readabilityGridCell struct {
-	cell shapegrid.ResolvedCell
-	path string
+	cell   shapegrid.ResolvedCell
+	path   string
+	causes []string
 }
 
 // readabilityGridCells flattens a resolved grid the way generation does
@@ -380,9 +416,13 @@ type readabilityGridCell struct {
 func readabilityGridCells(grid *ShapeGridInput, result *shapegrid.ResolveResult, base string, slideWidth, slideHeight int64, depth int) []readabilityGridCell {
 	var out []readabilityGridCell
 	for _, rc := range result.Cells {
-		path := resolvedCellPath(base, rc)
+		path := authoredGridCellPath(base, grid, rc.RowIdx, rc.ColIdx) + rc.PathSuffix()
 		if rc.Kind != shapegrid.CellKindSubGrid {
-			out = append(out, readabilityGridCell{cell: rc, path: path})
+			var causes []string
+			for _, cause := range rc.AutofitCauses() {
+				causes = append(causes, authoredGridCellPath(base, grid, cause.RowIdx, cause.ColIdx))
+			}
+			out = append(out, readabilityGridCell{cell: rc, path: path, causes: causes})
 			continue
 		}
 		src := gridCellAtResolved(grid, rc.RowIdx, rc.ColIdx)
@@ -438,7 +478,11 @@ func resolvedCellTextRoles(cell shapegrid.ResolvedCell, override tokens.TextRole
 	if cell.ShapeSpec == nil || len(cell.ShapeSpec.Text) == 0 {
 		return nil
 	}
-	body, err := shapegrid.ResolveTextInput(cell.ShapeSpec.Text)
+	raw := cell.ShapeSpec.Text
+	if original := cell.AutofitOriginalText(); len(original) > 0 {
+		raw = original
+	}
+	body, err := shapegrid.ResolveTextInput(raw)
 	if err != nil {
 		return nil // shape generation reports invalid text before publication
 	}
@@ -553,6 +597,55 @@ func splitCellParagraphs(content string, sizePt float64, bold bool) []cellParagr
 // worstReadability returns the TEXT_BELOW_READABLE_MIN finding for the
 // paragraph furthest below its role's floor after the predicted autofit
 // scale, or nil when every paragraph stays readable.
+// Keep paragraph indexes (including blanks) aligned with generated OOXML.
+func originalParagraphSizes(raw json.RawMessage) []int {
+	if len(raw) == 0 {
+		return nil
+	}
+	body, err := shapegrid.ResolveTextInput(raw)
+	if err != nil || body == nil {
+		return nil
+	}
+	sizes := make([]int, len(body.Paragraphs))
+	for i, p := range body.Paragraphs {
+		for _, r := range p.Runs {
+			if strings.TrimSpace(r.Text) != "" && r.FontSize > 0 && (sizes[i] == 0 || r.FontSize < sizes[i]) {
+				sizes[i] = r.FontSize
+			}
+		}
+	}
+	return sizes
+}
+
+// Shared shrink changes sizes, never the authored paragraph roles.
+func worstReadabilityWithOriginal(paras, original []cellParagraph, scale float64, mode tokens.ViewingMode, path string, override tokens.TextRole) *patterns.FitFinding {
+	if len(original) != len(paras) || len(original) == 0 {
+		return worstReadability(paras, scale, mode, path, override)
+	}
+	var worst *patterns.FitFinding
+	ratio := 1.0
+	for i, p := range paras {
+		role := override
+		if role == "" {
+			o := original[i]
+			role = cellTextRole(o.sizePt, o.bold, o.text, populatedCellParagraphs(original))
+		}
+		f := worstReadability([]cellParagraph{p}, scale, mode, path, role)
+		if f != nil {
+			actual, actualOK := f.Fix.Params["actual_pt"].(float64)
+			minimum, minimumOK := f.Fix.Params["min_pt"].(float64)
+			if !actualOK || !minimumOK || minimum <= 0 {
+				continue
+			}
+			r := actual / minimum
+			if r < ratio {
+				worst, ratio = f, r
+			}
+		}
+	}
+	return worst
+}
+
 func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingMode, path string, roleOverride tokens.TextRole) *patterns.FitFinding {
 	var worst *patterns.FitFinding
 	worstRatio := 1.0

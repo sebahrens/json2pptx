@@ -2,11 +2,13 @@ package types
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 )
 
 // TableSpec represents a parsed markdown table.
 type TableSpec struct {
+	ColumnWidths     []float64     // Optional positive relative column weights, one per header.
 	Headers          []string      // Column headers (expanded: merged cells have empty strings)
 	HeaderCells      []TableCell   // Header cells with colspan/rowspan info (nil if no merges in header)
 	Rows             [][]TableCell // Data rows (each row is a slice of cells)
@@ -46,10 +48,14 @@ func RowGridWidth(row []TableCell) int {
 // CheckRowWidths reports the first data row that spans more grid columns than
 // the table has headers. The header count defines <a:tblGrid>, so such a row
 // can never render as a valid table; shorter rows are padded instead
-// (go-slide-creator-s1uvj.26).
+// (go-slide-creator-s1uvj.26). Authored column widths must also match this grid
+// and contain only finite positive weights.
 func (t *TableSpec) CheckRowWidths() error {
 	if t == nil || len(t.Headers) == 0 {
 		return nil
+	}
+	if t.ColumnWidths != nil && ResolveTableColumnWidths(t.ColumnWidths, len(t.Headers), 1000000) == nil {
+		return fmt.Errorf("column_widths requires one finite positive number per header")
 	}
 	for i, row := range t.Rows {
 		if w := RowGridWidth(row); w > len(t.Headers) {
@@ -185,4 +191,31 @@ var DefaultTableStyle = TableStyle{
 	Borders:          "",
 	Striped:          nil,
 	StyleID:          "",
+}
+
+// ResolveTableColumnWidths converts authored positive relative weights to EMU.
+// Invalid weights return nil so callers can retain the automatic allocator.
+func ResolveTableColumnWidths(weights []float64, columns int, width int64) []int64 {
+	if len(weights) != columns || columns == 0 || width < int64(columns) {
+		return nil
+	}
+	largest := 0.0
+	for _, w := range weights {
+		if w <= 0 || math.IsNaN(w) || math.IsInf(w, 0) {
+			return nil
+		}
+		largest = math.Max(largest, w)
+	}
+	sum := 0.0
+	for _, w := range weights {
+		sum += w / largest
+	}
+	out := make([]int64, columns)
+	remaining := width
+	for i, w := range weights {
+		out[i] = 1 + int64(float64(width-int64(columns))*(w/largest)/sum)
+		remaining -= out[i]
+	}
+	out[columns-1] += remaining
+	return out
 }

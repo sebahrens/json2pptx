@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.176.0
+schema_version: 4.177.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,

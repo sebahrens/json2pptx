@@ -88,8 +88,9 @@ type HeroDetailItem struct {
 
 // HeroDetailValues holds the data for a hero-detail pattern.
 type HeroDetailValues struct {
-	Hero    HeroDetailHero   `json:"hero"`
-	Details []HeroDetailItem `json:"details"`
+	Hero             HeroDetailHero   `json:"hero"`
+	Details          []HeroDetailItem `json:"details"`
+	DetailTitleColor string           `json:"detail_title_color,omitempty"`
 }
 
 // HeroDetailOverrides contains pattern-level overrides for hero-detail.
@@ -206,8 +207,9 @@ func (hd *heroDetail) Schema() *Schema {
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"hero":    heroSchema.WithDescription("The hero statistic (top row)"),
-			"details": ArraySchema(detailSchema, 2, 4).WithDescription("Supporting detail cards (bottom row, 2-4 items)"),
+			"detail_title_color": EnumSchema("dk1", "dk2", "lt1", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6").WithDescription("Theme color for detail headings; omitted preserves each style default. Use dk1 for neutral headings."),
+			"hero":               heroSchema.WithDescription("The hero statistic (top row)"),
+			"details":            ArraySchema(detailSchema, 2, 4).WithDescription("Supporting detail cards (bottom row, 2-4 items)"),
 		},
 		[]string{"hero", "details"},
 	).WithAdditionalProperties(false)
@@ -245,6 +247,10 @@ func (hd *heroDetail) Validate(values, overrides any, cellOverrides map[int]any)
 
 	const name = "hero-detail"
 	var errs []error
+
+	if err := validateHeroDetailTitleColor(v.DetailTitleColor); err != nil {
+		errs = append(errs, err)
+	}
 
 	// Hero validation
 	if v.Hero.Value == "" {
@@ -474,6 +480,12 @@ func (hd *heroDetail) measure(ctx ExpandContext, v *HeroDetailValues, ovr *HeroD
 		default: // "cards"
 			detailCells[i] = hd.buildCardDetailCell(ctx, d, accent, headerSize, detailSize)
 		}
+		if v.DetailTitleColor != "" {
+			var text heroDetailText
+			_ = json.Unmarshal(detailCells[i].Shape.Text, &text)
+			text.Paragraphs[0].Color = v.DetailTitleColor
+			detailCells[i].Shape.Text, _ = json.Marshal(text)
+		}
 		// Apply cell overrides (detail cells are 1-indexed since cell 0 is the hero)
 		applyHeroDetailCellOverride(detailCells[i], cellOverrides, i+1, accent)
 	}
@@ -689,5 +701,14 @@ func applyHeroDetailCellOverride(cell *jsonschema.GridCellInput, cellOverrides m
 			Color:    accent,
 			Width:    3,
 		}
+	}
+}
+
+func validateHeroDetailTitleColor(color string) error {
+	switch color {
+	case "", "dk1", "dk2", "lt1", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6":
+		return nil
+	default:
+		return errInvalidEnum("hero-detail", "detail_title_color", color, []string{"dk1", "dk2", "lt1", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6"})
 	}
 }

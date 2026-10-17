@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/sebahrens/json2pptx/internal/tokens"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -164,6 +164,12 @@ func heavyWeightFamily(name string) bool {
 // allows. Full-area grids start there too (ContentTop) as far as
 // bodyStartTop allows, so dense patterns keep the height they are sized for.
 func reserveBodyAnchor(g GridGeometry, slide SlideInput, layouts []types.LayoutMetadata) GridGeometry {
+	// A conclusion list hangs directly below its measured title text. Keeping
+	// the native bullet anchor would restore the tall title box's empty band.
+	if isExecSummarySlide(slide) {
+		return g
+	}
+
 	if g.Zone == nil {
 		return g
 	}
@@ -302,4 +308,8 @@ func reserveTitleTextEdge(g GridGeometry, slide SlideInput, layouts []types.Layo
 	zone.TextLeft = x + title.TextInsetLeftEMU
 	g.Zone = &zone
 	return g
+}
+
+func isExecSummarySlide(slide SlideInput) bool {
+	return slide.Pattern != nil && slide.Pattern.Name == "exec-summary" || slide.ShapeGrid != nil && slide.ShapeGrid.Source == "pattern:exec-summary"
 }

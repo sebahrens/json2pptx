@@ -26,12 +26,19 @@ func TestShareRowAutofitScale(t *testing.T) {
 	other := cell(1, "Other row")
 	other.Bounds = pptx.RectEmu{X: 400 * 12700, Y: 300 * 12700, CX: 240 * 12700, CY: 70 * 12700}
 	cells := []ResolvedCell{cell(0, "Short"), cell(0, long), other}
+	cells[1].ColIdx = 1
 	shareRowAutofitScale(cells)
 	if s := cells[1].AutofitScale; s <= 0 || s >= 1 {
 		t.Fatalf("long label scale = %v, want a shrink", s)
 	}
 	if cells[0].AutofitScale != cells[1].AutofitScale {
 		t.Errorf("siblings differ: %v vs %v", cells[0].AutofitScale, cells[1].AutofitScale)
+	}
+	for _, c := range cells[:2] {
+		causes := c.AutofitCauses()
+		if len(causes) != 1 || causes[0].ColIdx != 1 {
+			t.Fatalf("short peer must identify the overflowing sibling: %+v", causes)
+		}
 	}
 	if cells[2].AutofitScale != 0 {
 		t.Errorf("a lone cell in another row must keep its own measurement, got %v", cells[2].AutofitScale)

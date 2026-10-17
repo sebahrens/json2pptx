@@ -1518,7 +1518,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			}
 			spec := input.ToTableSpec()
 			if err := spec.CheckRowWidths(); err != nil {
-				return nil, cliSlideErrorAt(slidepath.ContentIndex(slideNum-1, j), "slide %d, content %d: %w", slideNum, j+1, err)
+				return nil, cliSlideErrorAt(contentTablePath(&ci, slideNum-1, j)+"/"+tableGridErrorField(spec), "slide %d, content %d: %w", slideNum, j+1, err)
 			}
 			item.Value = spec
 
@@ -2086,7 +2086,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			}
 			spec := tableInput.ToTableSpec()
 			if err := spec.CheckRowWidths(); err != nil {
-				return nil, cliSlideErrorAt(slidepath.ContentIndex(slideNum-1, j), "slide %d, content %d: %w", slideNum, j+1, err)
+				return nil, cliSlideErrorAt(slidepath.ContentField(slideNum-1, j, "value")+"/"+tableGridErrorField(spec), "slide %d, content %d: %w", slideNum, j+1, err)
 			}
 			item.Value = spec
 

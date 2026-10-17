@@ -56,6 +56,10 @@ type RawShapeSource struct {
 	// Text is the authored text spec of a shape cell, which names the colours
 	// the author wrote; empty for every other element.
 	Text json.RawMessage
+	// SharedAutofitSources names the overflowing peers that caused this
+	// shape's shared shrink, worst first. Path remains the affected shape.
+	SharedAutofitSources       []string
+	SharedAutofitOriginalSizes []int
 }
 
 // AttributeGridSwaps links each single-shape grid swap to the authored

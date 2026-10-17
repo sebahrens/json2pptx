@@ -88,9 +88,10 @@ title, takeaway and role in order so the chain can be read without a render.
   content differs, and the rhythm check gives raw slides no family, so
   `analyze_deck_rhythm` never flags the run. Break it with a kind (`stat`,
   `chart_insight`, `regions`) or move the technical ones to the appendix.
-- **Empty bands under one-line titles.** Kinds and `regions` start their
-  content at the same height whatever the title's length; under a one-line
-  title, look for a band the content could use.
+- **Empty bands under one-line titles.** Most kinds and `regions` start
+  content at the native body line; under a one-line title, look for a band
+  the content could use. `executive_summary` starts below the measured title
+  text, including wrapped titles.
 
 ## The second-template pass
 

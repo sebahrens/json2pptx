@@ -93,6 +93,7 @@ var cyclePhaseFields = []string{"phases", "steps", "items"}
 // cycleItem is one resolved phase.
 type cycleItem struct {
 	Label, Description string
+	Status             string
 	Highlight          bool
 	// raw is the entry's index in the authored list; labelKey / descKey the
 	// keys it was written with ("" for a plain string entry).
@@ -228,6 +229,7 @@ func readCycleItems(raw []any) []cycleItem {
 				it.Description = strField(t, it.descKey)
 			}
 			it.Highlight, _ = t["highlight"].(bool)
+			it.Status = strField(t, "status")
 			out = append(out, it)
 		}
 	}
@@ -305,7 +307,7 @@ func (p cyclePayload) pattern() (deckinput.PatternInput, error) {
 	case CycleStyleRing, CycleStyleFigureEight:
 		phases := make([]patterns.CycleRingPhase, len(p.Items))
 		for i, it := range p.Items {
-			phases[i] = patterns.CycleRingPhase{Label: it.Label, Description: it.Description, Highlight: i == p.highlight}
+			phases[i] = patterns.CycleRingPhase{Label: it.Label, Description: it.Description, Highlight: i == p.highlight, Status: it.Status}
 		}
 		if p.Style == CycleStyleFigureEight {
 			values = patterns.CycleFigureEightValues{Phases: phases, LeftCount: p.LeftCount, LeftLabel: p.LeftLabel, RightLabel: p.RightLabel}
@@ -362,6 +364,8 @@ func (p cyclePayload) pattern() (deckinput.PatternInput, error) {
 
 // CycleIssue is one reason a cycle payload does not reach its visual.
 type CycleIssue struct {
+	// Invalid marks an unsupported status, rejected instead of degrading silently.
+	Invalid bool
 	// Field is the authored path under the slide (or region): "phases",
 	// "phases[3].label", "center", "style".
 	Field string
@@ -391,6 +395,21 @@ func CycleIssues(body map[string]any) []CycleIssue {
 		return []CycleIssue{{Field: "style", Message: fmt.Sprintf("unknown style %q; expected one of %s", strField(body, "style"), strings.Join(CycleStyles, ", "))}}
 	}
 	var out []CycleIssue
+	raw, _ := body[p.Field].([]any)
+	for i, entry := range raw {
+		obj, ok := entry.(map[string]any)
+		if !ok {
+			continue
+		}
+		status, present := obj["status"]
+		if !present {
+			continue
+		}
+		text, valid := status.(string)
+		if !valid || (text != "done" && text != "planned") || (p.Style != CycleStyleRing && p.Style != CycleStyleFigureEight) {
+			out = append(out, CycleIssue{Invalid: true, Field: fmt.Sprintf("%s[%d].status", p.Field, i), Message: "status must be done or planned, supported by ring and figure_eight"})
+		}
+	}
 	if n := len(p.Items); n < info.min || n > info.max {
 		hint := info.tooMany
 		if n < info.min {
@@ -665,6 +684,9 @@ func compileCycleFallback(in Input, p cyclePayload) (*deckinput.SlideInput, []So
 	}
 	for i, it := range p.Items {
 		line := fmt.Sprintf("%d. %s", i+1, it.Label)
+		if it.Status != "" {
+			line += " (" + it.Status + ")"
+		}
 		if it.Description != "" {
 			line += " — " + it.Description
 		}

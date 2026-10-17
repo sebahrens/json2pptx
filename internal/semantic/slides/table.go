@@ -37,7 +37,7 @@ func CompileTable(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		return compileTableFallback(in, headers, rows)
 	}
 
-	table := &jsonschema.TableInput{Headers: headers, Rows: rows, Alt: visualAltText(in)}
+	table := &jsonschema.TableInput{Headers: headers, Rows: rows, ColumnWidths: TableColumnWidths(in.Body), Alt: visualAltText(in)}
 	if alignments := tableColumnAlignments(in.Body, len(headers)); len(alignments) > 0 {
 		table.ColumnAlignments = alignments
 	}
@@ -59,6 +59,10 @@ func CompileTable(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 			SemanticPath: in.semSlide() + ".rows",
 		},
 	)
+
+	if len(table.ColumnWidths) > 0 {
+		links = append(links, SourceLink{RawPath: in.rawSlide() + blankTitleCellPath + ".table.column_widths", SemanticPath: in.semSlide() + ".column_widths"})
+	}
 
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
@@ -281,4 +285,23 @@ func compileTableFallback(in Input, headers []string, rows [][]jsonschema.TableC
 		bullets = headers
 	}
 	return contentFallback(in, "rows", bullets)
+}
+
+// TableColumnWidths returns positive relative column weights, preserving the
+// authored proportions through native-table compilation.
+func TableColumnWidths(body map[string]any) []float64 {
+	raw, ok := body["column_widths"].([]any)
+	if !ok {
+		return nil
+	}
+	widths := make([]float64, len(raw))
+	for i, value := range raw {
+		switch n := value.(type) {
+		case float64:
+			widths[i] = n
+		case int:
+			widths[i] = float64(n)
+		}
+	}
+	return widths
 }

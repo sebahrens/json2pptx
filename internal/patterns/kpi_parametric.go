@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
 // ---------------------------------------------------------------------------
@@ -89,7 +90,10 @@ func (k *kpiNup) NewCellOverride() any { return &KPICellOverride{} }
 
 func (k *kpiNup) Schema() *Schema {
 	n := k.cfg.Count
-	valuesDesc := fmt.Sprintf("Exactly %d KPI cells; metric values have a 12-character hard maximum and a measured fit warning when they cannot stay on one line", n)
+	valuesDesc := fmt.Sprintf("Exactly %d KPI cells; metric values have a %d-character hard maximum and a measured fit warning when they cannot stay on one line", n, kpiValueCharLimit(n))
+	if n == 2 || n == 3 {
+		valuesDesc += "; extended values must fit at the 18pt KPI reading floor"
+	}
 	if n >= kpiNupTightFromCount {
 		// go-slide-creator-6xgxm: the maximum read as a budget, and six
 		// 12-character values were refused on a wide-faced template.
@@ -97,7 +101,7 @@ func (k *kpiNup) Schema() *Schema {
 	}
 	return ObjectSchema(
 		map[string]*Schema{
-			"values":         ArraySchema(kpiCellSchema(kpiNupBigMaxChars, kpiComparatorMaxChars), n, n).WithDescription(valuesDesc),
+			"values":         ArraySchema(kpiCellSchema(kpiValueCharLimit(n), kpiComparatorMaxChars), n, n).WithDescription(valuesDesc),
 			"overrides":      kpiOverridesSchema(EnumSchema(kpiNupStyles...).WithDescription("open: value and caption on the canvas between hairline dividers. tiles: each KPI in a tinted card under an accent rule. Default open for plain value + caption cells, tiles when a cell has an icon or the row sets semantic_accent or a non-uniform cell_accent_mode")),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
@@ -215,6 +219,15 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	cellAccentMode := ovr.CellAccentMode
 
 	lay, open := k.layout(ctx, *cells, ovr)
+	// New extended figures use the KPI reading floor, independently of the
+	// legacy dense-row fitting floor.
+	readableFloor := float64(tokens.MinReadableHPt(tokens.ViewingModeReport, tokens.TextRoleKPIValue)) / 100
+	for i, cell := range *cells {
+		if runeLen(cell.Big) > kpiNupBigMaxChars && (lay.valueSize < readableFloor || !kpiValueFits(cell.Big, ctx.Theme.BodyFont, lay.valueSize, lay.geo.valueWidthPt(cell.Icon, lay.iconPos))) {
+			return nil, newValidationError(name, fmt.Sprintf("values[%d].big", i), ErrCodeFitOverflow, fmt.Sprintf("%s: range figure cannot fit one line at the %.0fpt minimum; shorten it or give the card more width", name, readableFloor), nil)
+		}
+	}
+
 	if !lay.fits {
 		// A row whose area cannot hold a value over its caption is refused:
 		// written anyway, the lines shrink into each other
