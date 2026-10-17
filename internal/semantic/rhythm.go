@@ -49,6 +49,8 @@ type RhythmWarning struct {
 	// Path is the semantic source path the warning anchors to (e.g. "slides[3]"
 	// for the slide that starts a run), or "" for a deck-level warning.
 	Path string `json:"path,omitempty"`
+	// SlideNumber is the 1-based rendered position on the explain surface.
+	SlideNumber int `json:"slide_number,omitempty"`
 	// Run lists the source paths of the slides a run warning is about, in deck
 	// order, so the reader knows which slides to vary or break up without
 	// counting from Path (go-slide-creator-c2j5b).

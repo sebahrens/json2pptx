@@ -88,7 +88,7 @@ func (mc *mcpConfig) runCompiledDeckSpec(ctx context.Context, tool string, reque
 		path, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
 		if err != nil {
 			out.EarlyDiagnostics = []diagnostics.Diagnostic{
-				*semanticTemplateDiagnostic(input.Template, mc.templatesDir, templateResolutionCode(err), err),
+				*withTemplateRetry(semanticTemplateDiagnostic(input.Template, mc.templatesDir, templateResolutionCode(err), err), request, tool, "template"),
 			}
 			out.Early = api.MCPDiagnosticsError(out.EarlyDiagnostics)
 			return out

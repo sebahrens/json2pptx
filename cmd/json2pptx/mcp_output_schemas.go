@@ -2854,7 +2854,12 @@ var outputSchemaExplainDeckSpec = json.RawMessage(`{
     "template":  {"type": "string"},
     "warnings":  {"type": "array", "items": {"type": "string"}},
     "rhythm":    {"type": "object"},
-    "rhythm_warnings": {"type": "array", "items": {"type": "object"}},
+    "rhythm_warnings": {"type": "array", "items": {"type": "object", "required": ["code", "message"], "properties": {
+      "code": {"type": "string"}, "message": {"type": "string"},
+      "path": {"type": "string", "pattern": "^/"}, "slide_number": {"type": "integer", "minimum": 1},
+      "run": {"type": "array", "items": {"type": "string", "pattern": "^/"}},
+      "insert_before": {"type": "string", "pattern": "^/"}
+    }}},
     "slides": {
       "type": "array",
       "items": {

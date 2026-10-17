@@ -303,8 +303,8 @@ func TestSemanticMCP_MissingTemplateHasAvailableNamesAndSuggestion(t *testing.T)
 		name string
 		fn   func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
 	}{
-		{"validate", mc.handleValidateDeckSpec},
-		{"render", mc.handleRenderDeckSpec},
+		{"validate_deck_spec", mc.handleValidateDeckSpec},
+		{"render_deck_spec", mc.handleRenderDeckSpec},
 	} {
 		t.Run(call.name, func(t *testing.T) {
 			result := mustCall(t, call.fn, map[string]any{"spec": spec, "template": "midnight-blu"})
@@ -319,8 +319,8 @@ func TestSemanticMCP_MissingTemplateHasAvailableNamesAndSuggestion(t *testing.T)
 					continue
 				}
 				found = true
-				if finding.NextToolCall == nil || finding.NextToolCall.Tool != "list_templates" {
-					t.Fatalf("missing template finding has no discovery call: %+v", finding)
+				if finding.NextToolCall == nil || finding.NextToolCall.Tool != call.name {
+					t.Fatalf("missing template finding has no corrected retry: %+v", finding)
 				}
 				if available, ok := finding.Evidence["available_templates"].([]any); !ok || len(available) == 0 {
 					t.Fatalf("missing template finding has no available list: %+v", finding)

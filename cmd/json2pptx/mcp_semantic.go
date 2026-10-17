@@ -1223,7 +1223,7 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 	if layouts, templateDiagnostic := semanticTemplateLayouts(explanation.Template, mc.templatesDir, cache); templateDiagnostic == nil {
 		reconcileExplanationTemplateCoverage(&explanation, layouts)
 	} else {
-		return api.MCPDiagnosticsError([]diagnostics.Diagnostic{*templateDiagnostic}), nil
+		return api.MCPDiagnosticsError([]diagnostics.Diagnostic{*withTemplateRetry(templateDiagnostic, request, "explain_deck_spec", "template")}), nil
 	}
 	outcome := mc.commitDeck(commit)
 	if outcome.Stale {
@@ -1471,7 +1471,7 @@ func (mc *mcpConfig) slideKindBudgetSource(request mcp.CallToolRequest, budgetsF
 	}
 	path, cleanup, err := resolveTemplatePath(name, mc.templatesDir)
 	if err != nil {
-		return measured, nil, false, mcpErrorWithNext("TEMPLATE_NOT_FOUND", templateNotFoundError(name, mc.templatesDir), nextCallListTemplates())
+		return measured, nil, false, mc.templateMissingResult(request, "list_slide_kinds", "template", name)
 	}
 	defer cleanup()
 	analysis, err := getOrAnalyzeTemplate(path, mc.cache)

@@ -172,7 +172,7 @@ func (mc *mcpConfig) resolveTemplateSource(request mcp.CallToolRequest, tool, na
 	case hasName:
 		path, cleanup, err := resolveTemplatePath(name, mc.templatesDir)
 		if err != nil {
-			return "", noop, templateNotFoundDiagnostic(nameArg, pathArg, name, mc.templatesDir)
+			return "", noop, withTemplateRetry(templateNotFoundDiagnostic(nameArg, pathArg, name, mc.templatesDir), request, tool, nameArg)
 		}
 		return path, cleanup, nil
 	default: // hasPath
@@ -216,6 +216,9 @@ func templateNotFoundDiagnostic(nameArg, pathArg, name, templatesDir string) *di
 	nameArg, pathArg = lastPathSegment(nameArg), lastPathSegment(pathArg)
 	available := listAvailableTemplates(templatesDir)
 	details := map[string]any{"template_name": name}
+	if match := closestTemplateName(name, available); match != "" {
+		details["did_you_mean"] = match
+	}
 	var example any
 	if len(available) > 0 {
 		details["available_templates"] = available

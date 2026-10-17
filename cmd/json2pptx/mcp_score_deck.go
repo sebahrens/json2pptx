@@ -103,7 +103,7 @@ func (mc *mcpConfig) scoreDeckTemplatePath(request mcp.CallToolRequest, template
 	}
 	path, cleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
 	if err != nil {
-		return "", func() {}, mcpErrorWithNext("TEMPLATE_NOT_FOUND", templateNotFoundError(templateName, mc.templatesDir), nextCallListTemplates())
+		return "", func() {}, mc.templateMissingResult(request, "score_deck", "template", templateName)
 	}
 	return path, cleanup, nil
 }

@@ -52,7 +52,7 @@ func (ir *DeckIR) Explain() DeckExplanation {
 		Template:       firstNonEmptyStr(ir.Template, ir.ArchetypeTemplate),
 		Rhythm:         ir.Rhythm,
 		LayoutCoverage: ir.LayoutCoverage,
-		RhythmWarnings: ir.RhythmWarnings(),
+		RhythmWarnings: ir.explainedRhythmWarnings(),
 		Slides:         make([]SlideExplanation, 0, len(ir.Slides)),
 	}
 	for _, s := range ir.Slides {
@@ -76,4 +76,31 @@ func (ir *DeckIR) Explain() DeckExplanation {
 // convenience entry point for callers that hold a parsed spec rather than an IR.
 func ExplainSpec(spec *DeckSpec) DeckExplanation {
 	return Normalize(spec).Explain()
+}
+
+// Explain exposes patchable pointers; the compiler's internal locators remain
+// dotted until projected, just like validation and render findings.
+func (ir *DeckIR) explainedRhythmWarnings() []RhythmWarning {
+	warnings := ir.RhythmWarnings()
+	pointer := func(path string) string {
+		if path == "" {
+			return ""
+		}
+		return dottedToPointer(path)
+	}
+	for i := range warnings {
+		w := &warnings[i]
+		for j := range ir.Slides {
+			if ir.slidePath(j) == w.Path {
+				w.SlideNumber = ir.Slides[j].SourceIndex + 1
+				break
+			}
+		}
+		w.Path = pointer(w.Path)
+		w.InsertBefore = pointer(w.InsertBefore)
+		for j := range w.Run {
+			w.Run[j] = pointer(w.Run[j])
+		}
+	}
+	return warnings
 }

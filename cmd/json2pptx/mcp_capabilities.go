@@ -305,7 +305,6 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "resolve_theme", AddedIn: "2.0.0"},
 		{Name: "render_slide_image", AddedIn: "2.0.0"},
 		{Name: "render_deck_thumbnails", AddedIn: "2.0.0"},
-		{Name: "purge_render_cache", AddedIn: "4.64.0"},
 		{Name: "score_deck", AddedIn: "2.0.0"},
 		{Name: "preview_presentation_plan", AddedIn: "2.0.0"},
 		{Name: "repair_slide", AddedIn: "2.0.0"},
@@ -317,7 +316,6 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "get_shape_catalog", AddedIn: "2.4.0"},
 		// Tools from 2.8.0
 		{Name: "read_presentation", AddedIn: "2.8.0"},
-		{Name: "export_deck", AddedIn: "4.72.0"},
 		// Tools from 3.1.0
 		{Name: "analyze_deck_rhythm", AddedIn: "3.1.0"},
 		{Name: "plan_deck", AddedIn: "3.1.0"},
@@ -365,6 +363,10 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "list_slide_kinds", AddedIn: "4.58.0"},
 		// Tools from 4.59.0 — host/manual visual review completion path
 		{Name: "submit_visual_review", AddedIn: "4.59.0"},
+		// Tools from 4.64.0
+		{Name: "purge_render_cache", AddedIn: "4.64.0"},
+		// Tools from 4.72.0
+		{Name: "export_deck", AddedIn: "4.72.0"},
 	}
 	// Merge the per-tool classification metadata so every entry is
 	// self-describing. A missing classification leaves Kind/Phase empty;

@@ -53,7 +53,7 @@ func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToo
 	// Resolve template path.
 	templatePath, templateCleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
 	if err != nil {
-		return api.MCPSimpleError("TEMPLATE_NOT_FOUND", templateNotFoundError(templateName, mc.templatesDir)), nil
+		return mc.templateMissingResult(request, "resolve_theme", "template_name", templateName), nil
 	}
 	defer templateCleanup()
 

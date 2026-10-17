@@ -241,6 +241,9 @@ func listAvailableTemplates(flagTemplatesDir string) []string {
 func templateNotFoundError(templateName, flagTemplatesDir string) string {
 	msg := fmt.Sprintf("template not found: %s", templateName)
 	available := listAvailableTemplates(flagTemplatesDir)
+	if match := closestTemplateName(templateName, available); match != "" {
+		msg += fmt.Sprintf("; did you mean %q?", match)
+	}
 	if len(available) > 0 {
 		msg += fmt.Sprintf("; available templates: [%s]", strings.Join(available, ", "))
 	}

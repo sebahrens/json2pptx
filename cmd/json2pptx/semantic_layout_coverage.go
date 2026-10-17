@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
-	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -55,8 +54,9 @@ func semanticTemplateDiagnostic(templateName, templatesDir string, code diagnost
 		available := listAvailableTemplates(templatesDir)
 		params["available"] = available
 		d.Details = map[string]any{"available": available, "available_templates": available}
-		if match, _ := generator.ClosestMatch(templateName, available, 4); match != "" {
+		if match := closestTemplateName(templateName, available); match != "" {
 			params["did_you_mean"] = match
+			d.Details["did_you_mean"] = match
 		}
 		d.NextToolCall = nextCallListTemplates()
 	}
