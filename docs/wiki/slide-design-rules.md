@@ -79,7 +79,7 @@ checks and the `{total}`.
 | The exhibit proves the title | Point at the bar, row or box the title names; if you cannot, change the exhibit or the claim | `highlight` on the bar / series / slice / row / column / phase the title argues; one per slide |
 | The takeaway concludes, it does not restate | It answers "so what" for this slide in one line, in words the title did not use | `takeaway` ≤ ~98 chars; `insight` on `chart_insight`; `bottom_line`, `recommendation` on the kinds that own one |
 | Reading order | Context left / top, conclusion right / bottom; the eye runs a Z | `main_left` puts the exhibit first and the number second; `main_top` puts the numbers first when they *are* the context |
-| Source line | Dataset and year, then "team analysis"; definitions in a footnote, not the title | `source` on every evidence slide; `meta.source` as the default; `DATA_WITHOUT_SOURCE` |
+| Source line | Dataset and year, then "team analysis"; definitions in a footnote, not the title. One line: the source band is one 9pt line high, about 190 characters on `p-style`, and a second line runs into the footer. File lists and method notes go in `notes` | `source` on every evidence slide; `meta.source` as the default; `DATA_WITHOUT_SOURCE` |
 | Units once, consistent | Currency, scale (k / M / bn), decimals and period format identical across the deck | `unit` on charts and bridges; one decimal where the source has one |
 | Section marker | The reader always knows which chapter they are in | `meta.chrome.tracker: true`, `section_crumb: true`; `agenda` with `current` |
 | Status stickers | "Draft", "Preliminary", "Illustrative", "Not exhaustive" when true — and removed when no longer true | `meta.chrome.confidentiality` for the deck-level marking; a slide-level sticker is the `eyebrow` on `title` / `image_case` or a `banner` on a raw compose |
@@ -103,6 +103,15 @@ checks and the `{total}`.
   across 2–6 groups; *frequency* — "in the range", "most are" → columns;
   *correlation* — "varies with" → `scatter` (8+ items; fewer is a table);
   *a walk between two totals* → `bridge` / `waterfall`.
+- **Values that all sit near the ceiling** (accuracy 93–99%, uptime,
+  coverage): at a zero baseline every bar has the same length and the chart
+  proves "they are equal". Plot the complement instead ("wrong per 100",
+  "downtime hours"): 6.6 → 0.9 reads as a seven-fold fall, 93.4 → 99.1 reads
+  as nothing. If the measure must stay as it is, zoom with `data.y_min` and
+  put the axis start in the chart title ("Fully right, % (axis from 90)").
+  Raw `horizontal-bar-with-callouts` scales bars to `max_value` and has no
+  minimum, so it cannot zoom; use a `chart` (or a `chart` region) with
+  `data.orientation: horizontal` and `y_min`.
 - **Direct labelling.** One series labelled on the chart needs no legend;
   the chart title states the measure and unit, the slide title states the
   message. Auto data labels are on; `style.show_legend` only for 2+ series.
@@ -149,6 +158,13 @@ slides:
   the last two only when the chapters or slides are genuinely parallel. Grid
   patterns' `cell_accent_mode: progressive` is for ordered or graded cells,
   never for unordered peers.
+- **A tint keeps one meaning for the whole deck.** On hand-built
+  `shape_grid` slides it is tempting to reuse the accent tint for whatever is
+  "special" on each slide (an add-on here, a matched rule there, a confidence
+  value next). The reader learns the first meaning and misreads the rest.
+  Fix the meanings once (for example accent tint = our solution, neutral
+  `lt2` = everything else, bold text = the matched row) and state the key in
+  a caption row on the first slide that uses it, not in the source line.
 - Type comes from the template; never set sizes. A visual that cannot hold
   its text at the template's minimum is refused (`BODY_TOO_LONG`,
   `SEMANTIC_PATTERN_DEGRADED` with `max_chars`); the fix is fewer words or

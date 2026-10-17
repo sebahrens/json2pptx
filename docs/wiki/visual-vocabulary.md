@@ -10,6 +10,61 @@ recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md),
 and the full menu with every form, pattern, chart and diagram is
 [layout-catalog.md](layout-catalog.md).
 
+## Inline evidence and footnote markers
+
+Raw `shape_grid` text supports `<b>bold</b>`, `<i>italic</i>`,
+`<u>underline</u>`, `<sup>superscript</sup>` and `<sub>subscript</sub>` in
+each `content` string, including paragraphs. Tags may be nested; other HTML
+is not supported. Use emphasis for the evidence words in a quote, and a
+superscript number to connect those words to a nearby fact or source card.
+The marker is visual text: it does not create a footnote link automatically.
+
+This complete DeckSpec keeps a quoted message on the left and its numbered
+evidence on the right. The runs remain editable in PowerPoint.
+
+```yaml
+meta:
+  title: Evidence behind the message
+  template: midnight-blue
+  design_mode: free
+  source: Pilot review, October 2026
+slides:
+  - kind: raw_json2pptx
+    slide:
+      slide_type: content
+      layout_id: blank-title
+      content:
+        - placeholder_id: title
+          type: text
+          text_value: Every pilot case needs an accountable owner
+      shape_grid:
+        columns: [60, 40]
+        vertical_align: auto
+        rows:
+          - min_height: 220
+            max_height: 220
+            cells:
+              - shape:
+                  geometry: rect
+                  text:
+                    content: '"We need <b>one owner</b><sup>1</sup> for each case, with an <i>independent review</i><sup>2</sup> before closure."'
+                    size: 18
+              - shape:
+                  geometry: rect
+                  text:
+                    paragraphs:
+                      - content: '1. One accountable owner'
+                        bold: true
+                        size: 14
+                      - content: 'The intake register assigns a named owner to every case.'
+                        size: 12
+                      - content: '2. Independent review'
+                        bold: true
+                        size: 14
+                      - content: 'A second reviewer records the decision before closure.'
+                        size: 12
+```
+
 ## General
 
 | The message is… | Kind | Notes |
@@ -17,6 +72,7 @@ and the full menu with every form, pattern, chart and diagram is
 | "Here is the answer and the three reasons" | `executive_summary` | 3–5 `{lead, support}`, `bottom_line` is the ask. |
 | "The situation in numbers" | `kpi_snapshot` (2–6) or `stat` (one) | Give each KPI its `comparator` ("vs plan +4 pts"). |
 | "X grew / fell / crossed a line" | `chart_insight` (chart + `insights[]`) or `regions` when the number sits beside it | Bar for discrete periods, line for 6+ points, waterfall for walks; `highlight` the bar the title argues. |
+| "Before vs after, one measure" | `stat` ("6.6 → 0.9", label "wrong per 100"), or `regions` with the `stat` beside a two-bar `chart` only when the bars differ visibly | Two bars of 93 and 99 at a zero baseline look equal; let the number carry it, or plot the complement ([slide-design-rules.md §4](slide-design-rules.md#4-text-chart-or-diagram)). |
 | "Here is how the pieces fit" | `architecture` (tiers + `rails`), `pillars` (3–5; a house with `objective` + `foundation`), `framework` (SWOT, Five Forces, BMC) | Draw every canonical part or the kind degrades to bullets. |
 | "A beats B on these criteria" | `option_matrix` (criteria × options, one scale per criterion) | `recommended`, `decisive_criterion`; `rag` for status, `harvey` for fit. |
 | "We recommend option 2" | `decision` (3–6 options as numbered boxes; exactly 2, or 7–12, each with a `detail`, as cards) | One `recommended: true`, the ask in `recommendation`. |

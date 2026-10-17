@@ -77,6 +77,20 @@ title, takeaway and role in order so the chain can be read without a render.
 - **Row highlight and column tint sharing a hue** on `p-style` status boards.
 - **The screenshot too small** for its callouts to be legible at projection
   size.
+- **Unlabelled diagram shapes.** A `shape_grid` ellipse or diamond with no
+  text (a BPMN start event, a gateway) passes every check; label it
+  ("Start", "Cleared?") or use `process` with a `type: decision` step.
+- **Captions set as bold body text.** A full-width bold paragraph between
+  exhibits flattens the hierarchy; captions are regular weight, one line,
+  and sit under the exhibit they explain.
+- **A run of custom grids.** Three or more consecutive `raw_json2pptx` grids
+  built from the same grey boxes read as one long slide even when the
+  content differs, and the rhythm check gives raw slides no family, so
+  `analyze_deck_rhythm` never flags the run. Break it with a kind (`stat`,
+  `chart_insight`, `regions`) or move the technical ones to the appendix.
+- **Empty bands under one-line titles.** Kinds and `regions` start their
+  content at the same height whatever the title's length; under a one-line
+  title, look for a band the content could use.
 
 ## The second-template pass
 

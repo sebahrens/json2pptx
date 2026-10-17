@@ -45,7 +45,7 @@ field that caused it.
 | `executive_summary` | 3–5 `points[] {lead, support}` over a `bottom_line` band (`exec-summary`) | — | bullets |
 | `kpi_snapshot` | 2–6 `kpis[] {value ≤12, label, delta, comparator ≤24}` (`kpi-Nup`) | count picks `kpi-2up` … `kpi-6up`; values hold 11 digits at 5, 9 at 6 | bullets |
 | `stat` | one `value` ≤20 with `label`, `context` (`stat-hero`) | — | content slide |
-| `chart_insight` | `chart {type, title, data}` beside 1–6 `insights[]` and / or one `insight` so-what callout (`chart-insights-split`, 65/35; 75/25 when the text is sparse) | `layout: two-column` for a native chart and a longer list | — |
+| `chart_insight` | `chart {type, title, data}` beside 1–6 `insights[]` and / or one `insight` so-what callout (`chart-insights-split`, 65/35; 75/25 when the text is sparse). The bullet column is headed "Key Insights" (the pattern's `insights_title` default) and the kind does not expose the field; when that label is wrong for the slide, use `regions` (`chart` + `text` with its own `heading`) | `layout: two-column` for a native chart and a longer list | — |
 | `bridge` | 3–10 `columns[] {label ≤40, type: total \| delta \| subtotal, value}`; `unit` ≤8, `caption` ≤60 (`waterfall-bridge`) | a subtotal may omit `value` | bullets |
 | `table` | `headers` (≤6) × `rows` (≤9 data rows; 10 logical with the header), `column_alignments`, `column_types`, `highlight_column`, `totals_row` | — | `table_rows_truncated` with `split_at_row`, never a silent cut |
 | `comparison` | `columns[] {header, items[]}` | 2 balanced columns → `comparison-2col` (`connectors`, `highlight_column`, `highlight_row`); 3–5 → `stylish-panels`; 6–12 → `card-grid` | bullets |
@@ -64,7 +64,7 @@ field that caused it.
 | `team` | 1–8 `members[] {name, role, bio, photo \| photo_label}` (`team-bios`) | — | bullets |
 | `quote` | `quotes[] {text, name, role}`; or the one-quote shorthand `quote` + `attribution` + `role` | 1 → `pull-quote`; 3–8 → `quote-cluster` | bullets (2 quotes always do) |
 | `image_case` | `image {path \| url, alt, fit}`, `callouts[] {label, x, y}`, `eyebrow`, `heading`, `body`, ≤5 `bullets`, ≤3 `metrics`, `caption`, `image_width_pct` 30–60, `image_side` (`image-text-split`) | — | content slide |
-| `next_steps` | 2–6 `actions[] {action ≤90, owner ≤30, date ≤20}` + 0–3 `decisions` (≤120), `decisions_label` (`next-steps`) | owner / date columns drop when no action has one | bullets |
+| `next_steps` | 2–6 `actions[] {action ≤90, owner ≤30, date ≤20}` + 0–3 `decisions` (≤120), `decisions_label` (`next-steps`). A phase prefix repeated in every action ("Before the pilot: …") belongs in `date` (≤20 chars); with no `owner` and no `date` the slide is a bare numbered list, so give every action an owner (a role is enough). Actions that fall into 3–6 phases with several items each are a `roadmap` | owner / date columns drop when no action has one | bullets |
 | `closing` | the template's closing layout: short title + subtitle, or a few bullets | — | — |
 | `regions` | one title over 2–3 typed regions (`chart`, `stat`, `kpis`, `table`, `timeline`, `image`, `text`, `cycle`), `arrangement` one of six | see [slide-estate-and-segments.md](slide-estate-and-segments.md) | — |
 | `raw_json2pptx` | a raw slide verbatim: a `pattern`, a `compose` envelope or a `shape_grid` | the escape hatch for the 22 raw-only patterns and the svggen / native diagrams | — |

@@ -404,6 +404,13 @@ fails generation instead of leaving an invisible picture. PNG sources need
 neither converter. Full details are in the
 [input specification](../INPUT_FORMAT.md#full-slide-svg-or-png-images).
 
+**draw.io and other exporters.** An SVG that embeds icons as nested
+`<image href="data:image/svg+xml;base64,…">` or text as `<foreignObject>`
+may render in `rsvg-convert` and lose its icons or labels in PowerPoint's
+own SVG renderer. Either inline the icons as SVG paths and export text as
+SVG text, or supply a PNG at least 2,400 px wide (sharp on a 13.33-inch
+slide). Name the format you actually embed in the slide's `source`.
+
 Run the [two-slide SVG/PNG example](../../examples/full-slide-images.json):
 
 ```bash

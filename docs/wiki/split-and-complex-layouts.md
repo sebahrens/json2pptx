@@ -195,9 +195,22 @@ slides:
       - {name: Cyber, scores: [red, "2", "0"]}
     recommended: [Operational, Cyber]
     highlight_label: Breached
-    decisive_criterion: Status
     takeaway: Operational and cyber are breached; conduct is drifting towards its limit.
 ```
+
+**One emphasis, not two.** `decisive_criterion` tints every body cell of its
+column; `recommended` tints whole rows. On `p-style` the two tints share a
+hue, so together they read as a cross. Use one: `recommended` when rows
+matter (breached metrics, the chosen option), `decisive_criterion` when one
+column decides a choice between options. On a RAG status board the dots
+already carry the emphasis, so leave `decisive_criterion` unset.
+
+**The legend row.** Any `rag` or `harvey` column draws a full-width legend
+row naming every level of the scale, including levels no row uses, and the
+kind cannot switch it off. To avoid it, make a two-valued column
+`scale: text` ("Yes" / "Not examined"), or author the slide as raw
+`table-highlight` with `values.show_legend: false` and explain the colours
+in `source`.
 
 One-line `detail`s under the option names fit at five rows on every shipped
 template (`go-slide-creator-dwha2`; the journey runs' 5–6pt measurement
