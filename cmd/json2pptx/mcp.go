@@ -530,7 +530,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	if input.OutputFilename != "" {
 		outputFilename = sanitizeOutputFilename(input.OutputFilename)
 	} else {
-		outputFilename = deckSpecOutputFilename("presentation", []byte(jsonStr))
+		outputFilename = deckSpecOutputFilename("presentation", []byte(jsonStr), input.Template)
 	}
 	// Check for override from MCP request
 	if reqFilename, err := request.RequireString("output_filename"); err == nil && reqFilename != "" {

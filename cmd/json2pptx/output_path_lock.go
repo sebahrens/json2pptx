@@ -80,15 +80,19 @@ func outputPathLockCount() int {
 }
 
 // deckSpecOutputFilename derives a collision-free default filename for a
-// DeckSpec render: a slug of the deck title plus a short digest of the spec, so
-// the same spec rendered twice lands on the same file (re-rendering after an
-// edit-free retry is idempotent) while two different specs never do.
-func deckSpecOutputFilename(title string, specBytes []byte) string {
+// DeckSpec render: a slug of the deck title plus a short digest of the spec and
+// effective template. A retry stays idempotent while a second-template review
+// preserves the original artifact and its content hash.
+func deckSpecOutputFilename(title string, specBytes []byte, templateIdentity string) string {
 	slug := slugForFilename(title)
 	if slug == "" {
 		slug = "deck"
 	}
-	sum := sha256.Sum256(specBytes)
+	h := sha256.New()
+	_, _ = h.Write([]byte(templateIdentity))
+	_, _ = h.Write([]byte{0})
+	_, _ = h.Write(specBytes)
+	sum := h.Sum(nil)
 	return slug + "-" + hex.EncodeToString(sum[:])[:8] + ".pptx"
 }
 

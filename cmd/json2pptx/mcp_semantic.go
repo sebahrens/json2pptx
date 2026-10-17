@@ -1078,15 +1078,6 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	spec = choice.evaluated(spec)
 	templateName = choice.Default
 
-	// Every render used to land on <output_dir>/output.pptx, so two calls in one
-	// session silently destroyed each other and the reported content_hash stopped
-	// matching the file (go-slide-creator-tngh). Default to a name derived from
-	// the deck title and a digest of the spec.
-	if outputFilename == "" {
-		// Slide ids never render, so they stay out of the digest: the spec an
-		// agent sent and the stored copy (which has ids assigned) share a name.
-		outputFilename = deckSpecOutputFilename(spec.Meta.Title, specWithoutSlideIDs(data))
-	}
 	mc.logRenderEvent(ctx, mcp.LoggingLevelInfo, "deck render started", map[string]any{
 		"tool": "render_deck_spec", "slide_count": semantic.ExpandedSlideCount(spec), "template": spec.Meta.Template,
 	})
@@ -1132,12 +1123,13 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	// the same function with a scratch output directory, which is what makes
 	// its findings this render's findings (go-slide-creator-3rn3s).
 	run := mc.runCompiledDeckSpec(ctx, "render_deck_spec", request, src, spec, input, compileResult, specRunOptions{
-		ArgTemplate:      argTemplate,
-		RawTemplatePath:  rawTemplatePath,
-		OutputDir:        mc.outputDir,
-		OutputFilename:   outputFilename,
-		OutputValidation: outputValidation,
-		Start:            startTime,
+		ArgTemplate:       argTemplate,
+		RawTemplatePath:   rawTemplatePath,
+		OutputDir:         mc.outputDir,
+		OutputFilename:    outputFilename,
+		DefaultOutputSpec: specWithoutSlideIDs(data),
+		OutputValidation:  outputValidation,
+		Start:             startTime,
 	})
 	assetBaseDir, byoTemplatePath = run.BaseDir, run.TemplatePath
 	if run.Early != nil {

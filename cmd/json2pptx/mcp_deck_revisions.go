@@ -233,20 +233,14 @@ func withSlideIDs(spec []byte, next int) ([]byte, int) {
 // specWithoutSlideIDs strips slide ids, for digests that must not depend on
 // them (an id never renders).
 func specWithoutSlideIDs(spec []byte) []byte {
+	canonical, _ := canonicalSpec("", spec)
 	var doc any
-	if err := json.Unmarshal(spec, &doc); err != nil {
+	if err := json.Unmarshal(canonical, &doc); err != nil {
 		return spec
 	}
 	slides := authoredSlides(doc)
-	stripped := false
 	for _, s := range slides {
-		if _, has := s["id"]; has {
-			delete(s, "id")
-			stripped = true
-		}
-	}
-	if !stripped {
-		return spec
+		delete(s, "id")
 	}
 	out, err := json.Marshal(doc)
 	if err != nil {

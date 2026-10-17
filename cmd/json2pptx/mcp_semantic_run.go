@@ -36,7 +36,10 @@ type specRunOptions struct {
 	OutputDir        string
 	OutputFilename   string
 	OutputValidation string
-	Start            time.Time
+	// DefaultOutputSpec seeds an automatic filename after the effective template
+	// has resolved. Validation trials leave this nil and use their scratch path.
+	DefaultOutputSpec []byte
+	Start             time.Time
 }
 
 // specRunOutcome is what one compiled-spec run produced.
@@ -92,6 +95,10 @@ func (mc *mcpConfig) runCompiledDeckSpec(ctx context.Context, tool string, reque
 		}
 		resolvedTemplatePath = path
 		defer templateCleanup()
+	}
+	if opts.OutputFilename == "" && opts.DefaultOutputSpec != nil {
+		opts.OutputFilename = deckSpecOutputFilename(spec.Meta.Title, opts.DefaultOutputSpec,
+			firstNonEmpty(out.TemplatePath, input.Template))
 	}
 
 	// URL and relative asset references resolve inside the runner, with the

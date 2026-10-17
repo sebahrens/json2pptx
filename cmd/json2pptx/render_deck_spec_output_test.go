@@ -193,7 +193,7 @@ func TestDeckSpecOutputFilename(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := deckSpecOutputFilename(tt.title, []byte(tt.spec))
+			got := deckSpecOutputFilename(tt.title, []byte(tt.spec), "midnight-blue")
 			if !strings.HasPrefix(got, tt.want) || !strings.HasSuffix(got, ".pptx") {
 				t.Errorf("deckSpecOutputFilename(%q) = %q, want %q… .pptx", tt.title, got, tt.want)
 			}
@@ -201,15 +201,15 @@ func TestDeckSpecOutputFilename(t *testing.T) {
 	}
 
 	// Same spec, same name: re-rendering an unedited spec is idempotent.
-	if a, b := deckSpecOutputFilename("Deck", []byte("x")), deckSpecOutputFilename("Deck", []byte("x")); a != b {
+	if a, b := deckSpecOutputFilename("Deck", []byte("x"), "midnight-blue"), deckSpecOutputFilename("Deck", []byte("x"), "midnight-blue"); a != b {
 		t.Errorf("same spec produced %q then %q", a, b)
 	}
 	// Different spec, different name, even with the same title.
-	if a, b := deckSpecOutputFilename("Deck", []byte("x")), deckSpecOutputFilename("Deck", []byte("y")); a == b {
+	if a, b := deckSpecOutputFilename("Deck", []byte("x"), "midnight-blue"), deckSpecOutputFilename("Deck", []byte("y"), "midnight-blue"); a == b {
 		t.Errorf("two different specs both produced %q", a)
 	}
 	// A very long title cannot produce an unwieldy path.
-	long := deckSpecOutputFilename(strings.Repeat("verylongword ", 20), []byte("x"))
+	long := deckSpecOutputFilename(strings.Repeat("verylongword ", 20), []byte("x"), "midnight-blue")
 	if len(long) > 70 {
 		t.Errorf("name is %d chars: %q", len(long), long)
 	}
@@ -257,4 +257,25 @@ func TestLockOutputPathSerializes(t *testing.T) {
 	go func() { lockOutputPath(path)(); close(done) }()
 	<-done
 	other()
+}
+
+// A standard second-template review must leave both artifacts available for
+// thumbnails and submit_visual_review, and an edit-free retry stays idempotent.
+func TestRenderDeckSpecPreservesSecondTemplateArtifacts(t *testing.T) {
+	mc := semanticTestConfig(t)
+	mc.deckHandles = newDeckHandleStore(deckHandleTTL)
+	first := renderDeckSpec(t, mc, map[string]any{"spec": renderSpecWithTitle("Second template review")})
+	second := renderDeckSpec(t, mc, map[string]any{"deck_id": first.DeckID, "template": "modern-template"})
+	retry := renderDeckSpec(t, mc, map[string]any{"deck_id": first.DeckID})
+	if first.PptxPath == second.PptxPath || second.Overwrote {
+		t.Fatalf("second-template review replaced primary artifact: first=%s second=%s overwrote=%v", first.PptxPath, second.PptxPath, second.Overwrote)
+	}
+	if retry.PptxPath != first.PptxPath || !retry.Overwrote {
+		t.Fatalf("primary retry lost idempotent filename: first=%s retry=%s overwrote=%v", first.PptxPath, retry.PptxPath, retry.Overwrote)
+	}
+	for _, r := range []renderDeckSpecResponse{retry, second} {
+		if got := sha256OfFile(t, r.PptxPath); got != r.ContentHash {
+			t.Errorf("%s: content_hash %s does not match retained file %s", r.PptxPath, r.ContentHash, got)
+		}
+	}
 }
