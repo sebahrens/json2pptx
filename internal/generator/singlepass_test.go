@@ -2655,7 +2655,7 @@ func TestProcessChartContent_FailedRendering(t *testing.T) {
 		t.Fatalf("lost structured media failure: %+v", ctx.mediaFailures)
 	}
 	failure := ctx.mediaFailures[0]
-	if failure.SlideNum != 1 || failure.PlaceholderID != "chart1" || failure.ContentType != "diagram" || failure.DiagramType != "bar_chart" || failure.Reason == "" || failure.Fallback != "placeholder_image" {
+	if failure.SlideNum != 1 || failure.PlaceholderID != "chart1" || failure.ContentType != "diagram" || failure.DiagramType != "bar_chart" || failure.Reason == "" || failure.Fallback != "native_placeholder" {
 		t.Fatalf("failure provenance changed: %+v", failure)
 	}
 	refused := false

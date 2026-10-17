@@ -473,7 +473,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum, contentIdx int, it
 			ContentType:   "diagram",
 			DiagramType:   diagramType,
 			Reason:        reason,
-			Fallback:      "placeholder_image",
+			Fallback:      "native_placeholder",
 		})
 		// Site 8: emit finding when diagram render fails and falls back to
 		// placeholder. The slide now carries a slide-sized grey box reading

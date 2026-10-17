@@ -368,7 +368,7 @@ type MediaFailure struct {
 	ContentType   string // "diagram", "image", "table"
 	DiagramType   string // e.g., "pie_chart", "timeline" (only for diagrams)
 	Reason        string // Human-readable failure reason
-	Fallback      string // What was done instead: "placeholder_image", "skipped"
+	Fallback      string // What was done instead: "native_placeholder", "skipped"
 }
 
 // ImageContent represents image content to embed.

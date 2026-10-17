@@ -112,7 +112,7 @@ type SlideError struct {
 	ContentType string `json:"content_type"`           // "diagram", "image", "table"
 	DiagramType string `json:"diagram_type,omitempty"` // e.g., "pie_chart", "timeline"
 	Error       string `json:"error"`
-	Fallback    string `json:"fallback,omitempty"` // what was done instead: "placeholder_image", "skipped"
+	Fallback    string `json:"fallback,omitempty"` // what was done instead: "native_placeholder", "skipped"
 }
 
 // QualityScore provides an overall quality estimate for the generated deck.
