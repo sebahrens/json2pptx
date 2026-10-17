@@ -189,7 +189,7 @@ func TestRenderTruthExemplars(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			deck := exemplarDeck(t)
+			deck := renderTruthExemplarDeck(t)
 			deck.Template = tpl
 			deck.OutputFilename = "exemplars.pptx"
 			raw, err := json.Marshal(deck)
@@ -255,4 +255,33 @@ func TestRenderTruthExemplars(t *testing.T) {
 			}
 		})
 	}
+}
+
+// RENDER_TRUTH_PATTERNS narrows a local reproduction to named fixtures. CI
+// leaves it unset, so its render-truth gate still covers every exemplar.
+func renderTruthExemplarDeck(t *testing.T) PresentationInput {
+	t.Helper()
+	deck := exemplarDeck(t)
+	names := strings.Fields(strings.ReplaceAll(os.Getenv("RENDER_TRUTH_PATTERNS"), ",", " "))
+	if len(names) == 0 {
+		return deck
+	}
+	wanted := map[string]bool{}
+	for _, name := range names {
+		wanted[name] = false
+	}
+	var slides []SlideInput
+	for _, slide := range deck.Slides {
+		if _, selected := wanted[slide.Pattern.Name]; selected {
+			slides = append(slides, slide)
+			wanted[slide.Pattern.Name] = true
+		}
+	}
+	for name, found := range wanted {
+		if !found {
+			t.Fatalf("unknown RENDER_TRUTH_PATTERNS exemplar %q", name)
+		}
+	}
+	deck.Slides = slides
+	return deck
 }

@@ -586,6 +586,7 @@ func peerUnreadableRefusal(err error) bool {
 
 func peerRoleCheck(t *testing.T, tpl, templatesDir, pattern, variant, scale string, values json.RawMessage) (shapes []peerShape, refused bool) {
 	t.Helper()
+	values = bindTestExemplarImage(t, pattern, values)
 	title := "Peers"
 	input := PresentationInput{
 		Template:       tpl,

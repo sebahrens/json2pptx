@@ -191,7 +191,7 @@ func TestDeckSpecReadabilityVerdictParityAllKindsAllTemplates(t *testing.T) {
 		for _, k := range semantic.AllSlideKinds() {
 			spec := map[string]any{
 				"meta":   map[string]any{"template": tpl, "title": "Parity"},
-				"slides": []any{semantic.KindExample(k)},
+				"slides": []any{illustrativeKindExample(t, k)},
 			}
 			label := tpl + "/" + string(k)
 			v := deckSpecVerdicts(t, mc, map[string]any{"spec": spec})

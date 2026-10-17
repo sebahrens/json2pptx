@@ -290,7 +290,10 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 	// uses for findings prediction. Slide titles are derived from the brief
 	// and narrative role so the resulting deck reads as a coherent outline
 	// rather than N copies of the exemplar's title.
-	input := buildPresentationFromPlan(reg, plan, templateName, outline, hints.AccentStrategy)
+	input, inputErr := buildPresentationFromPlan(reg, plan, templateName, outline, hints.AccentStrategy)
+	if inputErr != nil {
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("build illustrative deck: %v", inputErr)), nil
+	}
 
 	// Phase 3: run the auto_repair convergence loop. make_deck and auto_repair
 	// share the same gate vocabulary so callers can graduate from one to the
@@ -511,7 +514,7 @@ func clampMaxPasses(n int) int {
 // an Exemplar implementation degrade the same way, using the layout that
 // matches the narrative role. This keeps the deck shape stable even when
 // individual pattern slots cannot be auto-filled.
-func buildPresentationFromPlan(reg *patterns.Registry, plan *deckplan.Result, templateName, outline, accentStrategy string) *PresentationInput {
+func buildPresentationFromPlan(reg *patterns.Registry, plan *deckplan.Result, templateName, outline, accentStrategy string) (*PresentationInput, error) {
 	slides := make([]SlideInput, 0, len(plan.Slides))
 	for _, ps := range plan.Slides {
 		title := titleForPlannedSlide(ps, outline)
@@ -524,7 +527,11 @@ func buildPresentationFromPlan(reg *patterns.Registry, plan *deckplan.Result, te
 			Content:  []ContentInput{makeTitleContent(title)},
 		}
 
-		if patternInput := buildPatternInputForSlide(reg, ps.RecommendedPattern); patternInput != nil {
+		patternInput, err := buildPatternInputForSlide(reg, ps.RecommendedPattern)
+		if err != nil {
+			return nil, err
+		}
+		if patternInput != nil {
 			slide.Pattern = patternInput
 			// A pattern is the slide's primary composition and needs the free
 			// canvas below a title, regardless of narrative role. Structural role
@@ -537,33 +544,46 @@ func buildPresentationFromPlan(reg *patterns.Registry, plan *deckplan.Result, te
 		Template:       templateName,
 		AccentStrategy: accentStrategy,
 		Slides:         slides,
-	}
+	}, nil
 }
 
 // buildPatternInputForSlide constructs a PatternInput for the named pattern
 // using its ExemplarValues. Returns nil when the pattern is unknown or has no
 // exemplar — caller should produce a title-only slide in that case.
-func buildPatternInputForSlide(reg *patterns.Registry, name string) *PatternInput {
+func buildPatternInputForSlide(reg *patterns.Registry, name string) (*PatternInput, error) {
 	pat, ok := reg.Get(name)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 	ex, ok := pat.(patterns.Exemplar)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 	values := ex.ExemplarValues()
 	if values == nil {
-		return nil
+		return nil, nil
 	}
 	valuesJSON, err := json.Marshal(values)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("marshal %s exemplar: %w", name, err)
+	}
+	if name == "image-hero" {
+		var object map[string]any
+		if err := json.Unmarshal(valuesJSON, &object); err != nil {
+			return nil, err
+		}
+		if err := bindIllustrativeHeroImage(object); err != nil {
+			return nil, err
+		}
+		valuesJSON, err = json.Marshal(object)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return &PatternInput{
 		Name:   name,
 		Values: valuesJSON,
-	}
+	}, nil
 }
 
 // layoutIDForNarrativeRole is a local mirror of patterns.layoutIDForNarrativeRole

@@ -48,6 +48,8 @@ func attachComposeRecipe(c *patterns.VisualCandidate, templateName string, reg *
 	comp := c.Composition
 	compose, hasData, err := composeRecipeEnvelope(comp, composeRecipeSlidePath+".compose", reg, hints)
 	if err != nil {
+		c.NextToolCall = nil
+		comp.Instructions = "Illustrative recipe unavailable: " + err.Error()
 		return
 	}
 	if templateName == "" {
@@ -163,6 +165,15 @@ func patternRegionRecipe(reg *patterns.Registry, name string) (any, *patterns.Vi
 	var values any
 	if err := json.Unmarshal(raw, &values); err != nil {
 		return nil, nil, err
+	}
+	if name == "image-hero" {
+		object, ok := values.(map[string]any)
+		if !ok {
+			return nil, nil, fmt.Errorf("image-hero exemplar must be an object")
+		}
+		if err := bindIllustrativeHeroImage(object); err != nil {
+			return nil, nil, err
+		}
 	}
 	return values, patternValuesContract(pat), nil
 }

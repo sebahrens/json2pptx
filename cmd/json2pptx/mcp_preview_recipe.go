@@ -281,7 +281,7 @@ func bindIllustrativeHeroImage(values map[string]any) error {
 	}
 	path, err := sampleScreenshot()
 	if err != nil {
-		return err
+		return fmt.Errorf("image-hero illustration: %w", err)
 	}
 	copyImage := make(map[string]any, len(image))
 	for key, value := range image {

@@ -28,6 +28,7 @@ func exemplarDeck(t *testing.T) PresentationInput {
 		if err != nil {
 			t.Fatalf("marshal exemplar %s: %v", p.Name(), err)
 		}
+		values = bindTestExemplarImage(t, p.Name(), values)
 		deck.Slides = append(deck.Slides, titledPatternSlide(p.Name(), values))
 	}
 	return deck

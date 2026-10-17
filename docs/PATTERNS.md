@@ -1230,7 +1230,7 @@ RACI/status matrices, progress and image hero) share closed live schemas and
 measured native text. Their contracts are mapped to semantic kinds in
 [the wiki catalog](https://github.com/sebahrens/json2pptx/blob/main/docs/wiki/consulting-visual-additions.md). Refuse an impossible
 frame instead of silently reducing readable type or deleting values.
-Built-in image-hero previews use an illustrative image; authored missing paths still fail asset validation.
+Built-in image-hero previews, `make_deck` examples and composition recipes use an illustrative image. Replace it with your own image; authored missing paths still fail asset validation.
 Stakeholder maps retain at least 12pt labels and authored point coordinates/diameters.
 Their vertical plotting domain reserves the largest marker radius plus 4pt
 inside the plot, keeping valid 0%/100% values clear of axis text without clamping

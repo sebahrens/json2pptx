@@ -365,7 +365,7 @@ func parityCorpus(t *testing.T) map[string]map[string]any {
 	}
 	kinds := []any{}
 	for _, k := range semantic.AllSlideKinds() {
-		kinds = append(kinds, semantic.KindExample(k))
+		kinds = append(kinds, illustrativeKindExample(t, k))
 	}
 	corpus["all-kinds"] = map[string]any{"meta": map[string]any{"title": "Every kind"}, "slides": kinds}
 	corpus[overfullCorpusName] = decodeSpecObject(t, overfullExecSummarySpec)
