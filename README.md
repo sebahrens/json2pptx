@@ -79,7 +79,7 @@ You can also combine patterns on one slide with a `compose` envelope (e.g. a her
 | Path | What | How | Result |
 |------|------|-----|--------|
 | **Native OOXML shapes** | SWOT, Porter's, BMC, pyramids, value chains, panel layouts, KPI dashboards, heatmaps and more | Generated as real PowerPoint shapes | Editable, crisp at any zoom |
-| **SVG-rendered visuals** | 15 chart types and the remaining diagram families | Rendered by the `svggen/` module and embedded as native SVG with a PNG fallback (default; `--chart-png` forces PNG) | High-quality visuals in PowerPoint/Keynote |
+| **SVG-rendered visuals** | 19 chart types and the remaining diagram families | Rendered by the `svggen/` module and embedded as native SVG with a PNG fallback (default; `--chart-png` forces PNG) | High-quality visuals in PowerPoint/Keynote |
 
 ### Diagnostics & Self-Repair
 
@@ -94,7 +94,7 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 - **JSON-to-PPTX conversion** -- structured slide definitions become polished PowerPoint files
 - **Bundled templates** -- `forest-green`, `midnight-blue`, `modern-template` and `warm-coral` receive full cross-template test coverage, alongside `abstract`, `blue-corporate`, `business-template`, `modern` and `modern-yellow`. A local gitignored `templates/p-style.pptx` joins cross-template tests when present but is not bundled. Call `list_templates` (or `json2pptx skill-info`) for the live list; any `.pptx` works as a template
 - **Template-aware layout selection** -- picks the right layout based on your content; synthesizes missing standard layouts
-- **16 chart types** -- bar, grouped_bar, stacked_bar, line, small_multiples, area, stacked_area, pie, donut, scatter, bubble, radar, waterfall, funnel, gauge, treemap
+- **19 chart types** -- bar, grouped_bar, stacked_bar, line, small_multiples, area, stacked_area, pie, donut, scatter, bubble, radar, waterfall, funnel, gauge, treemap, mekko_chart, combo_chart, butterfly_chart
 - **21 diagram types** -- SWOT, timeline, process flow, pyramid, venn, org chart, Gantt, KPI dashboard, heatmap, fishbone, PESTEL, Porter's Five Forces, value chain, Business Model Canvas, nine box talent, house diagram, panel layout, icon columns/rows, stat cards, matrix 2x2
 - **Named patterns** -- agenda, arch-stack, before-after, bmc-canvas, card-grid, comparison-2col, icon-row, kpi-2up...kpi-6up (parametric), matrix-2x2, process-flow, pull-quote, pyramid, roadmap-phased, stat-hero, swimlane, timeline-horizontal and many more; `json2pptx patterns list` (or MCP `list_patterns`) prints the live registry
 - **Pattern composition** (`compose`) -- 2-4 patterns merged into one slide with vertical/horizontal layout
@@ -698,6 +698,7 @@ Every command follows one convention (`json2pptx help` prints it):
 | `icons` | Search icons (`icons search <term>`) or list them (`icons list [--names]`) |
 | `preview-icon` | Render a single icon spec to SVG + PNG preview |
 | `tables` | Table style guide and density reference |
+| `skill` | Install/check bundled agent skills and print the MCP-to-CLI map (`install`, `status`, `cli-map`) |
 | `skill-info` | Show template capabilities for Claude Code skill integration |
 | `capabilities` | Show schema version, tools (with classification), features, and vocabularies |
 | `get-started` | Print the recommended fast path + manual sequence for a task (`get-started [brief\|revise\|validate-only]`), with the CLI command for each step |

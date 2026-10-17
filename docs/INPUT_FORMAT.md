@@ -201,6 +201,15 @@ Charts and diagrams render to SVG and embed into the slide.
 
 Native two-column aliases support 60/40, 40/60, 70/30 and 30/70 splits; `stacked`, `stacked-60-40`, `stacked-40-60` split top/bottom. Inspect `get_input_schema` and template layout discovery for canonical names. `image-left` / `image-right` derive from two-column when needed. A content item's `heading` reserves styled space over text, bullets, tables, images and charts. Raw `compose` also hosts native `shape_grid`, `table`, `text: {body, bullets}` and `image` leaves, with per-segment `heading` / `caption`, vertical `size: "content"`, per-seam `gaps`, `divider`, depth 3 and ≤12 leaves. Table cells may set `text_color`; grid `col_rule` accepts `"all"` or seam indices.
 
+## Accent strategy
+
+Top-level `accent_strategy` chooses pattern accent colours: `"primary"`
+(default) keeps the primary fill, `"rotate"` varies the template accents
+across slides while skipping unreadable or negative-semantic accents, and `"section-keyed"` gives slides in the same section the
+same accent. It changes accent selection, not the template palette; explicit
+pattern accent overrides remain authoritative. In DeckSpec use
+`meta.accent_strategy` with the same values.
+
 ## Theme override
 
 The deck's visual identity comes from the chosen `template`. Override deck-wide colors or fonts with `theme_override`:

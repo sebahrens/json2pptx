@@ -3,7 +3,7 @@ title: "Split and complex layouts"
 type: documentation
 summary: "json2pptx guide to split and complex layouts"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -13,9 +13,9 @@ One slide, several things — done so it reads as one slide. Every recipe here
 was authored through the MCP by an agent that saw only the product, rendered,
 inspected on two templates, and then tightened. Each YAML block is a complete
 DeckSpec that validates against the current build; the four full decks are in
-[`examples/semantic/playbooks/`](../../examples/semantic/playbooks/). Back to
+[`examples/semantic/playbooks/`](https://github.com/sebahrens/json2pptx/tree/main/examples/semantic/playbooks). Back to
 the [hub](README.md); the engine's contract for these kinds is in
-[`DECKSPEC.md`](../../skills/generate-deck/DECKSPEC.md).
+[`DECKSPEC.md`](https://github.com/sebahrens/json2pptx/blob/main/skills/generate-deck/DECKSPEC.md).
 
 **When is a split right?** When two or three views prove the *same* action
 title: the trend and the number it produces; the bridge and what it means for
@@ -644,7 +644,7 @@ slides:
 | One finding, structured | raw `labeled-rows` (§9) |
 | 3 × 3 / 5 × 5 risk heat map with names | `risk_heatmap` (§10) |
 | Phases plus parallel workstreams | `roadmap` with `parallel_tracks` (§11) |
-| Shapes that share one place in a hand-built grid (ring segments, a badge on a shape) | raw `shape_grid` cell `layers` ([INPUT_FORMAT.md](../INPUT_FORMAT.md)) |
+| Shapes that share one place in a hand-built grid (ring segments, a badge on a shape) | raw `shape_grid` cell `layers` ([INPUT_FORMAT.md](https://github.com/sebahrens/json2pptx/blob/main/docs/INPUT_FORMAT.md)) |
 | Whole patterns side by side or stacked | raw `compose` (§12) |
 | A loop, hub or nested rings beside the words about it | `regions` with a `cycle` region (§13) |
 

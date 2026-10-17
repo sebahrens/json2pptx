@@ -3,7 +3,7 @@ title: "Quality and review"
 type: documentation
 summary: "json2pptx guide to quality and review"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -11,8 +11,8 @@ tags: [json2pptx, deck-authoring]
 
 What "done" means, what the engine checks for you, and what only your eyes
 can check. Back to the [hub](README.md). The contract is the completion rule
-in [`SKILL.md`](../../skills/generate-deck/SKILL.md) and the rubric in
-[`WORKFLOW.md`](../../skills/generate-deck/WORKFLOW.md); this page is the
+in [`SKILL.md`](https://github.com/sebahrens/json2pptx/blob/main/skills/generate-deck/SKILL.md) and the rubric in
+[`WORKFLOW.md`](https://github.com/sebahrens/json2pptx/blob/main/skills/generate-deck/WORKFLOW.md); this page is the
 practice.
 
 ## The three gates, in order
@@ -56,7 +56,7 @@ pass on every slide. The deck-level checks a partner runs before these —
 governing thought, vertical and horizontal logic, the executive summary
 mirroring the body, the ask on the last slide — are in
 [slide-design-rules.md](slide-design-rules.md) §1–2 and §6;
-`explain_deck_spec(deck_id)` (hidden, callable by name) lists every slide's
+`explain_deck_spec(deck_id)` (in the default profile) lists every slide's
 title, takeaway and role in order so the chain can be read without a render.
 
 ## Measured layout review
@@ -155,5 +155,5 @@ For a deck you will defend: the final spec (read it back with
 `validate_deck_spec {deck_id, read: "spec"}`), the `content_hash` of the
 reviewed PPTX, the per-slide images you looked at, and the
 `submit_visual_review` response. The journey harness under
-[`tests/quality/journey/`](../../tests/quality/journey/) shows the full
+[`tests/quality/journey/`](https://github.com/sebahrens/json2pptx/tree/main/tests/quality/journey) shows the full
 evidence shape (`calls.jsonl`, `resp-NNN.json`, `images/`).

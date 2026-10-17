@@ -3,21 +3,50 @@
 import json
 import os
 from pathlib import Path
+import re
 import select
+import shlex
 import shutil
 import subprocess
 import tempfile
 import time
+from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 ENGINE = os.environ.get("PWC_LLM_WIKI_BIN", "pwc-llm-wiki")
 
 
+def check_portable_links():
+    wiki = (ROOT / "docs/wiki").resolve()
+    for page in wiki.rglob("*.md"):
+        for target in re.findall(r"\[[^\]]*\]\(([^\s)]+)\)", page.read_text()):
+            link = urlsplit(target)
+            if link.scheme or link.netloc:
+                prefix = "https://github.com/sebahrens/json2pptx/"
+                if target.startswith(prefix + "blob/main/") or target.startswith(prefix + "tree/main/"):
+                    local = ROOT / unquote(link.path.split("/main/", 1)[1])
+                    assert local.exists(), (page.name, target, "missing repository target")
+                continue
+            if not link.path:
+                continue
+            local = (page.parent / unquote(link.path)).resolve()
+            assert local.is_relative_to(wiki), (page.name, target, "escapes packaged wiki")
+            assert local.exists() or local.with_suffix(".md").is_file(), (page.name, target, "missing wiki target")
+    print("portable wiki and canonical repository links PASS")
+
+
 def run():
+    check_portable_links()
     with tempfile.TemporaryDirectory(prefix="json2pptx-wiki-smoke-") as temporary:
         state = Path(temporary) / "state"
+        calls = Path(temporary) / "engine-calls"
+        shim = Path(temporary) / "engine"
+        executable = shutil.which(ENGINE)
+        assert executable, ENGINE
+        shim.write_text("#!/bin/sh\nprintf '%s\\n' \"$*\" >> " + shlex.quote(str(calls)) + "\nexec " + shlex.quote(executable) + ' "$@"\n')
+        shim.chmod(0o755)
         environment = os.environ | {
-            "PWC_LLM_WIKI_BIN": ENGINE,
+            "PWC_LLM_WIKI_BIN": str(shim),
             "JSON2PPTX_WIKI_STATE_DIR": str(state),
             "JSON2PPTX_WIKI_REPO": str(ROOT),
         }
@@ -65,6 +94,7 @@ def run():
                     ("wiki_config", {"action": "get", "key": "ingest.auto_commit"}),
                     ("wiki_schema", {"action": "list"}),
                     ("wiki_ingest", {"path": ".", "full": True, "dry_run": True}),
+                    ("wiki_lint", {"severity": "error"}),
                 ]
                 for identifier, (name, arguments) in enumerate(checks, 3):
                     assert name in names, name
@@ -81,6 +111,9 @@ def run():
                     if name == "wiki_ingest":
                         report = json.loads(text)
                         assert report["pages_validated"] >= 18 and not report["warnings"] and not report["commit"], report
+                    if name == "wiki_lint":
+                        report = json.loads(text)
+                        assert report["errors"] == 0 and not report["findings"], report
                     print(name, "PASS")
             finally:
                 process.stdin.close()
@@ -90,16 +123,49 @@ def run():
                     process.kill()
                     process.wait()
         repository = state / "repository"
+        before_calls = len(calls.read_text().splitlines())
+        for _ in range(2):
+            result = subprocess.run([str(ROOT / "scripts/wiki.sh"), "search", "regions", "--format", "json"], env=environment, capture_output=True, text=True, check=True)
+            assert json.loads(result.stdout)["results"], result.stdout
+        unchanged_calls = calls.read_text().splitlines()[before_calls:]
+        assert not any(action in call for call in unchanged_calls for action in [" spaces register ", " ingest ", " lint "]), unchanged_calls
+        print("unchanged launches reuse registration and index PASS")
+        configured = environment | {"JSON2PPTX_WIKI_HTTP_BIND": "0.0.0.0", "JSON2PPTX_WIKI_HTTP_TOKEN": "wiki-config-cache-test-token-12345678"}
+        subprocess.run([str(ROOT / "scripts/wiki.sh"), "init"], env=configured, capture_output=True, check=True)
+        assert configured["JSON2PPTX_WIKI_HTTP_TOKEN"] in (state / "config.toml").read_text()
+        subprocess.run([str(ROOT / "scripts/wiki.sh"), "init"], env=environment, capture_output=True, check=True)
+        assert configured["JSON2PPTX_WIKI_HTTP_TOKEN"] not in (state / "config.toml").read_text(), "removed HTTP settings survived cache reuse"
+        print("changed configuration re-registers and removes previous HTTP token PASS")
         assert not subprocess.run(
             ["git", "-C", str(repository), "rev-parse", "--verify", "HEAD"],
             capture_output=True,
         ).returncode == 0, "bootstrap created an unexpected commit"
         retained = repository / "wiki" / "runtime-only.md"
-        retained.write_text('---\ntitle: Runtime edit\ntype: documentation\nstatus: active\n---\n\n## Local content\n')
+        retained.write_text('---\ntitle: Runtime edit\ntype: documentation\nstatus: active\n---\n\n## Local content\n\nRuntime cache sentinel.\n')
         subprocess.run([str(ROOT / "scripts/wiki.sh"), "init"], env=environment, check=True, capture_output=True)
         assert retained.exists(), "restart overwrote runtime content"
         assert not (ROOT / "docs/wiki/runtime-only.md").exists(), "runtime edit leaked into source"
         print("runtime persistence/no writeback/no commits PASS")
+        previous_time = retained.stat()
+        retained.write_text(retained.read_text().replace("sentinel", "freshest"))
+        os.utime(retained, ns=(previous_time.st_atime_ns, previous_time.st_mtime_ns))
+        refreshed = subprocess.run([str(ROOT / "scripts/wiki.sh"), "search", "freshest", "--format", "json"], env=environment, capture_output=True, text=True, check=True)
+        assert any(result["slug"] == "runtime-only" for result in json.loads(refreshed.stdout)["results"]), refreshed.stdout
+        assert "pages_validated" in refreshed.stderr, refreshed.stderr
+        print("same-size same-timestamp runtime edit reindexes PASS")
+        valid = retained.read_text()
+        for invalid in [valid.replace("type: documentation", "type: not-a-wiki-type"), valid + "\n[Missing page](missing-runtime-page.md)\n"]:
+            retained.write_text(invalid)
+            refused = subprocess.run([str(ROOT / "scripts/wiki.sh"), "init"], env=environment, capture_output=True, text=True)
+            assert refused.returncode != 0, refused.stderr
+            assert not (state / ".indexed-content").exists(), "failed validation/lint cached as successful"
+            retained.write_text(valid)
+            subprocess.run([str(ROOT / "scripts/wiki.sh"), "init"], env=environment, capture_output=True, check=True)
+        print("invalid schema and broken link block startup; repaired content retries PASS")
+        (state / "indexes/json2pptx/state.toml").unlink()
+        recovered = subprocess.run([str(ROOT / "scripts/wiki.sh"), "search", "freshest", "--format", "json"], env=environment, capture_output=True, text=True, check=True)
+        assert json.loads(recovered.stdout)["results"] and "pages_validated" in recovered.stderr
+        print("missing index state triggers successful rebuild PASS")
         bundle = Path(temporary) / "bundle"
         (bundle / "docs").mkdir(parents=True)
         shutil.copytree(ROOT / "docs/wiki", bundle / "docs/wiki")

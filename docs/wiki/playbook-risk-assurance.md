@@ -3,7 +3,7 @@ title: "Playbook: risk assurance"
 type: documentation
 summary: "json2pptx guide to playbook risk assurance"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -12,7 +12,7 @@ tags: [json2pptx, deck-authoring]
 Internal-audit and controls readouts: IT general controls (ITGC), SOX /
 ICFR, third-party assurance (SOC reports), control-design reviews, audit
 plans. The worked deck is an FY26 ITGC readout to an audit committee:
-[`examples/semantic/playbooks/assurance-itgc-readout.yaml`](../../examples/semantic/playbooks/assurance-itgc-readout.yaml)
+[`examples/semantic/playbooks/assurance-itgc-readout.yaml`](https://github.com/sebahrens/json2pptx/blob/main/examples/semantic/playbooks/assurance-itgc-readout.yaml)
 (13 slides plus appendix, `forest-green`, cross-rendered on `p-style`). Back to
 the [hub](README.md).
 

@@ -2,6 +2,38 @@
 
 How to add a new named pattern to `internal/patterns/`.
 
+## Existing pattern contracts
+
+This is the contributor guide for implementing and extending patterns, not a
+replacement for live authoring schemas. `json2pptx patterns show <name> --json`
+(or `show_pattern`) returns each closed values/overrides contract. For a
+kind-backed pattern, `json2pptx semantic kinds <kind> --format json` returns its
+semantic fields; see the [complete layout catalogue](wiki/layout-catalog.md).
+The following families complement the detailed examples below. Their count,
+geometry and readable-size constraints remain enforced by their builders.
+
+| Pattern | Required values | Purpose |
+|---|---|---|
+| `checklist` | `items` | 3–10 explicit done/open/blocked requirements with optional detail, at 12pt or refused when the frame is too short |
+| `decision-tree` | `nodes` | A 2–3 level decision tree with labeled branches and optional outcome values |
+| `fishbone-framework` | `effect`, `categories` | Cause-and-effect analysis with 2–6 named cause categories |
+| `image-hero` | `image`, `headline` | Cover-cropped image with a black 85% scrim band and measured white headline; top, bottom or left placement |
+| `ipo-flow` | `boxes` | Input → process → output: exactly three headed boxes, each with 2–5 bullets and native arrow connectors |
+| `issue-tree` | `nodes` | A left-rooted 2–4 level issue tree with explicit parent IDs and leaf hypothesis status |
+| `numeric-heatmap` | `row_labels`, `col_labels`, `values` | Labeled rectangular numeric heatmap with at most 8 rows and columns |
+| `pestel-framework` | `political`, `economic`, `social`, `technological`, `environmental`, `legal` | All six PESTEL dimensions with 1–5 explicit implications each |
+| `progress-list` | `rows` | 3–8 KPI rows with actual bars, explicit target ticks and units; 12pt labels with measured refusal |
+| `prose-2col` | `columns` | Two balanced columns of 1–4 running prose paragraphs, with optional headings and a measured 12pt floor |
+| `raci-matrix` | `roles`, `activities` | 3–10 activities × 2–6 roles, R/A/C/I responsibilities, exactly one accountable role per activity, and a letter legend |
+| `sources-list` | `entries` | 4–16 numbered appendix sources with optional URLs, measured at 10pt |
+| `spectrum` | `left_label`, `right_label`, `markers` | A continuous axis with explicit endpoints and 2–6 positioned markers; colliding labels occupy separate measured lanes |
+| `stakeholder-map` | `points`, `x_axis_label`, `y_axis_label` | Stakeholders positioned by influence and interest, sized by explicit diameter and colored by supporter/neutral/blocker stance |
+| `status-board` | `columns`, `rows` | 3–10 workstreams × 2–5 RAG status columns, optional up/flat/down trend and comment, with measured status ink |
+| `talent-nine-box` | `employees` | Talent portfolio with explicit low/medium/high performance and potential |
+| `three-horizons` | `horizons` | Three ascending strategy bands, each with title, timeframe and 1–4 initiatives |
+| `timeline-vertical` | `stops` | 3–8 dated stops on a vertical spine; measured 12pt text, single-sided or alternating |
+| `venn-framework` | `circles` | Two or three overlapping sets with explicit item lists |
+
 ## When to add a pattern
 
 A pattern is justified only when its `shape_grid` expansion is reused across **3 or more example decks**. If a layout appears in fewer than three decks, use `shape_grid` directly. This rule prevents pattern proliferation.

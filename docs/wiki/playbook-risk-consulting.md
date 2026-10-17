@@ -3,7 +3,7 @@ title: "Playbook: risk consulting"
 type: documentation
 summary: "json2pptx guide to playbook risk consulting"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -13,7 +13,7 @@ Enterprise-risk uplifts, regulatory remediation programmes, risk-appetite and
 three-lines-of-defence reviews, operational-resilience and third-party-risk
 proposals. The worked deck is a 12-month ERM uplift proposal to a bank's
 executive committee after a "needs improvement" regulatory rating:
-[`examples/semantic/playbooks/risk-erm-uplift-proposal.yaml`](../../examples/semantic/playbooks/risk-erm-uplift-proposal.yaml)
+[`examples/semantic/playbooks/risk-erm-uplift-proposal.yaml`](https://github.com/sebahrens/json2pptx/blob/main/examples/semantic/playbooks/risk-erm-uplift-proposal.yaml)
 (11 slides, `midnight-blue`, cross-rendered on `p-style`). Back to the
 [hub](README.md).
 

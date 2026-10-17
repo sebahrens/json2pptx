@@ -238,7 +238,7 @@ SVG chart rendered into a placeholder. Value: `ChartSpec` (via `chart_value`; th
 }}
 ```
 
-**Chart types** (15 types, use the short name in `type`):
+**Chart types** (19 types, use the short name in `type`):
 
 | Type | Description |
 |---|---|
@@ -258,6 +258,11 @@ SVG chart rendered into a placeholder. Value: `ChartSpec` (via `chart_value`; th
 | `funnel` | Funnel chart |
 | `gauge` | Gauge/speedometer |
 | `treemap` | Hierarchical treemap |
+| `mekko_chart` | Variable-width columns with stacked composition within each category |
+| `combo_chart` | Shared categories with bar series and line series |
+| `butterfly_chart` | Opposing horizontal bars for paired category comparisons |
+
+See the [three chart contracts](../../docs/wiki/consulting-visual-additions.md#three-chart-contracts) for data fields and examples.
 
 ### diagram
 

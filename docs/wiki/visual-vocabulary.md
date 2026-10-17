@@ -3,7 +3,7 @@ title: "Visual vocabulary: message \u2192 kind"
 type: documentation
 summary: "json2pptx guide to visual vocabulary"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -14,7 +14,7 @@ is the sentence you are trying to make the audience accept; the right column
 is how json2pptx draws it on the DeckSpec path (kinds are live:
 `list_slide_kinds`; a few consulting staples are still raw-path patterns and
 say so). Back to the [hub](README.md); the engine's own catalog with budgets
-is [`DECKSPEC.md`](../../skills/generate-deck/DECKSPEC.md); the per-slide
+is [`DECKSPEC.md`](https://github.com/sebahrens/json2pptx/blob/main/skills/generate-deck/DECKSPEC.md); the per-slide
 recipes are in [split-and-complex-layouts.md](split-and-complex-layouts.md),
 and the full menu with every form, pattern, chart and diagram is
 [layout-catalog.md](layout-catalog.md).

@@ -3,7 +3,7 @@ title: "Troubleshooting"
 type: documentation
 summary: "json2pptx guide to troubleshooting"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -11,8 +11,8 @@ tags: [json2pptx, deck-authoring]
 
 Findings, refusals and renders that surprised agents in the journey runs, with
 the fix that worked. `describe_finding(code)` explains any code; the full
-catalogue is [`docs/FIT_FINDINGS.md`](../FIT_FINDINGS.md) and the agent digest
-[`skills/generate-deck/FINDINGS.md`](../../skills/generate-deck/FINDINGS.md).
+catalogue is [`docs/FIT_FINDINGS.md`](https://github.com/sebahrens/json2pptx/blob/main/docs/FIT_FINDINGS.md) and the agent digest
+[`skills/generate-deck/FINDINGS.md`](https://github.com/sebahrens/json2pptx/blob/main/skills/generate-deck/FINDINGS.md).
 Back to the [hub](README.md).
 
 ## Authoring errors

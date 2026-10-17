@@ -3,7 +3,7 @@ title: "Playbook: consulting pitch and deals"
 type: documentation
 summary: "json2pptx guide to playbook consulting pitch and deals"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -12,7 +12,7 @@ tags: [json2pptx, deck-authoring]
 Proposals, pitches, commercial / operational due diligence, information
 memoranda, investment-committee papers, 100-day plans. The worked deck is a
 four-week commercial due diligence proposal to a private-equity fund:
-[`examples/semantic/playbooks/deals-cdd-proposal.yaml`](../../examples/semantic/playbooks/deals-cdd-proposal.yaml)
+[`examples/semantic/playbooks/deals-cdd-proposal.yaml`](https://github.com/sebahrens/json2pptx/blob/main/examples/semantic/playbooks/deals-cdd-proposal.yaml)
 (12 slides, authored on `p-style`, cross-rendered on `blue-corporate`). Back to
 the [hub](README.md).
 

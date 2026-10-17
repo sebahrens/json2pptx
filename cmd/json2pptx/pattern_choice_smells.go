@@ -79,7 +79,7 @@ func collectPatternChoiceFindings(input *PresentationInput) []patterns.FitFindin
 // fill the capped area while the dots, chevrons and labels keep their size
 // (the dots since go-slide-creator-r684y). What a sparse timeline leaves on
 // the slide is reported as it is drawn by SPARSE_SINGLE_ROW_FLOW,
-// SLIDE_UNDERUSED and SLIDE_UNBALANCED.
+// SLIDE_UNDERUSED and VERTICAL_IMBALANCE.
 
 // detectFlowDiamondNoContent flags a standalone process-flow that carries at
 // least one decision diamond (step.type == "decision") — the flow draws one

@@ -68,7 +68,18 @@ config="$state_dir/config.toml"
 # This config is owned solely by this wrapper. The runtime registry contains
 # resolved absolute paths; only portable relative configuration is committed.
 umask 077
-cat > "$config" <<'CONFIG'
+refresh_lock="$state_dir/.refresh-lock"
+if ! mkdir "$refresh_lock" 2>/dev/null; then
+    echo 'Wiki refresh is already in progress; retry after it completes. Existing state was retained.' >&2
+    exit 1
+fi
+settings=$(mktemp "$state_dir/.settings.XXXXXX")
+cleanup_refresh() {
+    rm -f "$settings"
+    rmdir "$refresh_lock" 2>/dev/null || true
+}
+trap cleanup_refresh EXIT HUP INT TERM
+cat > "$settings" <<'CONFIG'
 [ingest]
 auto_commit = false
 [logging]
@@ -83,14 +94,45 @@ if [ -n "${JSON2PPTX_WIKI_HTTP_BIND:-}" ]; then
         echo 'Set JSON2PPTX_WIKI_HTTP_TOKEN to at least 32 letters, digits, or ._~- characters.' >&2
         exit 1
     fi
-    printf '\n[serve]\nhttp_bind = "0.0.0.0"\nhttp_allowed_hosts = ["localhost", "127.0.0.1", "::1", "wiki"]\nhttp_token = "%s"\n' "$JSON2PPTX_WIKI_HTTP_TOKEN" >> "$config"
+    printf '\n[serve]\nhttp_bind = "0.0.0.0"\nhttp_allowed_hosts = ["localhost", "127.0.0.1", "::1", "wiki"]\nhttp_token = "%s"\n' "$JSON2PPTX_WIKI_HTTP_TOKEN" >> "$settings"
 fi
 
-"$engine" --config "$config" spaces register "$repo_root" --name json2pptx --wiki-root wiki >&2
-# Validate before indexing, including uncommitted pages. Both operations use
-# real engine commands and inherit auto_commit=false from the runtime wiki.
-"$engine" --config "$config" --wiki json2pptx ingest . --full --dry-run --format json >&2
-"$engine" --config "$config" --wiki json2pptx ingest . --full --format json >&2
+# Compare the desired settings and the registered config. Re-register only
+# after an actual change (including switching HTTP authentication off again).
+registered="$state_dir/.registered-config"
+config_fingerprint() {
+    { cat "$settings"; printf '\n%s\n' "$repo_root"; cat "$config" 2>/dev/null || true; } | cksum
+}
+if [ ! -f "$config" ] || [ "$(cat "$registered" 2>/dev/null || true)" != "$(config_fingerprint)" ]; then
+    cp "$settings" "$config"
+    "$engine" --config "$config" spaces register "$repo_root" --name json2pptx --wiki-root wiki >&2
+    config_fingerprint > "$registered"
+fi
+runtime_fingerprint() {
+    (
+        cd "$repo_root"
+        { cksum wiki.toml; find schemas wiki -type f -print | LC_ALL=C sort | while IFS= read -r file; do cksum "$file"; done; } | cksum
+    )
+}
+indexed="$state_dir/.indexed-content"
+current_content=$(runtime_fingerprint)
+if [ "$(cat "$indexed" 2>/dev/null || true)" != "$current_content" ] ||
+   [ ! -f "$state_dir/indexes/json2pptx/state.toml" ] ||
+   [ ! -f "$state_dir/indexes/json2pptx/search-index/meta.json" ]; then
+    # Publish the cache stamp only after strict validation, indexing and lint.
+    # A failed refresh must be retried even if the input is then restored.
+    rm -f "$indexed"
+    "$engine" --config "$config" --wiki json2pptx ingest . --full --dry-run --format json >&2
+    "$engine" --config "$config" --wiki json2pptx ingest . --full --format json >&2
+    "$engine" --config "$config" --wiki json2pptx lint --severity error --format json >&2
+    if [ "$current_content" != "$(runtime_fingerprint)" ]; then
+        echo 'Wiki content changed during refresh; retry to index a stable snapshot.' >&2
+        exit 1
+    fi
+    printf '%s\n' "$current_content" > "$indexed"
+fi
+cleanup_refresh
+trap - EXIT HUP INT TERM
 if [ "${1:-}" = init ]; then exit 0; fi
 if [ "$#" -eq 0 ]; then set -- serve; fi
 cd "$repo_root"

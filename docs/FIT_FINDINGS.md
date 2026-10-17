@@ -908,7 +908,7 @@ Rendered in every style, capped and uncapped, nothing is drawn that way:
 - **Uncapped** — `dots`, `chevron` and `gantt` are each sized to their text and placed by the composition policy; a seven-stop `dots` timeline is a 16pt line of dots over one line of labels, not a full-height lane.
 - **Capped** (`max_height_pct` / `bounds`) — the rows spread to fill the capped area, top-anchored, while the dots, chevrons and labels keep their size. The dots used to grow with their row — 16pt dots drawn 55pt across under `max_height_pct: 60` — which was a rendering fault, fixed in the pattern (go-slide-creator-r684y), not something a finding should ask the author to route around.
 
-What a sparse timeline does leave on the slide is reported as it is drawn: `SPARSE_SINGLE_ROW_FLOW` (3–6 uncapped cells), [`SLIDE_UNDERUSED`](#slide_underused) (the content covers too little of the safe area, with its own wording for a capped block) and `SLIDE_UNBALANCED` (the empty band under a capped block).
+What a sparse timeline does leave on the slide is reported as it is drawn: `SPARSE_SINGLE_ROW_FLOW` (3–6 uncapped cells), [`SLIDE_UNDERUSED`](#slide_underused) (the content covers too little of the safe area, with its own wording for a capped block) and `VERTICAL_IMBALANCE` (excess trailing whitespace below a block).
 
 ### `FLOW_DIAMOND_NO_CONTENT`
 
@@ -1243,7 +1243,7 @@ A native `business_model_canvas` reads its nine sections under any accepted spel
 ### `chart.glyph_missing`
 
 **Action:** `review`
-**Pattern:** any chart or diagram (non-chart diagrams report it as `diagram.glyph_missing`)
+**Pattern:** any chart or diagram (non-chart diagrams use the same `chart.glyph_missing` code)
 **Fix kind:** `replace_value` (params: `characters` — up to 12 sample characters, `missing_count`, `scripts`)
 
 Drawn text contains characters the embedded chart font has no glyph for (typically CJK, emoji or Arabic). svggen estimates their widths (one em for East Asian wide characters and emoji, 0.6em otherwise), so wrapping, overlap and truncation for that text are approximate, and the viewer substitutes a system font whose metrics may differ. One finding per chart. Check the rendered slide; if the substitute font is missing on the target machine the characters show as boxes.
@@ -2899,3 +2899,1354 @@ A slide carries an eyebrow / category line above the title that renders in regul
 `SEMANTIC_IMAGE_MISSING` identifies `path: /slides/N` and `missing_path: /slides/N/image` whenever an `image_case` lacks an image, including labelled draft placeholders and the bundled example. `warn` and `off` allow a draft artifact, but DeckSpec delivery findings are blocking errors: deterministic readiness and publication remain false even after visual approval. Strict validation refuses the draft. Supply `image` / `photo` / `screenshot`, or use a text-only slide kind. Placeholder labels never satisfy this requirement.
 
 `table.totals_row` accepts a boolean; strings such as `"true"` receive `SEMANTIC_FIELD_TYPE` at the field. Agenda `current` and its aliases accept a section title or a 1-based integer; fractional positions are invalid. Both full and compact per-kind schemas express these types.
+
+## Additional `describe_finding` reference
+
+The entries below complete the live `describe_finding` catalogue beyond the
+fit guidance above. It includes operational, input, template, asset and rendering
+diagnostics as well as fit advice; these codes are not all emitted by the fit
+pass. Follow each entry's trigger and remedy. A review finding is not permission
+to bypass a refusal, discard content, or lower the readability floor.
+
+Generated from the canonical registry. After changing registry metadata, run
+`go test ./cmd/json2pptx -run '^TestFitFindingsDocCoversDescribeCatalog$' -update-fit-appendix`.
+
+<!-- BEGIN GENERATED: describe_finding reference -->
+
+### `AMBIGUOUS_CANONICAL_ROLE`
+
+Two template layouts tie for a canonical role.
+
+- **Severity:** review
+- **When emitted:** Template profiling assigns equal confidence to multiple layouts for one role.
+- **Action:** Inspect the competing layouts and set an explicit canonical role binding.
+
+### `AMBIGUOUS_INPUT`
+
+The request could be interpreted more than one way.
+
+- **Severity:** refuse
+- **When emitted:** Two mutually exclusive inputs were supplied (e.g. both inline JSON and a file path for the same argument).
+- **Action:** Supply exactly one of the conflicting inputs. Check the message for which inputs collided.
+
+### `ASSET_PATH_ENV_UNSET`
+
+An asset path requires an environment variable that is not set.
+
+- **Severity:** refuse
+- **When emitted:** An asset is referenced via an env-rooted path but the named environment variable is unset.
+- **Action:** Set the environment variable named in the message. Or reference the asset with a direct path instead of an env-rooted one.
+
+### `ASSET_TOO_LARGE`
+
+An asset exceeds the maximum allowed size.
+
+- **Severity:** refuse
+- **When emitted:** An icon or image asset's byte size exceeds the configured cap (see get_capabilities for the limit).
+- **Action:** Recompress or downscale the asset to fit under the limit. Use a vector (SVG) icon instead of a large raster image.
+
+### `CANCELLED`
+
+The caller cancelled an in-progress render.
+
+- **Severity:** refuse
+- **When emitted:** The MCP request context is cancelled while preparing or returning slide images.
+- **Action:** Retry the render if slide images are still needed.
+
+### `CHART_SERIES_LENGTH_MISMATCH`
+
+A chart series has a different number of values than the chart has categories.
+
+- **Severity:** refuse
+- **When emitted:** chart validation finds a series whose values array is shorter or longer than categories. The renderer plots the values it has and leaves the rest of the categories empty, so a truncated array — the most likely slip after editing a chart by hand — used to ship as a confidently wrong chart that every gate called clean.
+- **Action:** Give every series exactly one value per category. Pad a short series with 0 where the figure is genuinely missing, or drop the categories you have no data for.
+
+### `CHART_VALUE_NOT_NUMERIC`
+
+A chart value is not a number.
+
+- **Severity:** refuse
+- **When emitted:** chart validation finds a quoted figure ("10"), a null, or an object where a number belongs. The chart then renders as an empty plot with a format-error label.
+- **Action:** Write the values unquoted: [10, 20, 30], not ["10", "20", "30"]. Replace a null with 0, or drop its category.
+
+### `DANGLING_REL`
+
+A PPTX relationship points to a missing part.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation resolves a relationship target that does not exist.
+- **Action:** Repair the relationship target or regenerate the affected slide.
+
+### `DECK_MONOTONY`
+
+Several consecutive slides are built the same way.
+
+- **Severity:** review
+- **When emitted:** Four or more consecutive argument slides share one shape (the same pattern, or the same content types); six or more raises it to refuse — unless the run is chart / diagram slides of differing visual types (bar, line, pie…), which stays review. Title, section and blank slides never join a run.
+- **Action:** Vary the visual family: call recommend_visual for the middle slides of the run and take a different pattern for some of them. Or merge the run — eight monthly KPI slides are usually one table or one trend chart.
+
+### `DUPLICATE_ID`
+
+A slide repeats a shape identifier.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds duplicate non-visual property IDs.
+- **Action:** Assign unique shape IDs or regenerate the slide.
+
+### `DUPLICATE_REL_ID`
+
+A PPTX relationships file reuses an ID.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation finds two relationships with the same identifier.
+- **Action:** Assign unique relationship IDs or regenerate the package.
+
+### `DUPLICATE_SLIDE_ID`
+
+presentation.xml repeats a slide id.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation finds two <p:sldId> entries with the same id.
+- **Action:** Give every <p:sldId> a unique id or regenerate the package.
+
+### `EMPTY_REQUIRED_ATTR`
+
+A required OOXML attribute is empty.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds a mandatory attribute with no value.
+- **Action:** Supply the required value or regenerate the affected shape.
+
+### `FILE_NOT_FOUND`
+
+A referenced file does not exist.
+
+- **Severity:** refuse
+- **When emitted:** A file path argument (deck JSON or an asset) cannot be opened.
+- **Action:** Check the path; prefer an absolute path. Confirm the file exists and is readable by the process.
+
+### `FILE_READ_ERROR`
+
+An input file named on the command line could not be read.
+
+- **Severity:** refuse
+- **When emitted:** The CLI validate path cannot open or read the deck JSON it was given (missing path, wrong permissions, a directory).
+- **Action:** Check the path exists and is a readable file, not a directory. Prefer an absolute path; a relative one resolves against the process working directory.
+
+### `FONT_SUBSTITUTED`
+
+A template theme font is not installed on this host.
+
+- **Severity:** review
+- **When emitted:** Raw generation finds a theme title/body font that fit measurement must substitute; LibreOffice renders substitute their own fallback.
+- **Action:** Install the named font (or a metric-compatible one), or trust rendered images over fit findings for wrapping.
+
+### `HEURISTIC_INSPECTION_FAILED`
+
+A slide's heuristic inspection could not run (e.g. the image failed to decode).
+
+- **Severity:** review
+- **When emitted:** The pure-Go heuristic inspector (used when ANTHROPIC_API_KEY is unset) could not decode a slide image, so it produced no findings for that slide. The result is degraded — absence of findings does not mean the slide is clean.
+- **Action:** Re-render the slide to a valid PNG/JPG and re-inspect. For a full vision-backed inspection, set ANTHROPIC_API_KEY.
+
+### `ICON_AMBIGUOUS`
+
+An icon name matches more than one bundled icon.
+
+- **Severity:** refuse
+- **When emitted:** An icon name resolves to multiple bundled icons across icon sets.
+- **Action:** Use the fully-qualified icon name from fix.params / evidence.suggestions. Disambiguate by prefixing the icon set.
+
+### `ICON_BUNDLED_NAME_UNKNOWN`
+
+A bundled icon name is not in the catalog.
+
+- **Severity:** refuse
+- **When emitted:** An icon name does not match any bundled icon.
+- **Action:** List icons and pick a known name. Check evidence.suggestions for the closest valid names.
+
+### `ICON_FILL_IGNORED_ON_INLINE`
+
+An icon `fill` was ignored because inline `svg_data` is set.
+
+- **Severity:** review
+- **When emitted:** An icon supplies both inline svg_data and a fill color; the engine cannot recolor pre-rendered SVG markup, so fill is dropped.
+- **Action:** Pre-color the inline svg_data markup directly. Or remove svg_data and use name/path with fill instead.
+
+### `ICON_LIST`
+
+Listing the available icons failed.
+
+- **Severity:** refuse
+- **When emitted:** The bundled icon catalog cannot be enumerated.
+- **Action:** Retry the request. If it persists, report the failure with the input_sha256.
+
+### `ICON_MISSING`
+
+An icon reference is empty.
+
+- **Severity:** refuse
+- **When emitted:** An icon entry supplies none of name, path, or svg_data.
+- **Action:** Supply exactly one of name, path, or svg_data on the icon entry.
+
+### `ICON_NOT_FOUND`
+
+The requested icon could not be found.
+
+- **Severity:** refuse
+- **When emitted:** An icon name or path does not resolve to a bundled icon or a readable file.
+- **Action:** List icons and use a known name; check evidence.suggestions for near matches. For a file icon, confirm the path exists.
+
+### `ICON_PATH`
+
+An icon path argument is invalid.
+
+- **Severity:** refuse
+- **When emitted:** An icon path cannot be used (a general path failure not covered by a more specific ICON_PATH_* code).
+- **Action:** Supply a valid icon path, or use a bundled icon name instead. List bundled icons via the icons command.
+
+### `ICON_PATH_EXT_INVALID`
+
+An icon path has an unsupported file extension.
+
+- **Severity:** refuse
+- **When emitted:** An icon path's extension is not one of the allowed image/SVG types.
+- **Action:** Use a .svg or .png asset. Convert the source asset to a supported format.
+
+### `ICON_PATH_SYMLINK_ESCAPE`
+
+An icon path resolves through a symlink that escapes the allowed root.
+
+- **Severity:** refuse
+- **When emitted:** Symlink resolution of an icon path lands outside the asset root.
+- **Action:** Store the asset directly under the asset root rather than behind a symlink. Reference the real file location.
+
+### `ICON_PATH_TRAVERSAL`
+
+An icon path attempts directory traversal outside the allowed root.
+
+- **Severity:** refuse
+- **When emitted:** An icon path contains ".." segments that escape the asset root.
+- **Action:** Place the asset under the allowed asset root. Reference it with a relative path that does not contain "..".
+
+### `IDEMPOTENCY_CONFLICT`
+
+An idempotency_key was reused for a request whose content changed.
+
+- **Severity:** refuse
+- **When emitted:** generate_presentation, auto_repair, or make_deck receives an idempotency_key that already cached a successful response, but the new request's normalized fingerprint differs from the original. Replaying would return a deck for the wrong content, so the server refuses.
+- **Action:** Use a fresh idempotency_key when the deck/outline or any other argument changes — the key is a retry token, not a request id. To replay the original result, restore the exact input that produced it (evidence.original_fingerprint identifies it).
+
+### `ILLEGAL_XML_CHAR`
+
+Slide text contains an illegal XML character.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds a character forbidden by XML 1.0.
+- **Action:** Remove or replace the control character in the source text.
+
+### `IMAGEMAGICK_TIMEOUT`
+
+ImageMagick exceeded its render deadline and was killed.
+
+- **Severity:** refuse
+- **When emitted:** A PDF→PNG conversion subprocess ran past its bounded deadline and its process group was terminated.
+- **Action:** Retry the render (pass force=true). If it recurs, lower the render density or skip image rendering and ship the .pptx without thumbnails.
+
+### `IMAGEMAGICK_UNAVAILABLE`
+
+ImageMagick is required for this operation but is not available.
+
+- **Severity:** refuse
+- **When emitted:** An image conversion step needs ImageMagick and it is not installed or not on PATH.
+- **Action:** Install ImageMagick and ensure convert/magick is on PATH. Skip image conversion if only the .pptx is needed.
+
+### `INSPECT_DISABLED`
+
+Visual inspection is disabled.
+
+- **Severity:** refuse
+- **When emitted:** inspect is invoked while the visual-QA backend is disabled or unconfigured.
+- **Action:** Enable and configure the inspect backend. Skip inspection if the visual-QA agent is unavailable.
+
+### `INTERNAL`
+
+An unexpected internal error occurred.
+
+- **Severity:** refuse
+- **When emitted:** An unhandled server-side failure surfaces; the operation could not complete.
+- **Action:** Retry the request. If it persists, report the failure with the input_sha256 for correlation.
+
+### `INVALID_ARG`
+
+A tool argument is missing or invalid.
+
+- **Severity:** refuse
+- **When emitted:** An MCP argument-error path receives no more specific diagnostic code.
+- **Action:** Correct the field named in the finding and retry with the expected type or value.
+
+### `INVALID_COLOR`
+
+An OOXML color value is invalid.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds a malformed direct color value.
+- **Action:** Use a valid six-digit RGB color or a supported theme color.
+
+### `INVALID_DECK_SPEC`
+
+The DeckSpec stored under deck_id could not be parsed or compiled.
+
+- **Severity:** refuse
+- **When emitted:** A raw-deck tool (generate, validate, repair) is given a semantic deck_id whose stored DeckSpec no longer parses, fails semantic compilation, or compiles to a presentation that cannot be encoded.
+- **Action:** Run validate_deck_spec on the deck_id, fix the reported semantic diagnostics with a patch, and retry the raw-deck tool.
+
+### `INVALID_GRID`
+
+A shape_grid is structurally invalid.
+
+- **Severity:** refuse
+- **When emitted:** Dry-run / preflight finds a shape_grid whose rows, columns, or cell spans do not form a valid grid.
+- **Action:** Fix the grid's rows/cols and cell row_span/col_span so cells tile the grid without gaps or overlaps. Start from a known-good skeleton via expand_pattern, then edit values.
+
+### `INVALID_IMAGE`
+
+An image supplied for inspection is invalid.
+
+- **Severity:** refuse
+- **When emitted:** inspect_slide_images receives an unreadable or malformed image.
+- **Action:** Supply a valid PNG/JPG image. Re-render the slide to images before inspecting.
+
+### `INVALID_JSON`
+
+The JSON payload could not be parsed.
+
+- **Severity:** refuse
+- **When emitted:** The deck JSON or request body is not syntactically valid JSON.
+- **Action:** Fix the syntax error at the reported offset (unbalanced braces, trailing commas, unquoted keys). Validate the document with a JSON linter before resubmitting.
+
+### `INVALID_KEY`
+
+An object contains a key the schema does not allow.
+
+- **Severity:** refuse
+- **When emitted:** Strict key checking finds an unknown or misspelled field on a slide, content item, or value object.
+- **Action:** Remove or rename the offending key at evidence.path. Check get_input_schema for the allowed field names at that level.
+
+### `INVALID_PARAMETER`
+
+A supplied argument has the wrong type or an illegal value.
+
+- **Severity:** refuse
+- **When emitted:** Argument validation finds a parameter present but malformed (wrong JSON type or out-of-range value).
+- **Action:** Correct the value at evidence.path to match evidence.expected_type. Consult get_input_schema for the parameter's accepted shape.
+
+### `INVALID_PATH`
+
+A JSON path or file path argument is malformed or unresolvable.
+
+- **Severity:** refuse
+- **When emitted:** A path argument cannot be parsed or does not resolve to a node/file.
+- **Action:** Supply a valid path; for files prefer an absolute path. For JSON pointers, confirm each segment exists in the document.
+
+### `INVALID_SCHEME`
+
+A color references an invalid theme scheme slot.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds an unknown scheme color name.
+- **Action:** Use a valid theme scheme color such as accent1 or dk1.
+
+### `INVALID_SLIDE`
+
+A slide object is structurally invalid.
+
+- **Severity:** refuse
+- **When emitted:** A slide cannot be interpreted — e.g. it has no resolvable layout_id/slide_type or malformed content.
+- **Action:** Give the slide a valid layout_id or slide_type and well-formed content[]. Compare the slide against get_input_schema.
+
+### `INVALID_SLIDE_INDEX`
+
+A slide index argument is out of range.
+
+- **Severity:** refuse
+- **When emitted:** A tool references a slide index that does not exist in the deck.
+- **Action:** Use a 0-based index inside [0, slide_count). Read the deck length first if you are unsure how many slides exist.
+
+### `INVALID_STRUCTURE`
+
+The deck-level "structure" envelope could not be expanded into a slide sequence.
+
+- **Severity:** refuse
+- **When emitted:** A deck uses the top-level "structure" field (cover / closing / sections / auto_agenda) and its shape is invalid — e.g. a section with no slides, or a malformed cover block.
+- **Action:** Fix the structure block named in the message; each section needs a title and at least one slide. Call get_input_schema for the structure envelope's exact shape, or drop to a flat top-level "slides" array instead.
+
+### `INVALID_TABLE`
+
+A table has invalid OOXML structure.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds a malformed table grid, row, or cell.
+- **Action:** Correct table dimensions or regenerate the table.
+
+### `LAYOUT_DERIVED`
+
+An asymmetric two-column slide was derived from a template layout.
+
+- **Severity:** info
+- **When emitted:** A slide requests two-column-wide-narrow or two-column-narrow-wide. Generation keeps the native Two Content layout's styling and outer bounds but resizes its body columns to 65/35 or 35/65 with at least a 0.3-inch gutter.
+- **Action:** No action is needed if the derived geometry fits the content. Use two-column for the template's native balanced column widths.
+
+### `LAYOUT_RELATIONSHIP_INVALID`
+
+A template layout has an invalid master or theme relationship.
+
+- **Severity:** refuse
+- **When emitted:** Template profiling cannot resolve a layout's relationships.
+- **Action:** Repair the layout's OOXML relationship targets or use a conforming template.
+
+### `LAYOUT_UNRESOLVABLE`
+
+No layout in this template can host the slide's declared slide_type.
+
+- **Severity:** review
+- **When emitted:** Layout auto-selection finds no layout matching the slide's type — the template is missing that role entirely (e.g. only Title Slide and Blank are present). A pattern / shape_grid / compose slide then falls back to the template's blank canvas with a warning, since those need only a canvas; any other slide refuses, because there is nowhere to put its placeholders.
+- **Action:** Set slide.layout_id explicitly to one of fix.params.candidates — the layouts this template actually declares. Or pick a template that declares the role: call list_templates and check canonical_layout_ids, or examine_template for the missing-role findings. For a pattern or shape_grid slide the canvas fallback is usually acceptable; the finding tells you the placement was not the engine's first choice.
+
+### `LIBREOFFICE_TIMEOUT`
+
+LibreOffice exceeded its render deadline and was killed.
+
+- **Severity:** refuse
+- **When emitted:** A PPTX→PDF conversion subprocess ran past its bounded deadline; its process group was terminated so it could not hold the render lock indefinitely.
+- **Action:** Retry the render (pass force=true) — a single wedged conversion is often transient. If it recurs, the LibreOffice environment is likely stuck: restart it, or skip image rendering and ship the .pptx without thumbnails.
+
+### `LIBREOFFICE_UNAVAILABLE`
+
+LibreOffice is required for this operation but is not available.
+
+- **Severity:** refuse
+- **When emitted:** A PPTX→image step needs LibreOffice and it is not installed or not on PATH.
+- **Action:** Install LibreOffice and ensure the soffice binary is on PATH. Skip image conversion if only the .pptx is needed.
+
+### `MALFORMED_XML`
+
+A PPTX XML part is malformed.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation cannot parse a package XML part.
+- **Action:** Regenerate or repair the malformed XML part.
+
+### `MISSING_CONTENT_TYPE`
+
+A PPTX part has no content type.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation finds a part without a matching content-type declaration.
+- **Action:** Add the correct content-type declaration or regenerate the package.
+
+### `MISSING_CONTENT_TYPE_OVERRIDE`
+
+A required PPTX content-type override is absent.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation finds a part that needs an explicit override.
+- **Action:** Add the missing override to [Content_Types].xml or regenerate the package.
+
+### `MISSING_ELEMENT`
+
+A required OOXML element is absent.
+
+- **Severity:** refuse
+- **When emitted:** PPTX package validation cannot find a mandatory XML element.
+- **Action:** Regenerate the affected part with the required element.
+
+### `MISSING_PARAMETER`
+
+A required tool or CLI argument was not supplied.
+
+- **Severity:** refuse
+- **When emitted:** Argument validation finds a required parameter absent or empty.
+- **Action:** Supply the parameter named in evidence.path. Replay the call in next_tool_call with the missing field filled in; example_value shows a valid value.
+
+### `MISSING_PART`
+
+A required PPTX package part is missing.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation cannot find a referenced package part.
+- **Action:** Regenerate the deck or restore the missing part and its relationship.
+
+### `MULTIPLE_CURRENT_STAGES`
+
+More than one journey stage is marked current.
+
+- **Severity:** review
+- **When emitted:** A journey-maturity pattern has multiple stages with current=true.
+- **Action:** Mark exactly one stage current so the progress marker is unambiguous.
+
+### `OOXML_DUPLICATE_ID`
+
+A slide repeats a shape identifier.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds duplicate non-visual property IDs.
+- **Action:** Assign unique shape IDs or regenerate the slide.
+
+### `OOXML_EMPTY_REQUIRED_ATTR`
+
+A required OOXML attribute is empty.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds a mandatory attribute with no value.
+- **Action:** Supply the required value or regenerate the affected shape.
+
+### `OOXML_ILLEGAL_XML_CHAR`
+
+Slide text contains an illegal XML character.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds a character forbidden by XML 1.0.
+- **Action:** Remove or replace the control character in the source text.
+
+### `OOXML_INVALID_COLOR`
+
+An OOXML color value is invalid.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds a malformed direct color value.
+- **Action:** Use a valid six-digit RGB color or a supported theme color.
+
+### `OOXML_INVALID_SCHEME`
+
+A color references an invalid theme scheme slot.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds an unknown scheme color name.
+- **Action:** Use a valid theme scheme color such as accent1 or dk1.
+
+### `OOXML_INVALID_TABLE`
+
+A table has invalid OOXML structure.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds a malformed table grid, row, or cell.
+- **Action:** Correct table dimensions or regenerate the table.
+
+### `OOXML_LOW_FALLBACK_DPI`
+
+An SVG fallback image is below 96 DPI at display size.
+
+- **Severity:** review
+- **When emitted:** Output validation measures a low-resolution PNG fallback for an SVG picture.
+- **Action:** Regenerate the fallback PNG at 96 DPI or higher for its displayed size.
+
+### `OOXML_SLIDE_COUNT_MISMATCH`
+
+Slide references and slide files disagree in count.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation compares presentation slide IDs with package slide parts.
+- **Action:** Regenerate the presentation or repair the slide list and relationships.
+
+### `OOXML_ZERO_EXTENT`
+
+A shape has zero width or height.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds a zero-sized shape extent.
+- **Action:** Give the shape positive dimensions.
+
+### `OPC_DANGLING_REL`
+
+A PPTX relationship points to a missing part.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation resolves a relationship target that does not exist.
+- **Action:** Repair the relationship target or regenerate the affected slide.
+
+### `OPC_DUPLICATE_REL_ID`
+
+A PPTX relationships file reuses an ID.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation finds two relationships with the same identifier.
+- **Action:** Assign unique relationship IDs or regenerate the package.
+
+### `OPC_DUPLICATE_SLIDE_ID`
+
+presentation.xml repeats a slide id.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation finds two <p:sldId> entries with the same id.
+- **Action:** Give every <p:sldId> a unique id or regenerate the package.
+
+### `OPC_MALFORMED_XML`
+
+A PPTX XML part is malformed.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation cannot parse a package XML part.
+- **Action:** Regenerate or repair the malformed XML part.
+
+### `OPC_MISSING_CONTENT_TYPE`
+
+A PPTX part has no content type.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation finds a part without a matching content-type declaration.
+- **Action:** Add the correct content-type declaration or regenerate the package.
+
+### `OPC_MISSING_CONTENT_TYPE_OVERRIDE`
+
+A required PPTX content-type override is absent.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation finds a part that needs an explicit override.
+- **Action:** Add the missing override to [Content_Types].xml or regenerate the package.
+
+### `OPC_MISSING_ELEMENT`
+
+A required OOXML element is absent.
+
+- **Severity:** refuse
+- **When emitted:** PPTX package validation cannot find a mandatory XML element.
+- **Action:** Regenerate the affected part with the required element.
+
+### `OPC_MISSING_PART`
+
+A required PPTX package part is missing.
+
+- **Severity:** refuse
+- **When emitted:** OPC validation cannot find a referenced package part.
+- **Action:** Regenerate the deck or restore the missing part and its relationship.
+
+### `OUTPUT_DIR`
+
+The output directory is missing or not writable.
+
+- **Severity:** refuse
+- **When emitted:** The engine cannot create or write to the requested output directory.
+- **Action:** Pass a writable --output directory. Check directory permissions and available disk space.
+
+### `OUTPUT_VALIDATION_ERROR`
+
+The generated PPTX failed structural output validation.
+
+- **Severity:** refuse
+- **When emitted:** Post-generation validate-output finds the produced .pptx structurally invalid.
+- **Action:** Report the failure with the offending deck for diagnosis. Re-run with a simpler deck to isolate the slide that triggers it.
+
+### `OVERLAY_FAILED`
+
+Rendering an annotated overlay failed.
+
+- **Severity:** refuse
+- **When emitted:** A preview/examine overlay (the annotated SVG/PNG) could not be produced.
+- **Action:** Retry; the underlying report is still produced without the overlay. Check that the overlay inputs (layout geometry) resolved.
+
+### `PATCH_ERROR`
+
+A deck patch could not be applied to the presentation.
+
+- **Severity:** refuse
+- **When emitted:** apply_deck_patch / the dry-run patch path fails while applying an operation — usually a path that does not exist in the target deck, or an operation shape the patch format does not accept.
+- **Action:** Re-read the target deck and confirm every patch path resolves against it (slide indices are 0-based). Apply the operations one at a time to find which one fails; the message carries the underlying error.
+
+### `PATTERN_ERROR`
+
+A pattern failed to expand.
+
+- **Severity:** refuse
+- **When emitted:** Pattern expansion returns an error from bad values or an internal failure.
+- **Action:** Validate the pattern values with validate_pattern. Inspect the contract via show_pattern and correct the values.
+
+### `READ_FAILED`
+
+The input deck or a referenced file could not be read.
+
+- **Severity:** refuse
+- **When emitted:** Reading the deck JSON or a referenced file fails (I/O error or permissions).
+- **Action:** Check the path and file permissions. Confirm the deck JSON is present and well-formed.
+
+### `RENDER_FAILED`
+
+Rendering the deck to PPTX or images failed.
+
+- **Severity:** refuse
+- **When emitted:** A render step (OOXML assembly or image conversion) returns an error.
+- **Action:** Read the message for the failing render stage. For image output, confirm LibreOffice and ImageMagick are available. If the message says LibreOffice produced no PDF, the deck is not the problem: close any open LibreOffice window and retry the call.
+
+### `REQUIRED`
+
+A required field of the request payload is absent or empty.
+
+- **Severity:** refuse
+- **When emitted:** Payload validation (preview, patch, repair, dry-run) finds a required field missing — e.g. a presentation with no template, or with an empty slides array.
+- **Action:** Supply the field named in the finding's path. For "template", call list_templates to pick a valid name; for "slides", supply at least one slide object.
+
+### `RESUME_TOKEN_MISMATCH`
+
+The resume token does not match the current deck or loop state.
+
+- **Severity:** refuse
+- **When emitted:** An auto-repair or make-deck continuation receives a stale or unrelated token.
+- **Action:** Restart the loop with the current deck and its matching resume token.
+
+### `RESUME_TOKEN_NOT_FOUND`
+
+The resume_token is unknown or has expired.
+
+- **Severity:** refuse
+- **When emitted:** An auto-repair or make-deck continuation passes a resume_token the server has no live session for (never issued, expired, or evicted).
+- **Action:** Start a fresh run without resume_token; resumable sessions are short-lived, so resume promptly.
+
+### `ROTATED_ACCENT_UNREADABLE`
+
+accent_strategy=rotate cycles through the template's safe accents only; some theme accents are excluded as unreadable under lt1 body text or reserved for negative meaning.
+
+- **Severity:** review
+- **When emitted:** A deck uses accent_strategy=rotate on a template where at least one theme accent cannot carry normal-size lt1 text (and no dark ink reads on it) or is the negative semantic accent. Reported once per deck at path /accent_strategy (semantic: meta.accent_strategy), listing the pattern slides that rotate and the safe set they cycle through.
+- **Action:** Informational: rotation already spreads slides evenly over the safe set, so no fill is unreadable. If the safe set is too small to give real variety, use accent_strategy primary (or section-keyed for chaptered decks) instead of rotate. Supply an explicit accent/semantic_accent on a pattern when its colour carries meaning.
+
+### `SEMANTIC_BRIDGE_TOTAL_MISMATCH`
+
+A bridge total contradicts the running sum of the columns before it.
+
+- **Severity:** review
+- **When emitted:** semantic validation walks a bridge's columns and finds a "total" column after deltas whose value differs from the running sum by more than rounding (0.5% of the larger magnitude). The waterfall draws the authored total, so the walk visibly does not add up. Promoted to an error under strict validation.
+- **Action:** Correct the total at path, or the deltas before it, so the walk adds up. Use a "subtotal" column with no value to have the engine compute the running total.
+
+### `SEMANTIC_DUPLICATE_CALLOUT`
+
+The takeaway competes with this slide's own conclusion band.
+
+- **Severity:** review
+- **When emitted:** An executive_summary takeaway sits beside bottom_line (or recommendation), or a decision takeaway beside recommendation. A slide has one conclusion band: a repeated takeaway is shown once, and on the exec-summary / numbered-option visuals a distinct takeaway is moved to the speaker notes instead of rendering as a second stacked band.
+- **Action:** Drop the takeaway: the bottom line or recommendation is the slide's conclusion. Or merge what the takeaway adds into the bottom line / recommendation.
+
+### `SEMANTIC_EVIDENCE_VISUAL_MISSING`
+
+A market-analysis deck has no data-bearing evidence visual.
+
+- **Severity:** review
+- **When emitted:** deck-rhythm analysis finds a market_analysis deck of at least five slides with no chart_insight, table, kpi_snapshot, bridge, or sourced stat. Promoted to an error under strict validation.
+- **Action:** Add a chart_insight, table, kpi_snapshot, bridge, or sourced stat that supports a claim in the narrative. Use source on the slide so readers can assess the evidence.
+
+### `SEMANTIC_PATTERN_NOT_AVAILABLE`
+
+A slide's pattern / layout override names a composition its kind cannot compile to, so the override is ignored.
+
+- **Severity:** review
+- **When emitted:** semantic validation finds a "pattern" or "layout" on a slide whose value is not one of that kind's compositions. The compiler keeps its own choice and the override does nothing; before this code it did nothing SILENTLY, so an agent varying a monotonous run (analyze_deck_rhythm's "break this run") could not tell its attempt had been dropped. Promoted to an error under strict validation.
+- **Action:** Use one of the values in fix.params.allowed, which is the list for this kind. Call list_slide_kinds and read the kind's compositions[] to see every pattern / layout it accepts and why each exists. Or remove the override and let the compiler choose — that is what is happening either way.
+
+### `SEMANTIC_RECOMMENDATION_OUTSCORED`
+
+An option matrix's recommended option scores below another option, so the slide argues against its own recommendation.
+
+- **Severity:** review
+- **When emitted:** semantic validation finds an option_matrix whose recommended option's total score (Harvey 0–4 or RAG red/amber/green, summed across criteria) is below another option's. Text-scale matrices and rows with an unreadable score are not compared. The slide still renders. Promoted to an error under strict validation.
+- **Action:** Check the scores: a recommendation normally leads the matrix it closes. If it wins on one decisive criterion, set decisive_criterion so the highlighted column says why. Otherwise recommend the option that scores highest.
+
+### `SEMANTIC_REFERENCE_UNRESOLVED`
+
+A slide field names an option, criterion, or section that does not exist on the slide, so its highlight or marker is not drawn.
+
+- **Severity:** review
+- **When emitted:** semantic validation finds an option_matrix recommended / decisive_criterion (or their aliases) that matches no option name or criterion label and is not an in-range 0-based index, or an agenda current section that is neither an in-range 1-based number nor a section title. The slide still renders, without the highlight. Promoted to an error under strict validation.
+- **Action:** Use the exact option name / criterion label / section title (case-insensitive), or an in-range index. Or remove the reference if nothing should be highlighted.
+
+### `SEMANTIC_REQUIRED`
+
+A required field is missing from the semantic deck spec.
+
+- **Severity:** refuse
+- **When emitted:** semantic validation finds a required field absent — e.g. meta.title, a slide's kind-specific required payload, or a chart_insight series.
+- **Action:** Add the field named in missing_path to the semantic spec (path is the object it belongs in). Consult the semantic schema (json2pptx semantic schema) for the required fields of each slide kind.
+
+### `SEMANTIC_REQUIRED_LAYOUT_DUPLICATE`
+
+meta.required_layouts lists the same canonical layout more than once.
+
+- **Severity:** refuse
+- **When emitted:** semantic validation normalizes canonical layout IDs and finds a duplicate.
+- **Action:** Remove the duplicate value; one constraint covers the whole deck.
+
+### `SEMANTIC_REQUIRED_LAYOUT_MISSING`
+
+A required layout lacks a compatible slide or is unavailable in the selected template.
+
+- **Severity:** refuse
+- **When emitted:** layout-coverage planning cannot assign a required canonical layout safely, or template analysis cannot resolve that canonical layout.
+- **Action:** Add a semantic slide compatible with the missing layout, then re-run semantic explain. If the template lacks the layout, choose a compatible template or remove that requirement. Keep the story outline intact; do not replace it with one generated slide per layout.
+
+### `SEMANTIC_REQUIRED_LAYOUT_UNKNOWN`
+
+meta.required_layouts contains an unknown canonical layout ID.
+
+- **Severity:** refuse
+- **When emitted:** semantic validation finds a required_layouts value outside the canonical layout vocabulary.
+- **Action:** Use one of the canonical layout IDs listed in the finding.
+
+### `SEMANTIC_RHYTHM_CONTINUATION_SPLIT`
+
+Another slide sits between the parts of a continued exhibit.
+
+- **Severity:** review
+- **When emitted:** two slides whose titles mark them as parts of one exhibit ("Savings by lever (1/2)" and "(2/2)", or a trailing "(cont.)") are separated by up to three other slides, typically a section divider inserted to break a run. The parts are one unit of the argument, and a divider between them labels the second part with the wrong section. Promoted to an error under strict validation.
+- **Action:** Move the slide in between before the first part or after the last part. Continuation parts never count as a monotony run, so no divider is needed between them.
+
+### `SEMANTIC_RHYTHM_DENSITY`
+
+Three or more consecutive slides are content-dense.
+
+- **Severity:** review
+- **When emitted:** deck-rhythm analysis finds a run of 3+ adjacent heavy-density slides, which fatigues the audience. The message and evidence.run name the slides of the run; evidence.insert_before is the slide to break it in front of (the run's third). Promoted to an error under strict validation.
+- **Action:** Insert a lighter slide (a section divider, a single statistic, or a pull quote) before the slide evidence.insert_before names, or move a lighter slide there. Split a dense slide's content across two slides so each carries less.
+
+### `SEMANTIC_RHYTHM_MONOTONY`
+
+Three or more consecutive slides share the same visual family.
+
+- **Severity:** review
+- **When emitted:** deck-rhythm analysis finds a run of 3+ adjacent slides that compile to the same visual family (e.g. three KPI slides back-to-back), which reads as monotonous. A table, a card grid (team) and numbered action rows (next_steps) are families of their own, not text. The parts of a continued exhibit (titles ending (1/2), (2/2) or (cont.)) count once, so a table split across two slides is not a run of two. Promoted to an error under strict validation.
+- **Action:** Vary the slide kinds across the run, or move a section divider into the middle of it. Reorder slides so similar treatments are not adjacent.
+
+### `SEMANTIC_RHYTHM_SECTIONING`
+
+A long deck has no section dividers to break it into chapters.
+
+- **Severity:** review
+- **When emitted:** deck-rhythm analysis finds a deck of more than 12 body slides (cover, agenda, closing and other structural slides not counted) with no section/transition slide. Not emitted when meta.chrome sets tracker: false. Promoted to an error under strict validation.
+- **Action:** Add one or more `section` slides to group the deck into chapters. Or set meta.chrome.tracker: false when the deck is meant to run without chapters.
+
+### `SEMANTIC_RHYTHM_SYNTHESIS`
+
+An executive deck carries no synthesis or decision slide.
+
+- **Severity:** review
+- **When emitted:** deck-rhythm analysis finds an executive-archetype deck (e.g. board_update, qbr, strategy_proposal) with no executive_summary or decision slide to land the message. Promoted to an error under strict validation.
+- **Action:** Add an `executive_summary` slide near the front or a `decision` slide near the end.
+
+### `SEMANTIC_UNKNOWN_ARCHETYPE`
+
+meta.archetype is not one of the registered deck archetypes.
+
+- **Severity:** refuse
+- **When emitted:** semantic validation finds meta.archetype set to a value outside the registered archetype vocabulary.
+- **Action:** Set meta.archetype to a registered archetype, or remove it. List the registered archetypes via json2pptx semantic schema.
+
+### `SEMANTIC_UNKNOWN_FIELD`
+
+A field in the semantic deck spec is not recognized (top-level, meta, slide payload, list entry, or chart object).
+
+- **Severity:** refuse
+- **When emitted:** semantic parsing finds a top-level key other than meta or slides (most often a stale spec using deck instead of meta), or validation finds a slide payload key, list-entry key (e.g. slides[i].kpis[j].valeu), or chart key that the kind's compiler never reads. This is a blocking error at every strictness level because the content would otherwise be dropped silently. The path names the dropped key; fix.params.did_you_mean names the likely intended key.
+- **Action:** Rename the unknown field to the suggested key (fix.params.did_you_mean, e.g. deck -> meta, takeawy -> takeaway), or remove it. A semantic deck spec has exactly two top-level fields: meta and slides; each slide kind accepts exactly the fields in list_slide_kinds item_schema (see json2pptx semantic schema).
+
+### `SEMANTIC_UNKNOWN_KIND`
+
+A slide declares a kind that is not in the semantic vocabulary.
+
+- **Severity:** refuse
+- **When emitted:** semantic validation finds a slide whose kind is missing or not one of the registered slide kinds.
+- **Action:** Set the slide's kind at path to remediation.primary.params.did_you_mean when it is given; hosted_type says the name was a chart or diagram type and that kind hosts it. Otherwise choose from evidence.available. List the registered kinds via json2pptx semantic schema.
+
+### `SEMANTIC_VISUAL_FAMILY_NARROW`
+
+A longer deck uses too few non-structural visual families.
+
+- **Severity:** review
+- **When emitted:** deck-rhythm analysis finds a deck of at least seven slides with fewer than three distinct non-structural visual families. Structural and raw passthrough slides do not count. Promoted to an error under strict validation.
+- **Action:** Use compatible semantic kinds from another family, such as chart_insight, timeline, process, comparison, or kpi_snapshot. Choose the family because it expresses the slide's evidence or relationship, rather than adding decoration.
+
+### `SEMANTIC_WEAK_CONTENT`
+
+A field still contains placeholder or filler text.
+
+- **Severity:** review
+- **When emitted:** semantic validation finds placeholder markers (TBD, lorem ipsum, TODO, FIXME, placeholder) in a text field: a warning, promoted to an error under strict validation. Placeholder copy the product itself emitted — a plan draft's __FILL__, a recommend_visual recipe's "Replace with the action title …", alt text or sample source, a suggested patch's "<…>" hint — is a blocking error in any text field, meta included; evidence.placeholder names the marker and render_deck_spec leads deterministic_blocking_reasons with "exemplar_content".
+- **Action:** Replace the placeholder text at path (every entry of paths, when given) with real content.
+
+### `SETTINGS_ERROR`
+
+A template-settings operation failed.
+
+- **Severity:** refuse
+- **When emitted:** Reading or writing template settings returns an error.
+- **Action:** Check the settings store path and permissions. Retry the operation.
+
+### `SETTINGS_WRITE_DISABLED`
+
+Writing template settings is disabled.
+
+- **Severity:** refuse
+- **When emitted:** A write to template settings is attempted while settings writes are disabled by configuration.
+- **Action:** Enable settings writes in the server configuration. Run in an environment that permits settings writes.
+
+### `SLIDE_COUNT_MISMATCH`
+
+Slide references and slide files disagree in count.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation compares presentation slide IDs with package slide parts.
+- **Action:** Regenerate the presentation or repair the slide list and relationships.
+
+### `STALE_REVISION`
+
+The deck changed since this call loaded it, so the request was not applied.
+
+- **Severity:** refuse
+- **When emitted:** A deck_id patch loses a race with another call on the same handle, repair_slide gets an expected_revision that is no longer current, a stored deck expires mid-call, or generate_presentation replays an idempotency_key cached for an earlier revision.
+- **Action:** Reload the deck by deck_id (no patch) to get its current revision, re-apply the edit, and retry; for generate_presentation use a fresh idempotency_key.
+
+### `STRICT_FIT`
+
+Strict-fit mode refused the deck because content overflows.
+
+- **Severity:** refuse
+- **When emitted:** generate runs with strict_fit enabled and a fit finding carries a refuse-level action.
+- **Action:** Fix the underlying fit finding (split or shorten the offending content). Or lower strict-fit to warn to allow the engine's shrink/truncate fallback.
+
+### `STRUCTURE_AND_SLIDES`
+
+The deck sets both "structure" and "slides", which are mutually exclusive.
+
+- **Severity:** refuse
+- **When emitted:** A presentation carries the top-level "structure" envelope AND a top-level "slides" array. structure expands INTO a slide sequence, so supplying both is ambiguous.
+- **Action:** Keep "structure" and remove "slides" to let the envelope generate the sequence (cover, sections, dividers, closing). Or keep "slides" and remove "structure" to author the flat sequence yourself.
+
+### `STYLE_NOT_FOUND`
+
+A referenced named style is not defined.
+
+- **Severity:** refuse
+- **When emitted:** A table/cell style_id or named style cannot be resolved against the template.
+- **Action:** List the template's styles via list_templates and pick one. Or drop the style reference to fall back to the template default.
+
+### `SVG_INVALID_ROOT`
+
+Inline SVG data has an invalid root element.
+
+- **Severity:** refuse
+- **When emitted:** svg_data does not begin with a valid <svg> root element.
+- **Action:** Ensure the markup is a well-formed SVG document with an <svg> root.
+
+### `SVG_PARSE_ERROR`
+
+Inline SVG data could not be parsed.
+
+- **Severity:** refuse
+- **When emitted:** SVG XML parsing fails on the supplied svg_data.
+- **Action:** Fix the SVG markup; validate it with an SVG tool.
+
+### `SVG_UNSAFE_XML`
+
+Inline SVG contains unsafe XML (DTD, entities, or external references).
+
+- **Severity:** refuse
+- **When emitted:** The SVG safety scan finds disallowed XML constructs that could trigger entity expansion or external fetches.
+- **Action:** Remove DOCTYPE/entity declarations and external references from the SVG. Sanitize the SVG with a trusted tool before embedding.
+
+### `TEMPLATES_DIR`
+
+The templates directory is missing or unreadable.
+
+- **Severity:** refuse
+- **When emitted:** The configured templates directory does not exist or cannot be listed.
+- **Action:** Pass a valid --templates-dir (MCP: templates_dir). Confirm the directory exists and contains .pptx files.
+
+### `TEMPLATE_ASPECT_RATIO_INVALID`
+
+The metadata aspect_ratio is not in WIDTH:HEIGHT form.
+
+- **Severity:** review
+- **When emitted:** validate-template finds an aspect_ratio that does not match a numeric WIDTH:HEIGHT pattern (e.g. "16:9"). The default 16:9 is used instead.
+- **Action:** Set aspect_ratio to a numeric ratio like "16:9" or "4:3" in the template metadata.
+
+### `TEMPLATE_ERROR`
+
+The template could not be parsed or is structurally invalid.
+
+- **Severity:** refuse
+- **When emitted:** Template parsing fails — corrupt archive, missing theme, or unreadable slide layouts.
+- **Action:** Run validate-template to see the structural problem. Re-export the template, or fall back to a bundled template.
+
+### `TEMPLATE_GRID_INVALID`
+
+A template metadata grid value is out of range and is ignored.
+
+- **Severity:** review
+- **When emitted:** validate-template finds a grid key outside its accepted range: margin_pct 0-25, columns 0-24, gutter_pt 0-72, title_gap_pt 0-144. The engine ignores that key and applies its default (placeholder-derived margin, 12 columns, 8pt gutter, 18pt title gap).
+- **Action:** Set the key inside its range in the template metadata's grid block, or remove it to take the engine default.
+
+### `TEMPLATE_LAYOUT_HINT_INVALID`
+
+A layout hint in the metadata is malformed (empty key or a negative budget).
+
+- **Severity:** review
+- **When emitted:** validate-template finds a layout_hints entry with an empty key, a negative max_bullets, or a negative max_chars. The malformed hint is ignored.
+- **Action:** Give every layout_hints entry a non-empty layout key. Set max_bullets and max_chars to non-negative integers (0 means "no hint").
+
+### `TEMPLATE_METADATA_PARSE`
+
+The template's embedded metadata file could not be read or parsed.
+
+- **Severity:** review
+- **When emitted:** validate-template reads ppt/go-slide-creator-metadata.json and finds it missing, unreadable, or not valid JSON. The template still works using inferred defaults.
+- **Action:** Regenerate the template's metadata with mktemplate, or fix the malformed JSON in ppt/go-slide-creator-metadata.json. If the template was hand-authored without metadata, ignore this warning — layout capabilities are inferred from the slide layouts.
+
+### `TEMPLATE_METADATA_VERSION`
+
+The template metadata declares a version outside the supported range.
+
+- **Severity:** review
+- **When emitted:** validate-template parses the metadata version and finds it below the minimum or above the maximum supported by this build.
+- **Action:** Re-export the template with a compatible tool version, or edit the "version" field in the metadata to a supported value. Upgrade json2pptx if the template was produced by a newer release.
+
+### `TEMPLATE_NOT_FOUND`
+
+The named template could not be found in the templates directory.
+
+- **Severity:** refuse
+- **When emitted:** Template resolution cannot find a .pptx matching the requested template name.
+- **Action:** Call list_templates and pick a listed name. Confirm --templates-dir points at the directory holding the .pptx files.
+
+### `TEMPLATE_SECTION_NUMBER_NAMING`
+
+A section-header layout has a decorative number placeholder that is not named "Section Number".
+
+- **Severity:** review
+- **When emitted:** validate-template finds, on a section-header layout, a small high-position body placeholder with a large font (the signature of a decorative number frame) that is not named "Section Number". The engine's normalizer skips shapes named "Section Number"; a misnamed one is treated as body text and corrupted.
+- **Action:** Rename the placeholder to "Section Number" in the template's slide layout so the engine preserves it. If the placeholder is genuinely body text, ignore this warning.
+
+### `UNKNOWN_PARAMETER`
+
+A tool call supplied an argument the tool does not accept.
+
+- **Severity:** refuse
+- **When emitted:** Every MCP tool call is checked against the tool's input schema before the handler runs; an argument name the schema does not declare is rejected instead of being silently ignored (e.g. plan_deck slide_count, whose real name is slide_budget).
+- **Action:** Rename the argument at evidence.path to fix.params.did_you_mean (also named in the message), or remove it. The message lists every accepted argument; tools/list carries the full input schema.
+
+### `UNKNOWN_PATTERN`
+
+A pattern name is not registered.
+
+- **Severity:** refuse
+- **When emitted:** Pattern expansion receives a name not present in the pattern registry.
+- **Action:** Call list_patterns and pick a registered name. Use recommend_pattern to find a pattern that fits the content.
+
+### `UNKNOWN_TABLE_STYLE_ID`
+
+A table references a style_id the template does not define.
+
+- **Severity:** refuse
+- **When emitted:** Table generation cannot find the requested style_id in the template's table_styles registry.
+- **Action:** Pick a style_id from list_templates → table_styles. Or omit style_id to use the template default.
+
+### `UNKNOWN_THEME_COLOR`
+
+A semantic color name is not part of the template theme.
+
+- **Severity:** refuse
+- **When emitted:** Color resolution receives a scheme name outside the accent1..accent6 / lt1 / dk1 / lt2 / dk2 set.
+- **Action:** Use a valid scheme name; run resolve-theme to inspect the template's palette. Avoid raw hex unless the template's brand allowlist permits it.
+
+### `UNSUPPORTED`
+
+The requested operation or option is not supported.
+
+- **Severity:** refuse
+- **When emitted:** A tool receives an operation or feature it does not implement (e.g. an unknown deck-patch op kind).
+- **Action:** Use one of the supported values listed in fix.params.allowed. Check get_capabilities for the supported operation set.
+
+### `UNSUPPORTED_MODE`
+
+The requested score_deck mode is not implemented.
+
+- **Severity:** refuse
+- **When emitted:** score_deck receives mode 'with_heuristics' (reserved) or an unrecognized mode.
+- **Action:** Omit mode to use 'deterministic'; for vision-based visual QA render thumbnails and call inspect_slide_images.
+
+### `UNUSABLE_GEOMETRY`
+
+A template body placeholder has no usable bounds.
+
+- **Severity:** refuse
+- **When emitted:** Template profiling resolves zero or negative body-placeholder dimensions.
+- **Action:** Give the body placeholder positive dimensions in the template.
+
+### `URL_RESOLVER_INIT`
+
+The URL asset resolver failed to initialize.
+
+- **Severity:** refuse
+- **When emitted:** The remote-asset resolver cannot start (e.g. cache directory or configuration problem).
+- **Action:** Check the resolver's cache directory and permissions. Retry; reference assets locally if remote fetch is unavailable.
+
+### `VALIDATION_FAILED`
+
+Input validation failed with at least one error-severity finding.
+
+- **Severity:** refuse
+- **When emitted:** validate_input (or the validate gate before generation) reports an error-severity problem.
+- **Action:** Read each finding in the envelope and fix it. Re-run validate until ok is true, then generate.
+
+### `VISION_INSPECTION_FAILED`
+
+A slide's vision inspection failed, so it produced no findings.
+
+- **Severity:** refuse
+- **When emitted:** A Claude vision call during inspect_slide_images (or the visual_qa loop) returned an API error, a transport/decode failure, or malformed output for that slide. The slide was NOT inspected — zero findings here means the inspection failed, not that the slide is clean.
+- **Action:** Treat the inspection as inconclusive for the affected slide(s) named in inspection_status / failed_slide_count — do not ship on the basis of zero findings. Retry the inspection; if it recurs, fall back to the heuristic inspector (unset ANTHROPIC_API_KEY) to degrade gracefully.
+
+### `VISION_TIMEOUT`
+
+A vision inspection API call exceeded its deadline.
+
+- **Severity:** refuse
+- **When emitted:** A Claude vision request during inspect_slide_images (or the visual_qa loop) ran past its per-request or total inspection deadline.
+- **Action:** Retry the inspection — a single stalled API call is usually transient. If it recurs, reduce parallelism or fall back to the heuristic inspector (unset ANTHROPIC_API_KEY) to degrade gracefully.
+
+### `WEAK_CONTENT`
+
+A slide still carries exemplar copy instead of the deck's content.
+
+- **Severity:** refuse
+- **When emitted:** A slide's text matches known placeholder copy — lorem ipsum, "Click to add title", "Presentation Title", a masked number like "XX%" or "$X.XM", a whole value of "TBD" / "N/A", or a pattern's own exemplar label ("Card 1", "Description 2"). Structural strings (placeholder IDs, geometry names) are exempt. It is the raw-deck twin of the semantic compiler's SEMANTIC_WEAK_CONTENT, which only ever saw DeckSpec input.
+- **Action:** Replace the named strings with the deck's real message — the finding lists up to three samples per slide. A make_deck skeleton is exemplar by design: fill it in with repair_slide before shipping (it reports content_status: exemplar_skeleton for the same reason).
+
+### `ZERO_EXTENT`
+
+A shape has zero width or height.
+
+- **Severity:** refuse
+- **When emitted:** OOXML validation finds a zero-sized shape extent.
+- **Action:** Give the shape positive dimensions.
+
+### `accent_dominance`
+
+One accent color is used on nearly every accented slide, so accent carries no signal.
+
+- **Severity:** review
+- **When emitted:** score_deck finds a single accent dominating the share of accented slides. The message names the accent and its share.
+- **Action:** On a chaptered deck set the deck-level "accent_strategy" to "section-keyed"; inside grid slides vary cells with overrides.cell_accent_mode. Use "rotate" only when the template's safe-accent set is large: it cycles through the accents light text reads on, and validation reports the excluded ones once (ROTATED_ACCENT_UNREADABLE). Or set per-slide accents deliberately, reserving one accent for emphasis.
+
+### `chart.all_zero_series`
+
+A chart series contains only zero values and would render as a flat line.
+
+- **Severity:** review
+- **When emitted:** svggen dry-render finds a series whose values are all zero.
+- **Action:** Verify the data — all-zero series often signals a column mismatch. Or drop the series from the chart.
+
+### `chart.auto_log_scale_applied`
+
+Legacy svggen finding for an automatically applied log scale (no longer emitted).
+
+- **Severity:** info
+- **When emitted:** Only in reports generated before the bar-chart linear-default change.
+- **Action:** Regenerate the chart: current svggen keeps bar lengths linear unless style.scale is explicitly log.
+
+### `chart.currency_prefix_defaulted`
+
+Currency formatting omitted the currency symbol or code.
+
+- **Severity:** review
+- **When emitted:** svggen receives style.value_format.style=currency without prefix and renders the generic ¤ marker instead of guessing a currency.
+- **Action:** Set style.value_format.prefix to the intended symbol or code, such as $, €, £, or USD.
+
+### `chart.invalid_numeric`
+
+Chart data contains a value that cannot be parsed as a number.
+
+- **Severity:** review
+- **When emitted:** svggen dry-render finds a non-numeric value in a numeric column.
+- **Action:** Replace the value with a numeric one in chart_value.data. For missing values, decide between 0, null gap, or omitting the entry.
+
+### `chart.negative_on_log`
+
+A log-scale chart received a negative or zero value, which has no logarithm.
+
+- **Severity:** review
+- **When emitted:** svggen dry-render finds a non-positive value plotted on a logarithmic axis.
+- **Action:** Remove non-positive values from the data. Or switch to a linear axis via the chart style.
+
+### `chart.negative_pie_slice`
+
+A pie/donut chart received negative slice values, which were excluded.
+
+- **Severity:** review
+- **When emitted:** Chart rendering drops slices below zero because a part-to-whole chart cannot show a negative share.
+- **Action:** Remove or correct the negative values, or use a bar or waterfall chart for signed data.
+
+### `chart.overflow_suppressed`
+
+Chart elements that would overflow the cell were suppressed.
+
+- **Severity:** review
+- **When emitted:** svggen layout pass drops or clips elements that would extend beyond the cell.
+- **Action:** Widen the chart cell. Or reduce data/series count so the chart fits.
+
+### `chart.percent_scale_ambiguous`
+
+Percent formatting had to guess whether the values are fractions or percentage points.
+
+- **Severity:** review
+- **When emitted:** svggen receives style.value_format.style=percent without an explicit input_scale (or input_scale=auto). Warning when a formatted value exceeds 1 (preserved as percentage points: 41.2 → 41.2%); info when every value is within [-1,1] (read as fractions: 0.25 → 25%). fix.params names the field, the assumed scale and the options.
+- **Action:** Set style.value_format.input_scale to "percentage_points" when the numbers are already percents (0.25 → 0.25%, 41.2 → 41.2%). Or set it to "fraction" when 1 means 100% (0.412 → 41.2%, 1.2 → 120%).
+
+### `chart.scatter_label_skipped`
+
+Scatter-plot point labels were skipped because they would overlap.
+
+- **Severity:** info
+- **When emitted:** svggen layout pass omits scatter point labels to avoid overlap.
+- **Action:** Accept the omission, or remove duplicates so fewer labels collide.
+
+### `chart.wide_range_linear`
+
+A bar chart has a wide value range; the linear axis preserves bar-length encoding and value labels are enabled.
+
+- **Severity:** review
+- **When emitted:** Positive values in a non-stacked bar chart span at least 1000x and style.scale is not log.
+- **Action:** Keep the linear axis and visible value labels if exact magnitudes matter. Split the data into separate charts when the small bars need to be compared visually. Set style.scale to log only if a logarithmic comparison is intentional; the axis will be labelled.
+
+### `chart.zero_sum_pie`
+
+A pie/donut chart's slices sum to zero, producing a blank chart.
+
+- **Severity:** refuse
+- **When emitted:** svggen dry-render finds the sum of all pie slice values equals zero.
+- **Action:** Ensure at least one slice has a non-zero value. Or switch chart type if all-zero is intended.
+
+### `density_monotony`
+
+Every slide carries a similar content density, so the deck has no visual pacing.
+
+- **Severity:** review
+- **When emitted:** score_deck's density coefficient of variation across slides is low — content-heavy and content-light slides are not mixed.
+- **Action:** Alternate dense slides with light ones: follow a table or dense grid with a stat-hero, pull-quote, or section divider. Call analyze_deck_rhythm for the per-slide density figures behind this score.
+
+### `diagram.text_below_readable_min`
+
+Diagram text is below the readable size floor.
+
+- **Severity:** review
+- **When emitted:** Native diagram preflight predicts text too small to read at presentation size.
+- **Action:** Shorten labels, reduce diagram density, or increase its bounds.
+
+### `duplicate_title`
+
+Two or more slides carry the same title.
+
+- **Severity:** review
+- **When emitted:** score_deck's composition pass finds repeated slide titles, which makes the deck hard to navigate and suggests an unsplit topic.
+- **Action:** Differentiate the titles with a subtopic suffix ("Pricing — Plans", "Pricing — Margins"). If the slides genuinely duplicate each other, merge them.
+
+### `invalid_color`
+
+A pattern override or theme_override has an invalid color.
+
+- **Severity:** refuse
+- **When emitted:** Validation rejects a pattern fill/line color, or a theme_override.colors value that is not six hex digits.
+- **Action:** Use a six-digit hex color (#RRGGBB); pattern overrides also accept a supported theme scheme color name.
+
+### `invalid_enum`
+
+A pattern field has an unsupported enum value.
+
+- **Severity:** refuse
+- **When emitted:** Pattern validation finds an unknown style, border, accent mode, or chart type.
+- **Action:** Use one of the allowed values named in the finding's message.
+
+### `layout_synthesized`
+
+A missing template layout was synthesized.
+
+- **Severity:** review
+- **When emitted:** Template analysis creates a fallback layout from a base layout.
+- **Action:** Review the generated slide for brand fidelity or add the missing native layout to the template.
+
+### `legacy_authoring_form`
+
+A content item uses the legacy "value" field instead of the typed field for its content type.
+
+- **Severity:** review
+- **When emitted:** Validation finds "value" on a content item whose type has a dedicated typed field. It still works, but the typed field is the supported authoring form.
+- **Action:** Rename "value" to the typed field the message names for this content type.
+
+### `length_mismatch`
+
+Chart categories and values have different lengths.
+
+- **Severity:** refuse
+- **When emitted:** Pattern validation finds a secondary chart whose category count differs from its value count.
+- **Action:** Supply one category for each value or omit categories.
+
+### `missing_title_budget`
+
+A title-shortening repair needs a measured or explicit character budget.
+
+- **Severity:** review
+- **When emitted:** repair_slide receives shorten_title without max_chars, max_length, or max_words. The former 50-character default could leave a short but wrapped title unchanged, creating a repair loop.
+- **Action:** Use max_chars from the title_wraps or TITLE_OVERFLOW finding's fix.params. Or supply an explicit max_length after reviewing the title and its placeholder. Do not retry the same parameterless fix; it will not change the title.
+
+### `navigation_requires_authoring`
+
+Bullet continuation cannot safely shift numeric slide destinations.
+
+- **Severity:** refuse
+- **When emitted:** split_bullets would expand a deck containing internal numeric slide links, or navigation cannot be inspected safely.
+- **Action:** Author sibling slides explicitly and update numeric destinations for every internal slide link; preserve all source text and render every resulting page. Do not bypass the navigation refusal.
+
+### `no_emoji_violation`
+
+Deck content contains an emoji codepoint, which is rejected everywhere in the input.
+
+- **Severity:** refuse
+- **When emitted:** The boundary validator in validate_input / generate_presentation finds an emoji or pictographic character in any authored string — icon fields, pattern values, shape text, titles, bullets, headers, captions, table cells.
+- **Action:** Remove the emoji from the field named in the finding's path. For an icon, use a bundled SVG icon name instead (call list_icons), or supply path / url / svg_data. Plain Unicode symbols outside the emoji range (arrows like → and ←) are still allowed in text, but not in icon fields.
+
+### `palette_drift`
+
+Rendered colors drift from the template theme palette.
+
+- **Severity:** review
+- **When emitted:** The palette audit finds a rendered color outside its allowed theme-color tolerance.
+- **Action:** Inspect the reported color pair and replace the drifting color with the nearest intended theme color.
+
+### `pattern_run`
+
+The same pattern repeats across several consecutive slides, flattening the deck's rhythm.
+
+- **Severity:** review
+- **When emitted:** score_deck finds a run of consecutive slides using one pattern. The message names the pattern, the run length, and the slide index range.
+- **Action:** Swap one slide in the run to a different pattern; call recommend_visual for the slide's intent to rank alternatives. An emphasis slide (stat-hero, pull-quote) in the middle of a run breaks it effectively.
+
+### `redundant_field`
+
+Both a typed content field and the legacy "value" field are set; the typed field wins and "value" is ignored.
+
+- **Severity:** review
+- **When emitted:** A content item carries e.g. both text_value and value. The engine uses the typed field, so the "value" content never renders.
+- **Action:** Remove the "value" field and keep the typed one named in the message (text_value, bullets_value, table_value, chart_value, …). If the "value" content is the one you wanted, move it into the typed field.
+
+### `semantic_review_required`
+
+A text-shortening repair was refused because it would have removed meaning.
+
+- **Severity:** review
+- **When emitted:** reduce_text / shorten_title detect that the truncation point would drop a number, unit, negation, or qualifier — changing what the sentence claims — so the fix is reported un-applied rather than silently altering the meaning.
+- **Action:** Rewrite the text yourself so it fits without losing the number, unit, or negation. Or split the content across two slides / cells so the full sentence survives. Do not re-request the same automatic truncation; it will refuse again for the same reason.
+
+### `style_collision`
+
+Two style sources set the same property on one element, so one silently loses.
+
+- **Severity:** review
+- **When emitted:** Validation finds an explicit per-element style that collides with a deck-level default or a table style — e.g. a cell_style default and an inline cell style setting the same fill.
+- **Action:** Decide which source should own the property and remove it from the other. Prefer the deck-level "defaults" block for deck-wide choices and inline styles only for genuine exceptions.
+
+<!-- END GENERATED: describe_finding reference -->

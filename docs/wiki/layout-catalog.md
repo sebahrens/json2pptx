@@ -3,7 +3,7 @@ title: "Layout catalog: every kind, pattern, chart and diagram, and how to see i
 type: documentation
 summary: "json2pptx guide to layout catalog"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -33,9 +33,9 @@ rules are in [slide-estate-and-segments.md](slide-estate-and-segments.md).
 | A gallery of every pattern on every template | CLI `json2pptx preview-patterns -templates-dir templates -output assets/pattern-previews` | local PNGs (gitignored); the MCP never returns pattern previews as paths |
 
 `show_pattern`, `list_slide_kinds`, `recommend_visual` and `plan_deck` are in
-the default `deckspec` profile; `list_patterns`, `expand_pattern`,
-`explain_deck_spec` and `list_deck_archetypes` are hidden but callable by
-name (`get_started(tool:"explain_deck_spec")` returns the schema).
+the default `deckspec` profile, together with `explain_deck_spec` and
+`list_deck_archetypes`. `list_patterns` and `expand_pattern` remain hidden
+but callable by name (`get_started(tool:"expand_pattern")` returns its schema).
 
 ## 2. DeckSpec kinds
 
@@ -77,6 +77,32 @@ field that caused it.
 | `closing` | the template's closing layout: short title + subtitle, or a few bullets | — | — |
 | `regions` | one title over 2–4 typed regions (`chart`, `stat`, `kpis`, `table`, `timeline`, `image`, `text`, `cycle`, `process`), `arrangement` one of ten | see [slide-estate-and-segments.md](slide-estate-and-segments.md) | — |
 | `raw_json2pptx` | a raw slide verbatim: a `pattern`, a `compose` envelope or a `shape_grid` | the escape hatch for raw-only patterns and the svggen / native diagrams | — |
+
+Additional kinds use measured fit refusals rather than degrading to bullets.
+
+| Kind | Content contract | Pattern | Fit behavior |
+|---|---|---|---|
+| `raci` | `roles` 2–6 and `activities` 3–10 `{activity, scores}`; each score R/A/C/I/-, exactly one A per row; printed legend. | `raci-matrix` | Measured fit refusal; preserve required content |
+| `status_board` | `columns` 2–5, `rows` 3–10 `{workstream, statuses, trend?, comment?}`; red/amber/green per column, trend up/flat/down. Used status inks require contrast; optional `rag_colors`. | `status-board` | Measured fit refusal; preserve required content |
+| `checklist` | `items` 3–10 `{label, state: done\|open\|blocked, detail?}`; states have text and symbols. | `checklist` | Measured fit refusal; preserve required content |
+| `prose_2col` | Exactly two `columns`, each `{heading?, paragraphs}` with 1–4 paragraphs; running prose rather than bullet fragments. | `prose-2col` | Measured fit refusal; preserve required content |
+| `ipo_flow` | Exactly three `boxes` `{heading, bullets}`; 2–5 bullets per input/process/output box. | `ipo-flow` | Measured fit refusal; preserve required content |
+| `three_horizons` | Exactly three `horizons` `{title, timeframe, items}`; 1–4 initiatives per band. | `three-horizons` | Measured fit refusal; preserve required content |
+| `sources` | `entries` 4–16 `{text, url?}`; numbered appendix references, measured at 10pt. | `sources-list` | Measured fit refusal; preserve required content |
+| `timeline_vertical` | `stops` 3–8 `{date, title, detail?}`; optional `alternating`, `highlight`. A timeline region also accepts `orientation: vertical` with 3–7 dated milestones and no ranges. | `timeline-vertical` | Measured fit refusal; preserve required content |
+| `spectrum` | `left_label`, `right_label`, 2–6 `markers` `{label, position}`; position 0–1, optional highlight. | `spectrum` | Measured fit refusal; preserve required content |
+| `issue_tree` | `nodes` 3–15 `{id, parent?, label, edge?, status?, value?}`; one root, parent before child, 2–4 levels; status confirmed/rejected/open. | `issue-tree` | Measured fit refusal; preserve required content |
+| `decision_tree` | Same explicit node contract, 2–3 levels, labelled branches and optional outcome value. | `decision-tree` | Measured fit refusal; preserve required content |
+| `stakeholder_map` | `points` 2–12 `{label, x, y, size?, status?}`, x/y 0–100, size 1–40; supporter/neutral/blocker status and used-status legend; `x_axis_label`, `y_axis_label`. | `stakeholder-map` | Measured fit refusal; preserve required content |
+| `bullet_chart` | `rows` 3–8 `{label, actual, target, unit?}`; finite nonnegative actual, positive target; actual bar and target tick on a shared row scale. | `progress-list` | Measured fit refusal; preserve required content |
+| `image_hero` | `image` with exactly one path/url, `headline` ≤160, optional eyebrow; `band: top\|bottom\|left` (default bottom). Full-slide image with native dark scrim and readable white text. Optional `takeaway` / `source` (≤200 each) stay inside the band; photo-overlapping automatic footer chrome is suppressed. On the raw path, slide/deck source and takeaway route into the same band; use `values.takeaway` instead of an external pattern callout. Use sparingly for opening or transitions. | `image-hero` | Measured fit refusal; preserve required content |
+| `fishbone` | `effect`, `categories`; Cause-and-effect analysis with 2–6 named cause categories | `fishbone-framework` | Measured fit refusal; preserve required content |
+| `heatmap` | `row_labels`, `col_labels`, `values`; Labeled rectangular numeric heatmap with at most 8 rows and columns | `numeric-heatmap` | Measured fit refusal; preserve required content |
+| `nine_box_talent` | `employees`; Talent portfolio with explicit low/medium/high performance and potential | `talent-nine-box` | Measured fit refusal; preserve required content |
+| `pestel` | `political`, `economic`, `social`, `technological`, `environmental`, `legal`; All six PESTEL dimensions with 1–5 explicit implications each | `pestel-framework` | Measured fit refusal; preserve required content |
+| `pyramid` | `tiers`; Stacked trapezoid hierarchy (3-5 tiers) | `pyramid` | Measured fit refusal; preserve required content |
+| `value_chain` | `steps`; Horizontal value chain: equal-width step columns each with a label box on top and a description below; supports per-step highlight | `value-chain` | Measured fit refusal; preserve required content |
+| `venn` | `circles`; Two or three overlapping sets with explicit item lists | `venn-framework` | Measured fit refusal; preserve required content |
 
 The consulting additions are listed with contracts and selection guidance in
 [Consulting visual additions](consulting-visual-additions.md): RACI, status
@@ -314,6 +340,22 @@ slides:
             - {label: Vendor C, value: 61, callout: "Best APIs; no regulated-industry reference in Europe"}
             - {label: Vendor D, value: 42, callout: "Lagging on security certifications"}
 ```
+
+### Additional native contracts
+
+These patterns complete the catalogue. Use `show_pattern(name)` for their
+closed values/overrides schemas and `expand_pattern` for actual fit.
+
+| Pattern | Via | Draws |
+|---|---|---|
+| `fishbone-framework` | `fishbone` | Cause-and-effect analysis with 2–6 named cause categories |
+| `kpi-3up` | `kpi_snapshot` | Three big-number KPI cards with short captions |
+| `kpi-4up` | `kpi_snapshot` | Four big-number KPI cards with short captions |
+| `kpi-5up` | `kpi_snapshot` | Five big-number KPI cards with short captions |
+| `numeric-heatmap` | `heatmap` | Labeled rectangular numeric heatmap with at most 8 rows and columns |
+| `pestel-framework` | `pestel` | All six PESTEL dimensions with 1–5 explicit implications each |
+| `talent-nine-box` | `nine_box_talent` | Talent portfolio with explicit low/medium/high performance and potential |
+| `venn-framework` | `venn` | Two or three overlapping sets with explicit item lists |
 
 ## 4. Charts and diagrams
 

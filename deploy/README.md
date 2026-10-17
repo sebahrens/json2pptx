@@ -93,7 +93,10 @@ HTTP initialization/search; unauthenticated HTTP requests returned 401.
 
 `docs/wiki` is the versioned source. The wrapper seeds runtime content once into
 `STATE/repository/wiki`, avoiding the installed engine's nested-root ingest bug.
-Every launch validates then ingests all runtime pages with `auto_commit=false`.
+First launch and runtime content changes validate, ingest and lint all pages with
+`auto_commit=false`. Unchanged launches reuse registration and the index. Content
+fingerprints detect edits even with preserved timestamps; missing indexes are
+rebuilt, and failed validation or lint prevents startup.
 MCP content writes stay in this runtime workspace. They never silently modify
 packaged files or the checkout; copy reviewed changes back into source explicitly.
 The wrapper warns when the bundled source fingerprint changes, preserving runtime
@@ -112,7 +115,9 @@ docker compose -f docker-compose.yml -f deploy/docker-compose.wiki.yml config --
 ```
 
 The smoke test runs the installed engine, initializes stdio MCP, lists real tools,
-and calls stats, search, sections, content read, config, schema and ingest. It also
+and calls stats, search, sections, content read, config, schema, ingest and lint.
+Lint errors fail the smoke test. Repository links are checked for portable targets,
+and repeat-launch checks verify cache reuse and refresh after runtime edits. It also
 checks restart persistence, interrupted seeds, changed-bundle warnings, double-install
 removal of obsolete packaged files, and absence of commits/writeback. With `--http`
 it also checks unauthorized rejection, initialization and authenticated search

@@ -3,7 +3,7 @@ title: "Agent journey through the MCP"
 type: documentation
 summary: "json2pptx guide to agent mcp journey"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -11,15 +11,14 @@ tags: [json2pptx, deck-authoring]
 
 The path an agent takes from a brief to a reviewed PPTX over `json2pptx mcp`,
 with what each response carries and where agents actually lost time. The
-sequence below is the default `deckspec` tool profile (13 tools); `--tools
-all` adds 36 more and about 125 KB to the first `tools/list` — in four
-product-only runs the only extra tool that earned its place was
-`show_pattern`, which is why it is now in the default profile. Hidden tools
-stay callable by name (see "Hidden tools worth calling" below).
+sequence below uses the default `deckspec` profile, including archetype and
+pre-render explanation tools. `--tools all` advertises specialist tools too;
+`tools/list` is the current inventory. Hidden tools stay callable by name
+(see "Planning, review and specialist tools" below).
 
 Back to the [wiki hub](README.md). The contract behind this page is
-[`skills/generate-deck/SKILL.md`](../../skills/generate-deck/SKILL.md) and
-[`TOOLS.md`](../../skills/generate-deck/TOOLS.md); this page is the walk-through.
+[`skills/generate-deck/SKILL.md`](https://github.com/sebahrens/json2pptx/blob/main/skills/generate-deck/SKILL.md) and
+[`TOOLS.md`](https://github.com/sebahrens/json2pptx/blob/main/skills/generate-deck/TOOLS.md); this page is the walk-through.
 
 ## The sequence
 

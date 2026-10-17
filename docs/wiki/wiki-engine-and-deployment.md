@@ -3,7 +3,7 @@ title: "Wiki engine and companion MCP"
 type: documentation
 summary: "Use the real llm-wiki engine to search and explore bundled json2pptx guidance"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, llm-wiki, mcp, deployment]
 read_when:
   - "Finding authoring guidance through the companion wiki MCP"
@@ -21,7 +21,7 @@ use those capabilities. Search results are documentation, not live schema proofs
 The repository's `wiki.toml` points to `docs/wiki`; `schemas/` contains the
 engine's generated 0.5.0 frontmatter schemas and templates. Existing Markdown
 paths and links are retained. [The overview](README.md) and
-[exploration hub](guides/index.md) provide entry points.
+[exploration hub](guides) provide entry points.
 
 ## Start from a checkout
 
@@ -43,13 +43,14 @@ the source root; its `wiki.toml`, `schemas/` and `docs/wiki/` must travel togeth
 `JSON2PPTX_WIKI_STATE_DIR` selects writable state, defaulting to
 `$XDG_STATE_HOME/json2pptx/wiki` or `$HOME/.local/state/json2pptx/wiki`.
 Runtime registration resolves paths on the current machine. No machine-specific
-paths are committed. The wrapper disables automatic commits and validates/ingests
-its runtime pages before each invocation. It never stages or commits the source checkout.
+paths are committed. The wrapper disables automatic commits. On first launch or after runtime content
+changes, it validates, ingests and lints the pages before serving them. Unchanged
+launches reuse registration and the existing index. It never stages or commits the source checkout.
 
 ## Connect an agent
 
 After `make install-wiki PREFIX=...`, add the companion configuration from
-[`deploy/mcp.wiki.example.json`](../../deploy/mcp.wiki.example.json) beside your
+[`deploy/mcp.wiki.example.json`](https://github.com/sebahrens/json2pptx/blob/main/deploy/mcp.wiki.example.json) beside your
 existing json2pptx MCP entry. The command `json2pptx-wiki serve` uses stdio.
 From a checkout, use `scripts/wiki.sh serve` instead.
 
@@ -68,7 +69,10 @@ schemas and configuration into `$JSON2PPTX_WIKI_STATE_DIR/repository`, changes
 only that copy's `wiki_root` to the standard `wiki`, and runs `git init` there.
 It creates no commit. The original packaged or checkout files remain unchanged.
 Both `ingest --full --dry-run` and `ingest --full` run against this workspace;
-validation must succeed before the command or server starts.
+validation and `lint --severity error` must succeed before the command or server
+starts. Content fingerprints cover configuration, schemas and all runtime pages,
+so edits are detected even when timestamps are preserved. A missing index is
+rebuilt; a failed validation or lint never marks the refresh complete.
 
 Runtime content edits persist in that workspace and affect the companion index;
 they are not written back into `docs/wiki`. Review and copy intended changes
@@ -81,7 +85,7 @@ directory, outside immutable source files.
 
 The main Docker image ships the wiki source. The optional companion image is
 built from an explicit trusted 0.5.0 source context with its Cargo.lock, rather
-than an unverified release download. See [`deploy/README.md`](../../deploy/README.md)
+than an unverified release download. See [`deploy/README.md`](https://github.com/sebahrens/json2pptx/blob/main/deploy/README.md)
 for the build and MCP transport examples. Compose names the local image
 `json2pptx-wiki:0.5.0`; after building it from a trusted local checkout, use
 `up -d --no-build --pull never wiki` to start the companion beside an existing
@@ -107,8 +111,8 @@ requires; `serve --watch` can ingest external edits inside the runtime workspace
 Git history requires actual commits; snapshots start with none and automatic
 commits stay disabled. Explicit `wiki_content_commit` remains an engine action.
 
-Some Markdown links intentionally point outside the wiki to source, examples,
-and contributor docs. They remain useful in a checkout; graph lint may report
-external-to-wiki targets as unresolved, and a packaged source snapshot does not
-promise that every contributor artifact is present. Follow the live Go MCP for
-current input contracts and inspect rendered slides before approval.
+Links between wiki pages resolve inside the runtime snapshot. References to
+source, examples and contributor documents use GitHub URLs so they also work
+for an installed companion without the repository checkout. Those external
+pages require network access and are not indexed by the wiki. Follow the live
+Go MCP for current input contracts and inspect rendered slides before approval.

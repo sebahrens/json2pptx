@@ -3,7 +3,7 @@ title: "Playbook: technology and data"
 type: documentation
 summary: "json2pptx guide to playbook technology and data"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -13,7 +13,7 @@ Platform business cases, architecture reviews, cloud and data migrations,
 vendor selections, data-governance and AI-readiness proposals. The worked
 deck is a steering-committee business case to replace an on-premise warehouse
 with a cloud lakehouse:
-[`examples/semantic/playbooks/tech-data-platform-business-case.yaml`](../../examples/semantic/playbooks/tech-data-platform-business-case.yaml)
+[`examples/semantic/playbooks/tech-data-platform-business-case.yaml`](https://github.com/sebahrens/json2pptx/blob/main/examples/semantic/playbooks/tech-data-platform-business-case.yaml)
 (12 slides, `modern-template`, cross-rendered on `p-style`). Back to the
 [hub](README.md).
 

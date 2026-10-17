@@ -3,7 +3,7 @@ title: "json2pptx wiki: building consulting-grade decks with an agent"
 type: section
 summary: "Authoring guidance, worked consulting playbooks, and wiki navigation"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -13,15 +13,15 @@ This wiki is for an agent (or the person steering one) that has to turn a
 brief into a deck a partner would present: a pitch or proposal, a deals
 document, a risk-consulting proposal, a technology-and-data business case or
 a risk-assurance readout. It sits beside the agent skill
-([`skills/generate-deck/`](../../skills/generate-deck/SKILL.md), the contract
-the engine enforces) and the contributor docs in [`docs/`](../) (how the engine
+([`skills/generate-deck/`](https://github.com/sebahrens/json2pptx/blob/main/skills/generate-deck/SKILL.md), the contract
+the engine enforces) and the contributor docs in [`docs/`](https://github.com/sebahrens/json2pptx/tree/main/docs) (how the engine
 works). The wiki is the *how to use it well* layer: storyline, visual choice,
 the MCP call path, and four worked decks that validate and render today.
 
 Every YAML block in these pages that is a whole deck (`meta:` … `slides:`)
 validates against the current build with no error finding
 (`TestDocSemanticSnippetsValidateClean`); the four playbook decks under
-[`examples/semantic/playbooks/`](../../examples/semantic/playbooks/) validate
+[`examples/semantic/playbooks/`](https://github.com/sebahrens/json2pptx/tree/main/examples/semantic/playbooks) validate
 the same way (`TestBundledSemanticExamplesValidateClean`) and are rendered
 across `midnight-blue`, `modern-template` and the local `p-style` by the
 cross-template tests in `cmd/json2pptx`. If a page and the engine disagree,
@@ -31,6 +31,7 @@ the engine is right and the page has a bug: fix it in the same change.
 
 | Page | Read it when |
 |---|---|
+| [Wiki engine and companion MCP](wiki-engine-and-deployment.md) | Deploy, connect and search this guidance through the companion engine; runtime state and packaging. |
 | [Agent journey through the MCP](agent-mcp-journey.md) | First. The exact call sequence from `get_started` to `submit_visual_review`, what each response carries, the hidden tools worth calling by name, and the traps four product-only agent runs hit. |
 | [Deck archetypes](deck-archetypes.md) | When you know the deliverable: nine canonical skeletons (proposal, strategy recommendation, CDD / IC paper, business case, steering committee, board paper, assurance readout, transformation roadmap, pre-read) mapped slide by slide onto kinds, with ghost decks. |
 | [Storyline and structure](storyline-and-structure.md) | Before writing a single slide. Ghost deck, action titles, pyramid / SCQA, executive summary, the closer, appendix. |
@@ -48,17 +49,17 @@ See [Consulting visual additions](consulting-visual-additions.md) for the new na
 
 | Scenario | Page | Deck |
 |---|---|---|
-| Consulting pitch and deals (proposal, due diligence, IC paper) | [playbook-consulting-pitch-and-deals.md](playbook-consulting-pitch-and-deals.md) | [`deals-cdd-proposal.yaml`](../../examples/semantic/playbooks/deals-cdd-proposal.yaml) |
-| Risk consulting (ERM uplift, regulatory remediation, risk appetite) | [playbook-risk-consulting.md](playbook-risk-consulting.md) | [`risk-erm-uplift-proposal.yaml`](../../examples/semantic/playbooks/risk-erm-uplift-proposal.yaml) |
-| Technology and data (platform business case, architecture, migration) | [playbook-technology-and-data.md](playbook-technology-and-data.md) | [`tech-data-platform-business-case.yaml`](../../examples/semantic/playbooks/tech-data-platform-business-case.yaml) |
-| Risk assurance (ITGC / SOX readout, internal audit, controls) | [playbook-risk-assurance.md](playbook-risk-assurance.md) | [`assurance-itgc-readout.yaml`](../../examples/semantic/playbooks/assurance-itgc-readout.yaml) |
+| Consulting pitch and deals (proposal, due diligence, IC paper) | [playbook-consulting-pitch-and-deals.md](playbook-consulting-pitch-and-deals.md) | [`deals-cdd-proposal.yaml`](https://github.com/sebahrens/json2pptx/blob/main/examples/semantic/playbooks/deals-cdd-proposal.yaml) |
+| Risk consulting (ERM uplift, regulatory remediation, risk appetite) | [playbook-risk-consulting.md](playbook-risk-consulting.md) | [`risk-erm-uplift-proposal.yaml`](https://github.com/sebahrens/json2pptx/blob/main/examples/semantic/playbooks/risk-erm-uplift-proposal.yaml) |
+| Technology and data (platform business case, architecture, migration) | [playbook-technology-and-data.md](playbook-technology-and-data.md) | [`tech-data-platform-business-case.yaml`](https://github.com/sebahrens/json2pptx/blob/main/examples/semantic/playbooks/tech-data-platform-business-case.yaml) |
+| Risk assurance (ITGC / SOX readout, internal audit, controls) | [playbook-risk-assurance.md](playbook-risk-assurance.md) | [`assurance-itgc-readout.yaml`](https://github.com/sebahrens/json2pptx/blob/main/examples/semantic/playbooks/assurance-itgc-readout.yaml) |
 
 Each playbook gives the audience and the ask, the storyline skeleton, a
 slide-by-slide blueprint naming the DeckSpec kind for every slide, the domain's
 own split and complex layouts, and the review points that matter for that
 audience. The decks were authored by agents that saw only the product (no
 source, no docs) in the journey harness under
-[`tests/quality/journey/`](../../tests/quality/journey/) — personas `f` to `i` —
+[`tests/quality/journey/`](https://github.com/sebahrens/json2pptx/tree/main/tests/quality/journey) — personas `f` to `i` —
 then tightened by hand.
 
 ## Three rules that outrank everything else here

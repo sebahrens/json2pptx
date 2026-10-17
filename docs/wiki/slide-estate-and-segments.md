@@ -3,7 +3,7 @@ title: "The slide estate: splitting it into segments"
 type: documentation
 summary: "json2pptx guide to slide estate and segments"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -389,8 +389,8 @@ below it, each with a `composition {direction, regions[] {name, size_pct,
 position, data_contract}}` and a runnable `next_tool_call`.
 `list_slide_kinds(kinds:["regions"], preview:true)` shows the default
 `main_left`. The playbooks' decks under
-[`examples/semantic/playbooks/`](../../examples/semantic/playbooks/) and
-[`examples/circular-layouts.json`](../../examples/circular-layouts.json)
+[`examples/semantic/playbooks/`](https://github.com/sebahrens/json2pptx/tree/main/examples/semantic/playbooks) and
+[`examples/circular-layouts.json`](https://github.com/sebahrens/json2pptx/blob/main/examples/circular-layouts.json)
 (slides 3, 7, 9, 11) are validated splits to copy from.
 
 
@@ -431,7 +431,7 @@ rendered PNG fallback. Non-native strategies use PNG for these grid images.
 Rendering the SVG requires `rsvg-convert` or `resvg`; a failed fallback render
 fails generation instead of leaving an invisible picture. PNG sources need
 neither converter. Full details are in the
-[input specification](../INPUT_FORMAT.md#full-slide-svg-or-png-images).
+[input specification](https://github.com/sebahrens/json2pptx/blob/main/docs/INPUT_FORMAT.md#full-slide-svg-or-png-images).
 
 **draw.io and other exporters.** An SVG that embeds icons as nested
 `<image href="data:image/svg+xml;base64,…">` or text as `<foreignObject>`
@@ -440,7 +440,7 @@ own SVG renderer. Either inline the icons as SVG paths and export text as
 SVG text, or supply a PNG at least 2,400 px wide (sharp on a 13.33-inch
 slide). Name the format you actually embed in the slide's `source`.
 
-Run the [two-slide SVG/PNG example](../../examples/full-slide-images.json):
+Run the [two-slide SVG/PNG example](https://github.com/sebahrens/json2pptx/blob/main/examples/full-slide-images.json):
 
 ```bash
 go run ./cmd/json2pptx generate -json examples/full-slide-images.json -output /tmp/full-slide-images

@@ -3,7 +3,7 @@ title: "Deck archetypes: the canonical skeletons, mapped onto kinds"
 type: documentation
 summary: "json2pptx guide to deck archetypes"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-18"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -19,7 +19,7 @@ domain playbooks go one level deeper.
 
 **Engine archetypes.** `meta.archetype` takes `board_update`, `qbr`,
 `sales_pitch`, `strategy_proposal`, `project_roadmap` or `market_analysis`
-(`list_deck_archetypes`, hidden but callable). It sets a default template
+(`list_deck_archetypes`, in the default profile). It sets a default template
 (`midnight-blue`, `midnight-blue`, `warm-coral`, `forest-green`,
 `modern-template`, `forest-green`) and, for the first four, marks the deck
 *executive*: the rhythm checks then expect a synthesis slide
