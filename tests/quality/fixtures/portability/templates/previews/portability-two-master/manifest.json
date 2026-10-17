@@ -2,8 +2,8 @@
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
   "template_sha256": "e8019a81eb4a903963f78661cf99e1d491dd2d33532e481951b7209bbd06711a",
-  "rendering_source_sha256": "cdf6280ad11efe6934680f0716813423ae1753e86c7fc668b99aeeaabf2f5db7",
-  "render_cache_identity": "d6d05a356f618a08d984085e2a0db4641afec52a2d93aebf0a3b16031e35deb9",
+  "rendering_source_sha256": "c54af99348c7f99e9f37fdebb4f7d898f576c4dfa65f4f0b87f822308293a0ca",
+  "render_cache_identity": "04b42129c02f252d7d9542c11e199cc456cd1f2410dc0d512cf52376e90c6c88",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
@@ -25,6 +25,7 @@
   "source_content": {
     "slideLayout1": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Title Slide",
@@ -34,6 +35,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "subtitle",
         "Type": "text",
         "Value": "Subtitle placeholder",
@@ -45,6 +47,7 @@
     ],
     "slideLayout10": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Two Content (Master 2)",
@@ -54,6 +57,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body",
         "Type": "bullets",
         "Value": [
@@ -67,6 +71,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body_2",
         "Type": "bullets",
         "Value": [
@@ -82,6 +87,7 @@
     ],
     "slideLayout11": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Section",
@@ -91,6 +97,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "Section Number",
         "Type": "text",
         "Value": "01",
@@ -102,6 +109,7 @@
     ],
     "slideLayout12": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Closing (Master 2)",
@@ -111,6 +119,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "subtitle",
         "Type": "text",
         "Value": "Subtitle placeholder",
@@ -123,6 +132,7 @@
     "slideLayout13": null,
     "slideLayout14": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Blank + Title (Master 2)",
@@ -134,6 +144,7 @@
     ],
     "slideLayout2": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "One Content",
@@ -143,6 +154,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body",
         "Type": "bullets",
         "Value": [
@@ -158,6 +170,7 @@
     ],
     "slideLayout3": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Two Content",
@@ -167,6 +180,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body",
         "Type": "bullets",
         "Value": [
@@ -180,6 +194,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body_2",
         "Type": "bullets",
         "Value": [
@@ -195,6 +210,7 @@
     ],
     "slideLayout4": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Section",
@@ -204,6 +220,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "Section Number",
         "Type": "text",
         "Value": "01",
@@ -215,6 +232,7 @@
     ],
     "slideLayout5": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Closing",
@@ -224,6 +242,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "subtitle",
         "Type": "text",
         "Value": "Subtitle placeholder",
@@ -236,6 +255,7 @@
     "slideLayout6": null,
     "slideLayout7": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Blank + Title",
@@ -247,6 +267,7 @@
     ],
     "slideLayout8": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Title Slide (Master 2)",
@@ -256,6 +277,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "subtitle",
         "Type": "text",
         "Value": "Subtitle placeholder",
@@ -267,6 +289,7 @@
     ],
     "slideLayout9": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "One Content (Master 2)",
@@ -276,6 +299,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body",
         "Type": "bullets",
         "Value": [

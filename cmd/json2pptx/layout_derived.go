@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
@@ -45,7 +46,7 @@ func derivedColumnLayoutFinding(slide deckinput.SlideInput, slideIndex int) (pat
 func deriveLayoutMetadata(slide deckinput.SlideInput, base types.LayoutMetadata, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) (types.LayoutMetadata, error) {
 	percent := derivedColumnLeftPercent(slide)
 	if percent == 0 {
-		return base, nil
+		return withNativeHeadingBounds(slide, base), nil
 	}
 	derived := base
 	derived.Placeholders = append([]types.PlaceholderInfo(nil), base.Placeholders...)
@@ -75,7 +76,11 @@ func deriveLayoutMetadata(slide deckinput.SlideInput, base types.LayoutMetadata,
 		left, right = right, left
 	}
 	var err error
-	left, right, err = layout.DeriveColumnBounds(left, right, percent)
+	if slide.StackedSplit || layout.IsStackedName(slide.LayoutID) {
+		left, right, err = layout.DeriveStackedBounds(left, right, percent)
+	} else {
+		left, right, err = layout.DeriveColumnBounds(left, right, percent)
+	}
 	if err != nil {
 		return base, fmt.Errorf("layout %q: %w", base.ID, err)
 	}
@@ -84,13 +89,13 @@ func deriveLayoutMetadata(slide deckinput.SlideInput, base types.LayoutMetadata,
 		box types.BoundingBox
 	}{{leftIdx, left}, {rightIdx, right}} {
 		ph := &derived.Placeholders[replacement.idx]
-		oldWidth := ph.Bounds.Width
+		oldArea := ph.Bounds.Width * ph.Bounds.Height
 		ph.Bounds = replacement.box
-		if oldWidth > 0 && ph.MaxChars > 0 {
-			ph.MaxChars = max(1, int(int64(ph.MaxChars)*ph.Bounds.Width/oldWidth))
+		if oldArea > 0 && ph.MaxChars > 0 {
+			ph.MaxChars = max(1, int(int64(ph.MaxChars)*ph.Bounds.Width*ph.Bounds.Height/oldArea))
 		}
 	}
-	return derived, nil
+	return withNativeHeadingBounds(slide, derived), nil
 }
 
 func clipDerivedColumnToChrome(box types.BoundingBox, frame template.ChromeFrame) types.BoundingBox {
@@ -119,7 +124,7 @@ func withDerivedFitLayouts(input *PresentationInput, layouts []types.LayoutMetad
 	var derivedLayouts []types.LayoutMetadata
 	var errors []patterns.FitFinding
 	for i, slide := range input.Slides {
-		if derivedColumnLeftPercent(slide) == 0 {
+		if derivedColumnLeftPercent(slide) == 0 && !hasNativeHeadings(slide) {
 			continue
 		}
 		base := template.FindLayout(layouts, slide.LayoutID)
@@ -147,4 +152,36 @@ func withDerivedFitLayouts(input *PresentationInput, layouts []types.LayoutMetad
 	copyInput := *input
 	copyInput.Slides = slides
 	return &copyInput, derivedLayouts, errors
+}
+
+func hasNativeHeadings(slide deckinput.SlideInput) bool {
+	for _, content := range slide.Content {
+		if content.Heading != "" {
+			return true
+		}
+	}
+	return false
+}
+func withNativeHeadingBounds(slide deckinput.SlideInput, base types.LayoutMetadata) types.LayoutMetadata {
+	if !hasNativeHeadings(slide) {
+		return base
+	}
+	base.Placeholders = append([]types.PlaceholderInfo(nil), base.Placeholders...)
+	for i := range base.Placeholders {
+		ph := &base.Placeholders[i]
+		for _, content := range slide.Content {
+			if content.Heading == "" || content.PlaceholderID != ph.ID {
+				continue
+			}
+			old := ph.Bounds.Height
+			reserve := generator.NativeColumnHeadingReserve(content.Heading, ph.Bounds.Width)
+			ph.Bounds.Y += reserve
+			ph.Bounds.Height = max(int64(1), old-reserve)
+			if old > 0 && ph.MaxChars > 0 {
+				ph.MaxChars = max(1, int(int64(ph.MaxChars)*ph.Bounds.Height/old))
+			}
+			break
+		}
+	}
+	return base
 }

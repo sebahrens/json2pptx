@@ -798,6 +798,15 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		}
 	}
 
+	// Deferred base pictures are inserted after grid XML so InsertAtStart
+	// places them below their native overlays and layers.
+	if hasMedia {
+		slideData, err = ctx.insertMediaPicsPhase(slideNum, slideData, ctx.slideRelUpdates[slideNum], true)
+		if err != nil {
+			return fmt.Errorf("insert layered base pictures for slide %d: %w", slideNum, err)
+		}
+	}
+
 	// The background scrim goes in AFTER the grid shapes so it lands first in
 	// the tree: above the background image (which lives in <p:bg>, outside the
 	// tree) and below every placeholder, grid cell and picture
@@ -993,6 +1002,10 @@ func (ctx *singlePassContext) removeMediaPlaceholders(slide *slideXML, mediaRels
 // start of the tree, leaving their pictures above the cells as before.
 // Relationship IDs are already assigned during writeNewSlideRelationships.
 func (ctx *singlePassContext) insertMediaPics(slideNum int, slideData []byte, mediaRels []mediaRel) ([]byte, error) {
+	return ctx.insertMediaPicsPhase(slideNum, slideData, mediaRels, false)
+}
+
+func (ctx *singlePassContext) insertMediaPicsPhase(slideNum int, slideData []byte, mediaRels []mediaRel, behindRawShapes bool) ([]byte, error) {
 	slog.Debug("insertMediaPics: processing media relationships",
 		slog.Int("slide_num", slideNum),
 		slog.Int("media_rel_count", len(mediaRels)))
@@ -1017,6 +1030,9 @@ func (ctx *singlePassContext) insertMediaPics(slideNum int, slideData []byte, me
 	var picsToInsert []string
 	for i := range mediaRels {
 		mr := &mediaRels[i]
+		if mr.behindRawShapes != behindRawShapes {
+			continue
+		}
 		mr.shapeID = nextShapeID
 		nextShapeID++
 

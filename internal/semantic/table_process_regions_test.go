@@ -20,7 +20,7 @@ func processRegionFixture() map[string]any {
 }
 
 func TestProcessRegionsCompileEveryArrangement(t *testing.T) {
-	for _, arrangement := range slides.RegionArrangements {
+	for _, arrangement := range []string{slides.ArrangeColumns, slides.ArrangeRows, slides.ArrangeMainLeft, slides.ArrangeMainRight, slides.ArrangeMainTop, slides.ArrangeMainBottom} {
 		t.Run(arrangement, func(t *testing.T) {
 			body := map[string]any{"takeaway": "Every case reaches a named owner.", "arrangement": arrangement, "regions": []any{processRegionFixture(), map[string]any{"kind": "stat", "value": "32%", "label": "Resolved"}, map[string]any{"kind": "text", "body": "Every message has one accountable owner."}}}
 			slide, _ := compileRegionsOK(t, body)

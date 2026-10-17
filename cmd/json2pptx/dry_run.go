@@ -497,9 +497,20 @@ func resolveCanonicalLayoutIDs(slides []SlideInput, layouts []types.LayoutMetada
 		return
 	}
 	for i := range slides {
+		if slides[i].LayoutID == "" && slides[i].SlideType == "image" && imageHasText(slides[i].Content) {
+			slides[i].LayoutID = "image-left"
+		}
 		if slides[i].LayoutID != "" {
 			requested := slides[i].LayoutID
+			if layout.IsCanonicalName(requested) {
+				slides[i].StackedSplit = layout.IsStackedName(requested)
+			}
 			percent := layout.DerivedColumnLeftPercent(requested)
+			if side := layout.ImageColumnFallback(requested, layouts); side != "" {
+				slides[i].ImageColumnSide = side
+				slides[i].Content = portableImageContent(slides[i].Content, side)
+				percent = 50
+			}
 			if percent != 0 {
 				slides[i].ColumnLeftPercent = percent
 			} else if layout.IsCanonicalName(requested) ||
@@ -549,6 +560,10 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 	}
 
 	output.SlideCount = len(slides)
+	if len(source) > 0 && source[0] != nil && source[0].Chrome != nil && len([]rune(source[0].Chrome.Sticker)) > 20 {
+		output.Valid = false
+		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{Code: diagnostics.CodeInvalidParameter, Path: "/chrome/sticker", Severity: diagnostics.SeverityError, Message: "sticker holds at most 20 characters"})
+	}
 
 	// The layout each slide will actually land on, so a title without an
 	// explicit layout_id is still measured against a real box instead of
@@ -571,6 +586,10 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 	// Validate each slide
 	for i, slideInput := range slides {
+		if len([]rune(slideInput.Sticker)) > 20 {
+			output.Valid = false
+			output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{Code: diagnostics.CodeInvalidParameter, Path: slidepath.SlideField(i, "sticker"), Severity: diagnostics.SeverityError, Message: "sticker holds at most 20 characters"})
+		}
 		slide := dryRunSlide{
 			SlideNumber:  i + 1,
 			LayoutID:     slideInput.LayoutID,
@@ -601,7 +620,10 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			path := slidepath.SlideField(i, "layout_id")
 			var msg string
 			fix := &patterns.FixSuggestion{Kind: "use_one_of", Params: map[string]any{"path": "layout_id"}}
-			if layout.IsCanonicalName(slideInput.LayoutID) {
+			if hint := layout.UnsupportedNativeAliasHint(slideInput.LayoutID); hint != "" {
+				msg = fmt.Sprintf("slide %d: layout alias %q is unavailable on this template; %s", i+1, slideInput.LayoutID, hint)
+				fix = nil
+			} else if layout.IsCanonicalName(slideInput.LayoutID) {
 				availableMap := layout.ResolveAllCanonicalLayouts(analysis.Layouts)
 				available := make([]string, 0, len(availableMap))
 				for name := range availableMap {
@@ -645,6 +667,10 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 		// Validate content items using ContentInput.ResolveValue() for typed + legacy support
 		for j, item := range slideInput.Content {
+			if len([]rune(item.Heading)) > 60 {
+				output.Valid = false
+				output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{Code: diagnostics.CodeInvalidParameter, Path: slidepath.ContentField(i, j, "heading"), Severity: diagnostics.SeverityError, Message: "heading holds at most 60 characters"})
+			}
 			ph := dryRunPlaceholder{
 				PlaceholderID: item.PlaceholderID,
 				ContentType:   item.Type,
@@ -1094,7 +1120,8 @@ func isChartishDiagramType(t string) bool {
 	case "bar", "bar_chart", "line", "line_chart", "area", "area_chart",
 		"scatter", "bubble", "pie", "donut", "stacked_bar", "grouped_bar",
 		"waterfall", "funnel", "radar", "gauge", "treemap",
-		"small_multiples", "small_multiples_chart":
+		"small_multiples", "small_multiples_chart",
+		"mekko", "marimekko", "mekko_chart", "combo", "combo_chart", "butterfly", "butterfly_chart":
 		return true
 	}
 	return false

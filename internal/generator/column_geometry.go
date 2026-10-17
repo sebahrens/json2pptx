@@ -14,7 +14,7 @@ const minTwoColumnGutterEMU = layout.MinTwoColumnGutterEMU
 // deriveTwoColumnGeometry changes only the slide's cloned body transforms, so
 // the title, chrome, fills, and typography keep the source template's style.
 // The native outside edges and any larger native gutter remain unchanged.
-func deriveTwoColumnGeometry(slide *slideXML, leftPercent int) error {
+func deriveTwoColumnGeometry(slide *slideXML, leftPercent int, stacked ...bool) error {
 	if leftPercent <= 0 || leftPercent >= 100 {
 		return fmt.Errorf("derived two-column split must be between 1 and 99, got %d", leftPercent)
 	}
@@ -37,12 +37,18 @@ func deriveTwoColumnGeometry(slide *slideXML, leftPercent int) error {
 	rightTransform := right.ShapeProperties.Transform
 	leftBox := types.BoundingBox{X: leftTransform.Offset.X, Y: leftTransform.Offset.Y, Width: leftTransform.Extent.CX, Height: leftTransform.Extent.CY}
 	rightBox := types.BoundingBox{X: rightTransform.Offset.X, Y: rightTransform.Offset.Y, Width: rightTransform.Extent.CX, Height: rightTransform.Extent.CY}
-	leftBox, rightBox, err := layout.DeriveColumnBounds(leftBox, rightBox, leftPercent)
+	var err error
+	if len(stacked) > 0 && stacked[0] {
+		leftBox, rightBox, err = layout.DeriveStackedBounds(leftBox, rightBox, leftPercent)
+	} else {
+		leftBox, rightBox, err = layout.DeriveColumnBounds(leftBox, rightBox, leftPercent)
+	}
 	if err != nil {
 		return err
 	}
-	leftTransform.Extent.CX = leftBox.Width
-	rightTransform.Offset.X = rightBox.X
-	rightTransform.Extent.CX = rightBox.Width
+	leftTransform.Offset.X, leftTransform.Offset.Y = leftBox.X, leftBox.Y
+	leftTransform.Extent.CX, leftTransform.Extent.CY = leftBox.Width, leftBox.Height
+	rightTransform.Offset.X, rightTransform.Offset.Y = rightBox.X, rightBox.Y
+	rightTransform.Extent.CX, rightTransform.Extent.CY = rightBox.Width, rightBox.Height
 	return nil
 }

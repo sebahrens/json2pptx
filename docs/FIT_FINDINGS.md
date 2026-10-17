@@ -547,6 +547,11 @@ An inserted content picture reaches into the footer band (typically a full-bleed
 }
 ```
 
+The same protection uses the final placed frame for raster and SVG grid
+images (native SVG and PNG fallback). A contained image above the footer
+keeps chrome; an image covering the footer band suppresses it. Full-slide
+image heroes carry authored source/takeaway text inside their scrim.
+
 ### `CHROME_TRUNCATED`
 
 **Action:** `review`
@@ -2724,9 +2729,77 @@ Findings are printed to stderr grouped by slide. Exit code is nonzero only if an
 
 Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
 
+## Measured layout review findings
+
+These advisory findings use resolved geometry, written text sizes or known
+semantic roles. They never clear a readability/content-loss blocker. Unknown
+geometry is omitted; unlike roles and units are not compared. Fix kinds
+`review_layout` and `align_top_insets` are authoring advice, not automatic
+mutations. Their params include measured cell/slide paths and a hint.
+
+### `TYPE_HIERARCHY_FLAT`
+
+**Action:** `review`. A measured title is within 2pt of body size, or a known
+caption is no smaller than body. Native placeholder roles are explicit;
+raw grids compare only clear display headings with prose, excluding KPI
+figures and 14pt card subheads. Restore the intended hierarchy.
+
+### `PANE_FILL_IMBALANCE`
+
+**Action:** `review`. Comparable sibling prose panes differ by more than
+0.4 in measured ink/frame fill. Visual and KPI panes are not empty prose.
+Rebalance shares or move text; params identify both cells and ratios.
+
+### `EXHIBIT_TOO_SMALL`
+
+**Action:** `review`. The only image/chart has less than 35% of the content
+area. Enlarge its share or use a dedicated slide. Area is the frame, not a
+claim that text inside an image is legible.
+
+### `GUTTER_INCONSISTENT`
+
+**Action:** `info`. Across at least three comparable content slides,
+automatic horizontal/vertical gaps differ by over 4pt from their deck
+median. Explicit grid bounds/gaps are intentional and exempt. Params name
+the outlier slide and measured/median gutters.
+
+### `NUMBER_FORMAT_INCONSISTENT`
+
+**Action:** `info`. The same known currency/unit context mixes decimal or
+grouping separators, currency placement or unit spelling. Explicit units
+in KPI/prose strings and table headers provide context; different currencies
+and scales are separate. Ambiguous separators are not guessed. Params list
+conflicting formats/slides and a `formatter_hint`.
+
+### `TITLE_ORPHAN`
+
+**Action:** `info`. Measured title/heading wrapping ends with one word or
+separates a number from its unit. Rewrite the heading or use a non-breaking
+space for the number/unit pair; revalidate against the actual template.
+
+### `DETACHED_LABEL`
+
+**Action:** `review`. A known KPI/hero sublabel is farther than 1.5× its
+actual grid gap from its parent, or closer to another element. It applies
+within the same native grid, including nested patterns. Move the label
+toward the reported parent; params give the measured gap and threshold.
+
+### `CONTINUATION_UNDERFILLED`
+
+**Action:** `review`. An identified table continuation uses under half its
+content frame, measured with the renderer's real row plan. Rebalance or
+merge pages while retaining merged row groups. `split_slide` balances
+unmerged continuations where legal and preserves source row offsets.
+
+### `STATUS_COLORS_INDISTINCT`
+
+**Action:** `review`. Two actually used RAG colours on a known status
+matrix have CIE76 deltaE below 20 after theme resolution. Unused palette
+slots do not trigger it. Choose distinct inks and retain labelled legends.
+
 ## Visual-QA Aesthetic Findings
 
-These codes are emitted by the `slide-visual-qa` Haiku skill (see [`skills/slide-visual-qa/SKILL.md`](../skills/slide-visual-qa/SKILL.md)) from screenshot inspection of rendered slides. They are subjective image-derived signals — the engine cannot detect them from JSON alone because they depend on the rasterized result. Skill output is a JSON block of the shape `{"findings": [{"slide_index", "code", "severity", "detail"}]}`, consumed by `auto_repair` and other automation.
+These codes are emitted by the `slide-visual-qa` Haiku skill (see [`skills/slide-visual-qa/SKILL.md`](../skills/slide-visual-qa/SKILL.md)) from screenshot inspection of rendered slides. Most are image-derived. `BASELINE_MISALIGN` also has a measured engine check; authored `REDUNDANT_LEGEND` and `CHART_VERTICAL_GRIDLINES` overrides have chart-engine advice. Screenshot inspection still checks the final result. Skill output is a JSON block of the shape `{"findings": [{"slide_index", "code", "severity", "detail"}]}`, consumed by `auto_repair` and other automation.
 
 These findings never block generation. They raise the bar from "renders correctly" to "looks consulting-grade." Severity vocabulary differs from engine fit findings: visual-QA uses `blocking` / `warning` / `info` (matching output-validation findings), not `refuse` / `shrink_or_split` / `review` / `info`.
 
@@ -2745,6 +2818,8 @@ Engine has a related precondition `accent_overload` (lowercase) that checks acce
 ### `BASELINE_MISALIGN`
 
 **Severity:** `warning`
+
+Engine action `review`: same-role peers in one row whose measured first baselines differ by >2pt, with cell paths and `align_top_insets`. Visual QA can also report the raster symptom.
 
 Body text in adjacent grid cells of a sibling pattern (`card-grid`, `kpi-*`, `comparison-2col`, `team-bios`, …) does not sit on the same horizontal baseline. Visible misalignment between sibling cards breaks the "one row, one beat" reading rhythm.
 

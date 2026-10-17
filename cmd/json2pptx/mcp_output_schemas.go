@@ -2042,6 +2042,11 @@ var outputSchemaAnalyzeDeckRhythm = json.RawMessage(`{
       "items": {
         "type": "object",
         "properties": {
+          "layout_id": {"type": "string"},
+          "pane_count": {"type": "integer"},
+          "visual_side": {"type": "string", "enum": ["left", "right", "top", "bottom", "full"]},
+          "split_pct": {"type": "number"},
+          "visual_area_share": {"type": "number", "description": "Known visual area as a fraction of content; omitted when geometry is unknown."},
           "slide_index":     {"type": "integer"},
           "pattern":         {"type": "string"},
           "density_class":   {"type": "string", "enum": ["low", "med", "high"]},
@@ -2106,10 +2111,11 @@ var outputSchemaAnalyzeDeckRhythm = json.RawMessage(`{
       "items": {
         "type": "object",
         "properties": {
-          "code":                      {"type": "string", "enum": ["break_run", "underfilled_cells", "missing_executive_summary", "missing_next_steps", "missing_sections", "evidence_missing_takeaway_or_source", "bullets_heavy", "accent_heavy_slide", "strong_accent_run", "break_motif_run", "motif_dominant", "continuation_interrupted"], "description": "What the recommendation is about; slide_index is the slide to start with. break_motif_run / motif_dominant: look-alike slides drawn by different patterns; recommended_break_patterns are of a different motif. continuation_interrupted: a slide sits between the parts of a continued exhibit."},
+          "code":                      {"type": "string", "enum": ["break_run", "underfilled_cells", "missing_executive_summary", "missing_next_steps", "missing_sections", "evidence_missing_takeaway_or_source", "bullets_heavy", "accent_heavy_slide", "strong_accent_run", "break_motif_run", "motif_dominant", "continuation_interrupted", "same_side_run", "low_visual_share_run", "takeaway_restates_title", "takeaway_heavy_deck", "layout_variety_high"], "description": "What the recommendation is about; slide_index is the slide to start with. break_motif_run / motif_dominant: look-alike slides drawn by different patterns; recommended_break_patterns are of a different motif. continuation_interrupted: a slide sits between the parts of a continued exhibit."},
           "slide_index":               {"type": "integer"},
           "message":                   {"type": "string"},
-          "recommended_break_patterns": {"type": "array", "items": {"type": "string"}}
+          "recommended_break_patterns": {"type": "array", "items": {"type": "string"}},
+          "severity": {"type": "string", "enum": ["info", "review"]}
         },
         "required": ["slide_index", "message", "recommended_break_patterns"]
       }

@@ -231,6 +231,10 @@ var enumMap = map[string]map[string][]string{
 // reflection-derived property schema wholesale. Use for fields that need
 // discriminator-style oneOf branches or other shapes reflection cannot infer.
 var propertyOverrides = map[string]map[string]map[string]any{
+	"ContentInput":   {"heading": {"type": "string", "maxLength": 60}},
+	"ChromeInput":    {"sticker": {"type": "string", "maxLength": 20}},
+	"SegmentInput":   {"size": {"type": "string", "enum": []any{"content"}}, "heading": {"type": "string", "maxLength": 60}, "caption": {"type": "string", "maxLength": 120}},
+	"ShapeGridInput": {"col_rule": {"oneOf": []any{map[string]any{"type": "string", "enum": []any{"all"}}, map[string]any{"type": "array", "items": map[string]any{"type": "integer", "minimum": 0}}}}},
 	"ChartSpec": {
 		// go-slide-creator-sdxii: a single-series bar chart paints its bars
 		// neutral and only the highlighted ones in accent1.
@@ -246,6 +250,7 @@ var propertyOverrides = map[string]map[string]map[string]any{
 		},
 	},
 	"SlideInput": {
+		"sticker": {"type": "string", "maxLength": 20},
 		// slide_type is a HINT for layout auto-selection; layout_id PINS a
 		// layout. "closing" (and "quote", "agenda", "image-left", …) are
 		// canonical LAYOUT names, so they belong in layout_id — which the

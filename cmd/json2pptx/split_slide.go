@@ -37,20 +37,33 @@ func init() {
 // row the author wrote; the decoder adds the envelope's own address.
 func expandSplitSlide(s SplitSlideInput) ([]SlideInput, error) {
 	tableIdx, _ := findTableContent(s.Base.Content)
-	pages, err := expandSplitSlideAtTable(s, tableIdx)
-	if err != nil || tableIdx < 0 {
-		return pages, err
-	}
+	return expandSplitSlideAtTable(s, tableIdx)
+}
+
+// stampSplitOrigins records cumulative authored row offsets, including when a
+// repair splits an already-expanded page rather than the first base table.
+func stampSplitOrigins(pages []SlideInput, base SlideInput, tableIdx int) {
 	field := "table_value"
-	if s.Base.Content[tableIdx].TableValue == nil {
+	if base.Content[tableIdx].TableValue == nil {
 		field = "value"
 	}
-	for i := range pages {
-		pages[i].Origin = &deckinput.SlideOrigin{
-			SplitPage: true, TableContent: tableIdx, TableField: field, RowOffset: i * s.Split.GroupSize,
-		}
+	offset := 0
+	if base.Origin != nil && base.Origin.SplitPage && base.Origin.TableContent == tableIdx {
+		offset = base.Origin.RowOffset
 	}
-	return pages, nil
+	for i := range pages {
+		origin := deckinput.SlideOrigin{}
+		if base.Origin != nil {
+			origin = *base.Origin
+		}
+		origin.SplitPage = true
+		origin.TableContent = tableIdx
+		origin.TableField = field
+		origin.RowOffset = offset
+		pages[i].Origin = &origin
+		_, table := findTableContent(pages[i].Content[tableIdx : tableIdx+1])
+		offset += len(table.Rows)
+	}
 }
 
 // expandSplitSlideAtTable is shared by the declarative first-table envelope and
@@ -73,21 +86,18 @@ func expandSplitSlideAtTable(s SplitSlideInput, tableIdx int) ([]SlideInput, err
 
 	// group_size >= rows → one slide, no suffix
 	if groupSize >= len(rows) {
-		return []SlideInput{s.Base}, nil
+		pages := []SlideInput{s.Base}
+		stampSplitOrigins(pages, s.Base, tableIdx)
+		return pages, nil
 	}
 
 	if err := validateRowSpansAtBoundaries(rows, groupSize); err != nil {
 		return nil, fmt.Errorf("split_slide: %w", err)
 	}
 
-	// Split rows into chunks
-	var chunks [][][]TableCellInput
-	for i := 0; i < len(rows); i += groupSize {
-		end := i + groupSize
-		if end > len(rows) {
-			end = len(rows)
-		}
-		chunks = append(chunks, rows[i:end])
+	chunks := balancedTableChunks(rows, groupSize)
+	if len(chunks) == 0 {
+		return nil, fmt.Errorf("split_slide: merged row groups cannot fit the group_size ceiling %d", groupSize)
 	}
 
 	total := len(chunks)
@@ -134,6 +144,7 @@ func expandSplitSlideAtTable(s SplitSlideInput, tableIdx int) ([]SlideInput, err
 		slides[i] = slide
 	}
 
+	stampSplitOrigins(slides, s.Base, tableIdx)
 	return slides, nil
 }
 

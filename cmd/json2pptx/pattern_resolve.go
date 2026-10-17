@@ -26,6 +26,9 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// lookup, the inspection of the raw payload against the pattern's own
 	// decoder, the typed unmarshal, the pattern's Validate and the callout
 	// check (deckinput.DecodePattern, go-slide-creator-iqknz).
+	if p != nil && p.Name == "image-hero" && p.Callout != nil {
+		return nil, nil, fmt.Errorf("image-hero: use values.takeaway for an in-scrim conclusion; an external callout band cannot remain readable over the photo")
+	}
 	decoded, err := deckinput.DecodePattern(p, reg)
 	if err != nil {
 		return nil, nil, patternBlockError(err)
@@ -430,7 +433,8 @@ func nestedPatternCellBounds(grid *jsonschema.ShapeGridInput, ctx patterns.Expan
 		return nil, cliCoded(diagnostics.CodeInvalidGrid, "shape_grid: invalid vertical_align %q", grid.VerticalAlign)
 	}
 	resolved, err := shapegrid.Resolve(&shapegrid.Grid{
-		Bounds: bounds, TypeScale: grid.TypeScale, Columns: cols, Rows: rows, ColGap: colGap, RowGap: rowGap, VAlign: align,
+		ColRule: grid.ColRule,
+		Bounds:  bounds, TypeScale: grid.TypeScale, Columns: cols, Rows: rows, ColGap: colGap, RowGap: rowGap, VAlign: align,
 		Compose: slideBlock && composesSlideBlock(grid), ComposeGrow: slideBlock && growsLoneRow(grid), ComposeBand: slideBlock && scalesToBand(grid), ComposeBandSquare: slideBlock && scalesToBand(grid) && bandScalesToSquare(grid), ComposeZoom: slideBlock && zoomsSlideBlock(grid), KeepTextSizes: grid.KeepTextSizes,
 		CanvasScale: gridCanvasScale(grid, ctx.SlideWidth, ctx.SlideHeight),
 	}, pptx.NewShapeIDAllocator(nil))
@@ -472,6 +476,9 @@ func resolvePatternBounds(p *PatternInput) (*jsonschema.GridBoundsInput, bool) {
 	if p.Bounds != nil {
 		// Explicit bounds take priority — use as-is.
 		return p.Bounds, false
+	}
+	if p.Name == "image-hero" && p.MaxHeightPct == 0 {
+		return &jsonschema.GridBoundsInput{Width: 100, Height: 100}, false
 	}
 	if p.MaxHeightPct > 0 && p.MaxHeightPct < 100 {
 		// Convenience alias: constrain height while preserving full width.

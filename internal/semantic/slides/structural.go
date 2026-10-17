@@ -44,6 +44,25 @@ func CompileTitle(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 // semantic subtitle is intentionally not emitted as placeholder content: doing
 // so would be remapped into the section-number slot by placeholder fallback.
 func CompileSection(in Input) (*deckinput.SlideInput, []SourceLink, error) {
+	if show, _ := in.Body["show_chapters"].(bool); show && len(in.Chapters) >= 2 {
+		body := map[string]any{"current": in.CurrentChapter}
+		items := make([]any, len(in.Chapters))
+		for i, title := range in.Chapters {
+			items[i] = title
+		}
+		body["sections"] = items
+		chapterInput := in
+		chapterInput.Body = body
+		slide, links, err := CompileAgenda(chapterInput)
+		if slide != nil {
+			slide.SectionTitle = in.Title
+			for i, path := range in.ChapterSourcePaths {
+				links = append(links, SourceLink{RawPath: fmt.Sprintf("%s.pattern.values.items[%d]", in.rawSlide(), i), SemanticPath: path + ".title"})
+			}
+			links = append(links, SourceLink{RawPath: in.rawSlide() + ".pattern.overrides.highlight", SemanticPath: in.semSlide() + ".show_chapters"})
+		}
+		return slide, links, err
+	}
 	slide := &deckinput.SlideInput{SlideType: "section", LayoutID: in.Layout}
 	var links []SourceLink
 	// appendix: true marks back matter: no chapter number, and the divider

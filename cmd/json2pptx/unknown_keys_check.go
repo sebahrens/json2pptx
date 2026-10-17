@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -263,6 +264,18 @@ func checkComposeUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 			}
 			if v, ok := segObj["diagram"]; ok {
 				warnings = append(warnings, checkDiagramUnknownKeys(v, p+"/diagram")...)
+			}
+			if v, ok := segObj["shape_grid"]; ok {
+				warnings = append(warnings, checkShapeGridUnknownKeys(v, p+"/shape_grid")...)
+			}
+			if v, ok := segObj["table"]; ok {
+				warnings = append(warnings, checkTableUnknownKeys(v, p+"/table")...)
+			}
+			if v, ok := segObj["image"]; ok {
+				warnings = append(warnings, checkGridImageUnknownKeys(v, p+"/image")...)
+			}
+			if v, ok := segObj["text"]; ok {
+				warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(deckinput.ComposeTextInput{}), p+"/text")...)
 			}
 			// Recurse into a nested compose envelope so unknown keys deep in
 			// the tree still surface with the correct JSON path.

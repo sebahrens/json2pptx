@@ -8,6 +8,7 @@ import (
 
 // TableSpec represents a parsed markdown table.
 type TableSpec struct {
+	MinimumFontSize  int           // Internal measured-pattern floor, in hundredths of a point.
 	ColumnWidths     []float64     // Optional positive relative column weights, one per header.
 	Headers          []string      // Column headers (expanded: merged cells have empty strings)
 	HeaderCells      []TableCell   // Header cells with colspan/rowspan info (nil if no merges in header)
@@ -63,16 +64,19 @@ func (t *TableSpec) CheckRowWidths() error {
 				i+1, w, len(t.Headers))
 		}
 	}
-	return nil
+	return t.CheckTextColors()
 }
 
 // TableCell represents a single cell in a table.
 type TableCell struct {
-	Content     string             // Text content of the cell
-	ColSpan     int                // Number of columns this cell spans (default 1)
-	RowSpan     int                // Number of rows this cell spans (default 1)
-	IsMerged    bool               // True if this cell is part of a merge (not the origin)
-	Conditional *ConditionalFormat // Optional conditional formatting rule
+	// SourceColumn records the one-based authored index before merge expansion.
+	SourceColumn int                `json:"-"`
+	TextColor    string             // Optional theme or six-digit hex text ink (used by RAG symbols).
+	Content      string             // Text content of the cell
+	ColSpan      int                // Number of columns this cell spans (default 1)
+	RowSpan      int                // Number of rows this cell spans (default 1)
+	IsMerged     bool               // True if this cell is part of a merge (not the origin)
+	Conditional  *ConditionalFormat // Optional conditional formatting rule
 }
 
 // CellMerge represents a merge region in the table.
@@ -218,4 +222,28 @@ func ResolveTableColumnWidths(weights []float64, columns int, width int64) []int
 	}
 	out[columns-1] += remaining
 	return out
+}
+
+// InvalidTableTextColor identifies the precise authored cell ink field.
+type InvalidTableTextColor struct{ Row, Col int }
+
+func (e *InvalidTableTextColor) Error() string {
+	return fmt.Sprintf("table rows[%d][%d].text_color must be a theme reference or six-digit hex colour", e.Row, e.Col)
+}
+
+var tableInkRE = regexp.MustCompile(`^(?:accent[1-6]|dk[12]|lt[12]|tx[12]|bg[12]|hlink|folHlink|#?[0-9a-fA-F]{6})$`)
+
+func (t *TableSpec) CheckTextColors() error {
+	for ri, row := range t.Rows {
+		for ci, cell := range row {
+			if cell.TextColor != "" && !tableInkRE.MatchString(cell.TextColor) {
+				col := ci
+				if cell.SourceColumn > 0 {
+					col = cell.SourceColumn - 1
+				}
+				return &InvalidTableTextColor{Row: ri, Col: col}
+			}
+		}
+	}
+	return nil
 }

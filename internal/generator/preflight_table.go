@@ -17,7 +17,8 @@ import (
 // TablePreflightInput describes a table whose render-time fit behaviour
 // should be predicted at validate/preview time.
 type TablePreflightInput struct {
-	ColumnWidths []float64
+	ColumnWidths    []float64
+	MinimumFontSize int
 	// Path is the JSON pointer to the table, e.g. "/slides/0/content/1".
 	Path string
 	// Headers is the list of column header strings.
@@ -67,7 +68,9 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
 	// Column-count scaling (columnScaledFontSize): wider than 4 columns shrinks toward 18pt*4/numCols, floor at MinTableFontSize.
-	if scaled, changed := columnScaledFontSize(fontSize, numCols, compactTypography); changed {
+	scaled, _ := columnScaledFontSize(fontSize, numCols, compactTypography)
+	scaled = max(scaled, input.MinimumFontSize)
+	if scaled != fontSize {
 		fontSize = scaled
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
@@ -102,6 +105,7 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 			if compactTypography {
 				floor = engineDefaultRowFontSize
 			}
+			floor = max(floor, input.MinimumFontSize)
 			if scaled < floor {
 				scaled = floor
 			}
@@ -131,6 +135,7 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 			DefaultFont:       defaultFontFamily,
 			DefaultSize:       fontSize,
 			compactTypography: compactTypography,
+			minimumFontSize:   input.MinimumFontSize,
 		})
 		if plan.HiddenRows > 0 {
 			overflow := plan.HiddenRows

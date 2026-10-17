@@ -116,7 +116,8 @@ func ParseVerticalAlign(s string) (VerticalAlign, bool) {
 
 // Grid is the domain representation of a shape grid layout.
 type Grid struct {
-	Bounds pptx.RectEmu // Absolute bounds in EMU (authoritative — never shrunk)
+	ColRule json.RawMessage
+	Bounds  pptx.RectEmu // Absolute bounds in EMU (authoritative — never shrunk)
 	// TypeScale grows sparse cell text after bounds are resolved. Empty and
 	// "compact" preserve authored sizes; "comfortable" and "presentation"
 	// use progressively larger fill targets and role-specific caps.
@@ -544,9 +545,10 @@ type ResolvedConnector struct {
 
 // ResolvedAccentBar is a decorative accent bar shape attached to a cell.
 type ResolvedAccentBar struct {
-	Bounds pptx.RectEmu   // Position and size of the bar
-	ID     uint32         // Unique shape ID
-	Spec   *AccentBarSpec // Accent bar styling
+	Decorative bool           // Structural rule; excluded from content/ink accounting.
+	Bounds     pptx.RectEmu   // Position and size of the bar
+	ID         uint32         // Unique shape ID
+	Spec       *AccentBarSpec // Accent bar styling
 }
 
 // RowOverflow records a row whose content exceeds its max_height constraint.

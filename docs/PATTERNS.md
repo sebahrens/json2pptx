@@ -1222,3 +1222,18 @@ UPDATE_GOLDEN=1 go test ./internal/patterns/ -run TestMyPattern/golden
 ```
 
 Review the diff to confirm the golden change is intentional before committing.
+
+## Consulting forms and measured composition
+
+The consulting-native patterns (lists, prose, IPO, horizons, trees, spectra,
+RACI/status matrices, progress and image hero) share closed live schemas and
+measured native text. Their contracts are mapped to semantic kinds in
+[the wiki catalog](https://github.com/sebahrens/json2pptx/blob/main/docs/wiki/consulting-visual-additions.md). Refuse an impossible
+frame instead of silently reducing readable type or deleting values.
+
+Compose supports native grid/table/text/image leaves alongside patterns and
+diagrams, heading/caption slots, content-sized vertical segments, measured
+smart allocation preserving fixed shares, three envelope levels and twelve
+leaves. Grid column rules are decorative seams: clip them around spans and
+exclude them from content density/ink. Compact sibling equalisation compares
+only matching body/caption roles and preserves figures and readable floors.

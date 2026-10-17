@@ -58,6 +58,8 @@ then fails `TEMPLATE_NOT_FOUND`.
 `takeaway_missing` (a waived finding is an `info`). Discover archetypes with
 `list_deck_archetypes`.
 
+`meta.chrome.sticker` (≤20 chars), or slide `sticker`, adds a title-safe tag.
+A `section` with `show_chapters: true` highlights the current chapter.
 `meta.chrome` controls confidentiality, client/project labels, date, page
 numbers and section crumbs; page numbers, `meta.date` and, with sections,
 the tracker are on by default. A footer line wider than its slot drops
@@ -127,11 +129,19 @@ numbers do not say:
 | `process` | 3–6 steps with descriptions are numbered rows (label ≤60, description ≤180); 7–8 steps (on two rows), or bare labels, are flow boxes (label and description together ≤80). |
 | `next_steps` | The closer: 2–6 `actions` `{action, owner, date}` and 0–3 `decisions`. Keep `closing` for a Q&A page; its title budget depends on the template. |
 
+Additional native kinds: `raci`, `status_board`, `checklist`, `prose_2col`,
+`ipo_flow`, `three_horizons`, `sources`, `timeline_vertical`, `spectrum`,
+`issue_tree`, `decision_tree`, `bullet_chart`, `image_hero`. Framework hosts:
+`venn`, `fishbone`, `pestel`, `nine_box_talent`, `heatmap`, `value_chain`,
+`pyramid`. Query their closed schemas/examples before authoring. They refuse
+text that cannot fit at the readable floor; `sources` permits 10pt appendix
+copy. A status board retains labels alongside colour.
+
 Prefer `list_slide_kinds` canonical field names over the `aliases` it lists.
 
 ## Several visuals on one slide
 
-Use `kind: regions` for 2–3 related chart / stat / kpis / table / timeline /
+Use `kind: regions` for 2–4 related chart / stat / kpis / table / timeline /
 image / text / cycle / process regions, with bounded `size_pct` shares.
 Process: 3–6 `{label, description?}` steps. Budgets: `list_slide_kinds`;
 example: `examples/semantic/regions.yaml`. Errors name `slides[N].regions[k]`. A stacked region holds one visual's worth; leave its

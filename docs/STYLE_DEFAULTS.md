@@ -314,3 +314,13 @@ In this deck:
 - Application logic: `cmd/json2pptx/defaults.go` (`applyDefaults`, `applyTableStyleDefaults`, `applyShapeGridDefaults`, `applyCellStyleDefaults`)
 - Tests: `cmd/json2pptx/defaults_test.go`
 - Sentinel resolution: `internal/template/table_style_resolver.go` (`ResolveTableStyleID`)
+
+## Measured native matrix styling
+
+RACI and status-board patterns use a measured native-table font floor of
+12pt for headers and body. This internal floor is not an authorable density
+bypass; ordinary raw tables retain the table-density limits. Cell
+`text_color` is explicit ink and is validated like other authored colours.
+Grid `col_rule` defaults to no rule; when set, its 0.75pt dk1-at-30% seam is
+decoration and does not raise density. Compact sibling text equalisation
+preserves display figures and heading roles.

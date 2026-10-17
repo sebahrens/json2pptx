@@ -6,7 +6,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-// recordPictureFrame remembers the final frame of an authored content image.
+// recordPictureFrame remembers the final frame of an authored content or grid image.
 func (ctx *singlePassContext) recordPictureFrame(slideNum int, frame types.BoundingBox) {
 	if frame.Width <= 0 || frame.Height <= 0 {
 		return

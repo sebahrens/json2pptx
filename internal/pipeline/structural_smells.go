@@ -333,6 +333,14 @@ func DetectTableDensity(table *jsonschema.TableInput, path string, frameWidth ..
 		width = frameWidth[0]
 	}
 	logicalRows := table.LogicalRowCountAtWidth(width)
+	// Measured native consulting matrices reserve a private 12pt floor and
+	// validate their complete table against the actual frame before expansion.
+	// The private floor cannot be supplied through JSON. Their bounded ten-row,
+	// eight-column contract uses physical fit, rather than the ordinary TDR
+	// catalogue ceiling; renderer/preflight loss checks remain authoritative.
+	if table.MinimumFontSize >= 1200 && len(table.Rows) <= 10 && numCols <= 8 {
+		return nil
+	}
 
 	var warnings []*patterns.ValidationError
 

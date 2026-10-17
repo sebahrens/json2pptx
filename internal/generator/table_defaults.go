@@ -112,7 +112,7 @@ func headerFontSize(config TableRenderConfig, bodySize int) int {
 	if h > bodySize {
 		h = bodySize
 	}
-	return h
+	return max(h, config.minimumFontSize)
 }
 
 // engineDefaultRuleXML returns a horizontal rule on side ("T" or "B") in the

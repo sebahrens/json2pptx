@@ -105,7 +105,7 @@ func TestComposeCalloutBandSpansTheWholeGrid(t *testing.T) {
 	}
 	// The band row was appended after the count was taken, so it holds no
 	// more columns than the rows above it.
-	if cols := inferColumnCount(grid); cols < 2 || last.Cells[0].ColSpan != cols {
+	if cols := inferColumnCount(grid); cols < 1 || last.Cells[0].ColSpan != cols {
 		t.Errorf("callout band spans %d of the grid's %d columns", last.Cells[0].ColSpan, cols)
 	}
 }

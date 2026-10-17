@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -22,6 +23,10 @@ func schemaFingerprint() string {
 	writeStructFields(h, reflect.TypeOf(PresentationInput{}))
 	writeStructFields(h, reflect.TypeOf(SlideInput{}))
 	writeStructFields(h, reflect.TypeOf(ContentInput{}))
+	writeStructFields(h, reflect.TypeOf(ChromeInput{}))
+	writeStructFields(h, reflect.TypeOf(ComposeInput{}))
+	writeStructFields(h, reflect.TypeOf(SegmentInput{}))
+	writeStructFields(h, reflect.TypeOf(deckinput.ComposeTextInput{}))
 	writeStructFields(h, reflect.TypeOf(DefaultsInput{}))
 	writeStructFields(h, reflect.TypeOf(GridConfig{}))
 	writeStructFields(h, reflect.TypeOf(jsonschema.ShapeGridInput{}))
@@ -85,6 +90,8 @@ func fixKindVocabulary() []string {
 		"replace_value",
 		"reposition_shape",
 		"reshape_value",
+		"align_top_insets",
+		"review_layout",
 	}
 	sort.Strings(kinds)
 	return kinds

@@ -161,6 +161,7 @@ func chromeSchema() map[string]any {
 		"type":        "object",
 		"description": "Deck chrome rendered into every slide's footer band.",
 		"properties": map[string]any{
+			"sticker":         map[string]any{"type": "string", "maxLength": 20, "description": "Top-right status tag: Preliminary, Illustrative, For discussion, or custom text up to20characters."},
 			"confidentiality": map[string]any{"type": "string", "description": "Classification stamp, e.g. \"Strictly confidential\"."},
 			"client_name":     map[string]any{"type": "string", "description": "Client or company name."},
 			"project_code":    map[string]any{"type": "string", "description": "Project identifier (e.g. \"Aurora\"); rendered as \"Project <code>\" in the footer unless it already starts with \"Project\"."},

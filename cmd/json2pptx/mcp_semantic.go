@@ -1573,7 +1573,7 @@ func slideKindEntry(k semantic.SlideKind, kindFilter, fieldFilter map[string]boo
 	// bounds, what the kind degrades to) and the typical fields come with the
 	// kinds the agent then names (go-slide-creator-mvdt5).
 	if kindFilter == nil && len(fieldFilter) == 0 {
-		entry.Summary = oneLineSummary(info.Summary)
+		entry.Summary = catalogueKindSummary(info.Summary)
 		entry.TypicalFields = nil
 		entry.RequiredAliases = info.RequiredAliases
 		return entry
@@ -1880,4 +1880,14 @@ func (r renderDeckSpecResponse) MarshalJSON() ([]byte, error) {
 		out.Explanation = &compactExplanation{Slides: r.Explanation.Slides}
 	}
 	return json.Marshal(out)
+}
+
+func catalogueKindSummary(summary string) string {
+	line := oneLineSummary(summary)
+	// Keep a whole Unicode word; separators alone add no choosing information.
+	short := cutSummaryAtWord(line, 23)
+	if !strings.HasSuffix(short, "…") {
+		return short
+	}
+	return strings.TrimRight(strings.TrimSuffix(short, "…"), " →—:-") + "…"
 }

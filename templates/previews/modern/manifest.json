@@ -2,8 +2,8 @@
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
   "template_sha256": "e05bbe5f98cd15ba9f3d49725e8113d9e9e1ed3585fa6806d850d9e1677242ae",
-  "rendering_source_sha256": "cdf6280ad11efe6934680f0716813423ae1753e86c7fc668b99aeeaabf2f5db7",
-  "render_cache_identity": "621fd246a441509dd8038e79e97a89d606c992ce8c0107efddac966bdf9a2c5c",
+  "rendering_source_sha256": "c54af99348c7f99e9f37fdebb4f7d898f576c4dfa65f4f0b87f822308293a0ca",
+  "render_cache_identity": "79c6b415ca48cd08b8fc1d66203274aed66837e3ae1f18f5d69fefabc7494d14",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
@@ -20,6 +20,7 @@
   "source_content": {
     "slideLayout1": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Title Only",
@@ -31,6 +32,7 @@
     ],
     "slideLayout2": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Title + subtitle + picture",
@@ -40,6 +42,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "subtitle",
         "Type": "text",
         "Value": "Subtitle placeholder",
@@ -51,6 +54,7 @@
     ],
     "slideLayout3": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "One Content",
@@ -60,6 +64,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body",
         "Type": "bullets",
         "Value": [
@@ -75,6 +80,7 @@
     ],
     "slideLayout4": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Title Slide",
@@ -84,6 +90,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "subtitle",
         "Type": "text",
         "Value": "Subtitle placeholder",
@@ -95,6 +102,7 @@
     ],
     "slideLayout5": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Section",
@@ -104,6 +112,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "Section Number",
         "Type": "text",
         "Value": "01",
@@ -115,6 +124,7 @@
     ],
     "slideLayout6": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Closing",
@@ -124,6 +134,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "subtitle",
         "Type": "text",
         "Value": "Subtitle placeholder",
@@ -135,6 +146,7 @@
     ],
     "slideLayout7": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Two Content",
@@ -144,6 +156,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body",
         "Type": "bullets",
         "Value": [
@@ -157,6 +170,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body_2",
         "Type": "bullets",
         "Value": [
@@ -173,6 +187,7 @@
     "slideLayout8": null,
     "slideLayout9": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Blank + Title",

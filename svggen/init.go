@@ -5,6 +5,9 @@ package svggen
 // builtinDiagrams lists all diagram types to register at startup.
 // Adding a new diagram type only requires appending to this slice.
 var builtinDiagrams = []Diagram{
+	&ConsultingChartDiagram{NewBaseDiagram("butterfly_chart")},
+	&ConsultingChartDiagram{NewBaseDiagram("mekko_chart")},
+	&ConsultingChartDiagram{NewBaseDiagram("combo_chart")},
 	// Phase 1-2: core chart and diagram types
 	&WaterfallDiagram{NewBaseDiagram("waterfall")},
 	&Matrix2x2Diagram{NewBaseDiagram("matrix_2x2")},
@@ -45,6 +48,10 @@ var builtinDiagrams = []Diagram{
 // builtinAliases maps short/alternate names to canonical registered type IDs.
 // This allows users to write "funnel" instead of "funnel_chart" in diagram blocks.
 var builtinAliases = map[string]string{
+	"butterfly": "butterfly_chart",
+	"mekko":     "mekko_chart",
+	"marimekko": "mekko_chart",
+	"combo":     "combo_chart",
 	// Chart short names
 	"funnel":       "funnel_chart",
 	"gauge":        "gauge_chart",

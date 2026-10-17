@@ -30,7 +30,8 @@ import (
 // fragments ready for injection and the resolved cell metadata (bounds, IDs,
 // specs) for downstream processing such as icon insertion or validation.
 type ShapeGridResult struct {
-	Shapes [][]byte // Raw <p:sp>/<p:graphicFrame> XML fragments
+	parentPeers *shapegrid.PeerScope
+	Shapes      [][]byte // Raw <p:sp>/<p:graphicFrame> XML fragments
 	// ShapeSources names, for each entry of Shapes, the authored element that
 	// produced it. The contrast pass reports a repair by flat shape index
 	// (/slides/N/shape_grid/shapes/i); this is the index's way back to what the
@@ -52,6 +53,7 @@ type ShapeGridResult struct {
 // in a shape_grid. Without this context, grid diagrams render with default colors
 // instead of inheriting the template's theme palette.
 type GridDiagramContext struct {
+	SlideWidthEMU      int64
 	TableStyleResolver generator.TableStyleResolver // Template table defaults and definitions
 	ThemeColors        []types.ThemeColor           // Template theme colors for chart styling
 	DataPalette        []string                     // Ordered hex palette for chart series (from TemplateMetadata)
@@ -1052,6 +1054,11 @@ func resolveNestedShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator,
 // policy places (shapegrid.Grid.Compose). Callers that resolve a slide's grid
 // without a content zone (pattern previews) pass true.
 func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overrideBounds *pptx.RectEmu, zone *shapegrid.ContentZone, slideWidth, slideHeight int64, diagCtx *GridDiagramContext, slideBlock bool, peers ...*shapegrid.PeerScope) (*ShapeGridResult, error) {
+	if diagCtx != nil && slideWidth > 0 {
+		cloned := *diagCtx
+		cloned.SlideWidthEMU = slideWidth
+		diagCtx = &cloned
+	}
 	if input == nil || len(input.Rows) == 0 {
 		return nil, nil
 	}
@@ -1086,6 +1093,7 @@ func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, ove
 	}
 
 	grid := &shapegrid.Grid{
+		ColRule:   input.ColRule,
 		Bounds:    bounds,
 		TypeScale: input.TypeScale,
 		Columns:   colWidths,
@@ -1144,6 +1152,7 @@ func resolveShapeGridAs(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, ove
 	authored.findings(out.FitFindings)
 	out.ShapeSources = authoredShapeSources(input, rows, grid.Links, out.shapeOrigins, slideIdx)
 	out.shapeOrigins = nil
+	out.parentPeers = grid.Peers
 
 	// Recursively render any nested sub-grids in this grid. Cells with
 	// Placeholder=true produce CellKindSubGrid ResolvedCells whose bounds
@@ -1172,7 +1181,7 @@ func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pp
 	// The nested grids of one parent share a peer scope: the labels of sibling
 	// sub-grids grow together or not at all (go-slide-creator-7ophx). The
 	// preflight walkers build the same scope (resolveGridForStructural).
-	peers := nestedPeerScope(input, out.Cells, slideWidth, slideHeight)
+	peers := shapegrid.MergePeerScopes(out.parentPeers, nestedPeerScope(input, out.Cells, slideWidth, slideHeight))
 	for _, rc := range out.Cells {
 		if rc.Kind != shapegrid.CellKindSubGrid {
 			continue
@@ -1529,10 +1538,10 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 // aspect-mismatch check additionally receives the original (pre-fit) CellBounds
 // so its evidence can distinguish an authoring mistake from a fit-driven render
 // mismatch.
-func collectDiagramCellFindings(cell shapegrid.ResolvedCell, slideIdx int) []patterns.FitFinding {
+func collectDiagramCellFindings(cell shapegrid.ResolvedCell, slideIdx int, slideWidths ...int64) []patterns.FitFinding {
 	path := slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram")
 	var findings []patterns.FitFinding
-	if f := generator.CheckDiagramInNarrowBoundsFinding(cell.DiagramSpec, cell.Bounds.CX, path); f != nil {
+	if f := generator.CheckDiagramInNarrowBoundsFinding(cell.DiagramSpec, cell.Bounds.CX, path, slideWidths...); f != nil {
 		findings = append(findings, *f)
 	}
 	cellBox := types.BoundingBox{Width: cell.CellBounds.CX, Height: cell.CellBounds.CY}
@@ -1726,6 +1735,12 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 		c, err := generateGridCell(cell, alloc, diagCtx, slideIdx)
 		if err != nil {
 			return nil, err
+		}
+
+		if cell.Kind == shapegrid.CellKindImage && (len(c.shapes) > 0 || (i+1 < len(result.Cells) && isLayerOf(result.Cells[i+1], cell))) {
+			for j := range c.images {
+				c.images[j].BehindShapes = true
+			}
 		}
 
 		// A grouped cell's layers belong to its group: they are written into
@@ -1977,7 +1992,7 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 	var warnings []string
 	if diagCtx != nil {
 		location := fmt.Sprintf("grid cell %d", cell.ID)
-		if w := generator.CheckDiagramInNarrowBounds(diagramSpec, cell.Bounds.CX, diagCtx.SlideNum, location); w != "" {
+		if w := generator.CheckDiagramInNarrowBounds(diagramSpec, cell.Bounds.CX, diagCtx.SlideNum, location, diagCtx.SlideWidthEMU); w != "" {
 			warnings = append(warnings, w)
 		}
 	}
@@ -2019,7 +2034,11 @@ func generateDiagramCell(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocat
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	findings := collectDiagramCellFindings(cell, slideIdx)
+	width := int64(0)
+	if diagCtx != nil {
+		width = diagCtx.SlideWidthEMU
+	}
+	findings := collectDiagramCellFindings(cell, slideIdx, width)
 	findings = append(findings, generator.SvggenFindingsToFit(renderFindings, cell.DiagramSpec.Type,
 		slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram"))...)
 	return nil, icons, warnings, findings, nil
@@ -2366,6 +2385,7 @@ func resolveSlideAssets(slide *SlideInput, baseDir string, slideIdx int, allowLi
 		findings = append(findings, applyLocalAssetPath(&c.ImageValue.Path, baseDir,
 			diagnostics.CodeImagePath, "image", slideIdx, path)...)
 	}
+	findings = append(findings, resolveComposeAssetPaths(slide.Compose, slidepath.SlideField(slideIdx, "compose"), baseDir, slideIdx, allowList...)...)
 	// Resolve file-path icons inside panel-family diagrams into inline svg_data so
 	// the generator embeds them as native SVG (matching shape_grid icon handling).
 	findings = append(findings, resolvePanelDiagramIcons(slide, baseDir, slideIdx, allowList...)...)

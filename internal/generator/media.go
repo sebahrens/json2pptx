@@ -37,13 +37,6 @@ var complexDiagramTypes = map[string]bool{
 	"funnel":                true,
 }
 
-// narrowPlaceholderThreshold is the maximum placeholder width (in EMUs) below
-// which a diagram is considered to be in a narrow/half-width layout.
-// This is approximately 50% of a standard 16:9 slide width (12192000 EMU),
-// which catches two-column layouts where each column is ≤50% of slide width.
-// A 60/40 split (60% column ≈ 6.4M EMU) passes this threshold.
-const narrowPlaceholderThreshold int64 = 6096000 // 12192000 * 0.50
-
 // complexityItemThreshold is the minimum number of data items/nodes in a
 // diagram before it is considered "complex" for narrow-layout warnings.
 // Simple diagrams (e.g., an org chart with 3 nodes) render fine at half-width.
@@ -648,7 +641,7 @@ func (ctx *singlePassContext) shrinkShapeForTextAboveDiagram(shape *shapeXML, fu
 // but does not prevent the diagram from being rendered. This allows users to override
 // the layout choice while still being informed of the quality issue.
 func (ctx *singlePassContext) checkDiagramInNarrowPlaceholder(slideNum int, diagramSpec *types.DiagramSpec, embedW int64, placeholderID string) {
-	if embedW > narrowPlaceholderThreshold {
+	if embedW > diagramSlideWidth(ctx.slideWidth)/2 {
 		return
 	}
 	if !complexDiagramTypes[diagramSpec.Type] {
@@ -660,8 +653,7 @@ func (ctx *singlePassContext) checkDiagramInNarrowPlaceholder(slideNum int, diag
 		return
 	}
 
-	// Standard widescreen slide width in EMU (13.33 inches)
-	const slideWidthEMU = 12192000
+	slideWidthEMU := diagramSlideWidth(ctx.slideWidth)
 	widthPct := float64(embedW) / float64(slideWidthEMU) * 100
 
 	warning := fmt.Sprintf(
@@ -687,8 +679,8 @@ func (ctx *singlePassContext) checkDiagramInNarrowPlaceholder(slideNum int, diag
 // when rendered in a narrow area (e.g. a shape_grid cell). Returns a warning
 // message if the diagram is complex enough to warrant concern, or empty string
 // if the diagram is fine at the given width.
-func CheckDiagramInNarrowBounds(diagramSpec *types.DiagramSpec, widthEMU int64, slideNum int, location string) string {
-	if widthEMU > narrowPlaceholderThreshold {
+func CheckDiagramInNarrowBounds(diagramSpec *types.DiagramSpec, widthEMU int64, slideNum int, location string, slideWidths ...int64) string {
+	if widthEMU > diagramSlideWidth(slideWidths...)/2 {
 		return ""
 	}
 	if !complexDiagramTypes[diagramSpec.Type] {
@@ -698,7 +690,7 @@ func CheckDiagramInNarrowBounds(diagramSpec *types.DiagramSpec, widthEMU int64, 
 	if complexity < complexityItemThreshold {
 		return ""
 	}
-	const slideWidthEMU = 12192000
+	slideWidthEMU := diagramSlideWidth(slideWidths...)
 	widthPct := float64(widthEMU) / float64(slideWidthEMU) * 100
 	return fmt.Sprintf(
 		"slide %d: complex %s diagram (%d items) in narrow %s (width %.0f%% of slide) may be illegible — consider using a wider cell or full-width layout",
@@ -713,8 +705,8 @@ func CheckDiagramInNarrowBounds(diagramSpec *types.DiagramSpec, widthEMU int64, 
 // CheckDiagramInNarrowBoundsFinding checks whether a complex diagram would be
 // illegible in a narrow grid cell and returns a structured FitFinding instead of
 // a warning string. Returns nil if the diagram fits fine at the given width.
-func CheckDiagramInNarrowBoundsFinding(diagramSpec *types.DiagramSpec, widthEMU int64, path string) *patterns.FitFinding {
-	if widthEMU > narrowPlaceholderThreshold {
+func CheckDiagramInNarrowBoundsFinding(diagramSpec *types.DiagramSpec, widthEMU int64, path string, slideWidths ...int64) *patterns.FitFinding {
+	if widthEMU > diagramSlideWidth(slideWidths...)/2 {
 		return nil
 	}
 	if !complexDiagramTypes[diagramSpec.Type] {
@@ -724,7 +716,7 @@ func CheckDiagramInNarrowBoundsFinding(diagramSpec *types.DiagramSpec, widthEMU 
 	if complexity < complexityItemThreshold {
 		return nil
 	}
-	const slideWidthEMU = 12192000
+	slideWidthEMU := diagramSlideWidth(slideWidths...)
 	widthPct := float64(widthEMU) / float64(slideWidthEMU) * 100
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
@@ -743,7 +735,7 @@ func CheckDiagramInNarrowBoundsFinding(diagramSpec *types.DiagramSpec, widthEMU 
 					"complexity":     complexity,
 					"cell_width_pct": widthPct,
 					"cell_width_emu": widthEMU,
-					"threshold_emu":  narrowPlaceholderThreshold,
+					"threshold_emu":  diagramSlideWidth(slideWidths...) / 2,
 				},
 			},
 		},
@@ -752,9 +744,9 @@ func CheckDiagramInNarrowBoundsFinding(diagramSpec *types.DiagramSpec, widthEMU 
 			WidthEMU: widthEMU,
 		},
 		Allowed: &patterns.Extent{
-			WidthEMU: narrowPlaceholderThreshold,
+			WidthEMU: diagramSlideWidth(slideWidths...) / 2,
 		},
-		OverflowRatio: float64(narrowPlaceholderThreshold) / float64(widthEMU),
+		OverflowRatio: float64(diagramSlideWidth(slideWidths...)/2) / float64(widthEMU),
 	}
 }
 
@@ -1559,4 +1551,12 @@ func (ctx *singlePassContext) lastDiagramWarning(placeholderID string) string {
 		}
 	}
 	return "diagram rendering failed"
+}
+
+// diagramSlideWidth keeps compatibility for callers without template geometry.
+func diagramSlideWidth(widths ...int64) int64 {
+	if len(widths) > 0 && widths[0] > 0 {
+		return widths[0]
+	}
+	return 12192000
 }

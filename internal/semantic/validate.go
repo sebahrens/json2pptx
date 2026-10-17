@@ -22,6 +22,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 	"github.com/sebahrens/json2pptx/internal/semantic/slides"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // Strictness controls how strictly the advisory semantic rules are enforced.
@@ -118,13 +119,13 @@ func (k shapeKind) label() string {
 // raw_json2pptx's "slide" is validated structurally by validateRawEscapeHatch.
 var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	KindTitle:            {"title": shapeString, "subtitle": shapeString, "eyebrow": shapeString},
-	KindSection:          {"title": shapeString, "subtitle": shapeString},
+	KindSection:          {"title": shapeString, "subtitle": shapeString, "show_chapters": shapeBoolean},
 	KindExecutiveSummary: {"title": shapeString, "points": shapeArray, "takeaways": shapeArray, "takeaway": shapeString, "bottom_line": shapeString},
 	KindKPISnapshot:      {"title": shapeString, "kpis": shapeArray, "metrics": shapeArray, "takeaway": shapeString},
 	KindChartInsight:     {"title": shapeString, "chart": shapeObject, "insights": shapeArray, "insight": shapeString, "source": shapeString, "takeaway": shapeString},
 	KindComparison: {
 		"title": shapeString, "columns": shapeArray, "takeaway": shapeString,
-		"connectors": shapeBoolean, "highlight_column": shapeString, "highlight_row": shapeStringOrInteger,
+		"markers": shapeString, "connectors": shapeBoolean, "highlight_column": shapeString, "highlight_row": shapeStringOrInteger,
 	},
 	KindOptionMatrix: {
 		"title": shapeString, "criteria": shapeArray, "columns": shapeArray,
@@ -215,7 +216,7 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"decisions_label": shapeString, "takeaway": shapeString,
 	},
 	KindClosing: {"title": shapeString, "subtitle": shapeString},
-	KindRegions: {"title": shapeString, "arrangement": shapeString, "regions": shapeArray, "takeaway": shapeString},
+	KindRegions: {"gap": shapeNumber, "divider": shapeBoolean, "title": shapeString, "arrangement": shapeString, "regions": shapeArray, "takeaway": shapeString},
 }
 
 // shapeMatches reports whether v has the JSON type the shape expects.
@@ -490,6 +491,10 @@ func dedupExact(in []diagnostics.Diagnostic) []diagnostics.Diagnostic {
 // subtitle, date, source, author, audience, chrome furniture) is scanned for
 // placeholder content.
 func validateMeta(spec *DeckSpec, s *semDiags) {
+	validateSectionChapters(spec, s)
+	if spec.Meta.Chrome != nil && runeLen(spec.Meta.Chrome.Sticker) > 20 {
+		s.hard("meta.chrome.sticker", diagnostics.CodeSemanticFieldType, "sticker holds at most 20 characters")
+	}
 	if v := spec.Meta.TypeScale; v != "" && v != "compact" && v != "comfortable" && v != "presentation" {
 		s.hard("meta.type_scale", diagnostics.CodeSemanticRequired, "type_scale must be compact, comfortable, or presentation")
 	}
@@ -575,6 +580,9 @@ func validateMetaRequiredLayouts(spec *DeckSpec, s *semDiags) {
 }
 
 func validateSlideAt(path string, slide SlideSpec, s *semDiags) {
+	if runeLen(strPayloadField(slide.Body, "sticker")) > 20 {
+		s.hard(path+".sticker", diagnostics.CodeSemanticFieldType, "sticker holds at most 20 characters")
+	}
 
 	// Kind discriminator must be present and registered before the payload can
 	// be interpreted.
@@ -751,6 +759,9 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) { //nolint:goc
 // validateOtherKind applies the rules of kinds validateKindRules' switch
 // leaves out.
 func validateOtherKind(path string, slide SlideSpec, s *semDiags) {
+	if validateConsultingVisual(path, slide, s) {
+		return
+	}
 	switch slide.Kind {
 	case KindRegions:
 		validateRegions(path, slide, s)
@@ -1364,6 +1375,13 @@ func validateChartData(chartPath string, chart map[string]any, s *semDiags) {
 			"chart-insights-split", degradeToInsightsOnly, degradeChartDataMissing)
 		return
 	}
+	if chartType == "mekko_chart" || chartType == "combo_chart" || chartType == "butterfly_chart" {
+		d := svggen.DefaultRegistry().Get(chartType)
+		if err := d.Validate(&svggen.RequestEnvelope{Type: chartType, Data: data}); err != nil {
+			s.hard(dataPath, diagnostics.CodeSemanticFieldType, err.Error())
+		}
+		return
+	}
 	if chartDataHasValues(data, chartType) {
 		validateChartSeriesAlignment(dataPath, data, s)
 		return
@@ -1618,7 +1636,11 @@ func validateComparisonOverrides(path string, slide SlideSpec, s *semDiags) {
 	_, hasConnectors := body["connectors"].(bool)
 	_, hasColumn := body["highlight_column"]
 	_, hasRow := body["highlight_row"]
-	if !hasConnectors && !hasColumn && !hasRow {
+	_, hasMarkers := body["markers"]
+	if hasMarkers && strPayloadField(body, "markers") != "tick-cross" {
+		s.hard(path+".markers", diagnostics.CodeSemanticFieldType, "markers must be tick-cross")
+	}
+	if !hasConnectors && !hasColumn && !hasRow && !hasMarkers {
 		return
 	}
 	pattern := slides.ComparisonPattern(body)
@@ -1627,7 +1649,7 @@ func validateComparisonOverrides(path string, slide SlideSpec, s *semDiags) {
 		if pattern != "" {
 			outcome = "the slide renders as " + pattern
 		}
-		for _, field := range []string{"connectors", "highlight_column", "highlight_row"} {
+		for _, field := range []string{"connectors", "highlight_column", "highlight_row", "markers"} {
 			if _, set := body[field]; !set {
 				continue
 			}

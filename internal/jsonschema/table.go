@@ -24,6 +24,8 @@ const (
 
 // TableInput represents a table with headers, rows, and optional styling.
 type TableInput struct {
+	// MinimumFontSize is an internal readable floor set by measured native matrices.
+	MinimumFontSize  int                `json:"-"`
 	ColumnWidths     []float64          `json:"column_widths,omitempty"`
 	Headers          []string           `json:"headers"`
 	Rows             [][]TableCellInput `json:"rows"`
@@ -42,6 +44,7 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 	}
 	spec := &types.TableSpec{
 		Headers:          t.Headers,
+		MinimumFontSize:  t.MinimumFontSize,
 		ColumnWidths:     t.ColumnWidths,
 		ColumnAlignments: t.ColumnAlignments,
 		Alt:              t.Alt,
@@ -50,9 +53,11 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 		cells := make([]types.TableCell, len(row))
 		for j, cell := range row {
 			cells[j] = types.TableCell{
-				Content: cell.Content,
-				ColSpan: cell.ColSpan,
-				RowSpan: cell.RowSpan,
+				SourceColumn: j + 1,
+				Content:      cell.Content,
+				TextColor:    cell.TextColor,
+				ColSpan:      cell.ColSpan,
+				RowSpan:      cell.RowSpan,
 			}
 			if cell.Conditional != nil {
 				threshold, _ := cell.Conditional.ThresholdValue()
@@ -87,6 +92,7 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 
 // TableCellInput supports both string shorthand and full object form.
 type TableCellInput struct {
+	TextColor   string                  `json:"text_color,omitempty"`
 	Content     string                  `json:"content"`
 	ColSpan     int                     `json:"col_span,omitempty"`
 	RowSpan     int                     `json:"row_span,omitempty"`

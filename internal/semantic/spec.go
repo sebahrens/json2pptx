@@ -137,6 +137,7 @@ func CanonicalWaivableCode(code string) (string, bool) {
 // ChromeSpec mirrors deckinput.ChromeInput: the deck furniture rendered into
 // every slide's footer band.
 type ChromeSpec struct {
+	Sticker string `json:"sticker,omitempty" yaml:"sticker,omitempty"`
 	// Confidentiality is a classification stamp (e.g. "Strictly confidential").
 	Confidentiality string `json:"confidentiality,omitempty" yaml:"confidentiality,omitempty"`
 	// ClientName is the client or company name.

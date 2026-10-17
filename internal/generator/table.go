@@ -38,6 +38,7 @@ type TableRenderConfig struct {
 	templateStyle bool
 	// compactTypography keeps the default type scale independent of appearance.
 	compactTypography bool
+	minimumFontSize   int
 	// renderRows is the number of emitted data rows (summary row included),
 	// so cell borders can tell the last row.
 	renderRows int
@@ -97,6 +98,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		config.DefaultSize = TableBaseFontSize(config.Style)
 	}
 	config.compactTypography = config.DefaultSize <= engineDefaultRowFontSize
+	config.minimumFontSize = table.MinimumFontSize
 	if config.DefaultFont == "" {
 		config.DefaultFont = defaultFontFamily
 	}
@@ -131,7 +133,9 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	// comfortably fit 4 columns at 18pt.  Beyond that we reduce linearly,
 	// clamping to a readable minimum of 1000 (10pt). The 12pt engine default
 	// is only capped at that budget (see columnScaledFontSize).
-	if scaled, changed := columnScaledFontSize(config.DefaultSize, numCols, config.compactTypography); changed {
+	scaled, _ := columnScaledFontSize(config.DefaultSize, numCols, config.compactTypography)
+	scaled = max(scaled, table.MinimumFontSize)
+	if scaled != config.DefaultSize {
 		config.DefaultSize = scaled
 		// Site 6: emit hint when font is scaled down due to column count.
 		findings = append(findings, patterns.FitFinding{
@@ -167,6 +171,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 			if config.compactTypography {
 				floor = engineDefaultRowFontSize
 			}
+			floor = max(floor, table.MinimumFontSize)
 			if scaled < floor {
 				scaled = floor
 			}
@@ -1104,6 +1109,11 @@ func generateDataCellContent(cell types.TableCell, isTotalsRow bool, config Tabl
 		fontColorXML = deltaTextColor(cell.Content)
 	}
 
+	if cell.TextColor != "" {
+		var ink bytes.Buffer
+		pptx.ResolveColorString(cell.TextColor).WriteTo(&ink)
+		fontColorXML = ink.String()
+	}
 	rPr := tableRunPropertiesXML(fontSize, bold, fontColorXML, (config.templateStyle || config.Style.UseTableStyle) && bold == "0")
 
 	return fmt.Sprintf(

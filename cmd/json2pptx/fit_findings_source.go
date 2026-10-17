@@ -30,6 +30,8 @@ var dataSourcePatterns = map[string]bool{
 	"stat-hero":                    true,
 	"hero-detail":                  true,
 	"metric-list":                  true,
+	"progress-list":                true,
+	"numeric-heatmap":              true,
 }
 
 // collectDataWithoutSourceFindings flags content slides that show data — a

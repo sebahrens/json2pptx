@@ -125,6 +125,7 @@ func defaultMatrixQuadrantLabels(xAxis, yAxis string) [4]string {
 
 // Matrix2x2Point represents a data point in the matrix.
 type Matrix2x2Point struct {
+	Status string
 	// Label is the point label.
 	Label string
 
@@ -1331,7 +1332,7 @@ func (d *Matrix2x2Diagram) Validate(req *RequestEnvelope) error {
 	}
 
 	// Points are optional - can show empty matrix
-	return nil
+	return validateMatrixPointStatus(req.Data)
 }
 
 // Render generates an SVG document from the request envelope.
@@ -1359,6 +1360,9 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		width, height := builder.Width(), builder.Height()
 		config := DefaultMatrix2x2Config(width, height)
 		config.ShowPointLabels = true
+		if matrixHasStatus(data) {
+			config.MarginBottom += 30
+		}
 
 		// One tone for all four quadrants — four different accents read as a
 		// patchwork and bury which quadrant matters (go-slide-creator-njdno) —
@@ -1491,7 +1495,7 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		if err := chart.Draw(data); err != nil {
 			return err
 		}
-		return nil
+		return drawMatrixStatusLegend(builder, data)
 	})
 }
 
@@ -1572,7 +1576,8 @@ func (d *Matrix2x2Diagram) DataSchema() *DataSchema {
 		"label":       StringDataSchema("Point label"),
 		"x":           NumberDataSchema("X position (0-100 by default)"),
 		"y":           NumberDataSchema("Y position (0-100 by default)"),
-		"size":        NumberDataSchema("Bubble size"),
+		"size":        NumberDataSchema("Bubble diameter in points, (0,40]"),
+		"status":      EnumDataSchema("Stakeholder stance; adds a used-status legend", "supporter", "neutral", "blocker"),
 		"color":       StringDataSchema("Hex color override"),
 		"description": StringDataSchema("Point description"),
 		"series":      StringDataSchema("Series / group name (aliases: group, category)"),
@@ -1625,6 +1630,11 @@ func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, []Finding, error) 
 			point := Matrix2x2Point{}
 
 			if p, ok := pRaw.(map[string]any); ok {
+				if status, ok := p["status"].(string); ok {
+					point.Status = status
+					color := stakeholderStatusColors[status]
+					point.Color = &color
+				}
 				if label, ok := p["label"].(string); ok {
 					point.Label = label
 				}

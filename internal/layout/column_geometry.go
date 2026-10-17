@@ -39,3 +39,18 @@ func DeriveColumnBounds(left, right types.BoundingBox, leftPercent int) (types.B
 	right.Width = usable - leftWidth
 	return left, right, nil
 }
+
+// DeriveStackedBounds reuses the native body frame, with a minimum chrome gutter.
+func DeriveStackedBounds(first, second types.BoundingBox, topPercent int) (types.BoundingBox, types.BoundingBox, error) {
+	if topPercent <= 0 || topPercent >= 100 {
+		return first, second, fmt.Errorf("stacked split must be between 1 and 99")
+	}
+	x, y := min(first.X, second.X), min(first.Y, second.Y)
+	w, h := max(first.X+first.Width, second.X+second.Width)-x, max(first.Y+first.Height, second.Y+second.Height)-y
+	if w <= 0 || h <= MinTwoColumnGutterEMU+1 {
+		return first, second, fmt.Errorf("stacked layout has no usable body after its gutter")
+	}
+	usable := h - MinTwoColumnGutterEMU
+	topH := usable * int64(topPercent) / 100
+	return types.BoundingBox{X: x, Y: y, Width: w, Height: topH}, types.BoundingBox{X: x, Y: y + topH + MinTwoColumnGutterEMU, Width: w, Height: usable - topH}, nil
+}

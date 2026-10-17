@@ -134,7 +134,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// go-slide-creator-x1fjb): GridCellInput gains a field and the two layer
 	// structs join the hashed set, so the hash advances.
 	// If this fails, see file header comment.
-	const wantFingerprint = "865d239d81b07196"
+	// 4.178.0 adds native compose leaves, gap/divider/heading slots, grid rules,
+	// cell text ink and layout-review repair vocabulary.
+	const wantFingerprint = "bb7ad471bb831a5c"
 
 	got := schemaFingerprint()
 

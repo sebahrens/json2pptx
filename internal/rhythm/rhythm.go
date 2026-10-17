@@ -25,6 +25,12 @@ import (
 // Slide is the minimal per-slide projection the analyzer needs. Callers build
 // it from their own input types; the analyzer never sees the full JSON schema.
 type Slide struct {
+	LayoutID        string
+	PaneCount       int
+	VisualSide      string
+	SplitPct        float64
+	VisualAreaShare float64
+	Takeaway        string
 	// SlideType is the optional slide_type hint (e.g. "title", "content").
 	SlideType string
 	// PatternName is the named pattern, or "" when the slide has no named pattern.
@@ -113,15 +119,20 @@ type ComposeRegion struct {
 
 // SlideInfo describes the visual fingerprint of a single slide.
 type SlideInfo struct {
-	SlideIndex               int    `json:"slide_index"`
-	Pattern                  string `json:"pattern"`                     // pattern name, "shape_grid", "content", or slide_type
-	DensityClass             string `json:"density_class"`               // "low", "med", "high"
-	AccentRole               string `json:"accent_role"`                 // primary accent color used, or "none"
-	DominantVisual           string `json:"dominant_visual"`             // "chart", "diagram", "table", "text", "grid", "pattern"
-	Motif                    string `json:"motif"`                       // visual motif ("tiles", "open-columns", "table", …) or "none"
-	WithinSlideAccentVariety int    `json:"within_slide_accent_variety"` // distinct accent slots used across cells
-	cellCount                int    // internal: total cells in shape_grid (not serialized)
-	appendix                 bool   // internal: back matter, outside the run checks
+	LayoutID                 string  `json:"layout_id,omitempty"`
+	PaneCount                int     `json:"pane_count"`
+	VisualSide               string  `json:"visual_side,omitempty"`
+	SplitPct                 float64 `json:"split_pct,omitempty"`
+	VisualAreaShare          float64 `json:"visual_area_share,omitempty"`
+	SlideIndex               int     `json:"slide_index"`
+	Pattern                  string  `json:"pattern"`                     // pattern name, "shape_grid", "content", or slide_type
+	DensityClass             string  `json:"density_class"`               // "low", "med", "high"
+	AccentRole               string  `json:"accent_role"`                 // primary accent color used, or "none"
+	DominantVisual           string  `json:"dominant_visual"`             // "chart", "diagram", "table", "text", "grid", "pattern"
+	Motif                    string  `json:"motif"`                       // visual motif ("tiles", "open-columns", "table", …) or "none"
+	WithinSlideAccentVariety int     `json:"within_slide_accent_variety"` // distinct accent slots used across cells
+	cellCount                int     // internal: total cells in shape_grid (not serialized)
+	appendix                 bool    // internal: back matter, outside the run checks
 }
 
 // PatternRun describes a consecutive run of one visual family. Name is the
@@ -168,6 +179,7 @@ type Aggregates struct {
 
 // Recommendation is an actionable suggestion to improve deck rhythm.
 type Recommendation struct {
+	Severity string `json:"severity,omitempty"`
 	// Code classifies the recommendation (break_run, missing_executive_summary,
 	// ...); see SKILL.md. Stable for programmatic handling.
 	Code             string   `json:"code,omitempty"`
@@ -256,6 +268,7 @@ func AnalyzeWith(slides []Slide, opts Options) *Result {
 	recs := generateRecommendations(slides, perSlide, runs, dd, underfilled, opts)
 	motifRecs, penalty := motifRecommendations(slides, mSlides, runs, motifRuns, dominant, dominantSlides, contentSlides)
 	recs = append(recs, motifRecs...)
+	recs = append(recs, layoutRecommendations(slides, perSlide)...)
 	result.motif = penalty
 	// Advice an agent cannot locate is advice it cannot act on: "100% of
 	// cells are underfilled" at slide_index -1 named no slide to fix. Every
@@ -277,6 +290,9 @@ func fingerprint(idx int, s Slide) SlideInfo {
 	info := SlideInfo{
 		SlideIndex:     idx,
 		DominantVisual: dominantVisual(s),
+		LayoutID:       s.LayoutID, PaneCount: s.PaneCount,
+		VisualSide: s.VisualSide, SplitPct: s.SplitPct,
+		VisualAreaShare: s.VisualAreaShare,
 	}
 
 	// Determine pattern name.
@@ -327,7 +343,11 @@ func FingerprintKey(s Slide) string {
 }
 
 func visualFingerprint(s SlideInfo) string {
-	return visualFamily(s.Pattern) + "|" + s.DominantVisual
+	key := visualFamily(s.Pattern) + "|" + s.DominantVisual
+	if s.PaneCount > 1 {
+		key += fmt.Sprintf("|%d:%s:%.1f", s.PaneCount, s.VisualSide, math.Round(s.SplitPct/10)*10)
+	}
+	return key
 }
 
 // shapeGridFingerprint names a raw shape_grid by its shape, so two grids count
@@ -929,6 +949,13 @@ func computeCompositionScore(r *Result) int {
 		score -= 10
 	}
 	score -= float64(r.motif.gaps) * 10
+
+	for _, rec := range r.Recommendations {
+		if rec.Code == CodeLayoutVarietyHigh {
+			score -= 5
+			break
+		}
+	}
 
 	// Penalize high repetition index.
 	if r.Aggregates.RepetitionIndex > 0.7 {

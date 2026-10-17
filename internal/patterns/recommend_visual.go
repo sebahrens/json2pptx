@@ -389,7 +389,7 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	if unsupported := unsupportedVisualIntent(intentLower); unsupported != "" {
 		return RecommendVisualResult{
 			Candidates:        []VisualCandidate{},
-			QueryUnderstood:   summarizeVisualIntent(intentLower, hints),
+			QueryUnderstood:   summarizeVisualIntent(intentLower, hints) + ". " + unsupportedVisualRecipe(unsupported),
 			UnsupportedVisual: unsupported,
 		}
 	}

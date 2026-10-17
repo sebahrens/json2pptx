@@ -72,9 +72,12 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// (go-slide-creator-cti7s, go-slide-creator-kuurd).
 	findings = append(findings, collectTakeawayMissingFindings(input)...)
 	findings = append(findings, collectStorylineFindings(input)...)
+	findings = append(findings, collectNumberFormatFindings(input)...)
+	findings = append(findings, collectStatusColorFindings(input, theme)...)
 	var geometryErrors []patterns.FitFinding
 	input, layouts, geometryErrors = withDerivedFitLayouts(input, layouts, slideWidth, slideHeight)
 	findings = append(findings, geometryErrors...)
+	findings = append(findings, collectGutterFindings(input, layouts, slideWidth, slideHeight)...)
 
 	// Expand compose envelopes into ShapeGrid so downstream detectors evaluate
 	// against post-merge cell geometry. Without this step, a diagram placed in
@@ -236,6 +239,8 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// (TITLE_NOT_ACTION) and a few lines stuck to the top of a large body
 	// placeholder (SPARSE_PLACEHOLDER) — go-slide-creator-d830i / -u9xfy.
 	findings = append(findings, collectTitleNotActionFindings(input, layouts)...)
+	findings = append(findings, collectNativeLayoutReviewFindings(input, layouts, slideWidth, slideHeight)...)
+	findings = append(findings, collectContinuationUnderfilledFindings(input, layouts, slideWidth, slideHeight, theme)...)
 	findings = append(findings, collectSparsePlaceholderFindings(input, layouts, slideHeight)...)
 	// 10c. Per-slide text-density ceiling (SLIDE_TEXT_DENSE,
 	// go-slide-creator-fle6s).
@@ -786,6 +791,14 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 		ctx.layoutDeclaresTitle = true
 	}
 
+	// Explicit full-slide image compositions own the whole canvas, matching
+	// resolveGridBounds. Template chrome is not a competing content frame;
+	// slide bounds and the separate written text/readability checks still run.
+	if fullSlideImageGrid(grid) {
+		ctx.layoutDeclaresTitle = false
+		ctx.layoutDeclaresFooter = false
+	}
+
 	// Resolve the grid to get authoritative cell bounds, using the SAME
 	// layout-aware geometry generation applies (zone clamp / override bounds)
 	// so the cells preflight evaluates land where they will render.
@@ -822,7 +835,7 @@ func checkGridCellsStructural(grid *ShapeGridInput, result *shapegrid.ResolveRes
 			findings = append(findings, checkCellStructural(path, slideIdx, rc.CellBounds.X, rc.CellBounds.Y, rc.CellBounds.CX, rc.CellBounds.CY, ctx)...)
 		}
 		if cell.Diagram != nil {
-			findings = append(findings, checkGridDiagramPreflightPath(cell.Diagram, path+"/diagram", rc.CellBounds.CX, rc.CellBounds.CY, rc.Bounds.CX, rc.Bounds.CY)...)
+			findings = append(findings, checkGridDiagramPreflightPath(cell.Diagram, path+"/diagram", rc.CellBounds.CX, rc.CellBounds.CY, rc.Bounds.CX, rc.Bounds.CY, slideWidth)...)
 		}
 		if rc.Kind == shapegrid.CellKindSubGrid && cell.Grid != nil && depth < maxGeomNestingDepth {
 			bounds := pptx.RectEmu{X: rc.Bounds.X + subGridInsetEMU, Y: rc.Bounds.Y + subGridInsetEMU, CX: rc.Bounds.CX - 2*subGridInsetEMU, CY: rc.Bounds.CY - 2*subGridInsetEMU}
@@ -858,12 +871,12 @@ func firstShapedLayer(cell *GridCellInput) int {
 // the post-fit frame the diagram is sized into. Legibility and conflict checks
 // use the render frame (matching render-time findings); the aspect-mismatch check
 // receives both so its evidence can separate authoring intent from the fit frame.
-func checkGridDiagramPreflightPath(diagram *types.DiagramSpec, diagPath string, cellCX, cellCY, renderCX, renderCY int64) []patterns.FitFinding {
+func checkGridDiagramPreflightPath(diagram *types.DiagramSpec, diagPath string, cellCX, cellCY, renderCX, renderCY int64, slideWidths ...int64) []patterns.FitFinding {
 	if diagram == nil {
 		return nil
 	}
 	var findings []patterns.FitFinding
-	if f := generator.CheckDiagramInNarrowBoundsFinding(diagram, renderCX, diagPath); f != nil {
+	if f := generator.CheckDiagramInNarrowBoundsFinding(diagram, renderCX, diagPath, slideWidths...); f != nil {
 		findings = append(findings, *f)
 	}
 	cellBox := types.BoundingBox{Width: cellCX, Height: cellCY}
@@ -898,7 +911,8 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 	if err != nil {
 		return nil
 	}
-	result.SubGridPeers = nestedPeerScope(grid, result.Cells, slideWidth, slideHeight)
+	fillDefaultFitImages(result, defaultFitImageSpecs(grid.Rows, sgGrid.Rows))
+	result.SubGridPeers = shapegrid.MergePeerScopes(sgGrid.Peers, nestedPeerScope(grid, result.Cells, slideWidth, slideHeight))
 	return result
 }
 
@@ -930,6 +944,7 @@ func structuralGrid(grid *ShapeGridInput, overrideBounds *pptx.RectEmu, zone *sh
 
 	vAlign, _ := shapegrid.ParseVerticalAlign(grid.VerticalAlign)
 	sgGrid := &shapegrid.Grid{
+		ColRule:   grid.ColRule,
 		Bounds:    bounds,
 		TypeScale: grid.TypeScale,
 		Columns:   colWidths,
@@ -985,7 +1000,6 @@ func nestedPeerScope(input *ShapeGridInput, cells []shapegrid.ResolvedCell, slid
 		bounds pptx.RectEmu
 	}
 	var children []nested
-	grows := false
 	for _, rc := range cells {
 		if rc.Kind != shapegrid.CellKindSubGrid {
 			continue
@@ -995,9 +1009,8 @@ func nestedPeerScope(input *ShapeGridInput, cells []shapegrid.ResolvedCell, slid
 			continue
 		}
 		children = append(children, nested{grid: src.Grid, bounds: subGridBounds(rc.Bounds)})
-		grows = grows || gridTextMayGrow(src.Grid)
 	}
-	if len(children) < 2 || !grows {
+	if len(children) < 2 {
 		return nil
 	}
 	measured := make([]*shapegrid.ResolveResult, 0, len(children))
@@ -1008,27 +1021,37 @@ func nestedPeerScope(input *ShapeGridInput, cells []shapegrid.ResolvedCell, slid
 		}
 		sg.MeasurePeers = true
 		if res, err := shapegrid.Resolve(sg, pptx.NewShapeIDAllocator(nil)); err == nil {
+			res.Cells = measuredDescendantCells(children[i].grid, res, slideWidth, slideHeight, 0)
 			measured = append(measured, res)
 		}
 	}
 	return shapegrid.NewPeerScope(measured...)
 }
 
-// gridTextMayGrow reports whether a grid's own cells can take grow-to-fill:
-// the grid or one of its shapes asks for a type scale other than compact.
-func gridTextMayGrow(grid *ShapeGridInput) bool {
-	grows := func(mode string) bool { return mode != "" && mode != "compact" }
-	if grows(grid.TypeScale) {
-		return true
-	}
-	for _, row := range grid.Rows {
-		for _, cell := range row.Cells {
-			if cell != nil && cell.Shape != nil && grows(cell.Shape.TypeScale) {
-				return true
-			}
+// A pane can have its own heading and band wrappers. Measure its leaf
+// text at absolute frames, while keeping all descendants in one sibling.
+func measuredDescendantCells(grid *ShapeGridInput, result *shapegrid.ResolveResult, sw, sh int64, depth int) []shapegrid.ResolvedCell {
+	var out []shapegrid.ResolvedCell
+	for _, c := range result.Cells {
+		if c.Kind != shapegrid.CellKindSubGrid {
+			out = append(out, c)
+			continue
+		}
+		src := gridCellAtResolved(grid, c.RowIdx, c.ColIdx)
+		if src == nil || src.Grid == nil || depth >= maxGeomNestingDepth {
+			continue
+		}
+		b := subGridBounds(c.Bounds)
+		sg := structuralGrid(src.Grid, &b, nil, sw, sh)
+		if sg == nil {
+			continue
+		}
+		sg.MeasurePeers = true
+		if sub, err := shapegrid.Resolve(sg, pptx.NewShapeIDAllocator(nil)); err == nil && sub != nil {
+			out = append(out, measuredDescendantCells(src.Grid, sub, sw, sh, depth+1)...)
 		}
 	}
-	return false
+	return out
 }
 
 // hasAuthorSizedCell reports whether a grid holds a cell whose content the
@@ -1779,12 +1802,13 @@ func collectTablePreflightFindings(input *PresentationInput, layouts []types.Lay
 			bounds := tablePlaceholderBounds(content.PlaceholderID, layout)
 			pathPrefix := slidepath.ContentIndex(si, ci)
 			findings = append(findings, generator.DetectTablePreflight(generator.TablePreflightInput{
-				Path:         pathPrefix,
-				Headers:      spec.Headers,
-				ColumnWidths: spec.ColumnWidths,
-				Rows:         spec.Rows,
-				Style:        spec.Style,
-				Bounds:       bounds,
+				Path:            pathPrefix,
+				Headers:         spec.Headers,
+				ColumnWidths:    spec.ColumnWidths,
+				MinimumFontSize: spec.MinimumFontSize,
+				Rows:            spec.Rows,
+				Style:           spec.Style,
+				Bounds:          bounds,
 			})...)
 		}
 
@@ -1840,11 +1864,12 @@ func collectGridTablePreflightResolved(grid *ShapeGridInput, result *shapegrid.R
 		if rc.Kind == shapegrid.CellKindTable && cell.Table != nil {
 			spec := cell.Table.ToTableSpec()
 			findings = append(findings, generator.DetectTablePreflight(generator.TablePreflightInput{
-				Path:         path + "/table",
-				Headers:      spec.Headers,
-				ColumnWidths: spec.ColumnWidths,
-				Rows:         spec.Rows,
-				Style:        spec.Style,
+				Path:            path + "/table",
+				Headers:         spec.Headers,
+				ColumnWidths:    spec.ColumnWidths,
+				MinimumFontSize: spec.MinimumFontSize,
+				Rows:            spec.Rows,
+				Style:           spec.Style,
 				Bounds: types.BoundingBox{
 					X: rc.Bounds.X, Y: rc.Bounds.Y,
 					Width: rc.Bounds.CX, Height: rc.Bounds.CY,

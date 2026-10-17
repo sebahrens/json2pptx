@@ -170,6 +170,7 @@ func resolveCapacityGrid(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCon
 
 	vAlign, _ := shapegrid.ParseVerticalAlign(grid.VerticalAlign)
 	sgGrid := &shapegrid.Grid{
+		ColRule:   grid.ColRule,
 		Bounds:    bounds,
 		TypeScale: grid.TypeScale,
 		Columns:   colWidths,

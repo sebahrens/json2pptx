@@ -43,6 +43,7 @@ type comparison2colValues struct {
 // "today vs target, aligned row by row" slide needed both and could reach
 // neither without raw_json2pptx.
 type comparison2colOverrides struct {
+	Markers         string `json:"markers,omitempty"`
 	Connectors      bool   `json:"connectors,omitempty"`
 	HighlightColumn string `json:"highlight_column,omitempty"`
 }
@@ -112,11 +113,11 @@ func ComparisonHighlightRow(body map[string]any) (idx int, ok bool) {
 // comparisonOverrides builds the comparison-2col overrides the payload asks
 // for, or nil when it asks for none that resolve.
 func comparisonOverrides(body map[string]any) *comparison2colOverrides {
-	ovr := comparison2colOverrides{Connectors: ComparisonConnectors(body)}
+	ovr := comparison2colOverrides{Connectors: ComparisonConnectors(body), Markers: strField(body, "markers")}
 	if side, ok := ComparisonHighlightColumn(body); ok {
 		ovr.HighlightColumn = side
 	}
-	if !ovr.Connectors && ovr.HighlightColumn == "" {
+	if !ovr.Connectors && ovr.HighlightColumn == "" && ovr.Markers == "" {
 		return nil
 	}
 	return &ovr

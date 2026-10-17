@@ -27,6 +27,9 @@ func hasURLReferences(slides []SlideInput) bool { //nolint:gocognit
 		if slides[i].Background != nil && slides[i].Background.URL != "" {
 			return true
 		}
+		if composeHasURLReferences(slides[i].Compose) {
+			return true
+		}
 		if patternHasImageURL(&slides[i]) {
 			return true
 		}
@@ -109,6 +112,7 @@ func resolveURLs(slides []SlideInput, resolver urlResolver) []diagnostics.Diagno
 			}
 		}
 
+		findings = append(findings, resolveComposeURLs(slides[i].Compose, slidepath.SlideField(i, "compose"), i, resolver)...)
 		// Shape grid URLs, including nested cell grids.
 		if slides[i].ShapeGrid != nil {
 			findings = append(findings, resolveGridURLs(slides[i].ShapeGrid, slidepath.ShapeGrid(i), i, resolver)...)

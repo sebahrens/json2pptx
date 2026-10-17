@@ -127,18 +127,35 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		forcedLayouts[assignment.SlideIndex] = assignment.Layout
 	}
 
+	chapters := []string{}
+	chapterPaths := []string{}
+	for _, slide := range ir.Slides {
+		appendix, _ := slide.Body["appendix"].(bool)
+		if slide.Kind == KindSection && !appendix {
+			chapters = append(chapters, slide.Title)
+			chapterPaths = append(chapterPaths, slide.SourcePath)
+		}
+	}
+	chapterIndex := 0
 	for i := range ir.Slides {
 		si := &ir.Slides[i]
+		appendix, _ := si.Body["appendix"].(bool)
+		if si.Kind == KindSection && !appendix {
+			chapterIndex++
+		}
 		in := slides.Input{
-			SourceIndex: si.SourceIndex,
-			SourcePath:  si.SourcePath,
-			OutputIndex: len(input.Slides),
-			Title:       si.Title,
-			Takeaway:    si.Takeaway,
-			Pattern:     si.Visual.Pattern,
-			Layout:      si.Visual.Layout,
-			Body:        si.Body,
-			Override:    si.Override,
+			Chapters:           chapters,
+			ChapterSourcePaths: chapterPaths,
+			CurrentChapter:     chapterIndex,
+			SourceIndex:        si.SourceIndex,
+			SourcePath:         si.SourcePath,
+			OutputIndex:        len(input.Slides),
+			Title:              si.Title,
+			Takeaway:           si.Takeaway,
+			Pattern:            si.Visual.Pattern,
+			Layout:             si.Visual.Layout,
+			Body:               si.Body,
+			Override:           si.Override,
 		}
 		compiled, links, err := compileSlide(si.Kind, in)
 		if err != nil {
@@ -182,7 +199,7 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 			semSlide = fmt.Sprintf("slides[%d]", si.SourceIndex)
 		}
 		ir.SourceMap.Add(slidepath.SlideField(outputIndex, "source"), semSlide+".source", si.SourceIndex)
-		compiled.SectionTitle = si.SectionTitle
+		applySectionTitle(compiled, si.SectionTitle)
 		input.Slides = append(input.Slides, *compiled)
 	}
 
@@ -309,6 +326,9 @@ func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []sli
 // compileOtherKind compiles the kinds compileSlide's switch leaves out: the
 // regions kind, and the generic content fallback for everything else.
 func compileOtherKind(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []slides.SourceLink, error) {
+	if name, ok := consultingVisualKinds[kind]; ok {
+		return slides.CompileConsultingVisual(in, name, consultingVisualValues(kind, in.Body))
+	}
 	if kind == KindRegions {
 		return slides.CompileRegions(in)
 	}
@@ -368,6 +388,7 @@ func compileChrome(ir *DeckIR) *deckinput.ChromeInput {
 	}
 	c := ir.Chrome
 	out := &deckinput.ChromeInput{
+		Sticker:         ir.Chrome.Sticker,
 		Confidentiality: c.Confidentiality,
 		ClientName:      c.ClientName,
 		ProjectCode:     c.ProjectCode,
@@ -407,6 +428,7 @@ func applyUniversalSlideFields(compiled *deckinput.SlideInput, si *SlideIR, sm *
 	if compiled == nil || si == nil {
 		return
 	}
+	compiled.Sticker = strPayloadField(si.Body, "sticker")
 	rawSlide := fmt.Sprintf("/slides/%d", si.SourceIndex)
 	semSlide := si.SourcePath
 	if semSlide == "" {
@@ -543,4 +565,10 @@ func linkedContentIndex(compiled *deckinput.SlideInput, rawPath string) int {
 		return -1
 	}
 	return idx
+}
+
+func applySectionTitle(slide *deckinput.SlideInput, title string) {
+	if title != "" {
+		slide.SectionTitle = title
+	}
 }

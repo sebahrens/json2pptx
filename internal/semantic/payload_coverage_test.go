@@ -2,6 +2,8 @@ package semantic
 
 import (
 	"encoding/json"
+	"fmt"
+	"hash/crc32"
 	"sort"
 	"strings"
 	"testing"
@@ -582,6 +584,9 @@ func TestSemanticPayloadFieldCoverage(t *testing.T) {
 			}
 			t.Run(string(kind)+"/"+field, func(t *testing.T) {
 				sentinel := "ZQSENTINEL_" + string(kind) + "_" + field
+				if _, bounded := consultingVisualKinds[kind]; bounded {
+					sentinel = fmt.Sprintf("ZQ%08x", crc32.ChecksumIEEE([]byte(sentinel)))
+				}
 				spec := &DeckSpec{
 					Meta:   DeckMeta{Title: "Coverage Deck", Template: "midnight-blue"},
 					Slides: []SlideSpec{{Kind: kind, Body: probe.inject(sentinel)}},

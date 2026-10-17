@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
 // findingAt returns the finding of a code at a path.
@@ -106,23 +107,27 @@ func TestRefusalNamesTextTheLayoutWrote(t *testing.T) {
 		"kind": "decision", "title": "We recommend option two for the programme", "options": options, "recommendation": "Take option two.",
 	}}}
 	env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec, "template": "modern-template"}))
-	if env.OK {
-		t.Skip("this template build holds five options with details; nothing is refused")
-	}
-	named := false
+	// Inherited shrink now names its authored cause instead of the affected
+	// badge. The integration finding must offer that verified repair.
+	causal := false
 	for _, f := range env.Findings {
 		if strings.Contains(f.Message, "shorten the text") {
 			t.Errorf("the finding asks to shorten text without saying whose: %s", f.Message)
 		}
-		if strings.Contains(f.Message, `"RECOMMENDED", a label the layout writes, not copy from the spec (it marks the option with recommended: true)`) {
-			named = true
-			if !f.PatchVerified {
-				t.Errorf("no verified patch beside the layout-label finding: %+v", f.NextToolCall)
-			}
+		if f.PatchVerified && strings.Contains(f.Message, "/options/0/detail") {
+			causal = true
 		}
 	}
-	if !named {
-		t.Errorf("the refusal does not say that RECOMMENDED is the layout's own label: %+v", env.Findings)
+	if !env.OK && !causal {
+		t.Errorf("no verified repair names the authored cause: %+v", env.Findings)
+	}
+	// Preserve the original wording contract independently of which paragraph
+	// happens to shrink most on this template version.
+	d := semanticDiagnostic{Message: "text renders at 10.8pt, below the 12pt minimum", Evidence: map[string]any{"text": "RECOMMENDED"}}
+	ir := &semantic.DeckIR{Slides: []semantic.SlideIR{{Body: map[string]any{"options": options}}}}
+	got := readabilitySentence(d, ir, 0)
+	if !strings.Contains(got, `"RECOMMENDED", a label the layout writes, not copy from the spec (it marks the option with recommended: true)`) {
+		t.Errorf("layout label ownership lost: %s", got)
 	}
 }
 

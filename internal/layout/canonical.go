@@ -53,6 +53,13 @@ var canonicalNames = map[string]canonicalRule{
 	"blank-canvas":           {requireTags: []string{"blank"}},
 	"two-column":             {requireTags: []string{"two-column"}, nameHint: "50"},
 	"two-column-wide-narrow": {requireTags: []string{"two-column"}, nameHint: "50"},
+	"two-column-60-40":       {requireTags: []string{"two-column"}, nameHint: "50"},
+	"two-column-40-60":       {requireTags: []string{"two-column"}, nameHint: "50"},
+	"two-column-70-30":       {requireTags: []string{"two-column"}, nameHint: "50"},
+	"two-column-30-70":       {requireTags: []string{"two-column"}, nameHint: "50"},
+	"stacked-60-40":          {requireTags: []string{"two-column"}, nameHint: "50"},
+	"stacked-40-60":          {requireTags: []string{"two-column"}, nameHint: "50"},
+	"stacked":                {requireTags: []string{"two-column"}, nameHint: "50"},
 	"two-column-narrow-wide": {requireTags: []string{"two-column"}, nameHint: "50"},
 	"image-left":             {requireTags: []string{"image-left"}},
 	"image-right":            {requireTags: []string{"image-right"}},
@@ -74,6 +81,20 @@ func IsCanonicalName(name string) bool {
 // two asymmetric canonical names. Zero means use the template's native split.
 func DerivedColumnLeftPercent(name string) int {
 	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "stacked":
+		return 50
+	case "stacked-60-40":
+		return 60
+	case "stacked-40-60":
+		return 40
+	case "two-column-60-40":
+		return 60
+	case "two-column-40-60":
+		return 40
+	case "two-column-70-30", "sidebar-right", "main-sidebar":
+		return 70
+	case "two-column-30-70", "sidebar-left", "sidebar-main":
+		return 30
 	case "two-column-wide-narrow":
 		return 65
 	case "two-column-narrow-wide":
@@ -111,10 +132,24 @@ func ResolveCanonicalLayoutID(name string, layouts []types.LayoutMetadata) (stri
 	}
 
 	normalized := strings.ToLower(strings.TrimSpace(name))
+	switch normalized {
+	case "sidebar-right", "main-sidebar":
+		normalized = "two-column-70-30"
+	case "sidebar-left", "sidebar-main":
+		normalized = "two-column-30-70"
+	case "2-col", "2col", "split":
+		normalized = "two-column"
+	}
 
 	// Check canonical names first — prefer native template layouts over generated ones
 	if rule, ok := canonicalNames[normalized]; ok {
 		if id, found := findBestMatch(layouts, rule); found {
+			return id, true
+		}
+	}
+
+	if normalized == "image-left" || normalized == "image-right" {
+		if id, ok := findBestMatch(layouts, canonicalNames["two-column"]); ok {
 			return id, true
 		}
 	}
@@ -126,7 +161,12 @@ func ResolveCanonicalLayoutID(name string, layouts []types.LayoutMetadata) (stri
 
 	// Fall back to layout aliases (2-col → content-2-50-50, etc.)
 	if alias, ok := LayoutAliases[normalized]; ok {
-		return alias, true
+		for _, candidate := range layouts {
+			if candidate.ID == alias {
+				return alias, true
+			}
+		}
+		return name, false
 	}
 
 	return name, false
@@ -137,8 +177,8 @@ func ResolveCanonicalLayoutID(name string, layouts []types.LayoutMetadata) (stri
 // Only names that successfully resolve are included in the result.
 func ResolveAllCanonicalLayouts(layouts []types.LayoutMetadata) map[string]string {
 	result := make(map[string]string, len(canonicalNames))
-	for name, rule := range canonicalNames {
-		if id, found := findBestMatch(layouts, rule); found {
+	for name := range canonicalNames {
+		if id, found := ResolveCanonicalLayoutID(name, layouts); found {
 			result[name] = id
 		}
 	}
@@ -202,4 +242,30 @@ func matchesTags(layoutTags, requireTags, excludeTags []string) bool {
 	}
 
 	return true
+}
+
+// UnsupportedNativeAliasHint explains how to author missing multi-pane roles.
+func UnsupportedNativeAliasHint(name string) string {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "three-column", "3-col", "3col", "four-column", "4-col", "4col", "five-column", "5-col", "5col":
+		return "use regions columns for two or three panes, regions quad for four panes, or stylish-panels / comparison-2col for structured comparisons"
+	}
+	return ""
+}
+
+// IsStackedName identifies vertical native body splits before layout resolution.
+func IsStackedName(name string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(name)), "stacked") && IsCanonicalName(name)
+}
+
+// ImageColumnFallback reports the side for a portable image+text native split.
+func ImageColumnFallback(name string, layouts []types.LayoutMetadata) string {
+	normalized := strings.ToLower(strings.TrimSpace(name))
+	if normalized != "image-left" && normalized != "image-right" {
+		return ""
+	}
+	if _, native := findBestMatch(layouts, canonicalNames[normalized]); native {
+		return ""
+	}
+	return strings.TrimPrefix(normalized, "image-")
 }

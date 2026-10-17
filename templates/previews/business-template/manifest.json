@@ -2,8 +2,8 @@
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
   "template_sha256": "3dd5ff25a5ef5a35c19e7d0d01f879a927c69fbf0e183515dc4c68e04c299021",
-  "rendering_source_sha256": "cdf6280ad11efe6934680f0716813423ae1753e86c7fc668b99aeeaabf2f5db7",
-  "render_cache_identity": "2032f9b84434a2822534d4bc4da59d176e54337623fe2ffd8e6e5b9975e412ad",
+  "rendering_source_sha256": "c54af99348c7f99e9f37fdebb4f7d898f576c4dfa65f4f0b87f822308293a0ca",
+  "render_cache_identity": "42d7bc33f8c0ca74b04c2345cdb0f7702a890f0ab0c5090227525a91c775f20c",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
@@ -18,6 +18,7 @@
   "source_content": {
     "slideLayout1": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Closing",
@@ -27,6 +28,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "subtitle",
         "Type": "text",
         "Value": "Subtitle placeholder",
@@ -38,6 +40,7 @@
     ],
     "slideLayout2": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Section",
@@ -47,6 +50,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "Section Number",
         "Type": "text",
         "Value": "01",
@@ -58,6 +62,7 @@
     ],
     "slideLayout3": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "One Content",
@@ -67,6 +72,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "subtitle",
         "Type": "text",
         "Value": "Subtitle placeholder",
@@ -76,6 +82,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body",
         "Type": "bullets",
         "Value": [
@@ -91,6 +98,7 @@
     ],
     "slideLayout4": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Title Slide",
@@ -100,6 +108,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "subtitle",
         "Type": "text",
         "Value": "Subtitle placeholder",
@@ -111,6 +120,7 @@
     ],
     "slideLayout5": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Two Content",
@@ -120,6 +130,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body",
         "Type": "bullets",
         "Value": [
@@ -133,6 +144,7 @@
         "ColumnHeader": false
       },
       {
+        "Heading": "",
         "PlaceholderID": "body_2",
         "Type": "bullets",
         "Value": [
@@ -149,6 +161,7 @@
     "slideLayout6": null,
     "slideLayout7": [
       {
+        "Heading": "",
         "PlaceholderID": "title",
         "Type": "text",
         "Value": "Blank + Title",

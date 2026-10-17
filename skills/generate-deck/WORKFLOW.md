@@ -69,7 +69,7 @@ source). Do not re-derive the envelope.
 | More table rows than one slide holds | raw `split_slide` (`split.by: "table.rows"`) paginates; it never combines views, and `compose` never paginates |
 
 - `direction: "horizontal"` (side by side) or `"vertical"` (stacked); nest a
-  `compose` for chart | KPIs above a footer (≤ 8 segments, depth 2, 12
+  `compose` for chart | KPIs above a footer (≤ 8 segments, depth 3, 12
   leaves; `get_capabilities().features.compose`).
 - `size_pct` is a segment's share of width / height; omitted shares split
   equally, `smart_compose: true` balances by content. The dominant evidence

@@ -151,6 +151,8 @@ func kindSlideForPattern(pattern string) map[string]any {
 // or nil when no kind draws it.
 func kindSlideForDiagram(diagram string) map[string]any {
 	switch diagram {
+	case "venn", "fishbone", "pestel", "nine_box_talent", "heatmap", "value_chain", "pyramid":
+		return semantic.KindExample(semantic.SlideKind(diagram))
 	case "org_chart":
 		return semantic.KindExample(semantic.KindOrg)
 	case "swot":

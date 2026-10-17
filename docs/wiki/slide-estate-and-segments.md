@@ -19,10 +19,10 @@ source line cover the whole.
 ## 1. The ladder: which mechanism, in which order
 
 ```
-1. One kind draws the whole message?            → that kind (29 of them; layout-catalog.md)
+1. One kind draws the whole message?            → that kind (layout-catalog.md)
 2. The kind has a form you want instead?        → pattern: / layout: composition override
-3. Two or three typed parts prove one title?    → kind: regions  (2–3 regions, 6 arrangements, depth 1)
-4. A part must be a whole pattern or diagram?   → raw_json2pptx with compose (≤8 segments, depth 2, ≤12 leaves)
+3. Two or three typed parts prove one title?    → kind: regions  (2–4 regions, 10 arrangements, depth 1)
+4. A part must be a whole pattern or diagram?   → raw_json2pptx with compose (≤8 segments, depth 3, ≤12 leaves)
 5. One block inside a cell of a hand-built grid?→ shape_grid cell pattern: / grid: / layers
 6. A table that will not fit?                   → split it: (2/2) slide or appendix; never a smaller font
 ```
@@ -44,10 +44,16 @@ is checked as geometry.
 | `main_right` | exactly 3 | mirror of `main_left` | as above |
 | `main_top` | exactly 3 | `regions[0]` is a full-width band on top; `[1]` and `[2]` sit side by side under it | main: its height (default 60); the others: their width share |
 | `main_bottom` | exactly 3 | mirror of `main_top` | as above |
+| `quad` | exactly 4 | equal 2×2 quadrants | row/column shares from the live schema |
+| `main_left_3` | exactly 4 | main exhibit left, three stacked panels right | main width, then right-side heights |
+| `main_top_3` | exactly 4 | main exhibit top, three panels beneath | main height, then bottom widths |
+| `tiles_over_panels` | exactly 3 | a KPI region above two panels | upper height, then bottom widths |
 
 There is no nesting: a region is a flat typed object and cannot hold
 `regions`. Everything compiles to one `blank-title` shape grid under the
 slide title.
+
+Set `gap` in points and `divider: true` for ruled seams; neither consumes a region slot.
 
 ### Shares
 
@@ -71,11 +77,11 @@ slide title.
 
 | Region `kind` | Required | Also takes | Budget | Refused |
 |---|---|---|---|---|
-| `chart` | `chart {type, data}` | `heading` ≤60, `unit` ≤12, `alt`, `source` | any of the 16 chart types | a waterfall's totals off by >0.5% |
+| `chart` | `chart {type, data}` | `heading` ≤60, `unit` ≤12, `alt`, `source` | a live chart type | a waterfall's totals off by >0.5% |
 | `stat` | `value` ≤20 | `label` ≤80, `unit` ≤10, `context` ≤120 | one number | — |
 | `kpis` | `kpis[]` 2–4 `{value, label, delta, comparator}` | `heading` | the `kpi-Nup` card fit of the column | one KPI ("one number is a stat region") |
 | `table` | `headers`, ≥1 row | `rows`, `column_alignments`, positive relative `column_widths` | ≤4 columns × 6 logical rows (5 data rows) | more rows: a `table` slide |
-| `timeline` | `milestones` 3–7 | `heading` | label ≤60, date ≤30, body ≤200; `end_date` → bars | — |
+| `timeline` | `milestones` 3–7 | `heading`, `orientation: vertical` | label ≤60, date ≤30, body ≤200; `end_date` → bars (horizontal only) | — |
 | `image` | `image {path \| url, alt, fit}` | `caption` ≤120 | cover (default) or contain | `callouts` → use `image_case` |
 | `text` | `body` or `bullets` | `heading` | body ≤400 runes, ≤6 bullets | a column too long for what its neighbour can give up |
 | `process` | `steps[] {label, description?}` | `heading`, `size_pct` | 3–6 steps; label ≤40, description ≤80 | text that does not fit the region |
@@ -181,8 +187,10 @@ and `shape_grid` (the three are exclusive):
 ```
 compose:
   direction: horizontal | vertical
-  gap: <pt>              # default: the template's grid gutter
-  smart_compose: true    # only when no size_pct is set: shares from probed density
+  gap: <pt>              # default: template gutter
+  gaps: [0, 12]          # optional one value per seam; overrides gap
+  divider: true          # optional 0.75pt seam rules
+  smart_compose: true    # measured fit; preserves explicit size_pct shares
   banner:  {text, emphasis: bold|italic|bold-italic, accent}   # band above, no segment slot
   callout: {text, emphasis: bold|italic|bar|band|subtle, accent} # band below, no segment slot
   segments:
@@ -190,13 +198,20 @@ compose:
       pattern: {name, values, overrides, cell_overrides, callout, vertical_align}
     - size_pct: 40
       diagram: {type, title, alt, data}
-    - compose: {direction, gap, segments}     # one nested level
+    - compose: {direction, gap, segments}     # up to depth 3
+    - size: content                          # vertical-only measured height
+      heading: Evidence
+      caption: Supporting detail
+      table: {headers: [Item, Value], rows: [[A, B]]}
 ```
 
-Limits: 2–8 segments per envelope, depth 2 (one nested envelope inside a
-segment), 12 leaf segments across the tree, exactly one of `pattern` /
-`compose` / `diagram` per segment, set `size_pct` summing to ≤100 with the
-rest split equally. A segment is expanded inside its own rectangle (less a
+Limits: 2–8 segments per envelope, depth 3, 12 leaves across the tree.
+Exactly one of `pattern`, `compose`, `diagram`, `shape_grid`, `table`,
+`text: {body, bullets}` or `image` per segment. `heading` (≤60) and `caption`
+(≤120) reserve space before fit. Vertical `size: content` cannot combine with
+`size_pct`. Fixed shares are preserved; unset shares divide the remaining
+space (or measured demand with `smart_compose`). All-fixed shares must fill
+the envelope. Bands reserve every seam before allocation. A segment is expanded inside its own rectangle (less a
 4pt inset) so width-sensitive patterns see their real width; a horizontal
 segment is exactly its share minus one gap per neighbour. Per-segment
 findings are addressed `segments[i].pattern.…`. `compose` never paginates. A

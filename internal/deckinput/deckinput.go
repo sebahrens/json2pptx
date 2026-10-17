@@ -94,6 +94,7 @@ type PresentationInput struct {
 // confidentiality marks) that appear on every content slide but are suppressed
 // on title and closing slides.
 type ChromeInput struct {
+	Sticker string `json:"sticker,omitempty"`
 	// Confidentiality is a classification stamp (e.g., "Strictly confidential").
 	Confidentiality string `json:"confidentiality,omitempty"`
 	// ClientName is the client or company name (e.g., "Acme Corp").
@@ -280,6 +281,9 @@ func (t *ThemeInput) ToThemeOverride() *types.ThemeOverride {
 
 // SlideInput maps to generator.SlideSpec with full metadata.
 type SlideInput struct {
+	Sticker         string `json:"sticker,omitempty"`
+	StackedSplit    bool   `json:"-"`
+	ImageColumnSide string `json:"-"`
 	// Origin is where the slide was authored when the deck's slide list is
 	// not the one the author wrote (split_slide pages, a structure block);
 	// nil when the slide's index is its address. Never serialized.
@@ -364,6 +368,7 @@ type BackgroundOverlayInput struct {
 // The "type" field determines which typed value field to use.
 // For backward compat, "value" (json.RawMessage) is also supported.
 type ContentInput struct {
+	Heading       string     `json:"heading,omitempty"`
 	PlaceholderID string     `json:"placeholder_id"`
 	Type          string     `json:"type"`
 	Link          *LinkInput `json:"link,omitempty"`
@@ -598,6 +603,9 @@ type PatternInput struct {
 // agents can add a Strategy-House-style banner without sacrificing a segment
 // budget to a faux-banner pattern like pull-quote.
 type ComposeInput struct {
+	GapSet       bool                     `json:"-"`
+	Gaps         []float64                `json:"gaps,omitempty"`
+	Divider      bool                     `json:"divider,omitempty"`
 	Direction    string                   `json:"direction"`               // "vertical" or "horizontal"
 	Gap          float64                  `json:"gap,omitempty"`           // Gap in points between segments (default: 8)
 	SmartCompose bool                     `json:"smart_compose,omitempty"` // Auto-balance segment sizes by content density
@@ -620,10 +628,17 @@ type ComposeInput struct {
 // region, and the envelope's gap/gutter applies uniformly across all three
 // segment kinds. See go-slide-creator-zg8q.6.
 type SegmentInput struct {
-	Pattern PatternInput       `json:"pattern,omitempty"`
-	Compose *ComposeInput      `json:"compose,omitempty"`
-	Diagram *types.DiagramSpec `json:"diagram,omitempty"`
-	SizePct float64            `json:"size_pct,omitempty"` // Percentage of available space (0 = equal split)
+	Heading   string                     `json:"heading,omitempty"`
+	Caption   string                     `json:"caption,omitempty"`
+	Size      string                     `json:"size,omitempty"`
+	ShapeGrid *jsonschema.ShapeGridInput `json:"shape_grid,omitempty"`
+	Table     *jsonschema.TableInput     `json:"table,omitempty"`
+	Text      *ComposeTextInput          `json:"text,omitempty"`
+	Image     *jsonschema.GridImageInput `json:"image,omitempty"`
+	Pattern   PatternInput               `json:"pattern,omitempty"`
+	Compose   *ComposeInput              `json:"compose,omitempty"`
+	Diagram   *types.DiagramSpec         `json:"diagram,omitempty"`
+	SizePct   float64                    `json:"size_pct,omitempty"` // Percentage of available space (0 = equal split)
 }
 
 // HasPattern reports whether the segment carries a leaf pattern (non-empty
@@ -655,4 +670,10 @@ type SplitConfig struct {
 	GroupSize     int    `json:"group_size"`               // rows per page
 	TitleSuffix   string `json:"title_suffix,omitempty"`   // e.g. " ({page}/{total})"
 	RepeatHeaders bool   `json:"repeat_headers,omitempty"` // repeat table headers on each page
+}
+
+// ComposeTextInput is a native pane of body text and bullet paragraphs.
+type ComposeTextInput struct {
+	Body    string   `json:"body,omitempty"`
+	Bullets []string `json:"bullets,omitempty"`
 }

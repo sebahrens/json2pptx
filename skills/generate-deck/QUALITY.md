@@ -5,20 +5,14 @@ structure; it cannot tell whether the deck says anything. That part is yours.
 
 ## 1. Write the ghost deck first
 
-List only the slide titles, in order, before choosing a single visual. Read
-them top to bottom as if they were the whole deck: an executive who reads
-nothing else must get the argument. A good sequence runs situation →
-complication → resolution, then evidence, plan and the ask. If a title does
-not move the argument forward, cut the slide or fold it into another; put
-backup material in an appendix section, not in the storyline.
+Write the ghost deck: slide titles in order. They must carry the argument
+alone: situation → complication → resolution → evidence → plan → ask.
+Cut titles that add nothing; move backup detail to an appendix.
 
 ## 2. Every title is an action title
 
-A title states the conclusion the slide proves, as a full sentence:
-
-- at most 15 words, so it holds on two lines;
-- carries the number when there is one ("… grew 18% …", not "… grew …");
-- is specific to this deck — it would be false in someone else's.
+An action title is a full-sentence conclusion, ≤15 words, carrying the
+number when one exists and specific to this deck.
 
 | Topic title (don't) | Action title (do) |
 |---|---|
@@ -27,18 +21,13 @@ A title states the conclusion the slide proves, as a full sentence:
 | Options | Funding an SMB success pod is the cheapest way to protect retention |
 | Next Steps | Approve the pilot budget by 15 March to launch in Q3 |
 
-Cover, section and closing slides may keep short labels; every content slide
-gets an action title. If you cannot write one, the slide has no message yet.
-A takeaway does not excuse a label title: a two- to four-word title with no
-verb or number ("Monthly spend trend") is reported even beside a takeaway.
+Cover, section and closing may use labels; content needs action titles.
+A takeaway does not excuse a topic title such as "Monthly spend trend".
 
 ## 3. One message per slide
 
-The body proves the title and nothing else. Two conclusions mean two slides;
-several views proving one title may share a slide (WORKFLOW.md → spatial
-planning).
-Delete bullets that restate the title, repeat another slide, or would be true
-of any company. Order supporting points by importance, not by discovery.
+The body proves one message. Two conclusions need two slides; several views
+may prove one title. Cut generic or repeated bullets; order by importance.
 
 ## 4. Evidence slides say "so what"
 
@@ -51,14 +40,10 @@ slice names on pie / donut; RULES.md 10e–10f).
 
 ## 5. Source every number
 
-Any slide with data sets `source` (who, what, when: "Company filings, FY24").
-State the period and unit. Never invent a figure, unit or source to fill a
-visual; if the brief has no number, write a qualitative title instead.
-A data slide without one draws `DATA_WITHOUT_SOURCE` (FINDINGS.md); for
-estimates write "Illustrative". One data set for the whole deck: DeckSpec
-`meta.source` / raw top-level `source`; a `chart_value` `footnote` counts
-too. Every source renders once, in the 9pt zone above the footer — a
-`chart-insights-split` or `stat-hero` `values.source` moves there too.
+Set `source` (who, what, when), period and unit on data slides
+(`DATA_WITHOUT_SOURCE`). Never invent figures or sources; label estimates
+"Illustrative". Deck defaults: `meta.source` / raw `source`; chart `footnote`
+also counts. Sources render once in the 9pt source zone above the footer.
 
 ## 6. Choose the visual from the message
 

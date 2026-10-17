@@ -16,6 +16,12 @@ How to cut a release (tag, archives, container image) is described in
 
 ## [Unreleased]
 
+- Consulting layout/review additions (schema 4.178.0): native splits and
+  headings, richer regions/compose, consulting visual kinds, three chart
+  types, stakeholder placement, chapter/sticker chrome and measured layout
+  advisories. See the wiki consulting catalog for contracts and bounds.
+
+
 ### Added
 
 - Field-review improvements (schema 4.177.0): weighted table columns, process

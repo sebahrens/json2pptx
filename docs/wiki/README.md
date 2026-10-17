@@ -26,12 +26,14 @@ the engine is right and the page has a bug: fix it in the same change.
 | [Deck archetypes](deck-archetypes.md) | When you know the deliverable: nine canonical skeletons (proposal, strategy recommendation, CDD / IC paper, business case, steering committee, board paper, assurance readout, transformation roadmap, pre-read) mapped slide by slide onto kinds, with ghost decks. |
 | [Storyline and structure](storyline-and-structure.md) | Before writing a single slide. Ghost deck, action titles, pyramid / SCQA, executive summary, the closer, appendix. |
 | [Slide design rules](slide-design-rules.md) | What a partner-level reviewer checks: the Pyramid Principle's tests, dot-dash storyboard, title – exhibit – takeaway, chart choice by comparison, colour and density, the twelve failure modes and where the product catches them. |
-| [Layout catalog](layout-catalog.md) | To see the whole menu: every kind with its forms, all 58 patterns by family with their reach, 16 charts, 21 diagrams, and how to preview each before authoring. |
+| [Layout catalog](layout-catalog.md) | To see the whole menu: every kind with its forms, patterns by family with their reach, charts and diagrams, and how to preview each before authoring. |
 | [Visual vocabulary](visual-vocabulary.md) | When choosing how a message should look: message → kind / pattern, by domain. |
-| [The slide estate and segments](slide-estate-and-segments.md) | When one slide must carry two or three things: the six `regions` arrangements, the nine region kinds, raw `compose`, content-sized versus filling blocks, the width at which each visual still draws, and the [full-slide SVG/PNG recipe](slide-estate-and-segments.md#7-a-complete-slide-supplied-as-svg-or-png). |
+| [The slide estate and segments](slide-estate-and-segments.md) | When one slide must carry two or three things: the ten `regions` arrangements, the nine region kinds, raw `compose`, content-sized versus filling blocks, the width at which each visual still draws, and the [full-slide SVG/PNG recipe](slide-estate-and-segments.md#7-a-complete-slide-supplied-as-svg-or-png). |
 | [Split and complex layouts](split-and-complex-layouts.md) | The recipe book for those slides: chart beside narrative, bridge beside implication, status boards, before/after, photo with callouts, architecture rails, long tables, raw composites, a loop beside the words. |
 | [Quality and review](quality-and-review.md) | Before claiming a deck is done: the gates, the ten-point rubric, the second-template pass, what the tools cannot see. |
 | [Troubleshooting](troubleshooting.md) | When a finding, a refusal or a render surprises you. |
+
+See [Consulting visual additions](consulting-visual-additions.md) for the new native kinds, chart contracts and selection alternatives.
 
 ## Playbooks (one worked deck each)
 

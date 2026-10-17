@@ -1475,6 +1475,7 @@ func RenderWithHelper(req *RequestEnvelope, draw DrawFunc) (*SVGBuilder, *SVGDoc
 	if err := draw(builder, req); err != nil {
 		return nil, nil, err
 	}
+	reportAuthoredChartClutter(builder, req)
 	reportPlacementReadability(builder, req.Style, contentW, contentH)
 
 	doc, err := builder.Render()

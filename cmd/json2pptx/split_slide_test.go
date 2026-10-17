@@ -82,7 +82,7 @@ func TestExpandSplitSlide_UnevenSplit(t *testing.T) {
 		t.Fatalf("expected 3 slides, got %d", len(slides))
 	}
 
-	expectedRows := []int{3, 3, 1}
+	expectedRows := []int{3, 2, 2}
 	for i, slide := range slides {
 		_, table := findTableContent(slide.Content)
 		if table == nil {

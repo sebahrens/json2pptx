@@ -194,7 +194,8 @@ func sharePeerGrowth(cells []ResolvedCell, growth []peerGrowth) {
 // are resolved separately: per text cell, identified by its peer key and its
 // absolute frame, the smallest growth its group measured.
 type PeerScope struct {
-	least map[peerScopeKey]float64
+	least     map[peerScopeKey]float64
+	bodySizes map[pptx.RectEmu]map[int]float64
 }
 
 type peerScopeKey struct {
@@ -242,7 +243,7 @@ func NewPeerScope(siblings ...*ResolveResult) *PeerScope {
 			groupLeast[g] = cells[i].peerGrow
 		}
 	}
-	scope := &PeerScope{least: map[peerScopeKey]float64{}}
+	scope := &PeerScope{least: map[peerScopeKey]float64{}, bodySizes: siblingBodyTargets(siblings)}
 	held := false
 	for i := range cells {
 		least := groupLeast[set.find(i)]
@@ -252,7 +253,7 @@ func NewPeerScope(siblings ...*ResolveResult) *PeerScope {
 			scope.least[k] = least
 		}
 	}
-	if !held {
+	if !held && len(scope.bodySizes) == 0 {
 		return nil
 	}
 	return scope
@@ -276,4 +277,33 @@ func (s *PeerScope) hold(cells []ResolvedCell, growth []peerGrowth) {
 			growth[i].scale = least
 		}
 	}
+}
+
+// MergePeerScopes carries ancestor pane targets through heading/band wrappers.
+func MergePeerScopes(scopes ...*PeerScope) *PeerScope {
+	var out *PeerScope
+	for _, s := range scopes {
+		if s == nil {
+			continue
+		}
+		if out == nil {
+			out = &PeerScope{least: map[peerScopeKey]float64{}, bodySizes: map[pptx.RectEmu]map[int]float64{}}
+		}
+		for k, v := range s.least {
+			if old, ok := out.least[k]; !ok || v < old {
+				out.least[k] = v
+			}
+		}
+		for bounds, targets := range s.bodySizes {
+			if out.bodySizes[bounds] == nil {
+				out.bodySizes[bounds] = map[int]float64{}
+			}
+			for index, size := range targets {
+				if old, ok := out.bodySizes[bounds][index]; !ok || size < old {
+					out.bodySizes[bounds][index] = size
+				}
+			}
+		}
+	}
+	return out
 }

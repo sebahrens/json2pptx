@@ -46,14 +46,14 @@ tool's full description and schema — use it instead of guessing an argument.
 
 ### 2. Discover, then write the storyline
 
-`list_slide_kinds()` is the catalogue: 29 kinds, one line each. Call it again
+`list_slide_kinds()` is the catalogue: supported kinds, one line each. Call it again
 with `kinds: [the kinds you will use]` to get a copy-ready example of each, and
 with `fields: ["brief"]` plus your `template` to get the measured title and
 takeaway budgets (titles ≤ ~67 characters on the tightest templates, two lines).
 `fields` also takes `budgets` (every measured limit), `compositions` (the
 `pattern:` / `layout:` forms a kind can be switched to), `item_schema` and
 `item_schema_full`; `preview: true` with 1–4 kinds returns their renders as
-images. The whole menu — forms per kind, the 58 patterns, 16 charts, 21
+images. The whole menu — forms per kind, the patterns, charts and
 diagrams — is [layout-catalog.md](layout-catalog.md). Pick the skeleton for
 the deliverable from [deck-archetypes.md](deck-archetypes.md), then write the
 **ghost deck** — the action titles alone, in order — before any slide body
@@ -180,7 +180,7 @@ by name.
 | `list_deck_archetypes` | Setting `meta.archetype` | the six archetypes with their default template and `executive` flag |
 | `describe_finding` (code) — in the default profile | Any code you have not seen | `summary`, `blocks_when`, `remediation_steps[]`, `example_before` / `example_after`, `related_codes[]` |
 | `score_deck` (deck_id) — in the default profile | Before `submit_visual_review` | `quality_gate`, `slide_scores`, `deck_findings[]`, `composition.diagnostics[]` |
-| `list_patterns(fields:"full")`, `expand_pattern` | Choosing or testing a raw-only pattern | the 58 patterns with `composes_with` / `role_on_slide`; the expanded grid with `cell_budgets` and `capacity_warnings` |
+| `list_patterns(fields:"full")`, `expand_pattern` | Choosing or testing a raw-only pattern | patterns with `composes_with` / `role_on_slide`; the expanded grid with `cell_budgets` and `capacity_warnings` |
 | `export_deck(pptx_path, format: "pdf" \| "notes")` | The deliverable is a PDF review copy or a speaker handout | the exported file's path |
 | `compile_deck_spec` | You need the raw deck a DeckSpec compiles to (to hand-edit one slide) | the raw `PresentationInput` |
 

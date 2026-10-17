@@ -16,6 +16,7 @@ import (
 
 // ShapeGridInput defines a grid of preset geometry shapes placed on a slide.
 type ShapeGridInput struct {
+	ColRule                     json.RawMessage  `json:"col_rule,omitempty"`
 	Bounds                      *GridBoundsInput `json:"bounds,omitempty"`
 	BoundsRelativeToContentArea bool             `json:"-"`
 	TypeScale                   string           `json:"type_scale,omitempty"`
@@ -50,6 +51,8 @@ type ShapeGridInput struct {
 	// follows the canvas on a larger one (go-slide-creator-o9n8u); the stamp
 	// waives nothing.
 	Source string `json:"source,omitempty"`
+	// VerifiedMatrixPattern is set only by a measured native matrix expansion.
+	VerifiedMatrixPattern string `json:"-"`
 
 	// KeepTextSizes marks a design_mode "free" deck's own grid: its authored
 	// font sizes are rendered as written instead of settling onto the type

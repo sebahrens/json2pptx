@@ -13,11 +13,11 @@ rules are in [slide-estate-and-segments.md](slide-estate-and-segments.md).
 
 | You want | Call | Returns |
 |---|---|---|
-| The kind catalogue, one line each | `list_slide_kinds()` | 29 kinds with `summary`, `required_fields`, `typical_fields` |
+| The kind catalogue, one line each | `list_slide_kinds()` | Live kinds with `summary`, `required_fields`, `typical_fields` |
 | Fields, budgets, forms, a copy-ready example | `list_slide_kinds(kinds:["decision"], fields:["example","budgets","compositions"])` | `budgets[] {field, max_chars, max_items, basis}`, `compositions[] {pattern, layout, reason}`, `example` |
 | How a kind renders, before authoring | `list_slide_kinds(kinds:["cycle","pillars"], preview:true, template:"…")` | up to 4 kinds as images (`previews[].image_content_index`); the `cycle` kind returns one image per style |
 | Candidates for a sentence you want to prove | `recommend_visual(intent, template, preview:true)` | ranked `candidates[]`, each with a `data_contract` and a runnable `next_tool_call`; `deckspec` form when a kind exists, raw `raw_json2pptx` slide otherwise; `candidates:["compose:a+b"]` previews a split |
-| The pattern catalogue (58) | `list_patterns(fields:"full")` | `groups[]` by category; `use_when`, `cells`, `composes_with`, `role_on_slide`, `density_class` |
+| The pattern catalogue | `list_patterns(fields:"full")` | `groups[]` by category; `use_when`, `cells`, `composes_with`, `role_on_slide`, `density_class` |
 | One pattern's contract | `show_pattern(name)` | `schema` (values / overrides / cell_overrides), `text_budget_guide`, `example_values`, `use_when` / `not_when`, `composes_with` |
 | Chart and diagram types with their data shapes | `list_templates(template, fields:"full")` | `chart_capabilities[]`, `diagram_capabilities[]` (the CLI counterpart is `skill-info`) |
 | A template's layouts as pictures | `list_templates(template, fields:"full")` → `layout_summaries[]`; thumbnails under `templates/previews/<template>/<layoutID>.png` | 320px PNG per layout, committed |
@@ -28,7 +28,7 @@ the default `deckspec` profile; `list_patterns`, `expand_pattern`,
 `explain_deck_spec` and `list_deck_archetypes` are hidden but callable by
 name (`get_started(tool:"explain_deck_spec")` returns the schema).
 
-## 2. The 29 DeckSpec kinds
+## 2. DeckSpec kinds
 
 Every kind takes `title`, `takeaway`, `source`, `notes`, `id`, and — where a
 row names alternatives — the composition overrides `pattern:` / `layout:`
@@ -66,8 +66,14 @@ field that caused it.
 | `image_case` | `image {path \| url, alt, fit}`, `callouts[] {label, x, y}`, `eyebrow`, `heading`, `body`, ≤5 `bullets`, ≤3 `metrics`, `caption`, `image_width_pct` 30–60, `image_side` (`image-text-split`) | — | content slide |
 | `next_steps` | 2–6 `actions[] {action ≤90, owner ≤30, date ≤20}` + 0–3 `decisions` (≤120), `decisions_label` (`next-steps`). A phase prefix repeated in every action ("Before the pilot: …") belongs in `date` (≤20 chars); with no `owner` and no `date` the slide is a bare numbered list, so give every action an owner (a role is enough). Actions that fall into 3–6 phases with several items each are a `roadmap` | owner / date columns drop when no action has one | bullets |
 | `closing` | the template's closing layout: short title + subtitle, or a few bullets | — | — |
-| `regions` | one title over 2–3 typed regions (`chart`, `stat`, `kpis`, `table`, `timeline`, `image`, `text`, `cycle`, `process`), `arrangement` one of six | see [slide-estate-and-segments.md](slide-estate-and-segments.md) | — |
-| `raw_json2pptx` | a raw slide verbatim: a `pattern`, a `compose` envelope or a `shape_grid` | the escape hatch for the 22 raw-only patterns and the svggen / native diagrams | — |
+| `regions` | one title over 2–4 typed regions (`chart`, `stat`, `kpis`, `table`, `timeline`, `image`, `text`, `cycle`, `process`), `arrangement` one of ten | see [slide-estate-and-segments.md](slide-estate-and-segments.md) | — |
+| `raw_json2pptx` | a raw slide verbatim: a `pattern`, a `compose` envelope or a `shape_grid` | the escape hatch for raw-only patterns and the svggen / native diagrams | — |
+
+The consulting additions are listed with contracts and selection guidance in
+[Consulting visual additions](consulting-visual-additions.md): RACI, status
+boards, prose, IPO, three horizons, sources, checklists, vertical timelines,
+spectra, issue/decision trees, bullet progress, image heroes and seven
+framework hosts. Live `list_slide_kinds` examples remain authoritative.
 
 Three kinds that are easy to miss and change a deck's quality: `agenda`
 (a real contents page with the current section marked — use it on 12+ slide
@@ -167,7 +173,7 @@ slides:
       - {label: Deadline, date: May 2027}
 ```
 
-## 3. The 58 patterns, by family
+## 3. Patterns, by family
 
 "Via" names the kind that compiles to the pattern; **raw** means the pattern
 has no kind and is authored as a `raw_json2pptx` slide with the block from
@@ -219,12 +225,12 @@ the one-line descriptions with every override are in the repository's
 |---|---|---|
 | `arch-stack` | `architecture` | 3–6 tier lanes with a pentagon label tab, one block per component, side rails |
 | `strategy-house` | `pillars` (+ objective + foundation) | roof, optional beam, 3–5 pillars, 1–3 foundation levels |
-| `pyramid` | raw | 3–5 stacked trapezoid tiers (`cell_accent_mode` per tier) |
+| `pyramid` | `pyramid` | 3–5 stacked trapezoid tiers (`cell_accent_mode` per tier) |
 | `framework-grid` | raw | 2–6 dimension rows (`rows[] {label, cards[] {title, body}}`), a pentagon tab pointing into a pale band of 1–4 cards; one `highlight` row; `overrides.style: open \| tiles` |
 | `bmc-canvas` | `framework: bmc` | the nine-cell Business Model Canvas |
 | `labeled-rows` | raw | 2–6 rows of a keyword tab (WHAT / WHY / HOW; `label_style: tab \| tinted \| filled \| text`) beside 1–4 lines of body |
 | `driver-tree` | raw | `root {label, unit}` → 2–4 `branches[] {label, unit, leaves[], annotation}` with elbow connectors |
-| `value-chain` | raw | 4–10 step columns with per-step descriptions and one highlight; grows when alone |
+| `value-chain` | `value_chain` | 4–10 step columns with per-step descriptions and one highlight; grows when alone |
 | `concentric-rings` | `cycle` (`concentric`) | 3–5 nested rings with a side label ladder |
 
 **Sequence and time**
@@ -264,12 +270,12 @@ the one-line descriptions with every override are in the repository's
 | `image-text-split` | `image_case` | photo cover-cropped beside eyebrow / heading / body / bullets / metrics |
 | `icon-row` | raw | 3–5 icons over captions; `overrides.style: tile` |
 
-Raw-only, for the record (22): `before-after`, `before-after-compact`,
+Raw-only patterns: `before-after`, `before-after-compact`,
 `capability-heatmap`, `contact-directory`, `driver-tree`, `dual-org-ladder`,
 `framework-grid`, `hero-detail`, `horizontal-bar-with-callouts`, `icon-row`,
 `journey-maturity-model`, `kpi-inline`, `labeled-rows`, `metric-list`,
-`process-grid-2row`, `pyramid`, `roadmap-phased`, `scqa-summary`,
-`state-shift-hub`, `swimlane`, `text-sidebar`, `value-chain`.
+`process-grid-2row`, `roadmap-phased`, `scqa-summary`,
+`state-shift-hub`, `swimlane`, `text-sidebar`.
 
 A raw-only pattern inside a DeckSpec:
 
@@ -300,7 +306,7 @@ slides:
             - {label: Vendor D, value: 42, callout: "Lagging on security certifications"}
 ```
 
-## 4. Charts (16) and diagrams (21)
+## 4. Charts and diagrams
 
 Charts render as native SVG with a PNG fallback. Author them in a
 `chart_insight`, a `chart` region, or a `diagram` compose segment, with
@@ -315,6 +321,7 @@ Charts render as native SVG with a PNG fallback. Author them in a
 | Correlation | `scatter`, `bubble` | `{points[{x, y, size, label}]}` |
 | A walk between totals | `waterfall` | `{points[{label, value, type: total \| increase \| decrease \| subtotal}]}`; totals checked to 0.5% |
 | Stages, funnels, gauges | `funnel` (`steps`), `gauge` (`bullet` style), `radar` | per type; funnel `data.highlight` takes stage names or zero-based indices: selected stages use accent1, the rest neutral; see `chart_capabilities` |
+| Variable-width composition, mixed bar/line, mirrored bars | `mekko_chart`, `combo_chart`, `butterfly_chart` | [Consulting chart contracts](consulting-visual-additions.md#three-chart-contracts); labels remain at 12pt or refuse. |
 
 Grouped bars stagger close value labels and bold highlighted values. Series
 highlights select the series palette; a category-name highlight bolds that

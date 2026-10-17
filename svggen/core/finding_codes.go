@@ -6,6 +6,9 @@ package core
 // Each code follows the pattern "chart.<specific_issue>". Findings carry
 // a FixSuggestion with Kind and Params that agents can act on.
 const (
+	// FindingRedundantLegend and FindingChartVerticalGridlines report authored style overrides.
+	FindingRedundantLegend        = "REDUNDANT_LEGEND"
+	FindingChartVerticalGridlines = "CHART_VERTICAL_GRIDLINES"
 	// FindingTextBelowReadableMin reports the physical size of embedded SVG
 	// text when its placement in a PPTX cell makes it too small to read.
 	FindingTextBelowReadableMin = "TEXT_BELOW_READABLE_MIN"

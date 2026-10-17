@@ -21,9 +21,9 @@ const composeMaxSegments = 8
 
 // composeMaxNestingDepth is the maximum compose envelope nesting depth. A
 // top-level compose is depth 1; a compose nested inside one of its segments
-// is depth 2. Deeper nesting is rejected by validateCompose so a single slide
+// is depth 2. One further envelope (depth 3) is allowed; deeper nesting is rejected by validateCompose so a single slide
 // cannot recursively explode the merged grid.
-const composeMaxNestingDepth = 2
+const composeMaxNestingDepth = 3
 
 // composeMaxLeafPatterns caps the total number of leaf (non-compose) segments
 // summed across the entire envelope tree, so nesting cannot be used to bypass
@@ -45,6 +45,11 @@ type composeFeatureCapabilities struct {
 	SupportsSmartCompose    bool     `json:"supports_smart_compose"`
 	SupportsNestedCompose   bool     `json:"supports_nested_compose"`
 	SupportsDiagramSegments bool     `json:"supports_diagram_segments"`
+	LeafKinds               []string `json:"leaf_kinds"`
+	SupportsContentSize     bool     `json:"supports_content_size"`
+	SupportsSegmentHeadings bool     `json:"supports_segment_headings"`
+	SupportsDivider         bool     `json:"supports_divider"`
+	SupportsSeamGaps        bool     `json:"supports_seam_gaps"`
 }
 
 // composeCapabilities returns the canonical compose capability descriptor.
@@ -61,6 +66,8 @@ func composeCapabilities() composeFeatureCapabilities {
 		SupportsSmartCompose:    true,
 		SupportsNestedCompose:   true,
 		SupportsDiagramSegments: true,
+		LeafKinds:               []string{"pattern", "compose", "diagram", "shape_grid", "table", "text", "image"},
+		SupportsContentSize:     true, SupportsSegmentHeadings: true, SupportsDivider: true, SupportsSeamGaps: true,
 	}
 }
 
@@ -99,6 +106,9 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 		return nil, nil, err
 	}
 
+	if composeUsesMeasuredLayout(c) {
+		return expandMeasuredCompose(c, ctx, reg)
+	}
 	expandedGrids, sizes, warnings, err := composeSegmentGrids(c, ctx, reg)
 	if err != nil {
 		return nil, nil, err
@@ -146,6 +156,9 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 // whose lattice follows its width reports the lattice that is rendered
 // (go-slide-creator-eyqvl).
 func composeSegmentGrids(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Registry) ([]*jsonschema.ShapeGridInput, []float64, []string, error) {
+	if composeUsesMeasuredLayout(c) {
+		return measuredComposeSegments(c, ctx, reg)
+	}
 	// Probe each segment once to learn its row/column structure. Smart compose
 	// also derives its density shares from this content-only probe. Then expand
 	// with the segment's allocated rectangle so content-sized decisions use the
@@ -191,6 +204,8 @@ func expandComposeSegments(c *ComposeInput, ctx patterns.ExpandContext, bounds [
 			warnings = append(warnings, innerWarnings...)
 			grid.Bounds = nil // The outer merge owns the inner envelope's slot.
 			grids[i] = grid
+		case composeHasNativeLeaf(seg):
+			grids[i] = composeNativeLeaf(seg)
 		case seg.HasDiagram():
 			grids[i] = diagramSegmentGrid(seg.Diagram)
 		default:
@@ -227,7 +242,7 @@ func expandComposeSegments(c *ComposeInput, ctx patterns.ExpandContext, bounds [
 // composeGapPt is the gap between compose segments: the authored gap, else
 // the template grid's gutter (default 8pt, go-slide-creator-5ms8c).
 func composeGapPt(c *ComposeInput, ctx patterns.ExpandContext) float64 {
-	if c.Gap != 0 {
+	if c.Gap != 0 || c.GapSet {
 		return c.Gap
 	}
 	return ctx.GutterPt()
@@ -484,12 +499,15 @@ func validateComposeRec(c *ComposeInput, depth int) error {
 	// Validate each segment's XOR contract and size_pct value, then recurse
 	// into any nested compose envelopes. A segment must set exactly one of
 	// pattern / compose / diagram.
+	if err := validateComposeOptions(c); err != nil {
+		return err
+	}
 	var totalPct float64
 	for i, seg := range c.Segments {
 		hasPattern := seg.HasPattern()
 		hasCompose := seg.Compose != nil
 		hasDiagram := seg.HasDiagram()
-		setCount := 0
+		setCount := composeNativeLeafCount(seg)
 		if hasPattern {
 			setCount++
 		}
@@ -502,16 +520,16 @@ func validateComposeRec(c *ComposeInput, depth int) error {
 		switch {
 		case setCount > 1:
 			return fmt.Errorf(
-				"compose: segment[%d] sets more than one of \"pattern\", \"compose\", \"diagram\" — choose exactly one",
+				"compose: segment[%d] sets more than one leaf — choose exactly one of pattern, compose, diagram, shape_grid, table, text, image",
 				i,
 			)
 		case setCount == 0:
 			return fmt.Errorf(
-				"compose: segment[%d] must set exactly one of \"pattern\", \"compose\", or \"diagram\"",
+				"compose: segment[%d] must set exactly one leaf or nested compose",
 				i,
 			)
 		}
-		if seg.SizePct < 0 {
+		if invalidComposeShare(seg.SizePct) {
 			return fmt.Errorf("compose: segment[%d].size_pct must be >= 0", i)
 		}
 		if seg.SizePct > 0 {
@@ -568,7 +586,7 @@ func countComposeLeafPatterns(c *ComposeInput) int {
 			n += countComposeLeafPatterns(seg.Compose)
 		case seg.HasPattern():
 			n++
-		case seg.HasDiagram():
+		case seg.HasDiagram() || composeHasNativeLeaf(seg):
 			n++
 		}
 	}
@@ -666,6 +684,9 @@ func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap fl
 // among its columns and every column gap comes off the whole.
 func mergeHorizontalIn(grids []*jsonschema.ShapeGridInput, sizes []float64, gap float64, widthEMU int64) (*jsonschema.ShapeGridInput, []string, error) {
 	var warnings []string
+	if err := validateHorizontalSegmentRows(grids); err != nil {
+		return nil, nil, err
+	}
 
 	resolvedGap := gap
 	if resolvedGap == 0 {

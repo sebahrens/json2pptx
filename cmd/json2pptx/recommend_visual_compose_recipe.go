@@ -73,9 +73,7 @@ func attachComposeRecipe(c *patterns.VisualCandidate, templateName string, reg *
 	}
 	// Terse on purpose: this sentence rides on the largest recommend_visual
 	// responses (TestRecommendVisualResponseSizeStaysInCheck).
-	comp.Instructions = "Copy next_tool_call.args_template.spec.slides[0] into your DeckSpec as one raw_json2pptx slide; other slides keep their kinds. " +
-		"Replace the title (" + composeRecipeSlidePath + ".content[0].text_value) and each region's sample at its data_contract.field_path; " +
-		"keep compose.direction, size_pct, nesting and pattern overrides. Then validate_deck_spec and render_deck_spec."
+	comp.Instructions = "Copy next_tool_call.args_template.spec.slides[0] into your DeckSpec. Replace its title and each region sample at data_contract.field_path; keep compose geometry and overrides. Validate, then render_deck_spec."
 }
 
 // composeRecipeEnvelope builds one compose envelope (direction + segments)

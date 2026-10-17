@@ -1,0 +1,121 @@
+{
+  "date": "2026-10-17",
+  "schema_version": "4.178.0",
+  "schema_fingerprint": "bb7ad471bb831a5c",
+  "scope": {
+    "review_beads": [
+      "go-slide-creator-0bykm",
+      "go-slide-creator-0pmcd",
+      "go-slide-creator-0s0nb",
+      "go-slide-creator-11tio",
+      "go-slide-creator-17sn0",
+      "go-slide-creator-1foqw",
+      "go-slide-creator-2o6qn",
+      "go-slide-creator-32ofk",
+      "go-slide-creator-3uwfx",
+      "go-slide-creator-45uez",
+      "go-slide-creator-4gpsg",
+      "go-slide-creator-6w91j",
+      "go-slide-creator-7o6o8",
+      "go-slide-creator-8r651",
+      "go-slide-creator-8sy4w",
+      "go-slide-creator-9rcbq",
+      "go-slide-creator-9yajk",
+      "go-slide-creator-9yqcv",
+      "go-slide-creator-a6vqk",
+      "go-slide-creator-anphd",
+      "go-slide-creator-bklk1",
+      "go-slide-creator-bx05x",
+      "go-slide-creator-c0s64",
+      "go-slide-creator-dklkh",
+      "go-slide-creator-ds1qu",
+      "go-slide-creator-ek2tp",
+      "go-slide-creator-g6kgx",
+      "go-slide-creator-hqnke",
+      "go-slide-creator-hw8oc",
+      "go-slide-creator-jeeav",
+      "go-slide-creator-jymhe",
+      "go-slide-creator-mejgz",
+      "go-slide-creator-n69rt",
+      "go-slide-creator-nztns",
+      "go-slide-creator-o6oq1",
+      "go-slide-creator-ogzhj",
+      "go-slide-creator-p23nz",
+      "go-slide-creator-p67bm",
+      "go-slide-creator-pkqso",
+      "go-slide-creator-po8ym",
+      "go-slide-creator-qa0j0",
+      "go-slide-creator-qhsg7",
+      "go-slide-creator-qjyk7",
+      "go-slide-creator-t2k26",
+      "go-slide-creator-t7i8w",
+      "go-slide-creator-ti9rm",
+      "go-slide-creator-u4om1",
+      "go-slide-creator-wt5c4",
+      "go-slide-creator-x4zx7",
+      "go-slide-creator-xf0nr",
+      "go-slide-creator-xl48v",
+      "go-slide-creator-xpxk0",
+      "go-slide-creator-y88ny",
+      "go-slide-creator-z6pmd"
+    ],
+    "ci_followup": "go-slide-creator-wa1jv",
+    "new_patterns": 19,
+    "new_semantic_kinds": 21,
+    "new_svg_chart_types": [
+      "mekko_chart",
+      "combo_chart",
+      "butterfly_chart"
+    ]
+  },
+  "templates": [
+    {
+      "name": "midnight-blue",
+      "sha256": "64bb8dd9297450f2ba21737168ded9fe4b88182439e2d21614e67eb586a4b689",
+      "local_only": false
+    },
+    {
+      "name": "p-style",
+      "sha256": "87134dde6d741a594088314c84f22e1047e3dbcc79f6b68590685b673794444d",
+      "local_only": true
+    }
+  ],
+  "validation": {
+    "build": "go build ./... passes",
+    "lint": "make lint: both modules pass pinned golangci-lint v2.12.2",
+    "integration": "136 CLI,241 semantic,28 pattern,8 QA tests/subtests pass in bounded affected selections; exact49 tool input schemas preserved",
+    "geometry": "All77 pattern exemplars clear baseline/orphan review; nested peers and geometry inspected conservatively",
+    "matrix_pipeline": "Actual semantic RACI/status_board output on both templates retains all10rows and table font floor12pt; JSON cannot forge the internal floor",
+    "image_pipeline": "Native raster/SVG/fallback image layers keep ordering and full-cell frames; full-photo footer suppression and contained-photo footer retention verified; raw/semantic hero source/takeaway remain inside measured scrim",
+    "related_scenarios": "Merged table units are not guessed; currencies/scales stay separate; used status colours only; deliberate gaps and unlike peer roles excluded; balanced splits preserve merged rows and source offsets",
+    "wiki_and_skills": "Wiki YAML and live region catalog validate; installed skill/reference,doc/metadata contracts and100KiB guide budget pass",
+    "payload_budgets": {
+      "kind_catalog_bytes": 6014,
+      "compact_templates_bytes": 14962,
+      "first_contact_bytes": 37986,
+      "all_profile_bytes": 139706,
+      "recommendation_max_bytes": 15635,
+      "caps_increased": false
+    },
+    "previews": {
+      "layouts_refreshed": 108,
+      "tracked_pngs": 101,
+      "pixel_changes": 0,
+      "manifest_changes": 13
+    },
+    "agent_journey": "Recorded TestAgentJourneyMetrics: clean spec2calls,12flaw deck4calls/3validates,16paritypairs/0disagreements,16patches offered/9verified/0failing"
+  },
+  "visual_acceptance": {
+    "native_regions_chapters_stickers": "18 rendered slides inspected across both templates",
+    "consulting_visuals": "25-slide catalog on each template plus corrected white/black/top hero and10item checklist checks; no current text clipping,layer obscuring or hidden source/footer text",
+    "component_catalogs": "Component fixtures test layout contracts; they are not a finished client narrative."
+  },
+  "evidence": {
+    "local_directory": "/tmp/json2pptx-layout-review-20261017",
+    "contracts": "/tmp/json2pptx-layout-review-20261017/newvisual-contracts.json",
+    "native_contact_sheet": "/tmp/json2pptx-layout-review-20261017/contact.png",
+    "corrected_hero": "/tmp/json2pptx-layout-review-20261017/p-style-newvisual-final-1.png",
+    "logs_directory": "/tmp",
+    "audit_images_uploaded": false
+  }
+}

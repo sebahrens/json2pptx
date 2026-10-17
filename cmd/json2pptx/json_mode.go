@@ -940,6 +940,19 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	var slideFitFindings []patterns.FitFinding
 	hasComposition := hasPatternContent(slide)
 	explicitLayout := slide.LayoutID != ""
+	if slide.LayoutID == "" && slide.SlideType == "image" && imageHasText(slide.Content) {
+		slide.LayoutID = "image-left"
+	}
+	if side := layout.ImageColumnFallback(slide.LayoutID, layouts); side != "" {
+		slide.ImageColumnSide = side
+		slide.ColumnLeftPercent = 50
+	}
+	if slide.ImageColumnSide != "" {
+		slide.Content = portableImageContent(slide.Content, slide.ImageColumnSide)
+	}
+	if layout.IsStackedName(slide.LayoutID) {
+		slide.StackedSplit = true
+	}
 	slide.ColumnLeftPercent = derivedColumnLeftPercent(slide)
 
 	if slide.LayoutID != "" && len(layouts) > 0 {
@@ -1062,6 +1075,8 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	spec := generator.SlideSpec{
 		LayoutID:          slide.LayoutID,
 		ColumnLeftPercent: slide.ColumnLeftPercent,
+		StackedSplit:      slide.StackedSplit,
+		Sticker:           slide.Sticker,
 		Content:           contentItems,
 		Eyebrow:           slide.Eyebrow,
 		SpeakerNotes:      slide.SpeakerNotes,
@@ -1422,8 +1437,12 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			return nil, cliSlideErrorAt(slidepath.ContentField(slideNum-1, j, "type"), "slide %d, content %d: type is required", slideNum, j+1)
 		}
 
+		if len([]rune(ci.Heading)) > 60 {
+			return nil, cliSlideErrorAt(slidepath.ContentField(slideNum-1, j, "heading"), "column heading holds at most 60 characters")
+		}
 		item := generator.ContentItem{
 			PlaceholderID: ci.PlaceholderID,
+			Heading:       ci.Heading,
 			Link:          toGeneratorLink(ci.Link),
 		}
 
@@ -3486,6 +3505,13 @@ func applyChromeSkip(specs []generator.SlideSpec, chrome *ChromeInput, slides []
 // and closing slides carry no tracker, and a slide's authored eyebrow wins
 // because both occupy the band above the title.
 func applyChromeTracker(specs []generator.SlideSpec, chrome *ChromeInput, slides []SlideInput, layouts []types.LayoutMetadata) {
+	if chrome != nil {
+		for i := range specs {
+			if specs[i].Sticker == "" {
+				specs[i].Sticker = chrome.Sticker
+			}
+		}
+	}
 	if chrome == nil || !chrome.Tracker {
 		return
 	}
@@ -3739,4 +3765,36 @@ func compositionKind(slide SlideInput) string {
 	default:
 		return "composition"
 	}
+}
+
+func imageHasText(content []ContentInput) bool {
+	image, text := false, false
+	for _, item := range content {
+		if item.Type == "image" {
+			image = true
+		}
+		if item.Type != "image" && item.PlaceholderID != "title" && item.PlaceholderID != "subtitle" {
+			text = true
+		}
+	}
+	return image && text
+}
+func portableImageContent(content []ContentInput, side string) []ContentInput {
+	result := append([]ContentInput(nil), content...)
+	imageID, textID := "body", "body_2"
+	if side == "right" {
+		imageID, textID = textID, imageID
+	}
+	for i := range result {
+		item := &result[i]
+		if item.PlaceholderID == "title" || item.PlaceholderID == "subtitle" {
+			continue
+		}
+		if item.Type == "image" {
+			item.PlaceholderID = imageID
+		} else {
+			item.PlaceholderID = textID
+		}
+	}
+	return result
 }

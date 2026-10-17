@@ -143,7 +143,7 @@ func TestImageCaseDraftReadiness(t *testing.T) {
 				}
 				item["image"] = path
 			case "text_only":
-				item = map[string]any{"kind": "executive_summary", "title": "The rehearsal delivered", "points": []any{"Two clearers migrated", "No settlement breaks", "Rehearsed every wave"}}
+				item = map[string]any{"kind": "executive_summary", "title": "The rehearsal delivered", "takeaway": "Approve the next migration wave with the rehearsed controls.", "points": []any{"Two clearers migrated successfully after the operating team rehearsed the full cutover and checked every dependency.", "No settlement breaks were recorded; Finance reconciled the opening balances and confirmed that controls worked throughout.", "Every wave has a named owner, a tested rollback plan and an agreed decision gate before the next migration begins."}}
 			}
 			spec := map[string]any{"meta": map[string]any{"title": "Cutover", "template": "midnight-blue"}, "slides": []any{item}}
 			out := renderDeckSpecCall(t, semanticTestConfig(t), map[string]any{"spec": spec, "strict": tc.strict})

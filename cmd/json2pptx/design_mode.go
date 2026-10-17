@@ -103,6 +103,15 @@ func checkCompose(compose *ComposeInput, slideNum int, composePath string) []pat
 		segPath := fmt.Sprintf("%s/segments/%d", composePath, si)
 		findings = append(findings, checkPatternInput(&seg.Pattern, slideNum, segPath+"/pattern")...)
 		findings = append(findings, checkDiagramStyle(seg.Diagram, slideNum, segPath+"/diagram")...)
+		if seg.ShapeGrid != nil {
+			findings = append(findings, checkShapeGridAt(seg.ShapeGrid, slideNum, segPath+"/shape_grid", nil, false)...)
+		}
+		if seg.Table != nil {
+			findings = append(findings, checkTableInput(seg.Table, slideNum, segPath+"/table")...)
+		}
+		if seg.Image != nil {
+			findings = append(findings, checkGridImage(seg.Image, slideNum, segPath)...)
+		}
 		if seg.Compose != nil {
 			findings = append(findings, checkCompose(seg.Compose, slideNum, segPath+"/compose")...)
 		}
@@ -649,6 +658,9 @@ func checkTableInput(table *TableInput, slideNum int, basePath string) []pattern
 
 	for ri, row := range table.Rows {
 		for ci, cell := range row {
+			if f := checkColorField(cell.TextColor, slideNum, fmt.Sprintf("%s/rows/%d/%d/text_color", basePath, ri, ci)); f != nil {
+				findings = append(findings, *f)
+			}
 			if cell.Conditional != nil && cell.Conditional.Fill != "" {
 				path := fmt.Sprintf("%s/rows/%d/%d/conditional/fill", basePath, ri, ci)
 				if f := checkColorField(cell.Conditional.Fill, slideNum, path); f != nil {

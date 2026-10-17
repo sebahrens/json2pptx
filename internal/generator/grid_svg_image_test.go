@@ -235,3 +235,29 @@ func TestGridSVGImageRequiresVisibleFallback(t *testing.T) {
 		t.Fatal("failed fallback must not leave an invisible SVG insert")
 	}
 }
+
+func TestLayeredGridSVGImageRemainsBehindNativeShapes(t *testing.T) {
+	if !NewSVGConverter().IsPNGAvailable() {
+		t.Skip("SVG rasterizer unavailable")
+	}
+	path := writeGridTestSVG(t, `viewBox="0 0 1600 900"`)
+	for _, strategy := range []SVGConversionStrategy{SVGStrategyNative, SVGStrategyPNG} {
+		t.Run(string(strategy), func(t *testing.T) {
+			ctx := newSinglePassContext("", nil, nil, false, nil)
+			ctx.svgConverter = NewSVGConverter()
+			ctx.svgConverter.SetStrategy(strategy)
+			if err := ctx.registerGridSVGImage(1, 0, ImageInsert{Path: path, ExtentCX: 1600000, ExtentCY: 900000, BehindShapes: true}); err != nil {
+				t.Fatal(err)
+			}
+			if strategy == SVGStrategyNative {
+				if len(ctx.nativeSVGInserts[1]) != 1 || !ctx.nativeSVGInserts[1][0].behindText {
+					t.Fatal("native SVG photo would cover its layers")
+				}
+			} else {
+				if len(ctx.slideRelUpdates[1]) != 1 || !ctx.slideRelUpdates[1][0].behindRawShapes {
+					t.Fatal("raster fallback would cover its layers")
+				}
+			}
+		})
+	}
+}

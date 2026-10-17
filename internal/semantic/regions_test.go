@@ -265,8 +265,8 @@ func TestRegionsContract(t *testing.T) {
 	props := item["properties"].(map[string]any)
 	regions := props["regions"].(map[string]any)
 	variants := regions["items"].(map[string]any)["oneOf"].([]any)
-	if len(variants) != len(slides.RegionKinds) || regions["maxItems"] != 3 {
-		t.Fatalf("want %d closed region variants and maxItems 3, got %d / %v", len(slides.RegionKinds), len(variants), regions["maxItems"])
+	if len(variants) != len(slides.RegionKinds) || regions["maxItems"] != 4 {
+		t.Fatalf("want %d closed region variants and maxItems 4, got %d / %v", len(slides.RegionKinds), len(variants), regions["maxItems"])
 	}
 	seen := make(map[string]bool, len(variants))
 	for _, v := range variants {
@@ -317,7 +317,7 @@ func TestRegionsContract(t *testing.T) {
 			t.Errorf("region variant %q is missing", kind)
 		}
 	}
-	if arr := props["arrangement"].(map[string]any); len(arr["enum"].([]any)) != 6 {
+	if arr := props["arrangement"].(map[string]any); len(arr["enum"].([]any)) != len(slides.RegionArrangements) {
 		t.Errorf("arrangement enum = %v", arr["enum"])
 	}
 

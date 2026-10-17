@@ -1,32 +1,21 @@
 # JSON Input Format — Tutorial
-
 `json2pptx` accepts a JSON object describing a presentation and renders it into a `.pptx` file. This page documents the **raw compiled `PresentationInput` format** with worked examples; for the **canonical list of fields, types, enums, and required-vs-optional flags**, query the schema directly.
-
 For new agent-authored decks, prefer the semantic deck spec instead of hand-authoring this raw format. The semantic compiler accepts compact YAML/JSON slide kinds such as `kpi_snapshot`, `chart_insight`, `comparison`, `roadmap`, `cycle`, and `decision`, then compiles them to the raw `PresentationInput` described here:
-
 ```bash
 json2pptx semantic schema
 json2pptx semantic validate --spec deck.yaml
 json2pptx semantic compile --spec deck.yaml --output compiled.json
 json2pptx semantic render --spec deck.yaml --output deck.pptx
 ```
-
 Raw `PresentationInput` remains the power-user escape hatch, the compiler output format, and the contract for low-level MCP tools such as `validate_input`, `preview_presentation_plan`, `generate_presentation`, and `repair_slide`.
-
 ## Canonical schema (single source of truth)
-
 - MCP: `get_input_schema` — returns the JSON Schema for `PresentationInput`, with `x-field-scope` (`deck` / `slide` / `content` / `shape` / `split`), inline `enum` arrays, and discriminator constraints. Digest-cacheable.
 - CLI: `json2pptx input-schema` — same payload, printed to stdout.
-
 Semantic specs have their own schema:
-
 - MCP: `list_deck_archetypes`, `list_slide_kinds`, and `validate_deck_spec` expose the supported semantic contract.
 - CLI: `json2pptx semantic schema` — prints the semantic JSON Schema.
-
 The raw schema is generated from the Go input structs in `internal/deckinput` (aliased through `cmd/json2pptx/json_schema.go` for CLI compatibility). This tutorial only describes shapes and gives examples; the schema is authoritative on field names, types, and required-vs-optional.
-
 ## Minimum complete deck
-
 ```json
 {
   "template": "warm-coral",
@@ -41,7 +30,6 @@ The raw schema is generated from the Go input structs in `internal/deckinput` (a
   ]
 }
 ```
-
 A presentation is a top-level object with a `template` and a non-empty `slides` array. Each slide pins a layout via `layout_id` (canonical id, e.g. `title`, `content`, `two-column`, `section`, `blank`) or hints `slide_type` (`title`, `content`, `chart`, `section`, `two-column`, `diagram`, `image`, `comparison`, `blank`). At least one of the two must be set. `template` is a registered template NAME (a `.pptx` in the templates directory or the embedded set, without the extension) and never takes a path; `template_path` is the bring-your-own form — `{"template_path": "./client-brand.pptx", "slides": [...]}` — for a `.pptx` the engine has not registered. Set exactly one. On the CLI a relative `template_path` resolves against the deck JSON's own directory; over MCP against the call's `base_dir` (server CWD when omitted), and it must stay inside it after `~`/`$VAR` and symlink expansion — an escape is refused with `INVALID_PATH`. `examine_template`, `list_templates`, `validate_input`, `preview_presentation_plan`, `generate_presentation`, `score_deck` and `render_deck_spec` all accept it, and a `render_deck_spec` `deck_id` keeps the file and its `base_dir` for later deck_id-only calls; `get_started(task:"onboard-template")` walks the vetting sequence. Copying the file into the templates directory registers it live, no restart, as a normal `template`.
 To preview the same input against another registered template without editing the deck, pass `json2pptx validate --template NAME --fit-report` (also works with `--json` / `--json-output`) or the top-level `template` argument to MCP `validate_input`. The override takes precedence over the presentation's `template` or `template_path` for that validation call only.
 
@@ -210,6 +198,8 @@ Supported diagram types: `timeline`, `process_flow`, `pyramid`, `venn`, `swot`, 
 **Timeline.** The `timeline` diagram draws a milestone track: one weighted axis, a disc on the axis for every dated moment (`date`, or a `start_date` without an end) and a bar hanging from the axis, drawn to scale, for every item with a `start_date` and an `end_date`. Each item has one label block joined to its mark by a leader: the bold name, its date beneath (a date written in words such as `"Mar 2026"` or `"2026 Q1"` is printed as written, an ISO date as `15 Jan 2024`, a duration as `Jan – Apr 2025`), then the description. Moments are labelled above the axis and durations below it; a timeline of moments only uses both sides. A block that would run into its neighbour moves to the other side, then to a lane further out, and blocks slide sideways so that no leader crosses a label. Text is 12pt or larger (a sparse timeline is set at 14–18pt); there is no date axis or grid. In a box too short for the track (a compose zone of about 60% of the body) the track first shortens its leaders, closes its lanes and flattens its duration bars, then gives up label lanes one at a time, letting a duration be labelled above the axis or a moment below it; durations that follow one another the day after share one bar lane. A label that still cannot be shown whole is cut with an ellipsis and reported as `diagram.label_truncated` with action `shrink_or_split` — shorten it, use fewer events or spread their dates. Descriptions are cut a line at a time (reported at `info`) when the box is too short for them. `label_position`, `show_progress`, an item `row` above 0, `icon`, `progress` or `type: "phase"` select the former row layout (bars on rows over a ruled date axis) instead.
 
 Charts and diagrams render to SVG and embed into the slide.
+
+Native two-column aliases support 60/40, 40/60, 70/30 and 30/70 splits; `stacked`, `stacked-60-40`, `stacked-40-60` split top/bottom. Inspect `get_input_schema` and template layout discovery for canonical names. `image-left` / `image-right` derive from two-column when needed. A content item's `heading` reserves styled space over text, bullets, tables, images and charts. Raw `compose` also hosts native `shape_grid`, `table`, `text: {body, bullets}` and `image` leaves, with per-segment `heading` / `caption`, vertical `size: "content"`, per-seam `gaps`, `divider`, depth 3 and ≤12 leaves. Table cells may set `text_color`; grid `col_rule` accepts `"all"` or seam indices.
 
 ## Theme override
 

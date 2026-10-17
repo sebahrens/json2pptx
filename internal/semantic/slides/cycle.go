@@ -741,7 +741,7 @@ func regionSpansWidth(arrangement string, index int) bool {
 	switch arrangement {
 	case ArrangeRows:
 		return true
-	case ArrangeMainTop, ArrangeMainBottom:
+	case ArrangeMainTop, ArrangeMainBottom, ArrangeMainTop3, ArrangeTilesOverPanels:
 		return index == 0
 	}
 	return false

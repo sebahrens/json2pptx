@@ -59,6 +59,9 @@ func appendComposePatternHosts(hosts []patternHost, c *ComposeInput, prefix stri
 				set:  func(v json.RawMessage) { seg.Pattern.Values = v }})
 		}
 		hosts = appendComposePatternHosts(hosts, seg.Compose, segPath+"/compose")
+		if seg.ShapeGrid != nil {
+			hosts = appendGridPatternHosts(hosts, seg.ShapeGrid, segPath+"/shape_grid")
+		}
 	}
 	return hosts
 }

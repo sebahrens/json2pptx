@@ -163,6 +163,7 @@ func rhythmPatternAccent(p *PatternInput, strategy patterns.AccentStrategy, slid
 // needs, and pre-builds a resolution-ready shape_grid for density measurement.
 func toRhythmSlide(s SlideInput) rhythm.Slide {
 	rs := rhythm.Slide{
+		LayoutID: s.LayoutID, Takeaway: strings.TrimSpace(s.Takeaway),
 		SlideType:    s.SlideType,
 		HasPattern:   s.Pattern != nil,
 		HasShapeGrid: s.ShapeGrid != nil,
@@ -196,6 +197,7 @@ func toRhythmSlide(s SlideInput) rhythm.Slide {
 		projectGridAccents(&rs, s.ShapeGrid)
 		rs.Grid = buildDensityGrid(s.ShapeGrid)
 	}
+	projectRhythmGeometry(s, &rs)
 	return rs
 }
 
@@ -239,6 +241,14 @@ func rhythmCompose(c *ComposeInput) *rhythm.Compose {
 		switch {
 		case seg.Compose != nil:
 			region.Nested = rhythmCompose(seg.Compose)
+		case seg.ShapeGrid != nil:
+			region.Visual = "grid"
+		case seg.Table != nil:
+			region.Visual = "table"
+		case seg.Text != nil:
+			region.Visual = "text"
+		case seg.Image != nil:
+			region.Visual = "image"
 		case seg.HasDiagram():
 			region.Visual = "diagram"
 			if isChartishDiagramType(seg.Diagram.Type) {
@@ -262,6 +272,10 @@ func composeValueText(c *ComposeInput) []string {
 		if seg.Compose != nil {
 			text = append(text, composeValueText(seg.Compose)...)
 			continue
+		}
+		if seg.Text != nil {
+			text = append(text, seg.Text.Body)
+			text = append(text, seg.Text.Bullets...)
 		}
 		text = append(text, patternValueStrings(seg.Pattern.Values).text...)
 	}

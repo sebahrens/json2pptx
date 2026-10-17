@@ -28,6 +28,9 @@ import (
 // the compilers need to emit source-map links. Title and Takeaway are lifted
 // from the payload by the planner; Body carries the full kind-specific payload.
 type Input struct {
+	Chapters           []string
+	ChapterSourcePaths []string
+	CurrentChapter     int
 	// SourceIndex is the slide's index in the semantic DeckSpec.Slides.
 	SourceIndex int
 	SourcePath  string

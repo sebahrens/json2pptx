@@ -280,9 +280,10 @@ func compositionFields() map[string]payloadField {
 // rendered, and a deck_id patch may use it in place of the slide's index.
 func universalFields() map[string]payloadField {
 	return map[string]payloadField{
-		"id":     strField("Optional stable handle for this slide (a letter, then letters, digits, _ or -; unique in the deck). Never rendered. A stored deck assigns s1, s2, … to slides without one; deck_id patches may address a slide by it (/slides/<id>/title)."),
-		"notes":  strField("Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide)."),
-		"source": strField("Source / footnote line shown under the slide content."),
+		"sticker": {typ: "string", desc: "Optional slide status sticker (Preliminary, Illustrative, For discussion); at most20 characters."},
+		"id":      strField("Optional stable handle for this slide (a letter, then letters, digits, _ or -; unique in the deck). Never rendered. A stored deck assigns s1, s2, … to slides without one; deck_id patches may address a slide by it (/slides/<id>/title)."),
+		"notes":   strField("Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide)."),
+		"source":  strField("Source / footnote line shown under the slide content."),
 	}
 }
 
@@ -301,8 +302,9 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"eyebrow":  strField("Small kicker text above the title."),
 	}, universalFields()),
 	KindSection: withFields(map[string]payloadField{
-		"title":    strField("Section name. For supporting copy, use a content slide: section layouts reserve body slots for decorative numbering."),
-		"appendix": {typ: "boolean", desc: "true marks an appendix / backup divider: no chapter number, and later sections are not renumbered. Dividers titled Appendix, Backup, Annex, Q&A or Thank you are unnumbered automatically."},
+		"show_chapters": {typ: "boolean", desc: "Show the deck chapter list beside the current section, with the current chapter emphasized."},
+		"title":         strField("Section name. For supporting copy, use a content slide: section layouts reserve body slots for decorative numbering."),
+		"appendix":      {typ: "boolean", desc: "true marks an appendix / backup divider: no chapter number, and later sections are not renumbered. Dividers titled Appendix, Backup, Annex, Q&A or Thank you are unnumbered automatically."},
 	}, universalFields()),
 	KindExecutiveSummary: withFields(withFields(map[string]payloadField{
 		"title": strField("Slide title."),
@@ -336,6 +338,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"title":            strField("Slide title."),
 		"takeaway":         strField("One-line takeaway footer."),
 		"columns":          {typ: "array", desc: "Exactly 2 balanced columns {header, items[]} (or {header, pros[], cons[]}) for the row-aligned comparison-2col; 3–5 columns are panels, 6–12 cards.", itemKeys: comparisonColumnKeys},
+		"markers":          {typ: "string", enum: []string{"tick-cross"}, desc: "Two-column comparison: ticks on the left and crosses on the right."},
 		"connectors":       {typ: "boolean", desc: "Per-row accent connector badge between the columns (today → target). Two columns only."},
 		"highlight_column": strField("The column the comparison argues for: \"left\", \"right\" or a header; solid accent header, tinted rows. Two columns only; not with highlight_row."),
 		"highlight_row": {typ: "string", schema: rowRefSchema,
@@ -639,6 +642,8 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"points":   textList("Alias for bullets."),
 	}, universalFields()),
 	KindRegions: withFields(map[string]payloadField{
+		"gap":      {typ: "number", desc: "Nonnegative finite gap between regions, in points."},
+		"divider":  {typ: "boolean", desc: "Draw a native vertical divider at column seams."},
 		"title":    strField("Slide title: the one claim the regions argue together."),
 		"takeaway": strField("One-line takeaway footer."),
 		"arrangement": {typ: "string", enum: slides.RegionArrangements,

@@ -49,16 +49,20 @@ var RegionKinds = []string{RegionChart, RegionStat, RegionKPIs, RegionTable, Reg
 
 // Region arrangements.
 const (
-	ArrangeColumns    = "columns"     // 2–3 regions left to right; size_pct is each one's width
-	ArrangeRows       = "rows"        // 2–3 regions top to bottom; size_pct is each one's height
-	ArrangeMainLeft   = "main_left"   // regions[0] fills the left column; regions[1..2] stack on the right
-	ArrangeMainRight  = "main_right"  // regions[0] fills the right column; regions[1..2] stack on the left
-	ArrangeMainTop    = "main_top"    // regions[0] fills the top band; regions[1..2] sit side by side beneath it
-	ArrangeMainBottom = "main_bottom" // regions[0] fills the bottom band; regions[1..2] sit side by side above it
+	ArrangeQuad            = "quad"
+	ArrangeMainLeft3       = "main_left_3"
+	ArrangeMainTop3        = "main_top_3"
+	ArrangeTilesOverPanels = "tiles_over_panels"
+	ArrangeColumns         = "columns"     // 2–3 regions left to right; size_pct is each one's width
+	ArrangeRows            = "rows"        // 2–3 regions top to bottom; size_pct is each one's height
+	ArrangeMainLeft        = "main_left"   // regions[0] fills the left column; regions[1..2] stack on the right
+	ArrangeMainRight       = "main_right"  // regions[0] fills the right column; regions[1..2] stack on the left
+	ArrangeMainTop         = "main_top"    // regions[0] fills the top band; regions[1..2] sit side by side beneath it
+	ArrangeMainBottom      = "main_bottom" // regions[0] fills the bottom band; regions[1..2] sit side by side above it
 )
 
 // RegionArrangements lists the arrangements in a stable order.
-var RegionArrangements = []string{ArrangeColumns, ArrangeRows, ArrangeMainLeft, ArrangeMainRight, ArrangeMainTop, ArrangeMainBottom}
+var RegionArrangements = []string{ArrangeColumns, ArrangeRows, ArrangeMainLeft, ArrangeMainRight, ArrangeMainTop, ArrangeMainBottom, ArrangeQuad, ArrangeMainLeft3, ArrangeMainTop3, ArrangeTilesOverPanels}
 
 // Region bounds shared by validation and compile.
 const (
@@ -102,7 +106,7 @@ func RegionArrangementOf(body map[string]any) string {
 // two-region stack.
 func IsMainArrangement(arrangement string) bool {
 	switch arrangement {
-	case ArrangeMainLeft, ArrangeMainRight, ArrangeMainTop, ArrangeMainBottom:
+	case ArrangeMainLeft, ArrangeMainRight, ArrangeMainTop, ArrangeMainBottom, ArrangeMainLeft3, ArrangeMainTop3, ArrangeTilesOverPanels:
 		return true
 	}
 	return false
@@ -110,6 +114,9 @@ func IsMainArrangement(arrangement string) bool {
 
 // RegionCountBounds returns the region count an arrangement takes.
 func RegionCountBounds(arrangement string) (lo, hi int) {
+	if arrangement == ArrangeQuad || arrangement == ArrangeMainLeft3 || arrangement == ArrangeMainTop3 {
+		return 4, 4
+	}
 	if IsMainArrangement(arrangement) {
 		return 3, 3
 	}
@@ -354,6 +361,9 @@ func raiseToFloorsThenMinimums(shares []float64, unset []bool, minsOf func(chart
 func RegionGroupShares(body map[string]any) (axis, stack []float64, err error) {
 	regions := RegionList(body)
 	arrangement := RegionArrangementOf(body)
+	if arrangement == ArrangeQuad {
+		return []float64{50, 50}, []float64{50, 50}, nil
+	}
 	if !IsMainArrangement(arrangement) {
 		shares := make([]float64, len(regions))
 		weights := make([]float64, len(regions))
@@ -375,32 +385,47 @@ func RegionGroupShares(body map[string]any) (axis, stack []float64, err error) {
 		}
 		return axis, nil, err
 	}
-	if len(regions) != 3 {
-		return nil, nil, fmt.Errorf("%s takes exactly 3 regions", arrangement)
+	lo, _ := RegionCountBounds(arrangement)
+	if len(regions) != lo {
+		return nil, nil, fmt.Errorf("%s takes exactly %d regions", arrangement, lo)
 	}
 	main := RegionSizePct(regions[0])
 	mainUnset := main <= 0
 	if mainUnset {
 		main = RegionDefaultMainPct
+		if arrangement == ArrangeTilesOverPanels {
+			main = 30
+		}
 	}
 	axis = []float64{main, 100 - main}
-	stackShares := []float64{RegionSizePct(regions[1]), RegionSizePct(regions[2])}
-	stack, err = ResolveShares(stackShares,
-		[]float64{regionWeightOf(regions[1]), regionWeightOf(regions[2])})
+	stackShares, stackWeights, unset := make([]float64, len(regions)-1), make([]float64, len(regions)-1), make([]bool, len(regions)-1)
+	for i, r := range regions[1:] {
+		stackShares[i] = RegionSizePct(r)
+		stackWeights[i] = regionWeightOf(r)
+		unset[i] = stackShares[i] <= 0
+	}
+	stack, err = ResolveShares(stackShares, stackWeights)
 	if err != nil {
 		return axis, stack, err
 	}
 	switch arrangement {
-	case ArrangeMainLeft, ArrangeMainRight:
+	case ArrangeMainLeft, ArrangeMainRight, ArrangeMainLeft3:
 		// The stack splits the column's height.
-		stack = raiseToFloorsThenMinimums(stack, []bool{stackShares[0] <= 0, stackShares[1] <= 0}, func(chartFloor bool) []float64 {
-			return []float64{regionMinHeightPct(regions[1], chartFloor), regionMinHeightPct(regions[2], chartFloor)}
+		stack = raiseToFloorsThenMinimums(stack, unset, func(chartFloor bool) []float64 {
+			mins := make([]float64, len(regions)-1)
+			for i, r := range regions[1:] {
+				mins[i] = regionMinHeightPct(r, chartFloor)
+			}
+			return mins
 		})
 	default:
 		// The main region and the band split the height; the band is as
 		// tall as its taller-needing region.
 		axis = raiseToFloorsThenMinimums(axis, []bool{mainUnset, mainUnset}, func(chartFloor bool) []float64 {
-			band := math.Max(regionMinHeightPct(regions[1], chartFloor), regionMinHeightPct(regions[2], chartFloor))
+			band := 0.0
+			for _, r := range regions[1:] {
+				band = math.Max(band, regionMinHeightPct(r, chartFloor))
+			}
 			return []float64{regionMinHeightPct(regions[0], chartFloor), band}
 		})
 	}
@@ -450,6 +475,9 @@ func CompileRegions(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	}
 
 	grid, cellPaths := regionGrid(arrangement, axis, stack, builds, !cycleLeadsStack(arrangement, regions))
+	if err := applyRegionSeams(grid, builds, in.Body); err != nil {
+		return nil, nil, err
+	}
 	stampCompilerSource(grid, regionsGridSource, 0)
 	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title", ShapeGrid: grid}
 	links := titleLink(slide, in)
@@ -530,6 +558,14 @@ func regionGrid(arrangement string, axis, stack []float64, builds []regionBuild,
 	paths := make([]string, len(builds))
 	cellAt := func(r, c int) string { return fmt.Sprintf(".rows[%d].cells[%d]", r, c) }
 	switch arrangement {
+	case ArrangeQuad:
+		grid := &deckinput.ShapeGridInput{Columns: shareColumns([]float64{50, 50})}
+		for row := 0; row < 2; row++ {
+			grid.Rows = append(grid.Rows, deckinput.GridRowInput{Height: 50, Cells: []*deckinput.GridCellInput{builds[2*row].cell, builds[2*row+1].cell}})
+			paths[2*row] = cellAt(row, 0)
+			paths[2*row+1] = cellAt(row, 1)
+		}
+		return grid, paths
 	case ArrangeRows:
 		g := &deckinput.ShapeGridInput{Columns: json.RawMessage("1")}
 		for i, b := range builds {
@@ -537,15 +573,15 @@ func regionGrid(arrangement string, axis, stack []float64, builds []regionBuild,
 			paths[i] = cellAt(i, 0)
 		}
 		return g, paths
-	case ArrangeMainLeft, ArrangeMainRight:
+	case ArrangeMainLeft, ArrangeMainRight, ArrangeMainLeft3:
 		// The stack's stamp lets the engine re-split it by the measured need
 		// of a text region when it expands the stack (go-slide-creator-18dqh).
 		// Beside a cycle the two regions meet at the stack's seam instead
 		// (regionAnchors), which a re-split would move to the column's foot.
-		side := &deckinput.ShapeGridInput{Columns: json.RawMessage("1"), Rows: []deckinput.GridRowInput{
-			{Height: stack[0], Cells: []*deckinput.GridCellInput{builds[1].cell}},
-			{Height: stack[1], Cells: []*deckinput.GridCellInput{builds[2].cell}},
-		}}
+		side := &deckinput.ShapeGridInput{Columns: json.RawMessage("1")}
+		for i, build := range builds[1:] {
+			side.Rows = append(side.Rows, deckinput.GridRowInput{Height: stack[i], Cells: []*deckinput.GridCellInput{build.cell}})
+		}
 		if rebalanceStack {
 			side.Source = jsonschema.CompilerRegionsStackSource
 		}
@@ -559,13 +595,16 @@ func regionGrid(arrangement string, axis, stack []float64, builds []regionBuild,
 		cells[mainCol] = builds[0].cell
 		cells[sideCol] = &deckinput.GridCellInput{Grid: side}
 		paths[0] = cellAt(0, mainCol)
-		paths[1] = cellAt(0, sideCol) + ".grid" + cellAt(0, 0)
-		paths[2] = cellAt(0, sideCol) + ".grid" + cellAt(1, 0)
+		for i := 1; i < len(builds); i++ {
+			paths[i] = cellAt(0, sideCol) + ".grid" + cellAt(i-1, 0)
+		}
 		return &deckinput.ShapeGridInput{Columns: shareColumns(cols), Rows: []deckinput.GridRowInput{{Cells: cells}}}, paths
-	case ArrangeMainTop, ArrangeMainBottom:
-		side := &deckinput.ShapeGridInput{Columns: shareColumns(stack), Rows: []deckinput.GridRowInput{
-			{Cells: []*deckinput.GridCellInput{builds[1].cell, builds[2].cell}},
-		}}
+	case ArrangeMainTop, ArrangeMainBottom, ArrangeMainTop3, ArrangeTilesOverPanels:
+		cells := make([]*deckinput.GridCellInput, len(builds)-1)
+		for i, build := range builds[1:] {
+			cells[i] = build.cell
+		}
+		side := &deckinput.ShapeGridInput{Columns: shareColumns(stack), Rows: []deckinput.GridRowInput{{Cells: cells}}}
 		mainRow, sideRow := 0, 1
 		heights := axis
 		if arrangement == ArrangeMainBottom {
@@ -576,8 +615,9 @@ func regionGrid(arrangement string, axis, stack []float64, builds []regionBuild,
 		rows[mainRow] = deckinput.GridRowInput{Height: heights[mainRow], Cells: []*deckinput.GridCellInput{builds[0].cell}}
 		rows[sideRow] = deckinput.GridRowInput{Height: heights[sideRow], Cells: []*deckinput.GridCellInput{{Grid: side}}}
 		paths[0] = cellAt(mainRow, 0)
-		paths[1] = cellAt(sideRow, 0) + ".grid" + cellAt(0, 0)
-		paths[2] = cellAt(sideRow, 0) + ".grid" + cellAt(0, 1)
+		for i := 1; i < len(builds); i++ {
+			paths[i] = cellAt(sideRow, 0) + ".grid" + cellAt(0, i-1)
+		}
 		return &deckinput.ShapeGridInput{Columns: json.RawMessage("1"), Rows: rows}, paths
 	default: // columns
 		cells := make([]*deckinput.GridCellInput, len(builds))
@@ -837,6 +877,12 @@ func regionTable(in Input, r map[string]any) (regionBuild, error) {
 
 func regionTimeline(r map[string]any) (regionBuild, error) {
 	stops := TimelineStops(r)
+	if issue := RegionTimelineIssue(r); issue != "" {
+		return regionBuild{}, fmt.Errorf("timeline region %s", issue)
+	}
+	if strField(r, "orientation") == "vertical" {
+		return regionVerticalTimeline(stops)
+	}
 	if !timelineFits(stops) {
 		return regionBuild{}, fmt.Errorf("timeline region %s", firstNonEmpty(TimelineOverBudget(r), "needs 3–7 milestones"))
 	}
@@ -1045,6 +1091,9 @@ func RegionPatterns(body map[string]any) []string {
 			out[i] = "stat-hero"
 		case RegionTimeline:
 			out[i] = "timeline-horizontal"
+			if strField(r, "orientation") == "vertical" {
+				out[i] = "timeline-vertical"
+			}
 		case RegionKPIs:
 			if cells, _ := kpiCells(r); len(cells) > 0 {
 				out[i] = fmt.Sprintf("kpi-%dup", len(cells))
@@ -1099,4 +1148,37 @@ func containsStr(list []string, v string) bool {
 		}
 	}
 	return false
+}
+
+// RegionTimelineIssue validates orientation before compilation; regions never degrade.
+func RegionTimelineIssue(r map[string]any) string {
+	orientation := strField(r, "orientation")
+	if orientation != "" && orientation != "horizontal" && orientation != "vertical" {
+		return "orientation must be horizontal or vertical"
+	}
+	if issue := TimelineOverBudget(r); issue != "" {
+		return issue
+	}
+	if orientation == "vertical" {
+		for _, stop := range TimelineStops(r) {
+			if stop.Date == "" {
+				return "vertical timeline requires a date for every milestone"
+			}
+			if stop.EndDate != "" {
+				return "vertical timeline does not encode date ranges; use horizontal gantt"
+			}
+		}
+	}
+	return ""
+}
+func regionVerticalTimeline(stops []timelineStop) (regionBuild, error) {
+	entries := make([]map[string]any, 0, len(stops))
+	for _, stop := range stops {
+		entries = append(entries, map[string]any{"date": stop.Date, "title": stop.Label, "detail": stop.Body})
+	}
+	encoded, err := json.Marshal(map[string]any{"stops": entries})
+	if err != nil {
+		return regionBuild{}, err
+	}
+	return regionBuild{cell: patternCell(deckinput.PatternInput{Name: "timeline-vertical", Values: encoded}), links: []SourceLink{{RawPath: ".pattern.values", SemanticPath: ".milestones"}}}, nil
 }

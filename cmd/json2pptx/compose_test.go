@@ -299,40 +299,20 @@ func TestExpandCompose_SmartCompose_StatHeroKpi3up(t *testing.T) {
 		t.Fatal("expandCompose returned nil grid")
 	}
 
-	// stat-hero has 1 cell, kpi-3up has 3 cells -> 1:3 ratio
-	// hero should get ~25%, kpi should get ~75%
-	// Collect heights by segment: stat-hero rows come first
-	heroRows := 0
-	kpiRows := 0
-	var heroHeight, kpiHeight float64
+	// Smart allocation follows measured written content, not cell count.
+	var panes []jsonschema.GridRowInput
 	for _, row := range grid.Rows {
-		if heroRows == 0 || kpiHeight == 0 {
-			// First row(s) belong to stat-hero (1 row in stat-hero)
-			heroHeight += row.Height
-			heroRows++
-			if heroRows == 1 {
-				// stat-hero only has 1 row, switch to kpi
-				continue
-			}
+		if len(row.Cells) == 1 && row.Cells[0].Grid != nil {
+			panes = append(panes, row)
 		}
-		kpiHeight += row.Height
-		kpiRows++
 	}
-	// Re-collect properly: stat-hero = 1 row, kpi-3up = 1 row
-	// So grid.Rows[0] = hero, grid.Rows[1] = kpi
-	if len(grid.Rows) < 2 {
-		t.Fatalf("expected at least 2 rows, got %d", len(grid.Rows))
+	if len(panes) != 2 {
+		t.Fatalf("expected two measured panes, got%d", len(panes))
 	}
-	heroHeight = grid.Rows[0].Height
-	kpiHeight = grid.Rows[1].Height
+	if panes[0].Height <= 30 {
+		t.Fatalf("single dominant figure still allocated by1:3 cell count: %.1f", panes[0].Height)
+	}
 
-	// hero should be ~25% (1/(1+3)*100), kpi ~75% (3/(1+3)*100)
-	if heroHeight < 20 || heroHeight > 30 {
-		t.Errorf("hero height should be ~25%%, got %.1f%%", heroHeight)
-	}
-	if kpiHeight < 70 || kpiHeight > 80 {
-		t.Errorf("kpi height should be ~75%%, got %.1f%%", kpiHeight)
-	}
 }
 
 func TestExpandCompose_SmartCompose_ExplicitSizePctOverrides(t *testing.T) {
@@ -546,28 +526,11 @@ func TestExpandCompose_Horizontal_TruncationWarning(t *testing.T) {
 		}},
 	}
 
-	merged, warnings, err := mergeHorizontal(
-		[]*jsonschema.ShapeGridInput{seg0, seg1},
-		[]float64{50, 50},
-		0,
-	)
-	if err != nil {
-		t.Fatalf("mergeHorizontal failed: %v", err)
-	}
-	if merged == nil {
-		t.Fatal("mergeHorizontal returned nil grid")
+	merged, _, err := mergeHorizontal([]*jsonschema.ShapeGridInput{seg0, seg1}, []float64{50, 50}, 0)
+	if err == nil || !contains(err.Error(), "COMPOSE_HORIZONTAL_TRUNCATION") || merged != nil {
+		t.Fatalf("lossy merge must refuse, got grid%v err%v", merged, err)
 	}
 
-	foundTruncation := false
-	for _, w := range warnings {
-		if contains(w, "COMPOSE_HORIZONTAL_TRUNCATION") && contains(w, "segment[0]") {
-			foundTruncation = true
-			break
-		}
-	}
-	if !foundTruncation {
-		t.Errorf("expected COMPOSE_HORIZONTAL_TRUNCATION warning for segment[0], got: %v", warnings)
-	}
 }
 
 // TestExpandCompose_SegmentBoundsIgnoredWarning is the regression test for
@@ -781,7 +744,7 @@ func TestExpandCompose_NestedVerticalContainingHorizontal(t *testing.T) {
 }
 
 // TestValidateCompose_NestedDepth ensures the validator accepts depth-2
-// envelopes, rejects depth-3 envelopes, and applies the same structural
+// envelopes, accepts depth-3 and rejects depth-4 envelopes, and applies the same structural
 // checks (e.g., segment count) inside nested envelopes.
 func TestValidateCompose_NestedDepth(t *testing.T) {
 	makeLeaf := func() SegmentInput {
@@ -804,7 +767,7 @@ func TestValidateCompose_NestedDepth(t *testing.T) {
 		}
 	})
 
-	t.Run("depth 3 rejected", func(t *testing.T) {
+	t.Run("depth 3 accepted and depth 4 rejected", func(t *testing.T) {
 		c := &ComposeInput{
 			Direction: "vertical",
 			Segments: []SegmentInput{
@@ -821,9 +784,13 @@ func TestValidateCompose_NestedDepth(t *testing.T) {
 				}},
 			},
 		}
-		err := validateCompose(c)
+		if err := validateCompose(c); err != nil {
+			t.Fatalf("depth3 refused: %v", err)
+		}
+		deeper := &ComposeInput{Direction: "horizontal", Segments: []SegmentInput{makeLeaf(), {Compose: c}}}
+		err := validateCompose(deeper)
 		if err == nil || !contains(err.Error(), "nesting depth") {
-			t.Fatalf("expected nesting-depth error, got %v", err)
+			t.Fatalf("depth4 accepted: %v", err)
 		}
 	})
 

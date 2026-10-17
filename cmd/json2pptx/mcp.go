@@ -851,6 +851,9 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		templates = append(templates, info)
 	}
 
+	// Exact bindings already encode availability; avoid repeating every name
+	// in the catalogue. Named template/full lookups keep the explicit lists.
+	omitRedundantTemplateAvailability(templates, fieldsMode, templateName)
 	if namesOnly {
 		return templateNamesResult(ctx, templates, totalCount, pageSize, nextCursor), nil
 	}
@@ -2835,4 +2838,13 @@ func applyConceptSearch(flat []iconSetName, filterStr string, sets []string) ([]
 		}
 	}
 	return merged, matchedVia, conceptMatches, nil
+}
+
+func omitRedundantTemplateAvailability(templates []skillTemplateInfo, fieldsMode, templateName string) {
+	if fieldsMode != listFieldsCompact || templateName != "" {
+		return
+	}
+	for i := range templates {
+		templates[i].CanonicalLayoutAvailability = nil
+	}
 }

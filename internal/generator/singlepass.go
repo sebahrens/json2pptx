@@ -533,17 +533,19 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 			}
 			mediaFileName := ctx.allocateMediaSlot(img.Path)
 			placed, crop := gridImagePlacement(img)
+			ctx.recordPictureFrame(slideNum, placed)
 			ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
-				imagePath:      img.Path,
-				mediaFileName:  mediaFileName,
-				description:    img.Alt,
-				offsetX:        placed.X,
-				offsetY:        placed.Y,
-				extentCX:       placed.Width,
-				extentCY:       placed.Height,
-				placeholderIdx: -1, // No placeholder to remove — injected as new p:pic
-				crop:           crop,
-				geometry:       img.Geometry,
+				imagePath:       img.Path,
+				mediaFileName:   mediaFileName,
+				description:     img.Alt,
+				offsetX:         placed.X,
+				offsetY:         placed.Y,
+				extentCX:        placed.Width,
+				extentCY:        placed.Height,
+				placeholderIdx:  -1, // No placeholder to remove — injected as new p:pic
+				crop:            crop,
+				geometry:        img.Geometry,
+				behindRawShapes: img.BehindShapes,
 			})
 		}
 		// Register background image as media relationship

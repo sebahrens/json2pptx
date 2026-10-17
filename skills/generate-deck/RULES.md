@@ -151,3 +151,18 @@ Grid-shaped patterns expose a `cell_accent_mode` override that walks from the sl
 **Only set overrides the schema lists.** `pyramid`, `process-flow` and `process-flow-compact` have no header text and reject `header_size` with `unknown_key` (fix `remove_key`); size their labels with `body_size`. `process-flow-compact` rejects `rows` the same way.
 
 `analyze_deck_rhythm` flags accent *heaviness*, not too few accents: `accent_heavy_slide` (a raw grid with 4+ solid-accent cells — give the rest a neutral `lt2` / dk1-tint fill) and `strong_accent_run` (3+ consecutive `accent_weight: "strong"` patterns — swap one for a normal or subtle pattern).
+
+## Layout review additions
+
+Raw `compose` hosts exactly one `pattern|compose|diagram|shape_grid|table|text|image`
+per segment (depth 3, ≤12 leaves). `heading`/`caption` reserve space before fit;
+vertical `size: content` measures height. `smart_compose` preserves explicit
+shares and measures the rest. `gaps` overrides each seam, including zero;
+`divider` draws hairlines. Grids support `col_rule: all` or seam indices;
+rules clip around spans and never count as content ink. Compact mode equalises
+same-role sibling body/caption sizes while preserving readable floors.
+
+Use takeaways for a distinct inference, not a title repeated in a box.
+Rhythm advises on overlap >0.6 and takeaways on >50% of content slides;
+three same-side or <35%-area visuals in a row; >6 visual families in ≤20
+content slides. Unknown geometry does not count as zero area.

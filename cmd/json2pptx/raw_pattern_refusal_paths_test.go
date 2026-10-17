@@ -179,10 +179,10 @@ func TestRawPatternReadabilityReportsEveryHitAtOnce(t *testing.T) {
 			texts[s] = true
 		}
 	}
-	// The two workstream names are unreadable; their bar labels were too
-	// until the sparse block's rows were grown on a slide of its own
-	// (shapegrid ComposeZoom, go-slide-creator-cyyiy).
-	for _, want := range []string{"Data and reporting platform", "Training 1,200 control owners"} {
+	// Shared autofit findings name the cells causing the shrink, rather than
+	// every affected peer (Training inherits the Programme phases shrink).
+	// Both independent causes must be available in the first response.
+	for _, want := range []string{"Programme phases", "Data and reporting platform"} {
 		if !texts[want] {
 			t.Errorf("no finding quotes %q; got %v", want, texts)
 		}

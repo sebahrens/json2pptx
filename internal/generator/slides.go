@@ -174,6 +174,8 @@ type BackgroundOverlay struct {
 
 // SlideSpec defines a single slide to create.
 type SlideSpec struct {
+	StackedSplit      bool
+	Sticker           string
 	LayoutID          string        // Layout to use (e.g., "slideLayout1")
 	ColumnLeftPercent int           // Derived two-column split; 0 keeps template geometry
 	Content           []ContentItem // Content items to populate
@@ -239,14 +241,16 @@ type IconInsert struct {
 // ImageInsert describes an image file to embed in a slide as a p:pic element.
 // Used by shape_grid cells with CellKindImage.
 type ImageInsert struct {
-	Path     string // File path to the image
-	Alt      string // Alt text for accessibility
-	Geometry string // Frame preset: "" / "rect" or "ellipse" (circular headshots)
-	Fit      string // Raster placement in the frame: "" / "cover" (crop to fill) or "contain" (whole picture, centred)
-	OffsetX  int64  // X position in EMU
-	OffsetY  int64  // Y position in EMU
-	ExtentCX int64  // Width in EMU
-	ExtentCY int64  // Height in EMU
+	// BehindShapes keeps image-cell overlays and layers above their base picture.
+	BehindShapes bool
+	Path         string // File path to the image
+	Alt          string // Alt text for accessibility
+	Geometry     string // Frame preset: "" / "rect" or "ellipse" (circular headshots)
+	Fit          string // Raster placement in the frame: "" / "cover" (crop to fill) or "contain" (whole picture, centred)
+	OffsetX      int64  // X position in EMU
+	OffsetY      int64  // Y position in EMU
+	ExtentCX     int64  // Width in EMU
+	ExtentCY     int64  // Height in EMU
 	// SourcePath is the JSON pointer of the authored field this picture came
 	// from (e.g. /slides/0/pattern/values/image). When the file cannot be
 	// embedded the IMAGE_ASSET_UNAVAILABLE finding is addressed to it; empty
@@ -256,6 +260,7 @@ type ImageInsert struct {
 
 // ContentItem represents content to place in a placeholder.
 type ContentItem struct {
+	Heading       string
 	PlaceholderID string      // Target placeholder ID
 	Type          ContentType // Type of content
 	Value         any         // Type-specific value

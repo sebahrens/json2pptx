@@ -52,6 +52,7 @@ var regionPayloadFields = map[string]map[string]payloadField{
 		"column_alignments": textList("Per-column alignment: left / center / right."),
 	}, regionCommonFields()),
 	slides.RegionTimeline: withFields(map[string]payloadField{
+		"orientation": {typ: "string", enum: []string{"horizontal", "vertical"}, desc: "Native timeline orientation; vertical is suited to narrow columns."},
 		"milestones": {typ: "array", itemStrings: true, itemKeys: timelineStopKeys,
 			desc: "3–7 milestones: strings or {label, date?, end_date?, body?}. Label ≤60 chars, date ≤30, body ≤200."},
 	}, regionCommonFields()),
@@ -110,7 +111,7 @@ func regionsSchema() map[string]any {
 		variants = append(variants, v)
 	}
 	return map[string]any{
-		"type": "array", "minItems": 2, "maxItems": 3,
+		"type": "array", "minItems": 2, "maxItems": 4,
 		"items": map[string]any{"oneOf": variants},
 	}
 }
@@ -146,10 +147,16 @@ func validateRegions(path string, slide SlideSpec, s *semDiags) {
 			want = fmt.Sprintf("exactly %d", lo)
 		}
 		s.hard(path+".regions", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("arrangement %q takes %s regions; found %d. Use columns or rows for two regions, main_left / main_right / main_top / main_bottom for one main region beside a stack of two", arrangement, want, len(raw)))
+			fmt.Sprintf("arrangement %q takes %s regions; found %d. Use columns/rows for 2–3, quad/main_left_3/main_top_3 for four, tiles_over_panels for KPI tiles above two panels", arrangement, want, len(raw)))
 		return
 	}
 
+	if arrangement == slides.ArrangeTilesOverPanels && strPayloadField(slides.RegionList(slide.Body)[0], "kind") != slides.RegionKPIs {
+		s.hard(path+".regions[0].kind", diagnostics.CodeSemanticFieldType, "tiles_over_panels requires a kpis region first")
+	}
+	if _, _, err := slides.RegionGap(slide.Body); err != nil {
+		s.hard(path+".gap", diagnostics.CodeSemanticFieldType, err.Error())
+	}
 	sharesOK := true
 	for i, entry := range raw {
 		rpath := fmt.Sprintf("%s.regions[%d]", path, i)
@@ -380,7 +387,7 @@ var regionContentRules = map[string]func(regionCheck){
 			c.required("milestones", "timeline region requires 3–7 milestones")
 			return
 		}
-		if over := slides.TimelineOverBudget(c.r); over != "" {
+		if over := slides.RegionTimelineIssue(c.r); over != "" {
 			c.dense("milestones", "timeline region "+over)
 		}
 	},

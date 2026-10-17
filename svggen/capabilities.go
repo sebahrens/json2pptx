@@ -245,6 +245,12 @@ func ChartCapabilities() []ChartCapability {
 			Status:            "ready",
 		},
 	}
+	for _, v := range []struct {
+		typ                string
+		series, categories int
+	}{{"butterfly_chart", 2, 12}, {"mekko_chart", 6, 8}, {"combo_chart", 5, 12}} {
+		caps = append(caps, ChartCapability{Type: v.typ, MaxSeries: intPtr(v.series), MaxCategories: intPtr(v.categories), SupportsNegatives: boolPtr(false), SupportsLogScale: boolPtr(false), LabelStrategy: strPtr("Explicit 12pt labels; measured fit or actionable refusal"), DensityBehavior: strPtr("Refuses crowded geometry; use fewer categories/series or a larger frame"), Status: "ready"})
+	}
 	for i := range caps {
 		caps[i].AuthoringSurface = strPtr("svggen")
 		if a := Aliases(caps[i].Type); len(a) > 0 {

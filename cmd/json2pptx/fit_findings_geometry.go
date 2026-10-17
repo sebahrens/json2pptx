@@ -167,6 +167,7 @@ func collectGeometry(input *PresentationInput, layouts []types.LayoutMetadata, s
 		if measured == nil {
 			continue
 		}
+		findings = append(findings, measured.layoutReviewFindings(safe, patternName)...)
 		// Sparse overall (SLIDE_UNDERUSED, an airiness advisory) and lopsided
 		// are different facts: a centred hero number is sparse and balanced,
 		// a row of cards over an empty bottom half is lopsided whether or not
@@ -280,8 +281,9 @@ func (c balanceContext) imbalanceFinding(balance *geomAccumulator, slide SlideIn
 	return checkHorizontalImbalance(balance.textInk, safe, &slide, si, patternName)
 }
 
-// maxGeomNestingDepth bounds recursion into nested sub-grids.
-const maxGeomNestingDepth = 4
+// maxGeomNestingDepth bounds native-grid inspection, including the heading,
+// caption and band wrappers around up to three authored compose levels.
+const maxGeomNestingDepth = 16
 
 // textExceedsHit / sparseFillHit record one offending cell.
 type textExceedsHit struct {
@@ -331,7 +333,12 @@ type geomAccumulator struct {
 	ruledCell bool
 	// tables counts the table cells walked: an imbalance finding on a slide
 	// that holds one names the table's own remedies.
-	tables int
+	tables        int
+	reviewText    []layoutReviewText
+	reviewVisuals []layoutReviewVisual
+	reviewPanes   []layoutReviewPane
+	reviewGridGap float64
+	reviewPattern string
 }
 
 // addInk records a rectangle that is content in both views: coverage (ink)
@@ -357,6 +364,19 @@ func isKPIStripGrid(grid *ShapeGridInput) bool {
 }
 
 func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveResult, basePath string, depth int) {
+	outerGap, outerPattern := a.reviewGridGap, a.reviewPattern
+	a.reviewGridGap, a.reviewPattern = 8, ""
+	if input != nil {
+		a.reviewGridGap = input.RowGap
+		if a.reviewGridGap == 0 {
+			a.reviewGridGap = input.Gap
+		}
+		if a.reviewGridGap == 0 {
+			a.reviewGridGap = 8
+		}
+		a.reviewPattern = strings.TrimPrefix(input.Source, patternSourcePrefix)
+	}
+	defer func() { a.reviewGridGap, a.reviewPattern = outerGap, outerPattern }()
 	outerOpen, outerCells := a.openCells, a.gridCells
 	a.openCells, a.gridCells = isKPIStripGrid(input), result.Cells
 	defer func() { a.openCells, a.gridCells = outerOpen, outerCells }()
@@ -392,13 +412,18 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 			a.tables++
 		case shapegrid.CellKindImage, shapegrid.CellKindDiagram, shapegrid.CellKindComposite:
 			a.addInk(cell.Bounds)
+			a.reviewVisuals = append(a.reviewVisuals, layoutReviewVisual{path: cellPath, frame: cell.Bounds})
 		case shapegrid.CellKindSubGrid:
+			a.reviewPanes = append(a.reviewPanes, layoutReviewPane{path: cellPath, frame: cell.Bounds})
 			a.subGrid(input, cell, cellPath, depth, result.SubGridPeers)
 		}
 	}
 	// A row band (result.Bands) is a backdrop, not content: a lane band with
 	// two short steps in it is still a thin slide.
 	for _, ab := range result.AccentBars {
+		if ab.Decorative {
+			continue
+		}
 		a.addInk(ab.Bounds)
 	}
 }
@@ -538,6 +563,7 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		a.noteNarrowWrap(cellPath+"/shape/text", txt, availPt, cell)
 	}
 	blockW, blockH := a.m.textBlockPt(txt, math.Max(availPt, 1))
+	a.recordLayoutText(cell, cellPath, txt, in, availPt)
 	if txt.rotated() {
 		// The block was measured along the text's own axis; on the slide it
 		// occupies the transposed rectangle.

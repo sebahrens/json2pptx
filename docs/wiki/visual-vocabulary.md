@@ -79,7 +79,7 @@ slides:
 | "Today vs target" | `comparison` (2 aligned columns; 3–5 columns → titled panels; 6–12 → cards) | Rows correspond; keep it to ~6; `connectors: true` for the per-row arrow. |
 | "The chapters, and where we are" | `agenda` (2–10 `sections`, `current`) | A real contents page; pair it with `structure.sections` on 12+ slides. |
 | "This is the sequence" | `process` (3–6 steps with descriptions → numbered rows; 7–8 or bare labels → flow chevrons; a step with `type: decision` → a diamond) | Beside a stat or text, a `process` region takes 3–6 numbered steps. A standalone process has one path with at most a yes / no gate, not a branching flowchart; actors in lanes → raw `swimlane`. |
-| "It repeats", "everything relates to the centre", "these contain one another" | `cycle` (3–8 `phases`, one `style`) | One rule picks the style: one ordered loop → `ring` (default; 4–8 segments) or `nodes` (3–8 circles joined by arrows, when the hand-offs matter); one-off steps that feed the loop → `intake` (1–3 `intake` steps); two loops that feed each other, on a full-width slide → `figure_eight` (`left_label` / `right_label`); unordered peers around a centre → `radial` (`center` is the hub); things that contain one another → `concentric` (3–5, innermost first). One `highlight` phase; `ring` / `figure_eight` also take per-phase `status: done` or `planned` (dashed outline), independently of highlight. Not for a sequence that runs once (`process`) or a ranked hierarchy (raw `pyramid`). See "The cycle family" below. |
+| "It repeats", "everything relates to the centre", "these contain one another" | `cycle` (3–8 `phases`, one `style`) | One rule picks the style: one ordered loop → `ring` (default; 4–8 segments) or `nodes` (3–8 circles joined by arrows, when the hand-offs matter); one-off steps that feed the loop → `intake` (1–3 `intake` steps); two loops that feed each other, on a full-width slide → `figure_eight` (`left_label` / `right_label`); unordered peers around a centre → `radial` (`center` is the hub); things that contain one another → `concentric` (3–5, innermost first). One `highlight` phase; `ring` / `figure_eight` also take per-phase `status: done` or `planned` (dashed outline), independently of highlight. Not for a sequence that runs once (`process`) or a ranked hierarchy (`pyramid`). See "The cycle family" below. |
 | "When things happen" | `timeline` (3–7 dated stops) · `roadmap` (3–6 phases, 0–4 `parallel_tracks`) | An `end_date` turns a timeline into bars. |
 | "Who does what by when" | `next_steps` | 2–6 actions `{action, owner, date}`, 0–3 `decisions`. Always the closer. |
 | "Who we are" | `team` (1–8, `photo` or initials `photo_label`) | Role on every card. |
@@ -160,16 +160,16 @@ heading, source on the slide, no legend when one series is labelled.
 
 ## Patterns that still need the raw path
 
-Twenty-two patterns have no kind: `labeled-rows` (one structured finding),
+Patterns without a kind include: `labeled-rows` (one structured finding),
 `scqa-summary`, `text-sidebar` (a foreword page), `before-after` and
 `before-after-compact` (two states with a chevron), `framework-grid` (levers
-by dimension), `capability-heatmap`, `driver-tree`, `value-chain`,
-`pyramid`, `horizontal-bar-with-callouts` (ranked bars, one insight each),
+by dimension), `capability-heatmap`, `driver-tree`, `horizontal-bar-with-callouts` (ranked bars, one insight each),
 `hero-detail`, `metric-list`, `kpi-inline`, `process-grid-2row` (two lanes),
 `swimlane`, `roadmap-phased` (dated bars per workstream),
 `journey-maturity-model`, `state-shift-hub`, `dual-org-ladder` (engagement /
-JV team), `contact-directory`, `icon-row` — plus every svggen and native
-diagram (gantt, venn, org chart, fishbone, PESTEL, nine-box …). Each is a row
+JV team), `contact-directory`, `icon-row`. Some diagrams (such as gantt) also need
+raw hosting; venn, fishbone, PESTEL, nine-box, heatmap, value-chain and pyramid
+have semantic hosts, listed in [the additions catalog](consulting-visual-additions.md). Each is a row
 in [layout-catalog.md](layout-catalog.md) §3. Carry them as a
 `raw_json2pptx` slide inside the DeckSpec — the whole pattern block verbatim
 from `show_pattern` — not as a lowered raw deck; `recommend_visual` returns
@@ -206,3 +206,13 @@ rather than a silent drop. Avoid the family when the items follow one another
 once (`process`), when they are today/future pairs (raw `state-shift-hub`)
 and when there is neither a loop nor a centre (`pillars`, `comparison`). Beside
 a narrative use a `cycle` region (split layouts §13).
+
+## Additional consulting forms
+
+Use [Consulting visual additions](consulting-visual-additions.md) for RACI,
+status boards, issue/decision trees, stakeholder placement, progress against
+target, Mekko, combination and butterfly charts. Prefer semantic kinds when
+listed there; inspect `list_slide_kinds` or `show_pattern` for exact fields.
+For two or four titled groups side by side, use `comparison-2col` with two
+headers and aligned group rows; `bullet_groups` remains a single-placeholder
+stack.

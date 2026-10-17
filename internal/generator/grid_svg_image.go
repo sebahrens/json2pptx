@@ -98,12 +98,13 @@ func (ctx *singlePassContext) registerGridSVGImage(slideNum, imgIdx int, img Ima
 	if err != nil {
 		return fmt.Errorf("slide %d shape_grid SVG image fallback PNG: %w", slideNum, err)
 	}
+	ctx.recordPictureFrame(slideNum, placed)
 	sourceID := fmt.Sprintf("gridsvg-s%d-i%d", slideNum, imgIdx)
 	if c.GetStrategy() != SVGStrategyNative {
 		ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
 			mediaFileName: ctx.allocPNG(sourceID), data: pngData, description: img.Alt,
 			offsetX: placed.X, offsetY: placed.Y, extentCX: placed.Width, extentCY: placed.Height,
-			placeholderIdx: -1, crop: crop, geometry: img.Geometry,
+			placeholderIdx: -1, crop: crop, geometry: img.Geometry, behindRawShapes: img.BehindShapes,
 		})
 		return nil
 	}
@@ -111,7 +112,7 @@ func (ctx *singlePassContext) registerGridSVGImage(slideNum, imgIdx int, img Ima
 	ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
 		svgData: data, pngData: pngData, svgMediaFile: svgMediaFile, pngMediaFile: pngMediaFile,
 		description: img.Alt, offsetX: placed.X, offsetY: placed.Y, extentCX: placed.Width, extentCY: placed.Height,
-		placeholderIdx: -1, crop: crop, geometry: img.Geometry,
+		placeholderIdx: -1, crop: crop, geometry: img.Geometry, behindText: img.BehindShapes,
 	})
 	return nil
 }

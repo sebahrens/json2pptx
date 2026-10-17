@@ -1,5 +1,14 @@
 # Schema Changelog
 
+- **2026-10-17 — Schema 4.178.0 · Consulting layouts and review.** Input fingerprint: `bb7ad471bb831a5c`.
+  - Native two-column ratios, stacked layouts, image-side fallback and content headings; four additional region arrangements, per-seam gap/divider controls, sticker chrome and chapter agendas.
+  - Compose supports native grid/table/text/image leaves, heading/caption slots, measured content height and smart allocation, depth 3 with 12 leaves; compact peer typography and span-aware column rules.
+  - New consulting-native kinds/patterns, seven framework hosts, stakeholder placement, and Mekko/combo/butterfly charts. Live schemas and examples are the source of truth; the wiki catalog documents bounds and Sankey alternatives.
+  - Advisory baseline, hierarchy, pane fill, exhibit share, gutter, number format, orphan, caption proximity, continuation and used-status-colour checks. Rhythm exposes layout geometry and checks side/share runs, excessive variety and takeaway redundancy/overuse.
+  - Balanced table splits preserve merged groups and source offsets. Measured RACI/status matrix headers/body retain 12pt; ordinary raw table limits remain. Cell `text_color` validates colour syntax and constrained design rules consistently.
+  - Image-plus-layer compositions retain z-order and full-cell geometry for raster/SVG sources. Grid images share photo-footer protection; image-hero supporting text stays inside its measured scrim.
+  - Compact discovery projections retain existing response budgets. Shared-autofit regression fixtures assert the causal source; sparse readiness controls use substantive content.
+
 - **2026-10-17 — Schema 4.177.0 · Field-review follow-ups.** Input fingerprint: `865d239d81b07196` (additive table column widths).
   - Tables accept `column_widths`, one positive relative weight per column, on raw tables, the `table` kind and table regions. Rendering, preflight, strict fit and logical-row density use the same widths. `[1, 3]` gives a glossary's definition column three quarters of the width.
   - Regions add `process`: 3–6 `{label, description?}` steps, rendered as native numbered steps in a row or a two-column reading order matched to the arrangement. All six arrangements preserve the linear sequence.

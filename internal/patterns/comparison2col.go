@@ -161,6 +161,7 @@ func (v Comparison2colValues) MarshalJSON() ([]byte, error) {
 // Comparison2colOverrides extends TextOverrides with an optional row_fill for
 // body row background color (e.g. "lt2", "#F5F0E8").
 type Comparison2colOverrides struct {
+	Markers string `json:"markers,omitempty"`
 	TextOverrides
 	// RowFill paints every body row the same background color (scheme name or
 	// hex). When omitted, body rows are zebra-striped between two surface tints
@@ -300,6 +301,7 @@ func (c *comparison2col) Schema() *Schema {
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
+			"markers":          EnumSchema("tick-cross").WithDescription("Prefix every left item with a tick and right item with a cross; text keeps its readable measurement."),
 			"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
 			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 			"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
@@ -337,6 +339,9 @@ func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]a
 	// Validate cell_accent_mode
 	if overrides != nil {
 		if ovr, ok := overrides.(*Comparison2colOverrides); ok {
+			if ovr.Markers != "" && ovr.Markers != "tick-cross" {
+				errs = append(errs, errInvalidEnum(name, "overrides.markers", ovr.Markers, []string{"tick-cross"}))
+			}
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
 			}
@@ -435,6 +440,7 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		}
 	}
 
+	vals = comparisonWithMarkers(vals, ovr)
 	plan := comparisonLayout(ctx, vals, ovr, cellOverrides)
 	plan.sizeRows()
 
@@ -1028,4 +1034,17 @@ func applyComparison2colCellOverride(cell *jsonschema.GridCellInput, cellOverrid
 			Width:    4,
 		}
 	}
+}
+
+func comparisonWithMarkers(values *Comparison2colValues, ovr *Comparison2colOverrides) *Comparison2colValues {
+	if ovr.Markers != "tick-cross" {
+		return values
+	}
+	copyValues := *values
+	copyValues.Rows = append([]Comparison2colRow(nil), values.Rows...)
+	for i := range copyValues.Rows {
+		copyValues.Rows[i].Left = "✓ " + copyValues.Rows[i].Left
+		copyValues.Rows[i].Right = "✗ " + copyValues.Rows[i].Right
+	}
+	return &copyValues
 }

@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.177.0
+schema_version: 4.178.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -11,14 +11,10 @@ description: >-
 
 **Visual standard:** Apply [native slide composition](RULES.md#native-slide-composition).
 
-Call `get_started` first, passing this frontmatter's `schema_version` as
-`skill_version`. If it returns `skill_warning`, run `json2pptx skill install`
-before relying on installed instructions (`json2pptx skill status` checks every
-file). Check `get_started.runtime`: if render
-tooling is unavailable, deliver the PPTX as **UNREVIEWED**, not as a finished deck.
-Take tool arguments from the live schemas (`tools/list` is abridged;
-`get_started` `tool:"<name>"` returns any tool's full schema), never from an
-old example.
+Call `get_started(skill_version:"4.178.0")` first. On `skill_warning`,
+run `json2pptx skill install`; `skill status` checks installed files.
+Without runtime render tooling, deliver as **UNREVIEWED**. Use live schemas:
+`get_started(tool:"<name>")` returns a full schema; `tools/list` is abridged.
 
 **Completion rule (single source — same text as `get_started.completion_protocol.rule` and the MCP
 server `instructions`):** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
@@ -35,10 +31,9 @@ is not finished. Back matter: `sections[].appendix: true` or raw
 `section_number: false|"A"`. Keep `accent_weight: "strong"` patterns
 (`list_patterns` full) to two in a row.
 
-**One conclusion band per slide:** `takeaway` is the fallback for kinds with
-their own conclusion field — on `executive_summary` write `bottom_line`, on
-`decision` write `recommendation`, and leave `takeaway` out (a duplicate goes
-to the speaker notes, `SEMANTIC_DUPLICATE_CALLOUT`).
+**One conclusion band:** use `bottom_line` on `executive_summary`,
+`recommendation` on `decision`; omit duplicate `takeaway`
+(`SEMANTIC_DUPLICATE_CALLOUT`, retained in notes).
 
 ## Choose the authoring path
 
@@ -58,7 +53,7 @@ as a rendered image. Then call `validate_deck_spec`,
 `render_deck_spec`, `render_deck_thumbnails`, and `submit_visual_review`.
 Edit the spec at a finding's `path`, send a `patch_verified` `next_tool_call`
 as given, and repeat ([FINDINGS.md](FINDINGS.md)). For a visual no kind
-covers (gantt, venn, swimlane, ...), a `recommend_visual` candidate carries
+covers (gantt, swimlane, ...), a `recommend_visual` candidate carries
 `data_contract` and a runnable `next_tool_call` (`render_deck_spec` with a
 `raw_json2pptx` slide); rewrite its sample content first (TOOLS.md).
 Chart callouts avoid labels; overcrowded callouts refuse.
@@ -88,39 +83,31 @@ and `next_tool_call` (blocking fix, else `render_deck_thumbnails` →
 verdict only after inspecting each current-revision image; it never clears
 blockers. A changed slide invalidates its verdict; image identity
 (`content_hash`, `image_sha256`) is a pixel hash, so re-rendering an
-unchanged revision keeps earlier images valid. `describe_finding` explains a code;
+unchanged revision keeps earlier images valid. Layout review reports baseline, hierarchy, pane fill, exhibit size, gutter,
+number formatting, orphan, caption proximity, continuation and status-colour
+issues. Rhythm also checks repeated visual sides, low visual share, excessive
+variety and takeaway repetition/overuse. Inspect measured evidence; these
+are advisory. `describe_finding` explains a code;
 `get_capabilities().vocabularies.repair_fix_kinds` separates executable
 repairs from advice.
 
 ## References, loaded only when relevant
 
 - [QUALITY.md](QUALITY.md): storyline and visual choice (always read).
-- [DECKSPEC.md](DECKSPEC.md): semantic authoring, content budgets, degradation,
-  chapter structure, footer chrome (`CHROME_TRUNCATED`), required layouts,
-  spec-level iteration.
-- [WORKFLOW.md](WORKFLOW.md): Plan → Vary → Render → Repair, the per-slide
-  review rubric (recorded in `submit_visual_review`), the three-round
-  repair cap. Read before the first render.
-- [RAW_PATH.md](RAW_PATH.md): raw preconditions, planning and rhythm, strict
-  output validation, repair, images, assets, SVG/diagram integration.
-- [TOOLS.md](TOOLS.md): phase map, tool-profile discovery, MCP-only
-  operations, composition recipes.
-- [RULES.md](RULES.md): shape-grid, chart, content and contrast rules; native
-  tables inherit template styles at 12pt body / 11pt headers without resizing.
-- [PATTERNS.md](PATTERNS.md): pattern selection, placement, text capacity,
-  accent defaults; live catalog and schemas: `list_patterns` /
-  `show_pattern`.
-- [FINDINGS.md](FINDINGS.md): reading and repairing a finding (DeckSpec,
-  raw).
+- [DECKSPEC.md](DECKSPEC.md): kinds, budgets, chapters, chrome, revisions.
+- [WORKFLOW.md](WORKFLOW.md): Plan → Vary → Render → Repair; visual rubric.
+- [RAW_PATH.md](RAW_PATH.md): raw validation, rhythm, assets and repair.
+- [TOOLS.md](TOOLS.md): MCP discovery and composition recipes.
+- [RULES.md](RULES.md): grid, chart, table and contrast rules.
+- [PATTERNS.md](PATTERNS.md): pattern placement and capacity; live schemas:
+  `list_patterns` / `show_pattern`.
+- [FINDINGS.md](FINDINGS.md): finding paths, actions and repairs.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):
-  layout fields and full-slide SVG/PNG images.
+  native layouts and full-slide images.
 
-Examples: [semantic specs](../../examples/semantic/),
-[raw skeletons](examples/skeletons/README.md), and the
-[layout-coverage example](examples/layout-coverage-deckspec.md).
-In a repository checkout, `docs/wiki/` (not installed) adds the deck
-archetypes, slide design rules, layout catalog, segment guide and domain
-playbooks.
+Examples: [semantic specs](../../examples/semantic/) and
+[raw skeletons](examples/skeletons/README.md). In a checkout, `docs/wiki/`
+adds design recipes, the layout catalog and domain playbooks.
 
 ## Operational boundaries
 

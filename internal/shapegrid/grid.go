@@ -16,6 +16,9 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	if grid == nil || len(grid.Rows) == 0 {
 		return nil, nil
 	}
+	if _, err := columnRuleIndices(grid.ColRule, len(grid.Columns)); err != nil {
+		return nil, err
+	}
 	if grid.CanvasScale > 1 {
 		if res, ok := resolveCanvas(grid, alloc); ok {
 			writeSharedShrink(res.Cells)
@@ -356,6 +359,7 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 		}
 	}
 
+	accentBars = append(accentBars, resolveColumnRules(grid, cells, colXOffsets, colWidthsEMU, colGapEMU, rowYOffsets, rowHeightsEMU, rowGapEMU, alloc)...)
 	bands := resolveRowBands(grid, rowYOffsets, rowHeightsEMU, alloc)
 	accentBars = append(accentBars, resolveRowRules(grid, rowYOffsets, rowHeightsEMU, rowGapEMU, alloc)...)
 	connectors := resolveRowConnectors(grid, cells, rowCellIDs, rowYOffsets, rowHeightsEMU, alloc)
@@ -400,6 +404,7 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 			}
 		}
 	}
+	grid.Peers.shareBodySizes(cells)
 	shareRowAutofitScale(cells)
 
 	return &ResolveResult{
@@ -801,7 +806,7 @@ func resolveRowRules(grid *Grid, rowY, rowH []int64, rowGapEMU int64, alloc *ppt
 	thick := PtToEMU(RowRulePt)
 	var out []ResolvedAccentBar
 	add := func(centreY int64) {
-		out = append(out, ResolvedAccentBar{
+		out = append(out, ResolvedAccentBar{Decorative: true,
 			Bounds: pptx.RectEmu{X: grid.Bounds.X, Y: centreY - thick/2, CX: grid.Bounds.CX, CY: thick},
 			ID:     alloc.Alloc(),
 			Spec:   &AccentBarSpec{Fill: rowRuleFill, Width: RowRulePt},

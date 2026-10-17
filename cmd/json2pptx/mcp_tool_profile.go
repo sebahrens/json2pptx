@@ -22,6 +22,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -260,6 +261,9 @@ func toolProfileFilter(profile string) server.ToolFilterFunc {
 					// get_capabilities output_schema:"<tool>" serves one.
 					t.RawOutputSchema = nil
 					t.OutputSchema = mcp.ToolOutputSchema{}
+				}
+				if len([]rune(t.Description)) > 220 {
+					t.Description = cutSummaryAtWord(t.Description, 160) + fmt.Sprintf(` Full documentation: get_started tool:%q.`, t.Name)
 				}
 				out = append(out, t)
 			}

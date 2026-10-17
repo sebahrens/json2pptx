@@ -10,6 +10,8 @@ import (
 
 func TestRawTableGridErrorsNameAuthoredField(t *testing.T) {
 	for _, tc := range []struct{ name, table, field string }{
+		{"invalid ink after merged cell", `{"headers":["A","B","C"],"rows":[[{"content":"a","col_span":2},{"content":"b","text_color":"bad"}]]}`, "rows/0/1/text_color"},
+		{"invalid cell ink", `{"headers":["A"],"rows":[[{"content":"a","text_color":"garbage"}]]}`, "rows/0/0/text_color"},
 		{"negative widths", `{"headers":["A","B"],"rows":[["a","b"]],"column_widths":[1,-1]}`, "column_widths"},
 		{"width count", `{"headers":["A","B"],"rows":[["a","b"]],"column_widths":[1]}`, "column_widths"},
 		{"excess row cells", `{"headers":["A","B"],"rows":[["a","b","c"]]}`, "rows"},

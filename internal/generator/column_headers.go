@@ -39,7 +39,7 @@ func markColumnHeaders(shapes []shapeXML, content []ContentItem) []ContentItem {
 	items := map[string]int{}
 	for i, item := range content {
 		id := strings.ToLower(item.PlaceholderID)
-		if (id == "body" || id == "body_2") && item.Type == ContentBullets {
+		if (id == "body" || id == "body_2") && item.Type == ContentBullets && item.Heading == "" {
 			if _, dup := items[id]; dup {
 				return content
 			}

@@ -38,7 +38,7 @@ func RegionProcessIssue(r map[string]any) string {
 // columns in reading order; horizontal bands keep the sequence in one row.
 func RegionProcessStyle(body map[string]any, idx int) string {
 	arrangement := RegionArrangementOf(body)
-	if arrangement == ArrangeRows || ((arrangement == ArrangeMainTop || arrangement == ArrangeMainBottom) && idx == 0) {
+	if arrangement == ArrangeRows || ((arrangement == ArrangeMainTop || arrangement == ArrangeMainBottom || arrangement == ArrangeMainTop3) && idx == 0) {
 		return "horizontal"
 	}
 	return "vertical"

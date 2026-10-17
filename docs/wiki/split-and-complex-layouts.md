@@ -498,9 +498,9 @@ with dated bars), the raw `roadmap-phased` pattern remains the tool.
 When a region kind cannot express a part (a KPI column that must be a
 `metric-list`, a timeline footer under a chart), the raw slide `compose`
 envelope places whole patterns and svggen diagrams in segments:
-`direction` (`horizontal` | `vertical`), `segments[]` each with one `pattern`,
-one `diagram` (svggen chart or native diagram, with `alt`) or a nested
-`compose`, and `size_pct` shares (2–8 segments, depth 2, 12 leaves; `gap`
+`direction` (`horizontal` | `vertical`), `segments[]` each with exactly one
+`pattern`, `diagram`, `compose`, `shape_grid`, `table`, `text` or `image`,
+and `size_pct` shares (2–8 segments, depth 3, 12 leaves; `gap`
 defaults to the template's gutter; an optional `banner` above and `callout`
 below the segments). Each segment is fit-checked in its own rectangle
 (`BODY_TOO_LONG` names `segments[i]`); `compose` never paginates. The full
@@ -637,3 +637,16 @@ slides:
 | Shapes that share one place in a hand-built grid (ring segments, a badge on a shape) | raw `shape_grid` cell `layers` ([INPUT_FORMAT.md](../INPUT_FORMAT.md)) |
 | Whole patterns side by side or stacked | raw `compose` (§12) |
 | A loop, hub or nested rings beside the words about it | `regions` with a `cycle` region (§13) |
+
+## Additional native compositions
+
+For `quad`, `main_left_3`, `main_top_3` and `tiles_over_panels`, use
+[the segment contracts](slide-estate-and-segments.md). Put heading/caption
+slots on compose segments before estimating fit; use vertical `size: content`
+for a short KPI/prose strip and let the exhibit take the remaining height.
+`gaps` explicitly controls each seam (including zero), and `divider` draws
+rules without changing the item count. The native table, image and grid
+leaf forms follow the normal asset, colour and content-loss validators.
+
+See [Consulting visual additions](consulting-visual-additions.md) for RACI,
+status boards, trees, stakeholder placement and progress against target.

@@ -12,7 +12,7 @@ func TestSixStepProcessRegionsExpandAtTemplateGeometry(t *testing.T) {
 	for _, templateName := range []string{"modern", "midnight-blue"} {
 		t.Run(templateName, func(t *testing.T) {
 			layouts, width, height := schemaMaximaLayouts(t, templateName)
-			for _, arrangement := range slides.RegionArrangements {
+			for _, arrangement := range []string{slides.ArrangeColumns, slides.ArrangeRows, slides.ArrangeMainLeft, slides.ArrangeMainRight, slides.ArrangeMainTop, slides.ArrangeMainBottom} {
 				t.Run(arrangement, func(t *testing.T) {
 					steps := []any{}
 					for _, label := range []string{"Mail arrives", "System decides", "Person handles", "Staff judge", "Count", "Improve"} {

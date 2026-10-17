@@ -218,8 +218,13 @@ type kindPlan struct {
 // kindPlanRegistry maps each registered slide kind to its base plan. Unknown
 // kinds fall back to passthroughPlan.
 var kindPlanRegistry = map[SlideKind]kindPlan{
-	KindTitle:   {role: RoleOpening, family: FamilyStructural, density: DensityLight, layout: "title"},
-	KindSection: {role: RoleTransition, family: FamilyStructural, density: DensityLight, layout: "section"},
+	KindTitle: {role: RoleOpening, family: FamilyStructural, density: DensityLight, layout: "title"},
+	KindSection: {role: RoleTransition, family: FamilyStructural, density: DensityLight, layout: "section", pattern: func(body map[string]any) string {
+		if show, _ := body["show_chapters"].(bool); show {
+			return "agenda"
+		}
+		return ""
+	}},
 	KindExecutiveSummary: {
 		role: RoleSummary, family: FamilyText, density: DensityMedium, layout: "blank-title",
 		pattern: execSummaryPattern,
@@ -828,6 +833,9 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 // otherCompositionCandidates lists the compositions of kinds the switch in
 // compositionCandidates leaves out.
 func otherCompositionCandidates(kind SlideKind) []CompositionCandidate {
+	if name, ok := consultingVisualKinds[kind]; ok {
+		return []CompositionCandidate{{Pattern: name, Layout: "blank-title", Reason: "Native measured consulting visual, with no text-only fallback."}}
+	}
 	// cycle lists none: its style field is the composition choice, and a
 	// pattern listed here would have to be accepted as a pattern override.
 	if kind == KindRegions {

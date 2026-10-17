@@ -139,16 +139,22 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 	}
 	clampContentPlaceholdersToChrome(slide, frame)
 	if input.slideSpec.ColumnLeftPercent != 0 {
-		if err := deriveTwoColumnGeometry(slide, input.slideSpec.ColumnLeftPercent); err != nil {
+		if err := deriveTwoColumnGeometry(slide, input.slideSpec.ColumnLeftPercent, input.slideSpec.StackedSplit); err != nil {
 			return slidePreparationResult{}, fmt.Errorf("slide %d: layout %q: %w", input.slideIndex+1, input.slideSpec.LayoutID, err)
 		}
 	}
 
+	if err := ctx.placeExplicitColumnHeadings(slide, input.slideSpec.Content, input.slideSpec.LayoutID); err != nil {
+		return slidePreparationResult{}, fmt.Errorf("slide %d: %w", input.slideIndex+1, err)
+	}
 	var warnings []string
 	if input.slideSpec.Tracker != "" && input.slideSpec.Eyebrow == "" {
 		if err := ctx.placeTitleTracker(slide, input.slideSpec.Tracker, input.slideSpec.LayoutID); err != nil {
 			warnings = append(warnings, err.Error())
 		}
+	}
+	if err := ctx.placeSticker(slide, input.slideSpec.Sticker, input.slideSpec.LayoutID); err != nil {
+		return slidePreparationResult{}, fmt.Errorf("slide %d: %w", input.slideIndex+1, err)
 	}
 	if len(input.slideSpec.Content) > 0 || input.slideSpec.Eyebrow != "" {
 		warnings = ctx.populateTextInSlide(slide, input.slideSpec.Content, input.slideSpec.LayoutID, input.slideIndex, input.slideSpec.Eyebrow)

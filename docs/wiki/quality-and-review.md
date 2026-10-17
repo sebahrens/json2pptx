@@ -50,7 +50,26 @@ mirroring the body, the ask on the last slide — are in
 `explain_deck_spec(deck_id)` (hidden, callable by name) lists every slide's
 title, takeaway and role in order so the chain can be read without a render.
 
-## What the tools cannot see (look for these yourself)
+## Measured layout review
+
+The engine now reports `BASELINE_MISALIGN` (same-role peers >2pt apart),
+`TYPE_HIERARCHY_FLAT`, `PANE_FILL_IMBALANCE` (comparable prose panes >0.4
+apart), `EXHIBIT_TOO_SMALL` (sole image/chart <35%), `GUTTER_INCONSISTENT`
+(automatic gaps >4pt from the deck median), `NUMBER_FORMAT_INCONSISTENT`,
+`TITLE_ORPHAN`, `DETACHED_LABEL`, `CONTINUATION_UNDERFILLED` and
+`STATUS_COLORS_INDISTINCT`. These are advice with measured evidence, not
+proof of a bad slide. Authored gaps, different units, unknown geometry and
+unrelated text roles must not be treated as comparable peers.
+
+`analyze_deck_rhythm` exposes layout ID, pane count, visual side, split and
+known visual area share. Three same-side exhibits or three small exhibits
+in a row raise `same_side_run` / `low_visual_share_run`. It also advises on
+`takeaway_restates_title` (token overlap >0.6), `takeaway_heavy_deck`
+(>50% of content slides) and `layout_variety_high` (>6 families in ≤20
+content slides). A takeaway should add an inference, not repeat the title;
+use an intentional family change to serve the argument.
+
+## What still needs visual inspection
 
 - **A zoomed axis you did not ask for.** Bars, lines, areas and waterfalls with
   non-negative data now start at zero; if a chart looks zoomed, a `data.y_min`
@@ -75,8 +94,8 @@ title, takeaway and role in order so the chain can be read without a render.
 - **A pale second series** on a line chart on some templates; check the data
   palette on the second render.
 - **Row highlight and column tint sharing a hue** on `p-style` status boards.
-- **The screenshot too small** for its callouts to be legible at projection
-  size.
+- **Screenshot detail legibility.** Area share is measurable; the size of
+  evidence inside the image still needs inspection.
 - **Unlabelled diagram shapes.** A `shape_grid` ellipse or diamond with no
   text (a BPMN start event, a gateway) passes every check; label it
   ("Start", "Cleared?") or use `process` with a `type: decision` step.
@@ -85,8 +104,8 @@ title, takeaway and role in order so the chain can be read without a render.
   and sit under the exhibit they explain.
 - **A run of custom grids.** Three or more consecutive `raw_json2pptx` grids
   built from the same grey boxes read as one long slide even when the
-  content differs, and the rhythm check gives raw slides no family, so
-  `analyze_deck_rhythm` never flags the run. Break it with a kind (`stat`,
+  content differs, and a geometry fingerprint can flag repetition without understanding
+  whether the technical content warrants it. Break it with a kind (`stat`,
   `chart_insight`, `regions`) or move the technical ones to the appendix.
 - **Empty bands under one-line titles.** Most kinds and `regions` start
   content at the native body line; under a one-line title, look for a band

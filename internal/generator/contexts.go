@@ -313,9 +313,10 @@ func newSinglePassContext(outputPath string, slides []SlideSpec, allowedPaths []
 // For streaming ZIP writes, it supports both file paths and in-memory byte data.
 // This eliminates temp file creation for charts, keeping memory bounded.
 type mediaRel struct {
-	imagePath     string // File path (used when data is nil)
-	mediaFileName string
-	data          []byte // Direct byte data (used for charts, eliminates temp files)
+	behindRawShapes bool
+	imagePath       string // File path (used when data is nil)
+	mediaFileName   string
+	data            []byte // Direct byte data (used for charts, eliminates temp files)
 
 	// Alt text for accessibility (cNvPr/@descr)
 	description string
