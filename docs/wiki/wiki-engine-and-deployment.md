@@ -91,6 +91,36 @@ for the build and MCP transport examples. Compose names the local image
 `up -d --no-build --pull never wiki` to start the companion beside an existing
 Go deployment without contacting the upstream source or image registry.
 
+## Align the binary, bundle and runtime snapshot
+
+Deploy the Go MCP and `wiki-source/` from the same json2pptx release archive or
+Git revision. Record that artifact revision alongside the Go MCP's live
+`schema_version` from `get_capabilities` / `get_started`, and the companion's
+`pwc-llm-wiki --version` (pinned to `0.5.0`). The engine version is separate
+from the json2pptx schema version: updating the Go binary does not update an
+already seeded documentation workspace.
+
+After a release upgrade, seed a fresh `JSON2PPTX_WIKI_STATE_DIR` (or new
+container volume), run strict ingestion and lint, and check search before
+switching the MCP configuration to that snapshot. Preserve the prior workspace
+for reviewed local edits. A changed-bundle warning means the runtime still
+serves its existing snapshot; restarting alone does not adopt the new pages.
+Use live tool schemas for automation while reconciling a version mismatch.
+
+## Render cache location
+
+The Go renderer stores reusable slide images under
+`os.UserCacheDir()/json2pptx-render`; `JSON2PPTX_RENDER_CACHE_DIR` selects an
+explicit cache directory for an isolated server. If the operating system has no
+user cache directory, the renderer uses a private temporary directory. This is
+separate from the companion wiki's state and search index.
+
+The cache must be owned by the current user, private and not a symlink. On
+Unix, cache directories use `0700` and artifact files use `0600`. An unsafe
+cache location is not reused or written. Keep it writable by the service
+identity; use the live `purge_render_cache` schema when clearing cached renders.
+Do not point multiple service identities at a shared writable temporary cache.
+
 ## Verified capabilities and current limits
 
 Search, typed listing, reading, stats, schema inspection, and stdio MCP discovery

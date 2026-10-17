@@ -24,7 +24,7 @@ Back to the [wiki hub](README.md). The contract behind this page is
 
 ```
 get_started(task:"brief")                 what to call, render_available, hidden_tools
-list_templates(fields:"names")            pick a template (p-style, midnight-blue, …)
+list_templates(fields:"names")            pick an installed template (midnight-blue, forest-green, …)
 list_slide_kinds()                        one line per kind
 list_slide_kinds(kinds:[…])               copy-ready example per kind you will use
 list_slide_kinds(fields:["brief"], template) title / takeaway budgets measured on your template
@@ -53,6 +53,13 @@ must be delivered as **unreviewed**. `get_started(tool: "<name>")` returns any
 tool's full description and schema — use it instead of guessing an argument.
 The `core` and `all` listings use concise descriptions with that lookup link;
 their tool input schemas retain the full constraints.
+
+A near-miss template name returns `TEMPLATE_NOT_FOUND` with
+`evidence.did_you_mean` and a `next_tool_call` that preserves the supplied
+arguments while correcting the template selector. It uses the server's shipped
+and custom template names. Review the proposed name, then send the retry; the
+failed lookup does not change a stored deck. A distant unknown name still
+points to `list_templates`.
 
 ### 2. Discover, then write the storyline
 
@@ -86,7 +93,11 @@ one chart. "… on the left and … on the right" is drafted as one `regions` sl
 with the chart's series and the number already in its regions, and each
 `slots[i].regions[]` describes the regions of that slot's own slide (kind,
 position, path), so a deck with two `regions` slides gets two different lists.
-Still read
+The planner keeps fiscal labels such as FY25/FY26 separate from metric values,
+reads signed fiscal bridge drivers, and can fill a regional quarter chart and
+its companion stat from separate sentences. Rated risks such as `(high/high)`
+and explicit likelihood/impact labels populate `risk_heatmap`; next-step
+`action (owner, date)` entries retain all three fields. Still read
 `unplaced_facts[]` and `constraints[]`, replace every `__FILL__`, and check each
 slot's kind against [visual-vocabulary.md](visual-vocabulary.md) before
 authoring; the draft is a scaffold, not the deck.
@@ -102,7 +113,8 @@ the `regions` kind first with a `compose` form below it, a status board with
 limits and breaches ranks `table-highlight` (DeckSpec `option_matrix`, `rag`
 scale), "one finding, what we found / why it matters / action / owner" ranks
 `labeled-rows`, a share split that sums to 100% gates to pie / donut / stacked
-bar, and a `candidates: [...]` shortlist is scored like the open ranking. A
+bar, and a `candidates: [...]` shortlist is scored like the open ranking. Regional attrition or conversion comparisons do not imply a funnel: the intent
+must describe stages, a pipeline or a funnel. A
 vague intent still ranks noisily: say what the slide shows, with its numbers.
 Every candidate carries a `data_contract` and a
 runnable `next_tool_call`; copy that slide and replace every `Replace with …`
@@ -166,15 +178,43 @@ than loop.
 image_sha256 | path, verdict, findings[]}]}` must cover every slide of the
 current revision with the image you were sent for it; `status:
 "visually_reviewed_current_revision"` is the completion signal. Then render the
-same `deck_id` with `template: "p-style"` (or the client's `template_path` via
+same `deck_id` with `template: "forest-green"` (or the client's `template_path` via
 `examine_template` first): the response forks a new `deck_id`; look at every
 slide again — titles that fit on one template wrap on another, and chrome that
 fit may truncate. Do not restyle content for the second template; fix the
-spec so it holds on both. `validate_deck_spec(deck_id, templates: ["p-style",
+spec so it holds on both. `validate_deck_spec(deck_id, templates: ["forest-green",
 "modern-template"])` (or `["all"]`) measures the stored spec on several
 templates in one call and returns `template_results[] {template, ok,
 summary, findings}` — run it before the second render so the budget breaks
 are known in advance.
+
+## Raw authoring and CLI responses
+
+For `generate_presentation`, read `ok`, `pptx_path`, `quality_summary` and
+`diagnostics`. These align the common result fields with DeckSpec generation;
+the previous raw generation keys remain available for one compatibility cycle.
+Use the returned file path for image rendering, and check the completion gates
+before calling a deck reviewed.
+
+`validate_input` exposes the finding envelope at the top level:
+`schema_version`, `ok`, `summary` and `findings[]`. Iterate `findings` as an
+array. The former nested finding envelope is retained as `legacy_findings`
+during migration; new clients should use the top-level envelope. Query
+`get_started(tool: "generate_presentation")` or
+`get_started(tool: "validate_input")` for the deployed version's full schema.
+
+The raw CLI `json2pptx generate` accepts these matching controls:
+
+| Flag | Effect |
+|---|---|
+| `--fit-report` | Include full preflight and render findings in JSON output |
+| `--verbose-fit` | Return all fit findings without the per-slide budget |
+| `--placeholder-policy off\|warn\|strict` | Set the unresolved skeleton-copy policy; default `warn` |
+| `--base-dir /absolute/path` | Resolve assets and template paths against this root; defaults to the input file's directory, or the working directory for stdin |
+
+CLI flags use hyphens; MCP argument names use underscores. Consult
+[the deployment guide](wiki-engine-and-deployment.md) when the bundled wiki and
+the live binary report different revisions.
 
 ## Planning, review and specialist tools
 
@@ -185,7 +225,7 @@ by name.
 
 | Tool | Call it when | Returns |
 |---|---|---|
-| `explain_deck_spec` (deck_id or spec) | Before the first render, and after a repair round | `slides[] {index, kind, role, visual_family, density, title, takeaway, pattern, layout, alternatives[]}`, `rhythm`, `rhythm_warnings[]`, `layout_coverage` — the ghost deck and the rhythm read back from the spec |
+| `explain_deck_spec` (deck_id or spec) | Before the first render, and after a repair round | `slides[] {index, kind, role, visual_family, density, title, takeaway, pattern, layout, alternatives[]}`, `rhythm`, `rhythm_warnings[]` with JSON Pointer `path` / `run` / `insert_before` and 1-based `slide_number`, `layout_coverage` — the ghost deck and the rhythm read back from the spec |
 | `analyze_deck_rhythm` (deck_id) | A run of the same family, or a deck that reads flat | `recommendations[] {code, slide_index, message, recommended_break_patterns}` — `break_run`, `motif_dominant`, `missing_executive_summary`, `missing_next_steps`, `bullets_heavy`, `accent_heavy_slide` |
 | `list_deck_archetypes` | Setting `meta.archetype` | the six archetypes with their default template and `executive` flag |
 | `describe_finding` (code) — in the default profile | Any code you have not seen | `summary`, `blocks_when`, `remediation_steps[]`, `example_before` / `example_after`, `related_codes[]` |

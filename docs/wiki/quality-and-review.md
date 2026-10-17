@@ -82,7 +82,13 @@ use an intentional family change to serve the argument.
 
 - **A zoomed axis you did not ask for.** Bars, lines, areas and waterfalls with
   non-negative data now start at zero; if a chart looks zoomed, a `data.y_min`
-  was authored — check that the heading says so.
+  was authored — check that the heading says so. A line chart with a narrow
+  observed range can report `chart.flat_range`: the data looks flat against
+  the current axis. This is an advisory, and the renderer preserves the
+  authored axis. Inspect its observed/axis bounds and the proposed
+  `explicit_scale` remediation (`fix.params.field` / `value` for `data.y_min`
+  or `data.y_max`), then decide whether a clearly labelled zoom serves the
+  argument. Do not apply an axis change blindly.
 - **A strip whose band is inside the block.** Any pattern, compose block or
   grid that leaves the lower third of the content area empty is reported
   (`SLIDE_UNDERUSED` with `empty_band_pct`; `VERTICAL_IMBALANCE` for a short
