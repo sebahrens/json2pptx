@@ -43,10 +43,6 @@ func TestRawTableGridErrorsNameAuthoredField(t *testing.T) {
 					}
 				})
 			}
-			_, err := convertJSONContent([]JSONContentItem{{PlaceholderID: "body", Type: "table", Value: json.RawMessage(tc.table)}}, 1, "")
-			if want := "/slides/0/content/0/value/" + tc.field; err == nil || cliErrorPath(err) != want {
-				t.Fatalf("legacy generation path=%q, want %q; err=%v", cliErrorPath(err), want, err)
-			}
 			var grid ShapeGridInput
 			raw := `{"rows":[{"cells":[{"table":` + tc.table + `},{"grid":{"rows":[{"cells":[{"table":` + tc.table + `}]}]}}]}]}`
 			if err := json.Unmarshal([]byte(raw), &grid); err != nil {

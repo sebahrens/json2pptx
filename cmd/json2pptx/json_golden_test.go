@@ -208,22 +208,6 @@ func convertTypedPath(t *testing.T, data []byte) []generator.SlideSpec {
 	return specs
 }
 
-// convertLegacyPath parses JSONInput and runs through convertJSONContent.
-func convertLegacyPath(t *testing.T, data []byte) []generator.SlideSpec {
-	t.Helper()
-
-	var input JSONInput
-	if err := json.Unmarshal(data, &input); err != nil {
-		t.Fatalf("failed to unmarshal JSONInput: %v", err)
-	}
-
-	specs, err := convertJSONSlides(input.Slides)
-	if err != nil {
-		t.Fatalf("convertJSONSlides error: %v", err)
-	}
-	return specs
-}
-
 // convertMixedPath parses PresentationInput (supports both typed and legacy Value)
 // and runs through convertPresentationContent.
 func convertMixedPath(t *testing.T, data []byte) []generator.SlideSpec {
@@ -238,7 +222,7 @@ func TestGolden_AllContentTypes(t *testing.T) {
 }
 
 func TestGolden_BackwardCompat(t *testing.T) {
-	runGoldenTest(t, "backward_compat.json", convertLegacyPath)
+	runGoldenTest(t, "backward_compat.json", convertTypedPath)
 }
 
 func TestGolden_TableCellShorthand(t *testing.T) {
@@ -301,7 +285,7 @@ func TestGoldenStructure_BackwardCompat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	specs := convertLegacyPath(t, data)
+	specs := convertTypedPath(t, data)
 
 	if len(specs) != 8 {
 		t.Fatalf("slide count = %d, want 8", len(specs))

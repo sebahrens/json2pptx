@@ -18,11 +18,11 @@ import (
 
 // Tests for JSON input mode
 
-func TestConvertJSONSlides_ValidInput(t *testing.T) {
-	slides := []JSONSlide{
+func TestLegacyValueSlides_ValidInput(t *testing.T) {
+	slides := []SlideInput{
 		{
 			LayoutID: "slideLayout1",
-			Content: []JSONContentItem{
+			Content: []ContentInput{
 				{
 					PlaceholderID: "Title 1",
 					Type:          "text",
@@ -32,7 +32,7 @@ func TestConvertJSONSlides_ValidInput(t *testing.T) {
 		},
 		{
 			LayoutID: "slideLayout2",
-			Content: []JSONContentItem{
+			Content: []ContentInput{
 				{
 					PlaceholderID: "Content 1",
 					Type:          "bullets",
@@ -42,9 +42,9 @@ func TestConvertJSONSlides_ValidInput(t *testing.T) {
 		},
 	}
 
-	specs, err := convertJSONSlides(slides)
+	specs, _, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, false)
 	if err != nil {
-		t.Fatalf("convertJSONSlides failed: %v", err)
+		t.Fatalf("convertPresentationSlides failed: %v", err)
 	}
 
 	if len(specs) != 2 {
@@ -60,22 +60,22 @@ func TestConvertJSONSlides_ValidInput(t *testing.T) {
 	}
 }
 
-func TestConvertJSONSlides_MissingLayoutID(t *testing.T) {
-	slides := []JSONSlide{
+func TestLegacyValueSlides_MissingLayoutID(t *testing.T) {
+	slides := []SlideInput{
 		{
 			LayoutID: "", // Missing
-			Content:  []JSONContentItem{},
+			Content:  []ContentInput{},
 		},
 	}
 
-	_, err := convertJSONSlides(slides)
+	_, _, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, false)
 	if err == nil {
 		t.Error("expected error for missing layout_id")
 	}
 }
 
-func TestConvertJSONContent_TextType(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_TextType(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "Title 1",
 			Type:          "text",
@@ -83,9 +83,9 @@ func TestConvertJSONContent_TextType(t *testing.T) {
 		},
 	}
 
-	items, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	items, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err != nil {
-		t.Fatalf("convertJSONContent failed: %v", err)
+		t.Fatalf("convertPresentationContent failed: %v", err)
 	}
 
 	if len(items) != 1 {
@@ -105,8 +105,8 @@ func TestConvertJSONContent_TextType(t *testing.T) {
 	}
 }
 
-func TestConvertJSONContent_BulletsType(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_BulletsType(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "Content 1",
 			Type:          "bullets",
@@ -114,9 +114,9 @@ func TestConvertJSONContent_BulletsType(t *testing.T) {
 		},
 	}
 
-	items, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	items, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err != nil {
-		t.Fatalf("convertJSONContent failed: %v", err)
+		t.Fatalf("convertPresentationContent failed: %v", err)
 	}
 
 	bullets, ok := items[0].Value.([]string)
@@ -131,8 +131,8 @@ func TestConvertJSONContent_BulletsType(t *testing.T) {
 	}
 }
 
-func TestConvertJSONContent_ImageType(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_ImageType(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "Picture 1",
 			Type:          "image",
@@ -140,9 +140,9 @@ func TestConvertJSONContent_ImageType(t *testing.T) {
 		},
 	}
 
-	items, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	items, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err != nil {
-		t.Fatalf("convertJSONContent failed: %v", err)
+		t.Fatalf("convertPresentationContent failed: %v", err)
 	}
 
 	// Check that the image content was parsed correctly
@@ -151,8 +151,8 @@ func TestConvertJSONContent_ImageType(t *testing.T) {
 	}
 }
 
-func TestConvertJSONContent_ImageMissingPath(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_ImageMissingPath(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "Picture 1",
 			Type:          "image",
@@ -160,14 +160,14 @@ func TestConvertJSONContent_ImageMissingPath(t *testing.T) {
 		},
 	}
 
-	_, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	_, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err == nil {
 		t.Error("expected error for missing image path")
 	}
 }
 
-func TestConvertJSONContent_ChartType(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_ChartType(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "Chart 1",
 			Type:          "chart",
@@ -175,9 +175,9 @@ func TestConvertJSONContent_ChartType(t *testing.T) {
 		},
 	}
 
-	items, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	items, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err != nil {
-		t.Fatalf("convertJSONContent failed: %v", err)
+		t.Fatalf("convertPresentationContent failed: %v", err)
 	}
 
 	if items[0].Type != generator.ContentDiagram {
@@ -185,8 +185,8 @@ func TestConvertJSONContent_ChartType(t *testing.T) {
 	}
 }
 
-func TestConvertJSONContent_ChartMissingType(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_ChartMissingType(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "Chart 1",
 			Type:          "chart",
@@ -194,14 +194,14 @@ func TestConvertJSONContent_ChartMissingType(t *testing.T) {
 		},
 	}
 
-	_, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	_, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err == nil {
 		t.Error("expected error for missing chart type")
 	}
 }
 
-func TestConvertJSONContent_UnknownType(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_UnknownType(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "Unknown 1",
 			Type:          "unknown",
@@ -209,14 +209,14 @@ func TestConvertJSONContent_UnknownType(t *testing.T) {
 		},
 	}
 
-	_, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	_, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err == nil {
 		t.Error("expected error for unknown type")
 	}
 }
 
-func TestConvertJSONContent_MissingPlaceholderID(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_MissingPlaceholderID(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "",
 			Type:          "text",
@@ -224,14 +224,14 @@ func TestConvertJSONContent_MissingPlaceholderID(t *testing.T) {
 		},
 	}
 
-	_, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	_, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err == nil {
 		t.Error("expected error for missing placeholder_id")
 	}
 }
 
-func TestConvertJSONContent_MissingType(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_MissingType(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "Title 1",
 			Type:          "",
@@ -239,14 +239,14 @@ func TestConvertJSONContent_MissingType(t *testing.T) {
 		},
 	}
 
-	_, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	_, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err == nil {
 		t.Error("expected error for missing type")
 	}
 }
 
-func TestConvertJSONContent_InvalidTextValue(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_InvalidTextValue(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "Title 1",
 			Type:          "text",
@@ -254,14 +254,14 @@ func TestConvertJSONContent_InvalidTextValue(t *testing.T) {
 		},
 	}
 
-	_, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	_, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err == nil {
 		t.Error("expected error for invalid text value")
 	}
 }
 
-func TestConvertJSONContent_InvalidBulletsValue(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_InvalidBulletsValue(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "Content 1",
 			Type:          "bullets",
@@ -269,7 +269,7 @@ func TestConvertJSONContent_InvalidBulletsValue(t *testing.T) {
 		},
 	}
 
-	_, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	_, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err == nil {
 		t.Error("expected error for invalid bullets value")
 	}
@@ -326,7 +326,7 @@ func TestJSONOutput_MarshalError(t *testing.T) {
 	}
 }
 
-func TestJSONInput_Parse(t *testing.T) {
+func TestLegacyValuePresentationParse(t *testing.T) {
 	inputJSON := `{
 		"template": "corporate",
 		"output_filename": "my-presentation.pptx",
@@ -344,7 +344,7 @@ func TestJSONInput_Parse(t *testing.T) {
 		]
 	}`
 
-	var input JSONInput
+	var input PresentationInput
 	if err := json.Unmarshal([]byte(inputJSON), &input); err != nil {
 		t.Fatalf("failed to parse JSON input: %v", err)
 	}
@@ -854,8 +854,8 @@ func TestMockTemplateCache(t *testing.T) {
 
 // Tests for edge cases in JSON content conversion
 
-func TestConvertJSONContent_InvalidImageJSON(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_InvalidImageJSON(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "img1",
 			Type:          "image",
@@ -863,14 +863,14 @@ func TestConvertJSONContent_InvalidImageJSON(t *testing.T) {
 		},
 	}
 
-	_, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	_, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err == nil {
 		t.Error("expected error for invalid image JSON")
 	}
 }
 
-func TestConvertJSONContent_InvalidChartJSON(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_InvalidChartJSON(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "chart1",
 			Type:          "chart",
@@ -878,7 +878,7 @@ func TestConvertJSONContent_InvalidChartJSON(t *testing.T) {
 		},
 	}
 
-	_, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	_, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err == nil {
 		t.Error("expected error for invalid chart JSON")
 	}
@@ -886,8 +886,8 @@ func TestConvertJSONContent_InvalidChartJSON(t *testing.T) {
 
 // Tests for new content types in JSON conversion and dry-run validation
 
-func TestConvertJSONContent_BodyAndBullets(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_BodyAndBullets(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "content1",
 			Type:          "body_and_bullets",
@@ -895,9 +895,9 @@ func TestConvertJSONContent_BodyAndBullets(t *testing.T) {
 		},
 	}
 
-	items, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	items, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err != nil {
-		t.Fatalf("convertJSONContent failed: %v", err)
+		t.Fatalf("convertPresentationContent failed: %v", err)
 	}
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -907,8 +907,8 @@ func TestConvertJSONContent_BodyAndBullets(t *testing.T) {
 	}
 }
 
-func TestConvertJSONContent_BulletGroups(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_BulletGroups(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "content1",
 			Type:          "bullet_groups",
@@ -916,9 +916,9 @@ func TestConvertJSONContent_BulletGroups(t *testing.T) {
 		},
 	}
 
-	items, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	items, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err != nil {
-		t.Fatalf("convertJSONContent failed: %v", err)
+		t.Fatalf("convertPresentationContent failed: %v", err)
 	}
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -928,8 +928,8 @@ func TestConvertJSONContent_BulletGroups(t *testing.T) {
 	}
 }
 
-func TestConvertJSONContent_Table(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_Table(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "content1",
 			Type:          "table",
@@ -937,9 +937,9 @@ func TestConvertJSONContent_Table(t *testing.T) {
 		},
 	}
 
-	items, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	items, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err != nil {
-		t.Fatalf("convertJSONContent failed: %v", err)
+		t.Fatalf("convertPresentationContent failed: %v", err)
 	}
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -949,8 +949,8 @@ func TestConvertJSONContent_Table(t *testing.T) {
 	}
 }
 
-func TestConvertJSONContent_Diagram(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_Diagram(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "chart1",
 			Type:          "diagram",
@@ -958,9 +958,9 @@ func TestConvertJSONContent_Diagram(t *testing.T) {
 		},
 	}
 
-	items, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	items, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err != nil {
-		t.Fatalf("convertJSONContent failed: %v", err)
+		t.Fatalf("convertPresentationContent failed: %v", err)
 	}
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
@@ -970,8 +970,8 @@ func TestConvertJSONContent_Diagram(t *testing.T) {
 	}
 }
 
-func TestConvertJSONContent_DiagramMissingType(t *testing.T) {
-	content := []JSONContentItem{
+func TestLegacyValueContent_DiagramMissingType(t *testing.T) {
+	content := []ContentInput{
 		{
 			PlaceholderID: "chart1",
 			Type:          "diagram",
@@ -979,110 +979,120 @@ func TestConvertJSONContent_DiagramMissingType(t *testing.T) {
 		},
 	}
 
-	_, err := convertJSONContent(content, 1, types.SlideTypeContent)
+	_, err := convertPresentationContent(content, 1, types.SlideTypeContent)
 	if err == nil {
 		t.Error("expected error for missing diagram type")
 	}
 }
 
-// Tests for validateJSONContentValue with new types
+// Tests for legacy value fields through the live converter
 
-func TestValidateJSONContentValue_BodyAndBullets_Valid(t *testing.T) {
-	item := JSONContentItem{
-		Type:  "body_and_bullets",
-		Value: json.RawMessage(`{"body": "Intro", "bullets": ["A", "B"]}`),
+func TestLiveContentValue_BodyAndBullets_Valid(t *testing.T) {
+	item := ContentInput{
+		PlaceholderID: "body",
+		Type:          "body_and_bullets",
+		Value:         json.RawMessage(`{"body": "Intro", "bullets": ["A", "B"]}`),
 	}
-	if msg := validateJSONContentValue(item, 1, 1); msg != "" {
-		t.Errorf("unexpected error: %s", msg)
+	if _, err := convertPresentationContent([]ContentInput{item}, 1, types.SlideTypeContent); err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 
-func TestValidateJSONContentValue_BodyAndBullets_Invalid(t *testing.T) {
-	item := JSONContentItem{
-		Type:  "body_and_bullets",
-		Value: json.RawMessage(`"not an object"`),
+func TestLiveContentValue_BodyAndBullets_Invalid(t *testing.T) {
+	item := ContentInput{
+		PlaceholderID: "body",
+		Type:          "body_and_bullets",
+		Value:         json.RawMessage(`"not an object"`),
 	}
-	if msg := validateJSONContentValue(item, 1, 1); msg == "" {
+	if _, err := convertPresentationContent([]ContentInput{item}, 1, types.SlideTypeContent); err == nil {
 		t.Error("expected error for invalid body_and_bullets value")
 	}
 }
 
-func TestValidateJSONContentValue_BulletGroups_Valid(t *testing.T) {
-	item := JSONContentItem{
-		Type:  "bullet_groups",
-		Value: json.RawMessage(`{"groups": [{"bullets": ["X"]}]}`),
+func TestLiveContentValue_BulletGroups_Valid(t *testing.T) {
+	item := ContentInput{
+		PlaceholderID: "body",
+		Type:          "bullet_groups",
+		Value:         json.RawMessage(`{"groups": [{"bullets": ["X"]}]}`),
 	}
-	if msg := validateJSONContentValue(item, 1, 1); msg != "" {
-		t.Errorf("unexpected error: %s", msg)
+	if _, err := convertPresentationContent([]ContentInput{item}, 1, types.SlideTypeContent); err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 
-func TestValidateJSONContentValue_BulletGroups_Empty(t *testing.T) {
-	item := JSONContentItem{
-		Type:  "bullet_groups",
-		Value: json.RawMessage(`{"groups": []}`),
+func TestLiveContentValue_BulletGroups_Empty(t *testing.T) {
+	item := ContentInput{
+		PlaceholderID: "body",
+		Type:          "bullet_groups",
+		Value:         json.RawMessage(`{"groups": []}`),
 	}
-	if msg := validateJSONContentValue(item, 1, 1); msg == "" {
+	if _, err := convertPresentationContent([]ContentInput{item}, 1, types.SlideTypeContent); err == nil {
 		t.Error("expected error for empty bullet_groups")
 	}
 }
 
-func TestValidateJSONContentValue_BulletGroups_Invalid(t *testing.T) {
-	item := JSONContentItem{
-		Type:  "bullet_groups",
-		Value: json.RawMessage(`"not an object"`),
+func TestLiveContentValue_BulletGroups_Invalid(t *testing.T) {
+	item := ContentInput{
+		PlaceholderID: "body",
+		Type:          "bullet_groups",
+		Value:         json.RawMessage(`"not an object"`),
 	}
-	if msg := validateJSONContentValue(item, 1, 1); msg == "" {
+	if _, err := convertPresentationContent([]ContentInput{item}, 1, types.SlideTypeContent); err == nil {
 		t.Error("expected error for invalid bullet_groups value")
 	}
 }
 
-func TestValidateJSONContentValue_Table_Valid(t *testing.T) {
-	item := JSONContentItem{
-		Type:  "table",
-		Value: json.RawMessage(`{"headers": ["A", "B"], "rows": [["1", "2"]]}`),
+func TestLiveContentValue_Table_Valid(t *testing.T) {
+	item := ContentInput{
+		PlaceholderID: "body",
+		Type:          "table",
+		Value:         json.RawMessage(`{"headers": ["A", "B"], "rows": [["1", "2"]]}`),
 	}
-	if msg := validateJSONContentValue(item, 1, 1); msg != "" {
-		t.Errorf("unexpected error: %s", msg)
+	if _, err := convertPresentationContent([]ContentInput{item}, 1, types.SlideTypeContent); err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 
-func TestValidateJSONContentValue_Table_Invalid(t *testing.T) {
-	item := JSONContentItem{
-		Type:  "table",
-		Value: json.RawMessage(`"not a table"`),
+func TestLiveContentValue_Table_Invalid(t *testing.T) {
+	item := ContentInput{
+		PlaceholderID: "body",
+		Type:          "table",
+		Value:         json.RawMessage(`"not a table"`),
 	}
-	if msg := validateJSONContentValue(item, 1, 1); msg == "" {
+	if _, err := convertPresentationContent([]ContentInput{item}, 1, types.SlideTypeContent); err == nil {
 		t.Error("expected error for invalid table value")
 	}
 }
 
-func TestValidateJSONContentValue_Diagram_Valid(t *testing.T) {
-	item := JSONContentItem{
-		Type:  "diagram",
-		Value: json.RawMessage(`{"type": "timeline", "data": {"events": [{"label": "Q1", "description": "Launch"}]}}`),
+func TestLiveContentValue_Diagram_Valid(t *testing.T) {
+	item := ContentInput{
+		PlaceholderID: "body",
+		Type:          "diagram",
+		Value:         json.RawMessage(`{"type": "timeline", "data": {"events": [{"label": "Q1", "description": "Launch"}]}}`),
 	}
-	if msg := validateJSONContentValue(item, 1, 1); msg != "" {
-		t.Errorf("unexpected error: %s", msg)
+	if _, err := convertPresentationContent([]ContentInput{item}, 1, types.SlideTypeContent); err != nil {
+		t.Errorf("unexpected error: %v", err)
 	}
 }
 
-func TestValidateJSONContentValue_Diagram_MissingType(t *testing.T) {
-	item := JSONContentItem{
-		Type:  "diagram",
-		Value: json.RawMessage(`{"data": {}}`),
+func TestLiveContentValue_Diagram_MissingType(t *testing.T) {
+	item := ContentInput{
+		PlaceholderID: "body",
+		Type:          "diagram",
+		Value:         json.RawMessage(`{"data": {}}`),
 	}
-	if msg := validateJSONContentValue(item, 1, 1); msg == "" {
+	if _, err := convertPresentationContent([]ContentInput{item}, 1, types.SlideTypeContent); err == nil {
 		t.Error("expected error for missing diagram type")
 	}
 }
 
-func TestValidateJSONContentValue_Diagram_Invalid(t *testing.T) {
-	item := JSONContentItem{
-		Type:  "diagram",
-		Value: json.RawMessage(`"not an object"`),
+func TestLiveContentValue_Diagram_Invalid(t *testing.T) {
+	item := ContentInput{
+		PlaceholderID: "body",
+		Type:          "diagram",
+		Value:         json.RawMessage(`"not an object"`),
 	}
-	if msg := validateJSONContentValue(item, 1, 1); msg == "" {
+	if _, err := convertPresentationContent([]ContentInput{item}, 1, types.SlideTypeContent); err == nil {
 		t.Error("expected error for invalid diagram value")
 	}
 }
@@ -1178,27 +1188,27 @@ func TestGetOrAnalyzeTemplate_InvalidPath(t *testing.T) {
 
 // Tests for JSON multiple slides validation
 
-func TestConvertJSONSlides_MultipleSlides(t *testing.T) {
-	slides := []JSONSlide{
+func TestLegacyValueSlides_MultipleSlides(t *testing.T) {
+	slides := []SlideInput{
 		{
 			LayoutID: "layout1",
-			Content: []JSONContentItem{
+			Content: []ContentInput{
 				{PlaceholderID: "title1", Type: "text", Value: json.RawMessage(`"Title 1"`)},
 			},
 		},
 		{
 			LayoutID: "layout2",
-			Content: []JSONContentItem{
+			Content: []ContentInput{
 				{PlaceholderID: "content1", Type: "bullets", Value: json.RawMessage(`["A", "B"]`)},
 			},
 		},
 		{
 			LayoutID: "layout3",
-			Content:  []JSONContentItem{}, // Empty content is valid
+			Content:  []ContentInput{}, // Empty content is valid
 		},
 	}
 
-	specs, err := convertJSONSlides(slides)
+	specs, _, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1207,14 +1217,14 @@ func TestConvertJSONSlides_MultipleSlides(t *testing.T) {
 	}
 }
 
-func TestConvertJSONSlides_MissingLayoutIDMiddleSlide(t *testing.T) {
-	slides := []JSONSlide{
-		{LayoutID: "layout1", Content: []JSONContentItem{}},
-		{LayoutID: "", Content: []JSONContentItem{}}, // Missing in middle
-		{LayoutID: "layout3", Content: []JSONContentItem{}},
+func TestLegacyValueSlides_MissingLayoutIDMiddleSlide(t *testing.T) {
+	slides := []SlideInput{
+		{LayoutID: "layout1", Content: []ContentInput{}},
+		{LayoutID: "", Content: []ContentInput{}}, // Missing in middle
+		{LayoutID: "layout3", Content: []ContentInput{}},
 	}
 
-	_, err := convertJSONSlides(slides)
+	_, _, _, err := convertPresentationSlides(slides, nil, 0, 0, nil, nil, "", nil, false)
 	if err == nil {
 		t.Error("expected error for missing layout_id")
 	}

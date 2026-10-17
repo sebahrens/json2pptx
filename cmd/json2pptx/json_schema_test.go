@@ -659,10 +659,10 @@ func TestPresentationInput_FullRoundTrip(t *testing.T) {
 	}
 }
 
-// --- PresentationInput to JSONInput compat ---
+// --- PresentationInput to PresentationInput compat ---
 
-func TestPresentationInput_LegacyJSONInputStillWorks(t *testing.T) {
-	// Verify that the old JSONInput struct still deserializes correctly
+func TestPresentationInput_LegacyValueStillWorks(t *testing.T) {
+	// Verify that the live PresentationInput struct still deserializes correctly
 	input := `{
 		"template": "template_2",
 		"slides": [{
@@ -674,7 +674,7 @@ func TestPresentationInput_LegacyJSONInputStillWorks(t *testing.T) {
 		}]
 	}`
 
-	var ji JSONInput
+	var ji PresentationInput
 	if err := json.Unmarshal([]byte(input), &ji); err != nil {
 		t.Fatalf("unmarshal error: %v", err)
 	}

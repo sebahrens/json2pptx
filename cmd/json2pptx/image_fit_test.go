@@ -10,21 +10,18 @@ import (
 
 func TestImageFitSurvivesAllInputRoutes(t *testing.T) {
 	for _, fit := range []string{"", "cover", "contain", "CONTAIN", "stretch"} {
-		for _, route := range []string{"typed", "legacy", "json-content"} {
+		for _, route := range []string{"typed", "legacy"} {
 			t.Run(route+"/"+fit, func(t *testing.T) {
 				value, _ := json.Marshal(ImageInput{Path: "source.png", Alt: "Required diagram", Fit: fit})
 				var items []generator.ContentItem
 				var err error
-				if route == "json-content" {
-					items, err = convertJSONContent([]JSONContentItem{{PlaceholderID: "image", Type: "image", Value: value}}, 1, "")
-				} else {
-					input := ContentInput{PlaceholderID: "image", Type: "image", Value: value}
-					if route == "typed" {
-						input.Value = nil
-						input.ImageValue = &ImageInput{Path: "source.png", Alt: "Required diagram", Fit: fit}
-					}
-					items, err = convertPresentationContent([]ContentInput{input}, 1, "")
+				input := ContentInput{PlaceholderID: "image", Type: "image", Value: value}
+				if route == "typed" {
+					input.Value = nil
+					input.ImageValue = &ImageInput{Path: "source.png", Alt: "Required diagram", Fit: fit}
 				}
+				items, err = convertPresentationContent([]ContentInput{input}, 1, "")
+
 				if fit == "stretch" {
 					if err == nil || !strings.Contains(err.Error(), "image fit") {
 						t.Fatalf("invalid fit accepted: %v", err)
