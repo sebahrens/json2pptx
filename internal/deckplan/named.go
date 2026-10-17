@@ -407,6 +407,12 @@ var namedRules = []namedRule{
 	// each side shows (go-slide-creator-hxcum).
 	{kind: "regions", match: func(_ *namedSlide, _, all string) bool { return sidesFields(all) != nil }},
 	{kind: "bridge", match: func(_ *namedSlide, _, all string) bool { return cueNamedBridge.MatchString(all) }},
+	{kind: "bridge", match: func(n *namedSlide, head, _ string) bool {
+		return !cueNamedKPI.MatchString(head) && fiscalBridgeFields(n) != nil
+	}},
+	{kind: "risk_heatmap", match: func(n *namedSlide, head, _ string) bool {
+		return factRisk.MatchString(head) && riskHeatmapFields(n) != nil
+	}},
 	{kind: "matrix_2x2", match: func(_ *namedSlide, _, all string) bool { return cueNamedMatrix.MatchString(all) },
 		after: func(n *namedSlide, all string) {
 			// Rated risks on likelihood × impact are the risk heat map: a
@@ -455,7 +461,9 @@ var namedRules = []namedRule{
 	{kind: "chart_insight", match: func(n *namedSlide, _, _ string) bool { return parseSeries(n) != nil },
 		after: func(n *namedSlide, all string) { n.weak = !cueNamedSeries.MatchString(all) }},
 	{kind: "kpi_snapshot", match: func(n *namedSlide, head, all string) bool { return kpiCueOf(head, all) && len(n.items) >= 2 }},
-	{kind: "kpi_snapshot", match: func(n *namedSlide, _, _ string) bool { return len(n.items) >= 3 && numericItems(n.items) >= 3 },
+	{kind: "kpi_snapshot", match: func(n *namedSlide, _, _ string) bool {
+		return (len(n.items) >= 3 && numericItems(n.items) >= 3) || independentMetricPair(n.items)
+	},
 		after: func(n *namedSlide, _ string) { n.weak = true }},
 }
 
@@ -851,9 +859,7 @@ func namedFields(n *namedSlide) map[string]any {
 	case "pillars":
 		return pillarsFields(n)
 	case "next_steps":
-		if n.body != "" {
-			return map[string]any{"decisions": []any{sentenceCase(strings.TrimSpace(n.body))}}
-		}
+		return nextStepsFields(n)
 	}
 	return nil
 }
@@ -874,6 +880,9 @@ func parseNumber(s string) (float64, bool) {
 // bridgeFields reads "2023 EBITDA 24.0, price +6.5, volume +3.2, raw material
 // −4.1, opex +1.4 = 31.0" as waterfall columns.
 func bridgeFields(n *namedSlide) map[string]any {
+	if fields := fiscalBridgeFields(n); fields != nil {
+		return fields
+	}
 	type col struct {
 		label string
 		value float64
@@ -935,15 +944,14 @@ var (
 // clock time or a year standing alone.
 func firstMetric(s string) []int {
 	for _, m := range namedMetric.FindAllStringIndex(s, -1) {
-		tok := s[m[0]:m[1]]
+		if metricIsPeriod(s, m) {
+			continue
+		}
 		if namedOrdinal.MatchString(s[m[0]:]) {
 			continue
 		}
 		rest := strings.TrimSpace(s[m[1]:])
 		if strings.HasPrefix(strings.ToLower(rest), "am") || strings.HasPrefix(strings.ToLower(rest), "pm") {
-			continue
-		}
-		if namedYear.MatchString(tok) && len(strings.TrimSpace(tok)) == 4 {
 			continue
 		}
 		return m
@@ -1223,7 +1231,11 @@ func riskHeatmapFields(n *namedSlide) map[string]any {
 		return s
 	}
 	var items []any
-	for _, it := range n.items {
+	for _, it := range riskRatingItems(n.body) {
+		if item := riskAxisWordItem(it); item != nil {
+			items = append(items, item)
+			continue
+		}
 		m := namedRating.FindStringSubmatch(it)
 		if m == nil {
 			continue
@@ -1617,7 +1629,7 @@ func amountValue(s string) float64 {
 // written with slashes, values labelled by year, values dated in brackets, a
 // plain list of values, or a percentage split (a pie).
 func parseSeries(n *namedSlide) *seriesData {
-	for _, read := range []func(*namedSlide) *seriesData{slashSeries, yearLabelledSeries, datedSeries, numberListSeries, percentSplitSeries} {
+	for _, read := range []func(*namedSlide) *seriesData{labelledQuarterSeries, slashSeries, yearLabelledSeries, datedSeries, numberListSeries, percentSplitSeries} {
 		if sd := read(n); sd != nil {
 			return sd
 		}
@@ -1903,7 +1915,7 @@ func imageCaseFields(n *namedSlide) map[string]any {
 
 var (
 	deckNameQuoted = regexp.MustCompile(`["“]([^"”]{2,60})["”]`)
-	deckNameFor    = regexp.MustCompile(`\bfor\s+((?:[A-Z][\p{L}&'’.-]*\s?){1,4})`)
+	deckNameFor    = regexp.MustCompile(`\bfor\s+((?:[A-Z][\p{L}\p{N}&'’.-]*\s?){1,4})`)
 )
 
 // deckName is the name the brief gives its deck in the topic clause: a quoted

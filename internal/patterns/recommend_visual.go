@@ -900,6 +900,19 @@ func scoreCharts(intentLower string, hints *VisualHints) []VisualCandidate {
 }
 
 func scoreChartRule(r chartRule, intentLower string, hints *VisualHints) float64 {
+	if r.chartType == "funnel" {
+		words := intentWords(intentLower)
+		sequential := false
+		for _, cue := range []string{"funnel", "pipeline", "stage", "stages", "drop-off", "drop off"} {
+			if intentContainsPhrase(words, intentWords(cue)) {
+				sequential = true
+				break
+			}
+		}
+		if !sequential {
+			return 0
+		} // Attrition and conversion alone are metric names, not stages.
+	}
 	score := scoreKeywords(r.keywords, intentLower, r.baseScore)
 	if score == 0 {
 		return 0

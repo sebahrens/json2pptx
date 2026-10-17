@@ -110,7 +110,7 @@ var regionCues = []regionCue{
 	{regexp.MustCompile(`(?i)\b(?:org(?:anisation|anization|anizational|anisational)?\s+chart|maps?|videos?|gauges?|funnels?|heat\s?maps?|word\s+clouds?|venn(?:\s+diagram)?|diagrams?|matrix)\b`), ""},
 	{regexp.MustCompile(`(?i)\b(?:(?:line|bar|column|area|pie|donut|doughnut|stacked\s+bar|waterfall)\s+)?(?:charts?|graphs?|plots?)\b|\btrend\s?lines?\b`), slides.RegionChart},
 	{regexp.MustCompile(`(?i)\b(?:kpis|kpi\s+(?:tiles|cards|strip|row)|metrics|scorecard)\b`), slides.RegionKPIs},
-	{regexp.MustCompile(`(?i)\b(?:kpi|metric|stat|statistic|big\s+number|headline\s+number|hero\s+number)\b`), slides.RegionStat},
+	{regexp.MustCompile(`(?i)\b(?:kpi|metric|stat|statistic|big\s+number|headline\s+number|hero\s+number|number)\b`), slides.RegionStat},
 	{regexp.MustCompile(`(?i)\b(?:timeline|milestones|roadmap|schedule)\b`), slides.RegionTimeline},
 	{regexp.MustCompile(`(?i)\btables?\b`), slides.RegionTable},
 	{regexp.MustCompile(`(?i)\b(?:image|photo|picture|screenshot|logo)\b`), slides.RegionImage},
@@ -526,6 +526,9 @@ func sideRegion(text string) map[string]any {
 			setRegionChart(region, chart)
 		}
 	case slides.RegionStat:
+		if len(metrics) == 0 {
+			region["label"] = sentenceCase(strings.TrimSpace(strings.ReplaceAll(sideArticle.ReplaceAllString(text, ""), req.visual, "")))
+		}
 		if len(metrics) == 1 {
 			kpi := parseKPI(sideArticle.ReplaceAllString(strings.TrimSpace(text), ""))
 			region["value"], region["label"] = kpi["value"], sentenceCase(fmt.Sprint(kpi["label"]))

@@ -565,6 +565,9 @@ func (o *briefOutline) mergeCloser(n namedSlide) {
 // itemAccepts reports whether an outline item can take a named sentence:
 // not merged yet, and of a kind built to show the sentence's kind.
 func itemAccepts(item outlineItem, n namedSlide) bool {
+	if item.def.kind == "regions" {
+		return regionsAcceptNamed(item.fields, n)
+	}
 	if item.merged {
 		return false
 	}
@@ -641,6 +644,9 @@ func mergeIntoRegions(fields map[string]any, n namedSlide) {
 	regions, _ := fields["regions"].([]any)
 	for _, r := range regions {
 		region, _ := r.(map[string]any)
+		if !regionAcceptsNamed(region, n) {
+			continue
+		}
 		switch {
 		case region["kind"] == "chart" && n.kind == "chart_insight":
 			if chart, ok := n.fields["chart"].(map[string]any); ok {
@@ -648,9 +654,14 @@ func mergeIntoRegions(fields map[string]any, n namedSlide) {
 			}
 		case region["kind"] == "stat" && n.kind == "kpi_snapshot":
 			if kpis, ok := n.fields["kpis"].([]any); ok && len(kpis) > 0 {
-				if first, ok := kpis[0].(map[string]any); ok {
-					region["value"], region["label"] = first["value"], first["label"]
+				best, bestShared := kpis[0].(map[string]any), -1
+				for _, raw := range kpis {
+					kpi, _ := raw.(map[string]any)
+					if score := sharedWords(fmt.Sprint(region["label"]), fmt.Sprint(kpi["label"])); score > bestShared {
+						best, bestShared = kpi, score
+					}
 				}
+				region["value"], region["label"] = best["value"], best["label"]
 			}
 		case region["kind"] == "table" && n.kind == "table":
 			region["headers"], region["rows"] = n.fields["headers"], n.fields["rows"]
