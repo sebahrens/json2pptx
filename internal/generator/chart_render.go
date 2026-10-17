@@ -48,19 +48,6 @@ type DiagramRenderResult struct {
 	Findings []svggen.Finding
 }
 
-// RenderDiagramSpec renders a DiagramSpec directly using svggen and returns the PNG bytes.
-// This is the unified rendering function for all diagram types (charts and infographics).
-//
-// The themeColors parameter allows injecting template colors for consistent styling.
-// Returns PNG bytes suitable for embedding in a PPTX document.
-func RenderDiagramSpec(spec *types.DiagramSpec, themeColors []types.ThemeColor) ([]byte, error) {
-	result, err := renderDiagramSpecFull(spec, themeColors, 0, false, "", "", nil)
-	if err != nil {
-		return nil, err
-	}
-	return result.PNG, nil
-}
-
 // RenderDiagramSpecWithMetadata renders a DiagramSpec and returns both image bytes and fit metadata.
 // This is used for proper PPTX embedding with contain-mode positioning.
 //

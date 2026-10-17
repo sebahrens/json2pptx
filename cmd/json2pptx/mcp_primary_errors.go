@@ -27,28 +27,6 @@ func mcpDiagError(d diagnostics.Diagnostic) *mcp.CallToolResult {
 	return api.MCPDiagnosticsError([]diagnostics.Diagnostic{d})
 }
 
-// mcpTemplateNotFoundError reports a template name that could not be resolved in
-// any search location. It routes the agent to list_templates and surfaces both
-// the requested name and the available names so a typo can be fixed in one hop.
-func mcpTemplateNotFoundError(templateName, templatesDir string) *mcp.CallToolResult {
-	available := listAvailableTemplates(templatesDir)
-	details := map[string]any{"template_name": templateName}
-	var example any
-	if len(available) > 0 {
-		details["available_templates"] = available
-		example = available[0]
-	}
-	return mcpDiagError(diagnostics.Diagnostic{
-		Code:         diagnostics.CodeTemplateNotFound,
-		Path:         "template",
-		Message:      templateNotFoundError(templateName, templatesDir),
-		ExpectedType: "string",
-		ExampleValue: example,
-		Details:      details,
-		NextToolCall: nextCallListTemplates(),
-	})
-}
-
 // mcpFileNotFoundError reports a PPTX path that does not exist on disk. pathArg
 // is the JSON argument name (pptx_path or path) so the envelope's path field
 // matches the tool's schema; tool is the registered MCP tool name so the

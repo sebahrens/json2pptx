@@ -1835,16 +1835,6 @@ func tablePlaceholderBounds(placeholderID string, layout *types.LayoutMetadata) 
 	return types.BoundingBox{}
 }
 
-// collectGridTablePreflight walks shape_grid cells and emits table preflight
-// findings for any embedded tables, using the resolved cell bounds.
-func collectGridTablePreflight(grid *ShapeGridInput, slideIdx int) []patterns.FitFinding {
-	result := resolveGridForStructural(grid, nil, nil, 0, 0)
-	if result == nil {
-		return nil
-	}
-	return collectGridTablePreflightResolved(grid, result, slidepath.ShapeGrid(slideIdx), 0)
-}
-
 func collectGridTablePreflightResolved(grid *ShapeGridInput, result *shapegrid.ResolveResult, base string, depth int) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 	for _, rc := range result.Cells {

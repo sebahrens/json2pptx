@@ -198,7 +198,11 @@ func TestComposeHorizontalNestedTableGetsPreflight(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings := collectGridTablePreflight(merged, 0)
+	resolved := resolveGridForStructural(merged, nil, nil, 0, 0)
+	if resolved == nil {
+		t.Fatal("nested table grid failed to resolve")
+	}
+	findings := collectGridTablePreflightResolved(merged, resolved, "/slides/0/shape_grid", 0)
 	for _, f := range findings {
 		if strings.Contains(f.Path, "/grid/rows/0/cells/0/table") {
 			return

@@ -646,12 +646,6 @@ func buildSlideImage(index int, pngPath, sourceHash string) (*SlideImage, error)
 	return SlideImageFromBytes(index, data, sourceHash)
 }
 
-// RenderSlide renders a single slide from a PPTX file to a PNG.
-// slideIndex is 0-based.
-func RenderSlide(pptxPath string, slideIndex, density int) (*SlideImage, error) {
-	return RenderSlideOpts(pptxPath, slideIndex, density, false)
-}
-
 // RenderSlideOpts renders a single slide with an option to bypass the cache.
 func RenderSlideOpts(pptxPath string, slideIndex, density int, force bool) (*SlideImage, error) {
 	return RenderSlideOptsContext(context.Background(), pptxPath, slideIndex, density, force)
@@ -816,11 +810,6 @@ func LookupCachedSlide(key string, slideIndex, density int) *SlideImage {
 		return nil
 	}
 	return img
-}
-
-// RenderDeck renders all slides in a PPTX to PNG thumbnails.
-func RenderDeck(pptxPath string, density, maxSlides int) (*DeckResult, error) {
-	return RenderDeckOpts(pptxPath, density, maxSlides, false)
 }
 
 // RenderDeckOpts renders all slides with an option to bypass the cache.

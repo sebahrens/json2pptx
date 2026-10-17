@@ -21,14 +21,21 @@ import (
 // concise.
 
 func TestMCPPrimaryErrors_TemplateNotFound_Envelope(t *testing.T) {
-	env := parseMCPError(t, mcpTemplateNotFoundError("nonexistent-template-xyz", "../../templates"))
+	mc := &mcpConfig{templatesDir: "../../templates", outputDir: t.TempDir(), cache: template.NewMemoryCache(time.Hour)}
+	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(`{"template":"nonexistent-template-xyz","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`),
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := parseMCPError(t, result)
 	d := env.Diagnostics[0]
 
 	if d.Code != diagnostics.CodeTemplateNotFound {
 		t.Errorf("code = %q, want %q", d.Code, diagnostics.CodeTemplateNotFound)
 	}
-	if d.Path != "template" {
-		t.Errorf("path = %q, want %q", d.Path, "template")
+	if d.Path != "/template" {
+		t.Errorf("path = %q, want %q", d.Path, "/template")
 	}
 	if d.ExpectedType != "string" {
 		t.Errorf("expected_type = %q, want string", d.ExpectedType)

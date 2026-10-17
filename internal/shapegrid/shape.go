@@ -63,13 +63,6 @@ const (
 // schemeColorNames aliases the canonical set from the pptx package.
 var schemeColorNames = pptx.SchemeColorNames
 
-// GenerateShapeXML creates a <p:sp> XML element from a ShapeSpec and resolved cell.
-// Optional extraInsets are added to the text body insets (e.g., to make room for
-// an icon overlay positioned beside or above the text).
-func GenerateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, extraInsets ...[4]int64) ([]byte, error) {
-	return generateShapeXML(spec, id, bounds, 0, extraInsets...)
-}
-
 // generateShapeXML is GenerateShapeXML with an optional pre-computed autofit
 // shrink (0 = let the shape measure its own).
 func generateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, autofitScale float64, extraInsets ...[4]int64) ([]byte, error) {

@@ -596,13 +596,6 @@ func SVGConversionAvailable() bool {
 	return DefaultSVGConverter().IsAvailable()
 }
 
-// ConvertSVGToPNG converts an SVG file to PNG using the default converter.
-// Returns the path to the temporary PNG file and a cleanup function.
-// The caller MUST call the cleanup function when done with the PNG file.
-func ConvertSVGToPNG(ctx context.Context, svgPath string, scale float64) (pngPath string, cleanup func(), err error) {
-	return DefaultSVGConverter().ConvertToPNG(ctx, svgPath, scale)
-}
-
 // TempFilePatterns lists the glob patterns for temp files created by SVG conversion.
 // Used by CleanupOrphanedTempFiles to identify files to clean up.
 var TempFilePatterns = []string{

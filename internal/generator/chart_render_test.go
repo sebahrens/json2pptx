@@ -813,7 +813,7 @@ func TestRenderDiagramSpec(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := RenderDiagramSpec(tt.spec, nil)
+			rendered, err := renderDiagramSpecFull(tt.spec, nil, 0, false, "", "", nil)
 
 			if tt.wantErr {
 				if err == nil {
@@ -828,6 +828,7 @@ func TestRenderDiagramSpec(t *testing.T) {
 			}
 
 			// Verify we got PNG data
+			result := rendered.PNG
 			if len(result) == 0 {
 				t.Errorf("RenderDiagramSpec() returned empty result")
 				return
