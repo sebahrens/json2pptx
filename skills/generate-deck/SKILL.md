@@ -128,4 +128,4 @@ Text args over 2 MiB fail. Raced `deck_id` patches return `STALE_REVISION`: relo
 Render assets resolve against `base_dir`; URLs are fetched, missing assets fail.
 Stored template paths and base directories remain bound to the handle.
 
-Responses are compact; legacy compact-response switches remain accepted.
+Responses are compact. Scale advice needs an authored chart-data edit and revalidation.

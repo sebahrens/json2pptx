@@ -4061,7 +4061,7 @@ Currency formatting omitted the currency symbol or code.
 
 A narrow line trend occupies less than 15% of the plotted axis.
 
-- **Severity:** warning
+- **Severity:** review
 - **When emitted:** A line chart has a nonconstant compressed range and a tighter axis bound preserves every value.
 - **Action:** Consider setting fix.params.field (data.y_min or data.y_max) to fix.params.value; retain a zero baseline when the absolute comparison matters.
 
