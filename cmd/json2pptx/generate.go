@@ -134,7 +134,7 @@ func runGenerate() error {
 	}
 
 	if *dryRun {
-		return runJSONDryRun(*jsonInput, *templateName, effTemplatesDir, *configPath, *designMode, *strictUnknownKeys)
+		return runJSONDryRunWithOptions(*jsonInput, *templateName, effTemplatesDir, *configPath, *designMode, *strictUnknownKeys, generationOptions{FitReport: *fitReport, VerboseFit: *verboseFit, PlaceholderPolicy: *placeholderPolicy, BaseDir: *baseDir}, os.Stdout)
 	}
 	deck, runErr := runJSONModeDeck(*jsonInput, resolvedJSONOutput, effTemplatesDir, effOutputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys, generationOptions{FitReport: *fitReport, VerboseFit: *verboseFit, PlaceholderPolicy: *placeholderPolicy, BaseDir: *baseDir})
 	if runErr != nil && resolvedJSONOutput == "" {

@@ -303,28 +303,13 @@ func buildCanonicalRoles(report *examine.Report) canonicalRolesReport {
 func buildExamineConformance(reader *template.Reader, report *examine.Report, templatePath string, strict bool) examineConformance {
 	merged := examineConformance{Template: report.Template}
 
-	layouts, err := template.ParseLayouts(reader)
+	analysis, err := template.Analyze(templatePath, nil, false)
 	if err == nil {
-		theme := template.ParseTheme(reader)
 		vr := template.ValidateTemplateMetadata(reader, strict)
-		template.ApplyMetadataHints(layouts, vr.Metadata)
-
-		synthLayouts := make([]types.LayoutMetadata, len(layouts))
-		copy(synthLayouts, layouts)
-		synthAnalysis := &types.TemplateAnalysis{
-			TemplatePath: templatePath,
-			Hash:         reader.Hash(),
-			AspectRatio:  report.AspectRatio,
-			Layouts:      synthLayouts,
-			Theme:        theme,
-			Metadata:     vr.Metadata,
-		}
-		_ = template.SynthesizeIfNeeded(reader, synthAnalysis)
-
-		sectionDiags := checkSectionNumberNaming(layouts)
+		sectionDiags := checkSectionNumberNaming(analysis.Layouts)
 		merged.ValidateTemplate = examineValidateSummary{
 			Valid:        vr.Valid,
-			Capabilities: detectCapabilities(synthAnalysis.Layouts, synthAnalysis.Synthesis),
+			Capabilities: detectCapabilities(analysis.Layouts, analysis.Synthesis),
 			Findings:     buildTemplateFindings(report.Template, vr.Diagnostics, sectionDiags),
 		}
 	}

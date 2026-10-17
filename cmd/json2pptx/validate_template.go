@@ -107,48 +107,14 @@ func runValidateTemplate() error {
 	}
 	defer func() { _ = reader.Close() }()
 
-	// Parse layouts
-	layouts, err := template.ParseLayouts(reader)
+	analysis, err := getOrAnalyzeTemplate(templatePath, nil)
 	if err != nil {
-		return fmt.Errorf("failed to parse layouts: %w", err)
+		return fmt.Errorf("analyze template: %w", err)
 	}
-
-	// Parse theme
-	theme := template.ParseTheme(reader)
-
-	// Validate metadata
+	layouts, theme, aspectRatio := analysis.Layouts, analysis.Theme, analysis.AspectRatio
+	// Strict inspection still reports the metadata evidence instead of silently
+	// treating a cached soft-mode warning as valid.
 	validationResult := template.ValidateTemplateMetadata(reader, *strict)
-
-	// Apply metadata hints to layouts
-	template.ApplyMetadataHints(layouts, validationResult.Metadata)
-
-	// Extract actual slide dimensions from presentation.xml.
-	slideWidth, slideHeight := template.ParseSlideDimensions(reader)
-
-	// Determine aspect ratio FROM THE SLIDE SIZE, not from a hardcoded default.
-	// It used to default to "16:9" and only change when template metadata said
-	// otherwise, so a 10x7.5in (4:3) or 17.5x7.5in (21:9) template was reported
-	// as widescreen — and list_templates fields=compact exposes nothing but this
-	// ratio (go-slide-creator-r9nn). Explicit metadata still wins: a template
-	// author may declare an intended ratio.
-	aspectRatio := template.AspectRatio(slideWidth, slideHeight)
-	if validationResult.Metadata != nil && validationResult.Metadata.AspectRatio != "" {
-		aspectRatio = validationResult.Metadata.AspectRatio
-	}
-
-	// Build analysis for synthesis
-	analysis := &types.TemplateAnalysis{
-		TemplatePath: templatePath,
-		Hash:         reader.Hash(),
-		AspectRatio:  aspectRatio,
-		Layouts:      layouts,
-		Theme:        theme,
-		Metadata:     validationResult.Metadata,
-	}
-
-	// Synthesize missing layout capabilities
-	_ = template.SynthesizeIfNeeded(reader, analysis)
-	layouts = analysis.Layouts
 
 	// Determine capabilities
 	caps := detectCapabilities(layouts, analysis.Synthesis)
@@ -197,7 +163,7 @@ func detectCapabilities(layouts []types.LayoutMetadata, synthesis *types.Synthes
 	// The renderer can place charts and images in ordinary content/grid regions;
 	// dedicated placeholder types only describe convenient authored slots.
 	caps := validateTemplateCapabilites{ChartCapable: len(layouts) > 0, ImageCapable: len(layouts) > 0}
-	synthesized := synthesis != nil && len(synthesis.SyntheticFiles) > 0
+	synthesized := synthesis != nil && len(synthesis.LayoutIDs) > 0
 
 	for _, layout := range layouts {
 		for _, ph := range layout.Placeholders {

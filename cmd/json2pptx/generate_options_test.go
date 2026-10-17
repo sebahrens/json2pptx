@@ -18,10 +18,19 @@ func TestCLIGenerateStrictPlaceholderPolicy(t *testing.T) {
 	if err := os.WriteFile(path, []byte(deck), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	stdout, stderr, code := cliRun(t, nil, "generate", path, "--placeholder-policy", "strict", "--out", filepath.Join(dir, "draft.pptx"))
-	if code == 0 || !strings.Contains(stdout, "__FILL__") || !strings.Contains(stdout, "/slides/0/content/0/text_value") {
-		t.Fatalf("strict CLI policy did not report the authored unfinished field: code=%d stdout=%s stderr=%s", code, stdout, stderr)
+	for _, mode := range []string{"render", "dry-run"} {
+		t.Run(mode, func(t *testing.T) {
+			args := []string{"generate", path, "--placeholder-policy", "strict", "--out", filepath.Join(dir, "draft.pptx")}
+			if mode == "dry-run" {
+				args = append(args, "--dry-run")
+			}
+			stdout, stderr, code := cliRun(t, nil, args...)
+			if code == 0 || !strings.Contains(stdout, "__FILL__") || !strings.Contains(stdout, "/slides/0/content/0/text_value") {
+				t.Fatalf("strict CLI policy did not report the authored unfinished field: code=%d stdout=%s stderr=%s", code, stdout, stderr)
+			}
+		})
 	}
+
 	if _, err := os.Stat(filepath.Join(dir, "draft.pptx")); !os.IsNotExist(err) {
 		t.Fatalf("strict refusal wrote an artifact: %v", err)
 	}

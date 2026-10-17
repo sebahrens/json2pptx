@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -196,6 +197,12 @@ func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designM
 }
 
 func runJSONDryRunTo(jsonPath, templateOverride, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool, writer io.Writer) error {
+	return runJSONDryRunWithOptions(jsonPath, templateOverride, templatesDir, configPath, designModeOverride, strictUnknownKeys, generationOptions{}, writer)
+}
+
+func runJSONDryRunWithOptions(jsonPath, templateOverride, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool, opts generationOptions, writer io.Writer) error {
+	opts = effectiveGenerationOptions([]generationOptions{opts})
+
 	var input PresentationInput
 	output := dryRunOutput{
 		Valid:      true,
@@ -304,39 +311,43 @@ func runJSONDryRunTo(jsonPath, templateOverride, templatesDir, configPath, desig
 		}
 	}
 
-	// Enum values, design-mode constraints and the no-emoji policy: the
-	// refusals the render makes before it opens a template.
-	if policy := deckPolicyDiagnostics(&input); len(policy) > 0 {
+	boundary, _ := deckBoundaryDiagnostics(&input, opts.PlaceholderPolicy, false)
+	output.Diagnostics = append(output.Diagnostics, boundary...)
+	if diagnostics.HasErrors(boundary) {
 		output.Valid = false
-		output.Diagnostics = append(output.Diagnostics, policy...)
+	}
+	assetRoot := opts.BaseDir
+	if assetRoot == "" {
+		assetRoot = validateBaseDir(jsonPath, "")
+	}
+	assetRoot, baseDiag := resolveAssetBaseDir(assetRoot)
+	if baseDiag != nil {
+		output.Valid = false
+		output.Diagnostics = append(output.Diagnostics, *baseDiag)
+		return writeDryRunOutputTo(output, writer)
 	}
 
 	// Relative asset paths resolve against the deck's own directory, as in
 	// the render, which refuses a deck whose icon or image cannot be found.
-	if jsonPath != "-" {
-		assetFindings := resolveLocalAssetPaths(input.Slides, validateBaseDir(jsonPath, ""), imageAllowList(cfg.Images.AllowedBasePaths, "")...)
+	if jsonPath != "-" || opts.BaseDir != "" {
+		assetFindings := resolveLocalAssetPaths(input.Slides, assetRoot, imageAllowList(cfg.Images.AllowedBasePaths, "")...)
 		if diagnostics.HasErrors(assetFindings) {
 			output.Valid = false
 		}
 		output.Diagnostics = append(output.Diagnostics, assetFindings...)
 	}
 
-	// Validate required fields. template_path stands in for template; naming
-	// both is refused, as the render refuses it.
-	if tplDiags := deckTemplateFieldDiagnostics(&input, "template is required in JSON input"); len(tplDiags) > 0 {
+	if input.Template != "" && input.TemplatePath != "" {
 		output.Valid = false
-		output.Diagnostics = append(output.Diagnostics, tplDiags...)
+		output.Diagnostics = append(output.Diagnostics, deckTemplateFieldDiagnostics(&input, "template is required in JSON input")...)
 	}
-	if len(input.Slides) == 0 {
-		output.Valid = false
-		output.Diagnostics = append(output.Diagnostics, deckSlidesRequiredDiagnostic())
-	}
+
 	if !output.Valid {
 		return writeDryRunOutputTo(output, writer)
 	}
 
 	// Resolve template for validation: the deck's own .pptx, or a registered name.
-	templatePath, templateCleanup, tplDiag := resolveDryRunTemplate(&input, jsonPath, cfg.Templates.Dir)
+	templatePath, templateCleanup, tplDiag := resolveDryRunTemplate(&input, filepath.Join(assetRoot, "deck.json"), cfg.Templates.Dir)
 	if tplDiag != nil {
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, *tplDiag)
@@ -363,6 +374,11 @@ func runJSONDryRunTo(jsonPath, templateOverride, templatesDir, configPath, desig
 	// The structural verdict the render refuses on.
 	deckStructuralDiagnostics(&output, &input, templateAnalysis)
 	appendGridConverterPreflight(&output, &input, generator.NewSVGConverter().IsPNGAvailable())
+	output.FitFindings = append(output.FitFindings, template.AnalysisFindings(templateAnalysis)...)
+	if opts.FitReport || opts.VerboseFit {
+		output.FitFindings = append(output.FitFindings, collectFitFindings(&input, templateAnalysis.Layouts, templateAnalysis.SlideWidth, templateAnalysis.SlideHeight, &templateAnalysis.Theme)...)
+	}
+	output.FitFindings = BudgetFitFindings(dedupFitFindings(output.FitFindings), DefaultFindingBudget, opts.VerboseFit)
 
 	return writeDryRunOutputTo(output, writer)
 }
