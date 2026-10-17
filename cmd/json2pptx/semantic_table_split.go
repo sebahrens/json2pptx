@@ -24,8 +24,11 @@ func (rc *remedyContext) tableSplitOps(path string) []any {
 	if !ok || len(rows) < 2 {
 		return nil
 	}
-	first := deepCopyJSON(slide).(map[string]any)
-	second := deepCopyJSON(slide).(map[string]any)
+	first, firstOK := deepCopyJSON(slide).(map[string]any)
+	second, secondOK := deepCopyJSON(slide).(map[string]any)
+	if !firstOK || !secondOK {
+		return nil
+	}
 	cut := len(rows) / 2
 	first["rows"], second["rows"] = rows[:cut], rows[cut:]
 	delete(first, "totals_row")

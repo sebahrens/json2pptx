@@ -4057,6 +4057,14 @@ Currency formatting omitted the currency symbol or code.
 - **When emitted:** svggen receives style.value_format.style=currency without prefix and renders the generic ¤ marker instead of guessing a currency.
 - **Action:** Set style.value_format.prefix to the intended symbol or code, such as $, €, £, or USD.
 
+### `chart.flat_range`
+
+A narrow line trend occupies less than 15% of the plotted axis.
+
+- **Severity:** warning
+- **When emitted:** A line chart has a nonconstant compressed range and a tighter axis bound preserves every value.
+- **Action:** Consider setting fix.params.field (data.y_min or data.y_max) to fix.params.value; retain a zero baseline when the absolute comparison matters.
+
 ### `chart.invalid_numeric`
 
 Chart data contains a value that cannot be parsed as a number.

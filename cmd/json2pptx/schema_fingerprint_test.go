@@ -136,6 +136,8 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// If this fails, see file header comment.
 	// 4.178.0 adds native compose leaves, gap/divider/heading slots, grid rules,
 	// cell text ink and layout-review repair vocabulary.
+	// 5.0.0 flattens validation responses and adds MCP transport aliases; the
+	// hashed authoring structs and enums are unchanged.
 	const wantFingerprint = "bb7ad471bb831a5c"
 
 	got := schemaFingerprint()

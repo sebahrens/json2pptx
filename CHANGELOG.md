@@ -16,6 +16,14 @@ How to cut a release (tag, archives, container image) is described in
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-18
+
+Ships input/MCP schema **5.0.0** (authoring fingerprint `bb7ad471bb831a5c`).
+Validation responses now expose a top-level `findings[]`; the former nested
+object remains under `legacy_findings` for migration. Raw render responses add
+the same canonical field names as DeckSpec rendering. See
+[the schema migration](docs/SCHEMA_CHANGELOG.md) before updating clients.
+
 - Consulting layout/review additions (schema 4.178.0): native splits and
   headings, richer regions/compose, consulting visual kinds, three chart
   types, stakeholder placement, chapter/sticker chrome and measured layout
@@ -64,7 +72,7 @@ How to cut a release (tag, archives, container image) is described in
   golangci-lint v2.12.2 for Go 1.26 compatibility. These updates address the
   October 2026 Go HTTP/2, HTTP, TLS, and textproto vulnerabilities.
 
-- **Agent wiki** synced to schema 4.175: 29 kinds, `cycle` as the eighth
+- **Agent wiki** now covers all 50 kinds and 77 patterns, with `cycle` as a
   region kind, one-line `detail`s fit at five options, whole-slide scaling
   under 70%, `exec-summary` reachable from `executive_summary`, the complete
   raw-only pattern list, multi-template `validate_deck_spec`, and the hidden
@@ -73,6 +81,13 @@ How to cut a release (tag, archives, container image) is described in
   repository checkout.
 
 ### Fixed
+
+- Shared CLI/MCP/HTTP generation policies, template analysis and verified table
+  repair; template-aware output identities preserve second-template artifacts.
+- Planner fact retention, authored diagnostic paths, actual schema coverage,
+  media integrity, semantic colours and private render-cache boundaries.
+- CI now executes the required render corpus, isolates probes from normal tests,
+  calibrates race shards from measured Linux runs and checks deterministic output.
 
 - **Full-slide images**: SVG image cells now use the whole rectangular cell,
   matching PNG images, and honor `image.fit` cover/contain without distortion.
@@ -137,5 +152,6 @@ commit on 2026-04-02. Ships input schema
 - **Deck-level style defaults** for tables and cells; see
   [docs/STYLE_DEFAULTS.md](docs/STYLE_DEFAULTS.md).
 
-[Unreleased]: https://github.com/sebahrens/json2pptx/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/sebahrens/json2pptx/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/sebahrens/json2pptx/compare/v1.0.0...v1.2.0
 [1.0.0]: https://github.com/sebahrens/json2pptx/releases/tag/v1.0.0

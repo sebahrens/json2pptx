@@ -19,11 +19,11 @@ var (
 	BuildTime = "unknown"
 )
 
-// SchemaVersion tracks backward-incompatible changes to the JSON input schema.
+// SchemaVersion tracks the JSON input and MCP response contracts.
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.178.0"
+const SchemaVersion = "5.0.0"
 
 func main() {
 	setupCLILogging()

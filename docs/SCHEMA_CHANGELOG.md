@@ -1,5 +1,14 @@
 # Schema Changelog
 
+- **2026-10-18 — Schema 5.0.0 · Shared generation and deployed MCP/wiki contracts.** Input fingerprint: `bb7ad471bb831a5c` (authoring structs/enums unchanged).
+  - **Response migration:** raw `validate_input`, CLI `validate` and `generate --dry-run` now expose `schema_version`, `ok`, `summary` and `findings[]` at the top level. The former nested envelope is available as `legacy_findings` for the migration cycle. Update clients that read `findings.findings` to read `findings`.
+  - Raw `generate_presentation` adds canonical `ok`, `pptx_path`, `quality_summary` and `diagnostics` aliases, retaining `success`, `output_path`, `quality` and `fit_findings`. It accepts the same top-level `template` override as validation. Template typo retries preserve the complete original call.
+  - CLI generation adds `--fit-report`, `--verbose-fit`, `--placeholder-policy` and `--base-dir`, including dry-run forwarding. Generation, score, preview, repair and HTTP share normalized template analysis, boundary policies and finding assembly. Default artifact names distinguish template variants.
+  - Dense semantic tables offer a scratch-validated lossless split patch, retaining headers, row order and the final totals marker. Planner drafts retain fiscal labels, signed bridges, regional quarter series, rated risks and owner/date actions. Explanation rhythm paths are JSON Pointers with rendered slide numbers.
+  - `chart.flat_range` is a line-only advisory with a numeric `explicit_scale` suggestion; authored axes stay unchanged. Semantic status colours, table fills, heading font measurement, native media fallbacks and actual file MIME types agree across render paths. The private render cache uses the user cache directory or `JSON2PPTX_RENDER_CACHE_DIR`.
+  - HTTP adds authenticated optional bearer access, opt-in CORS, readiness, source-addressed semantic trials, kind discovery and bounded thumbnails. Actual success responses for every registered MCP tool are checked against live output schemas, including deterministic image findings.
+  - The bundled llm-wiki is indexed by the actual pinned 0.5.0 companion engine and ships with the Go MCP documentation bundle. Discovery/catalogues, worked examples and runtime snapshot upgrade guidance describe this same release.
+
 - **2026-10-17 — Schema 4.178.0 · Consulting layouts and review.** Input fingerprint: `bb7ad471bb831a5c`.
   - Native two-column ratios, stacked layouts, image-side fallback and content headings; four additional region arrangements, per-seam gap/divider controls, sticker chrome and chapter agendas.
   - Compose supports native grid/table/text/image leaves, heading/caption slots, measured content height and smart allocation, depth 3 with 12 leaves; compact peer typography and span-aware column rules.

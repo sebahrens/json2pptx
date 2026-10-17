@@ -654,7 +654,11 @@ func mergeIntoRegions(fields map[string]any, n namedSlide) {
 			}
 		case region["kind"] == "stat" && n.kind == "kpi_snapshot":
 			if kpis, ok := n.fields["kpis"].([]any); ok && len(kpis) > 0 {
-				best, bestShared := kpis[0].(map[string]any), -1
+				best, ok := kpis[0].(map[string]any)
+				if !ok {
+					continue
+				}
+				bestShared := -1
 				for _, raw := range kpis {
 					kpi, _ := raw.(map[string]any)
 					if score := sharedWords(fmt.Sprint(region["label"]), fmt.Sprint(kpi["label"])); score > bestShared {
