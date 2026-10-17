@@ -1518,16 +1518,17 @@ func (mc *mcpConfig) handleListSlideKinds(ctx context.Context, request mcp.CallT
 	takeaway := map[string]any{"font_pt": 14, "max_lines": 1}
 	if !withBudgets {
 		// With budgets each kind's takeaway row carries the measured length.
-		takeaway["note"] = "Keep takeaway (or chart insight) to one 14pt line in the template's chrome band. Width varies by template; validate_deck_spec reports BODY_TOO_LONG at slides[i].takeaway when measured text wraps."
+		takeaway["note"] = "One 14pt line; width depends on template. validate_deck_spec reports BODY_TOO_LONG if the takeaway wraps."
 	}
 	result := map[string]any{"slide_kinds": out, "takeaway_budget": takeaway}
 	if fieldFilter["brief"] {
 		result["brief_note"] = slideKindBriefNote
 	}
 	if kindFilter == nil && len(fieldFilter) == 0 {
-		result["detail"] = "One line per kind. kinds:[<chosen kinds>] returns each kind's full summary (count bounds, what it degrades to), typical_fields and copy-ready example; fields:[\"brief\"] its field signatures and text budgets, fields:[\"item_schema\"] descriptions and aliases."
+		result["detail"] = "kinds:[name] returns full contracts and examples; fields:[\"brief\"] signatures/budgets, fields:[\"item_schema\"] descriptions/aliases."
 	}
 	if withBudgets {
+		takeaway["note"] = budgetBasis.Note
 		if measured.Takeaway.MaxChars > 0 {
 			takeaway["max_chars"] = measured.Takeaway.MaxChars
 		}
@@ -1565,7 +1566,7 @@ func slideKindEntry(k semantic.SlideKind, kindFilter, fieldFilter map[string]boo
 	// bounds, what the kind degrades to) and the typical fields come with the
 	// kinds the agent then names (go-slide-creator-mvdt5).
 	if kindFilter == nil && len(fieldFilter) == 0 {
-		entry.Summary = catalogueKindSummary(info.Summary)
+		entry.Summary = catalogueKindSummary(k, info.Summary)
 		entry.TypicalFields = nil
 		entry.RequiredAliases = info.RequiredAliases
 		return entry
@@ -1874,12 +1875,64 @@ func (r renderDeckSpecResponse) MarshalJSON() ([]byte, error) {
 	return json.Marshal(out)
 }
 
-func catalogueKindSummary(summary string) string {
-	line := oneLineSummary(summary)
-	// Keep a whole Unicode word; separators alone add no choosing information.
-	short := cutSummaryAtWord(line, 23)
-	if !strings.HasSuffix(short, "…") {
-		return short
+// Catalogue purposes are authored for choosing, not the opening nouns of a
+// long authoring contract. Keep the detailed summary on named-kind requests.
+var catalogueKindPurposes = map[semantic.SlideKind]string{
+	"agenda":            "Contents with current section",
+	"architecture":      "System tiers and side rails",
+	"bridge":            "Totals and additive changes",
+	"bullet_chart":      "Actuals versus targets",
+	"chart_insight":     "Chart plus interpretation",
+	"checklist":         "Done/open/blocked items",
+	"closing":           "Final headline and subtitle",
+	"comparison":        "Compare options side by side",
+	"cycle":             "Loops, spokes or nested rings",
+	"decision":          "Options and recommendation",
+	"decision_tree":     "Branching decisions/outcomes",
+	"executive_summary": "Key conclusions and ask",
+	"fishbone":          "Causes grouped by category",
+	"framework":         "SWOT, five forces or BMC",
+	"heatmap":           "Numeric rows/columns in colour",
+	"image_case":        "Photo with case evidence",
+	"image_hero":        "Full-slide photo and headline",
+	"ipo_flow":          "Input to process to output",
+	"issue_tree":        "Hypotheses split into branches",
+	"kpi_snapshot":      "Several headline metrics",
+	"matrix_2x2":        "Position on two axes",
+	"next_steps":        "Actions with owners and dates",
+	"nine_box_talent":   "Performance versus potential",
+	"option_matrix":     "Score options by criteria",
+	"org":               "Reporting/governance tree",
+	"pestel":            "Six external-force dimensions",
+	"pillars":           "Strategy pillars/foundation",
+	"process":           "Ordered steps or decisions",
+	"prose_2col":        "Running prose in two columns",
+	"pyramid":           "Hierarchy in stacked tiers",
+	"quote":             "Attributed voices",
+	"raci":              "Who is responsible/accountable",
+	"raw_json2pptx":     "Raw slide authoring escape",
+	"regions":           "Multiple views on one slide",
+	"risk_heatmap":      "Risks by likelihood/impact",
+	"roadmap":           "Phases, dates and milestones",
+	"section":           "Numbered chapter divider",
+	"sources":           "Numbered source references",
+	"spectrum":          "Positions on a continuous axis",
+	"stakeholder_map":   "Influence versus interest",
+	"stat":              "One headline number",
+	"status_board":      "Workstream RAG status matrix",
+	"table":             "Exact figures in rows/columns",
+	"team":              "People, roles and biographies",
+	"three_horizons":    "Strategy over three horizons",
+	"timeline":          "Dated milestones or ranges",
+	"timeline_vertical": "Dated stops on a vertical axis",
+	"title":             "Opening headline and subtitle",
+	"value_chain":       "Activities creating value",
+	"venn":              "Overlapping sets",
+}
+
+func catalogueKindSummary(kind semantic.SlideKind, summary string) string {
+	if purpose := catalogueKindPurposes[kind]; purpose != "" {
+		return purpose
 	}
-	return strings.TrimRight(strings.TrimSuffix(short, "…"), " →—:-") + "…"
+	return cutSummaryAtWord(oneLineSummary(summary), 90)
 }

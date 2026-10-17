@@ -638,7 +638,7 @@ func TestSemanticKindsMatchesListSlideKinds(t *testing.T) {
 	}
 	for i, want := range mcpCatalogue.SlideKinds {
 		got := listing.SlideKinds[i]
-		if got.Kind != want.Kind || got.Summary != catalogueKindSummary(want.Summary) ||
+		if got.Kind != want.Kind || got.Summary != catalogueKindSummary(semantic.SlideKind(want.Kind), want.Summary) ||
 			strings.Join(got.RequiredFields, ",") != strings.Join(want.RequiredFields, ",") {
 			t.Errorf("kind %d: CLI %+v does not match list_slide_kinds %s", i, got, want.Kind)
 		}

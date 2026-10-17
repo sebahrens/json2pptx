@@ -1240,7 +1240,7 @@ var outputSchemaExamineTemplate = json.RawMessage(`{
                   "source_band":    {"$ref": "#/$defs/chromeRect"},
                   "footer_top_emu": {"type": "integer", "description": "Top of the footer chrome (min Y of visible dt/ftr/sldNum), or the bottom margin line when the layout has none."},
                   "has_footer":     {"type": "boolean"},
-                  "basis":          {"type": "string", "enum": ["layout", "reference_layout", "slide_fallback"], "description": "Where the band x-range came from: this layout's body/content placeholders, the One Content reference layout, or slide-percentage margins."},
+                  "basis":          {"type": "string", "enum": ["layout", "layout_title", "reference_layout", "slide_fallback"], "description": "Band x-range basis: own body placeholders, own title column, One Content reference, or slide margins."},
                   "fits":           {"type": "boolean", "description": "False when the band stack would overlap the title or starve the layout's content; the band is skipped at render and preflight emits chrome_band_no_fit."}
                 },
                 "required": ["canvas", "content", "takeaway_band", "source_band", "footer_top_emu", "has_footer", "basis", "fits"]

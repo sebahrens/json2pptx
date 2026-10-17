@@ -112,7 +112,7 @@ func TestListSlideKindsCycle(t *testing.T) {
 	}
 
 	named := find(map[string]any{"kinds": []any{"cycle"}})
-	if catalogue.Summary != catalogueKindSummary(named.Summary) {
+	if catalogue.Summary != catalogueKindSummary(semantic.KindCycle, named.Summary) {
 		t.Errorf("compact cycle summary = %q; full summary = %q", catalogue.Summary, named.Summary)
 	}
 	if named.Example["kind"] != "cycle" {

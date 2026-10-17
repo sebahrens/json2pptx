@@ -326,8 +326,8 @@ func TestOnboardingPayloadBudgets(t *testing.T) {
 		if k.Summary == "" || len(k.Summary) > 200 || strings.Contains(k.Summary, ". ") {
 			t.Errorf("catalogue line for %s is not one short sentence: %q", k.Kind, k.Summary)
 		}
-		if !endsOnWholeWord(k.Summary, info.Summary) {
-			t.Errorf("catalogue line for %s is cut inside a word: %q", k.Kind, k.Summary)
+		if purpose := catalogueKindPurposes[semantic.SlideKind(k.Kind)]; purpose == "" || k.Summary != purpose {
+			t.Errorf("catalogue kind %s needs a complete selection purpose: %q", k.Kind, k.Summary)
 		}
 		if len(k.RequiredFields) != len(info.RequiredFields) {
 			t.Errorf("catalogue dropped required_fields of %s", k.Kind)
