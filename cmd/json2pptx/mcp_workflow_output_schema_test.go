@@ -152,8 +152,8 @@ func runWorkflowOutputSchemas(t *testing.T, externalRender bool) {
 	t.Helper()
 	// Template setting writes and render-cache sweeping are confined to test-owned roots.
 	t.Setenv("TMPDIR", t.TempDir())
-	cacheDir := t.TempDir()
-	if err := os.Chmod(cacheDir, 0o700); err != nil {
+	cacheDir, err := os.MkdirTemp(t.TempDir(), "private-cache-")
+	if err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("JSON2PPTX_RENDER_CACHE_DIR", cacheDir)
