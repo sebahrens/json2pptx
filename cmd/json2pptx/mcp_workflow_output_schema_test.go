@@ -151,6 +151,7 @@ func runWorkflowOutputSchemas(t *testing.T, externalRender bool) {
 	t.Helper()
 	// Template setting writes and render-cache sweeping are confined to test-owned roots.
 	t.Setenv("TMPDIR", t.TempDir())
+	t.Setenv("JSON2PPTX_RENDER_CACHE_DIR", t.TempDir())
 	t.Setenv("JSON2PPTX_ALLOW_SETTINGS_WRITE", "1")
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	mc := settingsTestConfig(t)
