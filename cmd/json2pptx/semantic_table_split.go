@@ -2,9 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
-
-	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
 // tableSplitOps retains every authored field and row. Only the final part
@@ -38,13 +37,14 @@ func (rc *remedyContext) tableSplitOps(path string) []any {
 	if title, ok := slide["title"].(string); ok {
 		first["title"], second["title"] = title+" (1/2)", title+" (2/2)"
 	}
-	index := slidepath.SlideIndex(pointer)
-	if index < 0 {
+	seam := strings.LastIndexByte(pointer, '/')
+	index, err := strconv.Atoi(pointer[seam+1:])
+	if err != nil || index < 0 {
 		return nil
 	}
 	return []any{
 		map[string]any{"op": "replace", "path": pointer, "value": first},
-		map[string]any{"op": "add", "path": fmt.Sprintf("/slides/%d", index+1), "value": second},
+		map[string]any{"op": "add", "path": fmt.Sprintf("%s/%d", pointer[:seam], index+1), "value": second},
 	}
 }
 
@@ -56,7 +56,8 @@ func hasSlideInsertion(targets []*remedyTarget) bool {
 			for _, raw := range candidate {
 				op, ok := raw.(map[string]any)
 				path, _ := op["path"].(string)
-				if ok && op["op"] == "add" && strings.HasPrefix(path, "/slides/") && strings.Count(path, "/") == 2 {
+				seam := strings.LastIndexByte(path, '/')
+				if ok && op["op"] == "add" && seam >= 0 && strings.HasSuffix(path[:seam], "/slides") {
 					return true
 				}
 			}
