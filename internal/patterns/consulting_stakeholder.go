@@ -41,6 +41,22 @@ func drawConsultingStakeholder(c *consultingCanvas, v map[string]any) error {
 		return err
 	}
 	points := visualItems(v, "points")
+	// Marker centres use an inset vertical domain inside the existing plot.
+	// Its midpoint and ordering stay fixed, while y=0/100 remain valid without
+	// letting the largest authored marker cover either axis text band.
+	maxRadius := 0.0
+	for _, raw := range points {
+		diameter := visualNum(visualObj(raw), "size")
+		if diameter == 0 {
+			diameter = 14
+		}
+		maxRadius = max(maxRadius, diameter/2)
+	}
+	verticalInset := maxRadius + 4
+	pointHeight := plotH - 2*verticalInset
+	if pointHeight <= 0 {
+		return c.refuse("stakeholder plot is too short for the authored marker diameters and axis clearances")
+	}
 	circles := make([]stakeholderBox, len(points))
 	used := map[string]bool{}
 	for i, raw := range points {
@@ -50,7 +66,7 @@ func drawConsultingStakeholder(c *consultingCanvas, v map[string]any) error {
 			diam = 14
 		}
 		x := left + visualNum(p, "x")/100*plotW
-		y := top + (1-visualNum(p, "y")/100)*plotH
+		y := top + verticalInset + (1-visualNum(p, "y")/100)*pointHeight
 		circles[i] = stakeholderBox{x - diam/2, y - diam/2, diam, diam}
 		used[visualStr(p, "status")] = true
 	}

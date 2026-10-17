@@ -63,7 +63,7 @@ const expandedGridsDeck = `{"template": "midnight-blue", "slides": [
   ` + verdictCover + `,
   {"layout_id": "blank-title", "source": "Finance, FY25", "content": [
     {"placeholder_id": "title", "type": "text", "text_value": "Three numbers and four steps tell the story"}],
-   "compose": {"direction": "vertical", "banner": {"text": "FY25 in one page"}, "segments": [
+   "compose": {"direction": "vertical", "gap": 1, "banner": {"text": "FY25 in one page"}, "segments": [
      {"pattern": {"name": "kpi-3up", "values": [
         {"big": "12%", "small": "Growth in recurring revenue, all regions"}, {"big": "94", "small": "NPS"}, {"big": "3", "small": "Launches"}]}},
      {"pattern": {"name": "process-flow", "values": {"steps": [
@@ -168,10 +168,10 @@ func TestExpandedDeckFindingsAreAuthored(t *testing.T) {
 			"INPUT.unknown_key @ /structure/sections/0/slides/0/zz #4 <- ",
 		}, never: []string{"/slides"}},
 		{name: "compose and pattern grids", deck: expandedGridsDeck, want: []string{
-			// Row 3 of the merged grid is segment 2 (the banner is row 0).
+			// The banner wraps the measured body; segment 2 follows two seam pairs.
 			// Only findings that measure no text are pinned: a font decides
 			// the others.
-			"INPUT.MISSING_ALT_TEXT @ /slides/1/compose/segments/2/diagram #2 <- /slides/1/shape_grid/rows/3/cells/0/grid/rows/0/cells/0/diagram",
+			"INPUT.MISSING_ALT_TEXT @ /slides/1/compose/segments/2/diagram #2 <- /slides/1/shape_grid/rows/1/cells/0/grid/rows/6/cells/0/grid/rows/0/cells/0/diagram",
 			"INPUT.MISSING_ALT_TEXT @ /slides/2/compose/segments/1/compose/segments/1/diagram #3 <- /slides/2/shape_grid/rows/0/cells/1/grid/rows/1/cells/0/grid/rows/0/cells/0/diagram",
 		}, never: []string{"/slides/1/shape_grid", "/slides/2/shape_grid", "/slides/1/rendered_shapes"}},
 	} {
@@ -353,11 +353,11 @@ func TestAuthoredPathsAddress(t *testing.T) {
 		{"structure divider title", expandedStructureDeck, "/slides/2/content/0", "", "/structure/sections/0/title", 3, true},
 		{"structure divider", expandedStructureDeck, "/slides/4/layout_id", "", "/structure/sections/1", 5, false},
 		{"structure slide", expandedStructureDeck, "/slides/5/pattern/values/2/big", "", "/structure/sections/1/slides/0/pattern/values/2/big", 6, true},
-		{"compose pattern cell", expandedGridsDeck, "/slides/1/shape_grid/rows/1/cells/0/grid/rows/0/cells/1/shape/text", "", "/slides/1/compose/segments/0/pattern/values/1", 2, false},
-		{"compose pattern cell text", expandedGridsDeck, "/slides/1/shape_grid/rows/1/cells/0/grid/rows/0/cells/1/shape/text/paragraphs/1", "", "/slides/1/compose/segments/0/pattern/values/1/small", 2, true},
+		{"compose pattern cell", expandedGridsDeck, "/slides/1/shape_grid/rows/1/cells/0/grid/rows/0/cells/0/grid/rows/0/cells/1/shape/text", "", "/slides/1/compose/segments/0/pattern/values/1", 2, false},
+		{"compose pattern cell text", expandedGridsDeck, "/slides/1/shape_grid/rows/1/cells/0/grid/rows/0/cells/0/grid/rows/0/cells/1/shape/text/paragraphs/1", "", "/slides/1/compose/segments/0/pattern/values/1/small", 2, true},
 		{"compose nested diagram", expandedGridsDeck, "/slides/2/shape_grid/rows/0/cells/1/grid/rows/1/cells/0/grid/rows/0/cells/0/diagram/data", "", "/slides/2/compose/segments/1/compose/segments/1/diagram/data", 3, true},
 		{"compose banner", expandedGridsDeck, "/slides/1/shape_grid/rows/0/cells/0/shape/text", "", "/slides/1/compose/banner", 2, false},
-		{"compose segment", expandedGridsDeck, "/slides/1/shape_grid/rows/2", "", "/slides/1/compose/segments/1", 2, true},
+		{"compose segment", expandedGridsDeck, "/slides/1/shape_grid/rows/1/cells/0/grid/rows/3", "", "/slides/1/compose/segments/1", 2, true},
 		{"compose envelope", expandedGridsDeck, "/slides/1/shape_grid", "", "/slides/1/compose", 2, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -739,6 +739,51 @@ func TestAuthoredSplitRowMatchesRetainedContent(t *testing.T) {
 				if !reflect.DeepEqual(cells[col], sourceCell) {
 					t.Errorf("retained cell %s=%+v maps to %s=%+v", pointer, cells[col], mapped.Path, sourceCell)
 				}
+			}
+		}
+	}
+}
+
+func TestMeasuredComposeCellProvenance(t *testing.T) {
+	for _, direction := range []string{"vertical", "horizontal"} {
+		t.Run(direction, func(t *testing.T) {
+			c := &ComposeInput{Direction: direction, Divider: true, Banner: &patterns.BannerSpec{}, Segments: make([]SegmentInput, 3)}
+			for i := 0; i < 7; i++ {
+				tail := fmt.Sprintf("/rows/1/cells/0/grid/rows/%d/cells/0/grid", i)
+				if direction == "horizontal" {
+					tail = fmt.Sprintf("/rows/1/cells/0/grid/rows/0/cells/%d/grid", i)
+				}
+				band, seg, _ := composeCell(c, pointerTokens(tail))
+				want := -1
+				if i%3 == 0 {
+					want = i / 3
+				}
+				if band != "" || seg != want {
+					t.Fatalf("%s: band=%q segment=%d, want %d", tail, band, seg, want)
+				}
+			}
+		})
+	}
+}
+
+func TestMeasuredComposeDecoratedLeafProvenance(t *testing.T) {
+	for _, leaf := range []string{`"diagram":{"type":"pyramid","data":{}}`, `"text":{"text":"A body"}`, `"table":{"headers":["A"],"rows":[["B"]]}`, `"image":{"path":"example.png"}`, `"grid":{"columns":1,"rows":[]}`} {
+		var c ComposeInput
+		if err := json.Unmarshal([]byte(`{"direction":"vertical","gaps":[3],"segments":[{"heading":"Heading","caption":"Caption",`+leaf+`},{"text":{"text":"Other"}}]}`), &c); err != nil {
+			t.Fatal(err)
+		}
+		a := newAuthoredPaths(&PresentationInput{})
+		for _, tc := range []struct{ tail, want string }{
+			{"/rows/0/cells/0/grid/rows/0/cells/0/shape/text", "/segments/0/heading"},
+			{"/rows/0/cells/0/grid/rows/2/cells/0/shape/text", "/segments/0/caption"},
+			{"/rows/0/cells/0/grid/rows/1/cells/0/grid/rows/0/cells/0/diagram", "/segments/0"},
+		} {
+			got, _ := a.composeRest(&c, "/slides/0/compose", tc.tail)
+			if strings.Contains(leaf, `"diagram"`) && tc.want == "/segments/0" {
+				tc.want += "/diagram"
+			}
+			if got != tc.want {
+				t.Errorf("leaf %s tail %s: got %s want %s", leaf, tc.tail, got, tc.want)
 			}
 		}
 	}

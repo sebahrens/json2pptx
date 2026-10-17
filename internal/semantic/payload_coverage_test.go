@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/deckinput"
 )
 
 // This file holds the per-kind payload-field round-trip coverage gate
@@ -25,10 +27,15 @@ import (
 // content is expected to survive into the compiled slide; a documented field
 // with rendered=false is one the compiler intentionally does not emit, and why
 // records the deliberate reason so the exemption is a record, not an accident.
+// Structural fields use check to assert their actual compiled geometry settings
+// and compare against a control; they do not use a text-sentinel exemption.
 type fieldProbe struct {
 	inject   func(sentinel string) map[string]any
 	rendered bool
 	why      string
+	// check verifies compiled structural effects for nontext fields, rather
+	// than exempting them from the round-trip gate.
+	check func(*testing.T, deckinput.SlideInput)
 }
 
 // covChart builds a minimal typed, data-bearing chart payload (the shape
@@ -356,6 +363,35 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 	// go-slide-creator-fn2ka: every region's content, the slide title, the
 	// takeaway and each source reach the compiled grid / slide.
 	KindRegions: {
+		"gap": {inject: func(string) map[string]any {
+			return covRegions(map[string]any{"gap": 17}, "Narrative")
+		}, check: func(t *testing.T, slide deckinput.SlideInput) {
+			grid := slide.ShapeGrid
+			if grid == nil || grid.Gap != 17 || grid.ColGap != 17 || grid.RowGap != 17 {
+				t.Fatalf("authored 17pt gap did not reach compiled region seams: %+v", grid)
+			}
+			baseline, _, err := Compile(&DeckSpec{Meta: DeckMeta{Title: "Coverage Deck"}, Slides: []SlideSpec{{Kind: KindRegions, Body: covRegions(map[string]any{}, "Narrative")}}}, CompileOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if baseline.Slides[0].ShapeGrid.Gap == grid.Gap {
+				t.Fatal("authored gap has no effect relative to default regions")
+			}
+		}},
+		"divider": {inject: func(string) map[string]any {
+			return covRegions(map[string]any{"divider": true}, "Narrative")
+		}, check: func(t *testing.T, slide deckinput.SlideInput) {
+			if slide.ShapeGrid == nil || string(slide.ShapeGrid.ColRule) != `"all"` {
+				t.Fatalf("divider:true did not compile to native region column seams: %+v", slide.ShapeGrid)
+			}
+			baseline, _, err := Compile(&DeckSpec{Meta: DeckMeta{Title: "Coverage Deck"}, Slides: []SlideSpec{{Kind: KindRegions, Body: covRegions(map[string]any{"divider": false}, "Narrative")}}}, CompileOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(baseline.Slides[0].ShapeGrid.ColRule) != 0 {
+				t.Fatalf("divider:false still emits native column seams: %s", baseline.Slides[0].ShapeGrid.ColRule)
+			}
+		}},
 		"regions": {inject: func(s string) map[string]any { return covRegions(map[string]any{}, s) }, rendered: true},
 		"arrangement": {inject: func(string) map[string]any {
 			return covRegions(map[string]any{"arrangement": "rows"}, "Narrative")
@@ -597,6 +633,10 @@ func TestSemanticPayloadFieldCoverage(t *testing.T) {
 				}
 				if len(input.Slides) != 1 {
 					t.Fatalf("expected exactly 1 emitted slide, got %d", len(input.Slides))
+				}
+				if probe.check != nil {
+					probe.check(t, input.Slides[0])
+					return
 				}
 				encoded, err := json.Marshal(input.Slides[0])
 				if err != nil {

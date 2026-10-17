@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 
@@ -267,5 +268,35 @@ func TestConsultingHeatmapExtremeFiniteRange(t *testing.T) {
 	}
 	if len(fills) != 4 || fills[0] != "#E8EEF5" || fills[2] != "#346C9B" {
 		t.Fatalf("extremefinite range lost scale: %v", fills)
+	}
+}
+
+func TestConsultingStakeholderVerticalDomainKeepsMidpoint(t *testing.T) {
+	p, _ := Default().Get("stakeholder-map")
+	v := map[string]any{"x_axis_label": "Interest", "y_axis_label": "Influence", "points": []any{map[string]any{"label": "A", "x": 0.0, "y": 100.0, "size": 40.0, "status": "supporter"}, map[string]any{"label": "M", "x": 50.0, "y": 50.0, "size": 40.0, "status": "neutral"}, map[string]any{"label": "B", "x": 100.0, "y": 0.0, "size": 40.0, "status": "blocker"}}}
+	ctx := ExpandContext{LayoutBounds: LayoutBounds{Width: 12700000, Height: 6350000}}
+	grid, err := p.Expand(ctx, &v, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	centers := []float64{}
+	for _, layer := range grid.Rows[0].Cells[0].Layers {
+		if layer.Shape.Geometry == "ellipse" && layer.Frame.H*500 > 20 {
+			centers = append(centers, (layer.Frame.Y+layer.Frame.H/2)*500)
+		}
+	}
+	if len(centers) != 3 {
+		t.Fatalf("lost explicitmarkers: %v", centers)
+	}
+	wantMid := 44.0 + (500-132.0)/2
+	if math.Abs(centers[1]-wantMid) > .001 || math.Abs((centers[0]+centers[2])/2-wantMid) > .001 {
+		t.Fatalf("normalizedmidpoint changed: %v want %g", centers, wantMid)
+	}
+	if centers[0] < 44+24 || centers[2] > 500-88-24 {
+		t.Fatalf("missing radius clearance: %v", centers)
+	}
+	ctx.LayoutBounds.Height = 170 * 12700
+	if _, err := p.Expand(ctx, &v, nil, nil); err == nil || !strings.Contains(err.Error(), "too short") {
+		t.Fatalf("expected measured undersized-domain refusal, got %v", err)
 	}
 }

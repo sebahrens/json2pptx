@@ -135,6 +135,8 @@ second template.
 
 - Patch at the finding's `path` with `deck_id` + `patch`; take a
   `patch_verified` fix as given.
+  Compose findings map through bands and gaps to the authored segment,
+  heading or caption.
 - Prefer the repair that keeps the visual: shorten → drop a detail line → add
   a region or slide → change the kind. Dropping to bullets (`layout: content`)
   is the last resort, even when a verified fix offers it first.

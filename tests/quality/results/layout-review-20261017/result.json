@@ -96,7 +96,18 @@
       "go-slide-creator-xdga4",
       "go-slide-creator-mkc83",
       "go-slide-creator-r86js",
-      "go-slide-creator-kjv64"
+      "go-slide-creator-kjv64",
+      "go-slide-creator-czzp4",
+      "go-slide-creator-bqo1u",
+      "go-slide-creator-mqr7q",
+      "go-slide-creator-ma4i1",
+      "go-slide-creator-939z9",
+      "go-slide-creator-ww5ys",
+      "go-slide-creator-wiegb",
+      "go-slide-creator-6d3yj",
+      "go-slide-creator-k1brr",
+      "go-slide-creator-083nu",
+      "go-slide-creator-l8q3b"
     ]
   },
   "templates": [
@@ -144,10 +155,13 @@
     "stress_coverage": "15 generated scenarios for Mekko/combo/butterfly cover minimum/dense/edge data, validate and render successfully.",
     "recommendation_consistency": "One contextual scoring pass precedes shortlist selection; score/band/rationale/composition stay consistent across pattern/chart/diagram/compose. Caller-only alternatives remain available;72/72 exact top-one evaluation passes.",
     "chart_discovery": "Mekko/combo/butterfly recommendation contracts match authoritative required/optional data keys, point at slides[0].chart.data, and provide examples that validate/render without degrading.",
-    "readable_maxima": "19 new patterns \u00d7 5 templates (including local p-style): 95 actual writer/geometry or explicit fit-refusal checks pass. Native numeric heatmap axes and stakeholder labels retain 12pt; dense numeric values use the documented 10pt-minimum caption role, promoted to 12pt in actual native output. Fishbone framework refuses actual SVG content loss.",
-    "authored_paths": "New layout review findings map merged-grid coordinates to authored JSON pointers, including nested layers; template-qa-deck validate/render parity passes on both templates.",
+    "readable_maxima": "19 new patterns \u00d7 5 templates (including local p-style): 95 actual writer/geometry or explicit fit-refusal checks pass. Native numeric heatmap axes and stakeholder labels retain 12pt; dense numeric values use the documented 10pt-minimum caption role, promoted to 12pt in actual native output. Fishbone framework refuses actual SVG content loss. The consulting maxima test is registered in the full corpus runner; exact non-short test and registration guard pass.",
+    "authored_paths": "New layout review findings map merged-grid coordinates to authored JSON pointers, including nested layers; template-qa-deck validate/render parity passes on both templates. Measured compose provenance now unwraps band body grids, seam spacer rows/cells and heading/caption frames across both axes and nested/native leaves; dedicated locator regressions pass.",
     "supporting_placement": "Spectrum declares supporting-band placement and native recommendations compose it with substantive decision text. Seven formerly sparse exemplars now meet unchanged 29% ink and 1.5 margin gates across four templates.",
-    "wiki_deployment": "Actual0.5.0 engine: 18pages/2sections/0orphans, strict dry-run+ingest and31stdio MCP tools. HTTP /mcp unauthorized401, bearer initialize and wiki_search pass. Runtime edits survive restart, changed bundles warn without overwrite, interrupted seeds retry, reinstall removes obsolete source pages/schemas. Both archive recipes stage the bundle, native installed wrapper and Compose config pass. Docker image source build is configured but was not executed."
+    "wiki_deployment": "Actual0.5.0 engine: 18pages/2sections/0orphans, strict dry-run+ingest and31stdio MCP tools. HTTP /mcp unauthorized401, bearer initialize and wiki_search pass. Runtime edits survive restart, changed bundles warn without overwrite, interrupted seeds retry, reinstall removes obsolete source pages/schemas. Both archive recipes stage the bundle, native installed wrapper and Compose config pass. Docker Linuxarm64 image built successfully from checksum-matched pinned source and locked dependencies; actual image stdio31tools/18pages/search plus HTTP401/authenticatedinitialize/search pass. Restrictive-umask installs publish readable source/launchers; existing private bin/share modes stay unchanged and symlink aliases cannot replace source. Wiki-only source changes trigger Docker builds.",
+    "region_payload_coverage": "Documented gap/divider fields have structural compilation probes against controls: gap changes Gap/ColGap/RowGap; divider emits ColRule on seams.",
+    "stakeholder_boundaries": "Actual written OOXML and raster review on midnight-blue/local p-style: four x/y0/100 corners,size40 keep markers clear of axis text. Vertical domain reserves maximum marker radius+4pt; x mapping, normalized ordering, midpoint, diameters and background plot remain intact. Undersized domains refuse explicitly; five-template maxima and focused density pass.",
+    "coverage_followups": "Core listing remains prose-bounded with exact schemas/full named docs; compose shortlist retains contextual scores and runnable recipes. Optional local p-style matrix tests run when present. Derived image layouts remain advertised; authored-path fixtures allocate real native minimums. Peer typography connectivity is computed within each text role, retaining within-axis mismatch detection and narrow measured SVG-refusal recognition."
   },
   "visual_acceptance": {
     "native_regions_chapters_stickers": "18 rendered slides inspected across both templates",

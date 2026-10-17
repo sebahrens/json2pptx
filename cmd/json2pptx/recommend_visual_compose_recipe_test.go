@@ -59,11 +59,31 @@ func TestRecommendVisualComposeRecipes(t *testing.T) {
 				rec := recommendVisualFor(t, mc, args)
 				top := rec.Candidates[0]
 				if _, shortlisted := tc.args["candidates"]; shortlisted {
-					if tc.id == "kpi+process" && tpl == "midnight-blue" && rec.Candidates[0].Name != "kpi-3up" {
-						t.Errorf("template-aware global KPI lead changed: %+v", rec.Candidates)
+					openArgs := map[string]any{}
+					for key, value := range args {
+						if key != "candidates" {
+							openArgs[key] = value
+						}
 					}
-					// Filtering preserves global scores; this test verifies the explicit
-					// composition remains authorable, not an artificial shortlist boost.
+					open := recommendVisualFor(t, mc, openArgs)
+					shared := 0
+					for _, requested := range rec.Candidates {
+						for _, global := range open.Candidates {
+							if requested.Name != global.Name {
+								continue
+							}
+							shared++
+							if requested.Score != global.Score || requested.ConfidenceBand != global.ConfidenceBand || requested.Rationale != global.Rationale {
+								t.Errorf("shortlist changed global ranking metadata: shortlisted=%+v global=%+v", requested, global)
+							}
+						}
+					}
+					if shared == 0 {
+						t.Fatal("fixture exercises no candidate shared with open recommendations")
+					}
+					// Shared candidates keep their global scores. An explicitly
+					// requested pair may be absent from the open model's choices;
+					// its runnable recipe must still be offered to the caller.
 					top = candidateNamed(t, rec, tc.want)
 				}
 				// Views the regions kind can hold lead with that kind; the

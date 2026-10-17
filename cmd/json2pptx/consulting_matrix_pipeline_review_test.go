@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -10,12 +12,25 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 func TestMeasuredMatricesSurviveSemanticPipeline(t *testing.T) {
 	for _, template := range []string{"midnight-blue", "p-style"} {
 		for _, kind := range []string{"raci", "status_board"} {
 			t.Run(template+"/"+kind, func(t *testing.T) {
+				if template == "p-style" {
+					info, err := os.Stat(filepath.Join(testutil.TemplatesDir(), "p-style.pptx"))
+					if os.IsNotExist(err) {
+						t.Skip("optional local p-style template is absent")
+					}
+					if err != nil {
+						t.Fatal(err)
+					}
+					if !info.Mode().IsRegular() {
+						t.Fatal("local p-style template is not a regular file")
+					}
+				}
 				item := map[string]any{"kind": kind, "title": "Every workstream has an accountable owner", "takeaway": "Resolve the red workstreams before the next gate."}
 				rows := []any{}
 				for i := 0; i < 10; i++ {

@@ -1194,7 +1194,10 @@ func TestTemplateInfoCanonicalLayoutAvailability(t *testing.T) {
 			if !slices.Contains(available, "image-right") {
 				t.Errorf("modern's picture beside subtitle should resolve image-right: %v", available)
 			}
-			for _, name := range []string{"image-left", "agenda", "quote"} {
+			if !slices.Contains(available, "image-left") || info.CanonicalLayoutIDs["image-left"] == "" {
+				t.Errorf("portable image-left fallback must be available with a concrete host: %v %v", available, info.CanonicalLayoutIDs)
+			}
+			for _, name := range []string{"agenda", "quote"} {
 				if !slices.Contains(unavailable, name) {
 					t.Errorf("%s incorrectly advertised as available: %v", name, unavailable)
 				}

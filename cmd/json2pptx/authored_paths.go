@@ -268,6 +268,16 @@ func (a *authoredPaths) composeRest(c *ComposeInput, pointer, tail string) (stri
 	}
 	inner := joinPointer(tokens[1:])
 	s := &c.Segments[seg]
+	if s.Heading != "" || s.Caption != "" {
+		var field string
+		inner, field = composePaneRest(s, inner)
+		if field != "" {
+			return segment + field, false
+		}
+		if inner == "" {
+			return segment, false
+		}
+	}
 	switch {
 	case s.Compose != nil:
 		sub, exact := a.composeRest(s.Compose, pointer+segment+"/compose", inner)
@@ -288,11 +298,32 @@ func (a *authoredPaths) composeRest(c *ComposeInput, pointer, tail string) (stri
 	return segment, false
 }
 
+// composePaneRest removes the optional heading/caption frame around a leaf.
+func composePaneRest(s *SegmentInput, inner string) (string, string) {
+	bodyRow := 0
+	if s.Heading != "" {
+		bodyRow = 1
+		if strings.HasPrefix(inner, "/rows/0/") {
+			return "", "/heading"
+		}
+	}
+	if sub, ok := cutPrefixPath(inner, "/rows/"+strconv.Itoa(bodyRow)+"/cells/0/grid"); ok {
+		return sub, ""
+	}
+	if s.Caption != "" && strings.HasPrefix(inner, "/rows/"+strconv.Itoa(bodyRow+1)+"/") {
+		return "", "/caption"
+	}
+	return "", ""
+}
+
 // composeCell says which part of envelope c owns a place in its merged grid
 // (tokens, from "rows"): a band ("/banner", "/callout"), or segment seg with
 // the tokens that follow the segment's cell. seg is -1 with no band when the
 // place belongs to neither.
 func composeCell(c *ComposeInput, tokens []string) (band string, seg int, rest []string) {
+	if composeUsesMeasuredLayout(c) {
+		return measuredComposeCell(c, tokens)
+	}
 	row, err := strconv.Atoi(tokens[1])
 	if err != nil {
 		return "", -1, nil
@@ -330,6 +361,53 @@ func composeCell(c *ComposeInput, tokens []string) (band string, seg int, rest [
 		return "", -1, nil
 	}
 	return "", seg, tokens
+}
+
+// measuredComposeCell follows the band wrapper and the two spacer cells/rows
+// between measured panes. Spacer findings belong to the envelope.
+func measuredComposeCell(c *ComposeInput, tokens []string) (string, int, []string) {
+	row, err := strconv.Atoi(tokens[1])
+	if err != nil {
+		return "", -1, nil
+	}
+	if c.Banner != nil || c.Callout != nil {
+		if c.Banner != nil && row == 0 {
+			return "/banner", -1, nil
+		}
+		bodyRow := 0
+		if c.Banner != nil {
+			bodyRow = 1
+		}
+		if c.Callout != nil && row == bodyRow+1 {
+			return "/callout", -1, nil
+		}
+		if row != bodyRow || len(tokens) < 7 || tokens[2] != "cells" || tokens[3] != "0" || tokens[4] != "grid" || tokens[5] != "rows" {
+			return "", -1, nil
+		}
+		tokens = tokens[5:]
+		row, err = strconv.Atoi(tokens[1])
+		if err != nil {
+			return "", -1, nil
+		}
+	}
+	rest := tokens[2:]
+	index := row
+	if c.Direction == "horizontal" {
+		if row != 0 || len(rest) < 2 || rest[0] != "cells" {
+			return "", -1, nil
+		}
+		index, err = strconv.Atoi(rest[1])
+		if err != nil {
+			return "", -1, nil
+		}
+		rest = rest[2:]
+	} else if len(rest) >= 2 && rest[0] == "cells" {
+		rest = rest[2:]
+	}
+	if index%3 != 0 || index/3 >= len(c.Segments) {
+		return "", -1, nil
+	}
+	return "", index / 3, rest
 }
 
 func joinPointer(tokens []string) string {

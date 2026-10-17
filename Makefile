@@ -181,10 +181,10 @@ endif
 # Ship source documentation and companion launcher together; no engine download.
 install-wiki:
 	@echo "==> Installing llm-wiki companion documentation..."
-	@mkdir -p "$(PREFIX)/bin"
+	@mkdir -p -m 0755 "$(PREFIX)/bin" "$(PREFIX)/share"
 	@sh scripts/stage-wiki.sh "$(PREFIX)/share/json2pptx"
 	@cp scripts/wiki.sh "$(PREFIX)/bin/json2pptx-wiki"
-	@chmod +x "$(PREFIX)/bin/json2pptx-wiki"
+	@chmod 0755 "$(PREFIX)/bin/json2pptx-wiki"
 	@echo "    Install pwc-llm-wiki 0.5.0, then connect json2pptx-wiki serve as a companion MCP."
 
 install-mcp:

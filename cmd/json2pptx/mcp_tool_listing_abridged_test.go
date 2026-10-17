@@ -138,12 +138,7 @@ func TestAbridgedListingKeepsEveryArgument(t *testing.T) {
 		t.Errorf("an unknown tool name was not refused with the listed names: %v %s", err, resultText(bad))
 	}
 
-	// The other profiles list the registered tools untouched.
-	withToolProfile(t, toolProfileCore)
-	_, core := listToolsOverWire(t, newJSON2PPTXMCPServer(profileTestConfig(t), toolProfileCore))
-	for _, tool := range core {
-		if tool.Name == "plan_deck" && tool.Description != mcpPlanDeckTool().Description {
-			t.Error("the core profile lists an abridged plan_deck")
-		}
-	}
+	// Core also bounds prose, while preserving exact schemas and serving
+	// the original full description through the named live detail call.
+	assertProfileAbridgesOnlyProse(t, toolProfileCore)
 }

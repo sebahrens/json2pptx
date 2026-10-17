@@ -67,7 +67,7 @@ echo ""
 # --- Install binary ---
 
 echo "==> Installing binary..."
-mkdir -p "$PREFIX/bin"
+mkdir -p -m 0755 "$PREFIX/bin"
 
 # Support both old (md2pptx) and new (json2pptx) binary names in archive
 if [ -f "$SCRIPT_DIR/bin/json2pptx" ]; then
@@ -83,9 +83,10 @@ echo "    $PREFIX/bin/json2pptx"
 
 # --- Install the companion source bundle (the engine is installed separately) ---
 if [ -d "$SCRIPT_DIR/wiki-source" ]; then
+  mkdir -p -m 0755 "$PREFIX/share"
   JSON2PPTX_WIKI_REPO="$SCRIPT_DIR/wiki-source" sh "$SCRIPT_DIR/wiki-source/scripts/stage-wiki.sh" "$PREFIX/share/json2pptx"
   cp "$SCRIPT_DIR/wiki-source/scripts/wiki.sh" "$PREFIX/bin/json2pptx-wiki"
-  chmod +x "$PREFIX/bin/json2pptx-wiki"
+  chmod 0755 "$PREFIX/bin/json2pptx-wiki"
   echo "    Wiki: $PREFIX/share/json2pptx (connect json2pptx-wiki serve after installing pwc-llm-wiki 0.5.0)"
 fi
 

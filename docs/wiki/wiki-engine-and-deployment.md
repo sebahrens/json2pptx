@@ -87,7 +87,9 @@ for the build and MCP transport examples.
 ## Verified capabilities and current limits
 
 Search, typed listing, reading, stats, schema inspection, and stdio MCP discovery
-are exercised against the actual engine. Indexes and runtime configuration live
+are exercised against the actual engine. The Linux arm64 companion image was
+built from the verified pinned source and passed stdio and authenticated HTTP
+MCP search checks. Indexes and runtime configuration live
 outside immutable packaged documentation. The engine provides lexical BM25,
 optional fuzzy search and guarded regex; it does not require an embedding API.
 

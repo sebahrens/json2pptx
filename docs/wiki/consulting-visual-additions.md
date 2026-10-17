@@ -52,11 +52,13 @@ Seven framework host kinds expose the existing diagram families directly:
 `pyramid`. Their closed data fields and examples come from the corresponding
 pattern; use live discovery rather than placing arbitrary diagram data in a
 kind. A quantitative heatmap differs from `risk_heatmap`'s likelihood × impact.
-Its row and column labels stay at 12pt. Numeric values use the dense-caption
-role (10pt minimum); the current native pipeline writes them at 12pt.
+Its row and column labels have a 12pt minimum. Numeric values use the dense-caption
+role (10pt minimum); the default native pipeline writes them at 12pt.
 Crowded or long labels are refused instead of shortened silently. Stakeholder
-labels also stay at 12pt, with explicit refusal when markers or labels cannot
-be placed without collisions. Fishbone frameworks refuse actual SVG content
+labels also have a 12pt minimum. The vertical plotting domain reserves marker-radius
+padding so valid 0%/100% positions stay clear of axis text; coordinates and
+diameters remain authored. Placements that cannot keep markers and labels clear
+are refused. Fishbone frameworks refuse actual SVG content
 loss; the general raw diagram family retains its own contract.
 
 ## Three chart contracts

@@ -271,7 +271,9 @@ func peerIsFigure(p peerPara) bool {
 // peerRoleMismatches groups the shapes into peer groups and returns every role
 // a group sets at more than one size.
 func peerRoleMismatches(shapes []peerShape) []peerRoleMismatch {
-	groups := peerGroupsOf(shapes, func(a, b peerShape) bool { return a.sig == b.sig })
+	// Build connectivity within each text role. Regular value cells must not
+	// bridge otherwise unrelated bold row/column axis groups.
+	groupsByRole := map[string][]int{}
 	type key struct {
 		group int
 		role  string
@@ -279,16 +281,16 @@ func peerRoleMismatches(shapes []peerShape) []peerRoleMismatch {
 	seen := map[key]map[float64][]string{}
 	var order []key
 	for i, s := range shapes {
-		lead := ""
-		if peerIsFigure(s.paras[0]) {
-			lead = "figure-led "
-		}
 		for pi, p := range s.paras {
-			idx := pi
-			if idx > 2 {
-				idx = 2 // paragraphs past the second are a list: one role
+			role := peerParagraphRole(s, pi)
+			groups, ok := groupsByRole[role]
+			if !ok {
+				groups = peerGroupsOf(shapes, func(a, b peerShape) bool {
+					return a.sig == b.sig && peerShapeHasRole(a, role) && peerShapeHasRole(b, role)
+				})
+				groupsByRole[role] = groups
 			}
-			k := key{groups[i], fmt.Sprintf("%s %spara%d %s", s.sig, lead, idx, p.role)}
+			k := key{groups[i], s.sig + " " + role}
 			if seen[k] == nil {
 				seen[k] = map[float64][]string{}
 				order = append(order, k)
@@ -304,6 +306,23 @@ func peerRoleMismatches(shapes []peerShape) []peerRoleMismatch {
 		}
 	}
 	return out
+}
+
+// Paragraph position and typography define a role independently of its size.
+func peerParagraphRole(shape peerShape, index int) string {
+	lead := ""
+	if peerIsFigure(shape.paras[0]) {
+		lead = "figure-led "
+	}
+	return fmt.Sprintf("%spara%d %s", lead, min(index, 2), shape.paras[index].role)
+}
+func peerShapeHasRole(shape peerShape, role string) bool {
+	for i := range shape.paras {
+		if peerParagraphRole(shape, i) == role {
+			return true
+		}
+	}
+	return false
 }
 
 // peerGrowthMismatches compares a slide generated under a grow-to-fill type
@@ -554,9 +573,14 @@ func readFirstSlideXML(t *testing.T, pptxPath string) string {
 // group written at several sizes. refused reports that generation refused the
 // payload as unreadable: it is past what the pattern holds, and a refusal is
 // not a mixed-size slide.
+// Match the actual renderer's measured truncation diagnosis, not a generic
+// invalid payload or a label that merely mentions truncation.
+var peerMeasuredSVGRefusalRE = regexp.MustCompile(`diagram content cannot be shown in full: label shrunk to [0-9]+(?:\.[0-9]+)?pt and truncated — original [0-9]+ chars; split the content or enlarge the frame; text is never clipped or reduced below its written readable size$`)
+
 func peerUnreadableRefusal(err error) bool {
 	message := err.Error()
 	return strings.Contains(message, "generation refused") ||
+		peerMeasuredSVGRefusalRE.MatchString(message) ||
 		(strings.Contains(message, "text needs ") && strings.Contains(message, "at its written readable size but only ") && strings.Contains(message, "is allocated; split the content or enlarge the frame"))
 }
 
@@ -692,6 +716,11 @@ func TestPeerUnreadableRefusalIsSpecific(t *testing.T) {
 	}{
 		{"written geometry", "invalid slide specification: slide1: pattern: text needs 57pt at its written readable size but only 48pt is allocated; split the content or enlarge the frame; text is never clipped or reduced below its written readable size", true},
 		{"pipeline refusal", "generation refused: readable minimum would be exceeded", true},
+
+		{"measured SVG truncation", "invalid slide specification: slide1: pattern: diagram content cannot be shown in full: label shrunk to 12.0pt and truncated — original 50 chars; split the content or enlarge the frame; text is never clipped or reduced below its written readable size", true},
+		{"unmeasured SVG payload", "diagram content cannot be shown in full: expected circles array", false},
+		{"truncation without split refusal", "diagram content cannot be shown in full: label shrunk to 12.0pt and truncated — original 50 chars", false},
+		{"unmeasured font size", "diagram content cannot be shown in full: label shrunk to small and truncated — original 50 chars; split the content or enlarge the frame; text is never clipped or reduced below its written readable size", false},
 		{"missing asset", "invalid slide specification: missing hero.jpg", false},
 		{"bad payload", "invalid slide specification: pattern: text needs a string", false},
 		{"other allocation", "text needs memory but only 48pt is allocated", false},

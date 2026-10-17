@@ -51,8 +51,8 @@ The HTTP Compose add-on is designed to be merged with an existing Go deployment.
 Check `git -C /path/to/trusted/llm-wiki rev-parse HEAD` against the commit above
 before substituting a local context. The builder checks the Cargo version,
 uses `--locked`, and checks the built executable's version. Container builds
-require access to the pinned base image and Cargo.lock dependencies. This task
-verified the installed engine rather than downloading those dependencies.
+require access to the pinned base image and Cargo.lock dependencies. The local
+Linux arm64 image build was verified against the checksum-matched source archive.
 
 To add an HTTP companion to the existing deployment:
 
@@ -73,7 +73,8 @@ The Go service remains on its existing port and transport.
 
 The source-build runtime intentionally reuses the pinned Rust image for Git and
 runtime libraries; it favors a verifiable working build over a smaller unverified
-release image. No Docker build was claimed as verified without running it.
+release image. The built image passed stdio MCP discovery/search and authenticated
+HTTP initialization/search; unauthenticated HTTP requests returned 401.
 
 ## Canonical source and local edits
 

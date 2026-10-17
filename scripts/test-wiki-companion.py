@@ -146,6 +146,39 @@ def run():
         for staging in ["$(DIST_STAGING)", "$(WIN_DIST_STAGING)"]:
             assert 'sh scripts/stage-wiki.sh "' + staging + '/wiki-source"' in makefile
         print("package reinstall removes stale files; both archive recipes ship wiki PASS")
+        restrictive = Path(temporary) / "restrictive-source"
+        subprocess.run(["sh", "-c", 'umask 077; exec sh "$1" "$2"', "wiki-mode-test", str(ROOT / "scripts/stage-wiki.sh"), str(restrictive)], check=True)
+        for path in [restrictive, *restrictive.rglob("*")]:
+            mode = path.stat().st_mode & 0o777
+            expected = 0o755 if path.is_dir() or path.suffix == ".sh" else 0o644
+            assert mode == expected, (str(path), oct(mode), oct(expected))
+        print("restrictive umask publishes public bundle modes PASS")
+        private_prefix = Path(temporary) / "private-prefix"
+        for name in ["bin", "share"]:
+            directory = private_prefix / name
+            directory.mkdir(parents=True, exist_ok=True)
+            directory.chmod(0o700)
+        subprocess.run(["make", "install-wiki", "PREFIX=" + str(private_prefix)], cwd=ROOT, check=True, capture_output=True)
+        for name in ["bin", "share"]:
+            assert (private_prefix / name).stat().st_mode & 0o777 == 0o700, "existing private directory was relaxed"
+        public_prefix = Path(temporary) / "new-prefix"
+        subprocess.run(["sh", "-c", 'umask 077; exec make install-wiki "PREFIX=$1"', "wiki-install-mode-test", str(public_prefix)], cwd=ROOT, check=True, capture_output=True)
+        for name in ["bin", "share"]:
+            assert (public_prefix / name).stat().st_mode & 0o777 == 0o755, "new public directory inherited restrictive umask"
+        print("existing private bin/share retained; new bin/share0755 PASS")
+        guard_source = Path(temporary) / "guard-source"
+        shutil.copytree(packaged, guard_source)
+        sentinel = guard_source / ".source-must-survive"
+        sentinel.write_text("canonical source")
+        source_alias = Path(temporary) / "source-alias"
+        source_alias.symlink_to(guard_source, target_is_directory=True)
+        parent_alias = Path(temporary) / "parent-alias"
+        parent_alias.symlink_to(guard_source.parent, target_is_directory=True)
+        for source, destination in [(source_alias, guard_source), (guard_source, parent_alias / guard_source.name)]:
+            refused = subprocess.run(["sh", str(ROOT / "scripts/stage-wiki.sh"), str(destination)], env=os.environ | {"JSON2PPTX_WIKI_REPO": str(source)}, capture_output=True, text=True)
+            assert refused.returncode != 0 and "Cannot replace the source" in refused.stderr, refused.stderr
+            assert sentinel.read_text() == "canonical source", "aliased source was replaced"
+        print("physical source/destination aliases refuse source replacement PASS")
 
 
 def run_http():

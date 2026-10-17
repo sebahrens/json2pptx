@@ -29,6 +29,7 @@ import (
 var shortSensitiveTests = map[string]func(*testing.T){
 	// A part of the matrix under -short.
 	"TestSchemaMaximaStayReadable":                             TestSchemaMaximaStayReadable,
+	"TestConsultingSchemaMaximaAreMeasured":                    TestConsultingSchemaMaximaAreMeasured,
 	"TestSchemaMaximaMeasurementsMatchWrittenRuns":             TestSchemaMaximaMeasurementsMatchWrittenRuns,
 	"TestCLIExtremeSchemaPatternsCannotPublishTinyText":        TestCLIExtremeSchemaPatternsCannotPublishTinyText,
 	"TestPatternPreviewIsTheGeneratedSlide":                    TestPatternPreviewIsTheGeneratedSlide,
