@@ -1,21 +1,20 @@
 name: Docker
 
 # A change that cannot alter the image does not build one. Tag pushes ignore
-# path filters, so a release always builds.
+# path filters, so a release always builds. Documentation is an image input:
+# docs/wiki ships in the image, and canonical docs are embedded in the binary.
 on:
   push:
     branches: [main]
     tags: ["v*"]
     paths-ignore:
       - 'beads/**'
-      - 'docs/**'
       - 'scripts/ci_test_durations.txt'
       - 'scripts/ci_test_affinity.txt'
   pull_request:
     branches: [main]
     paths-ignore:
       - 'beads/**'
-      - 'docs/**'
       - 'scripts/ci_test_durations.txt'
       - 'scripts/ci_test_affinity.txt'
 
