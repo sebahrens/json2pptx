@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 func init() {
@@ -39,6 +40,14 @@ func consultingFrameworkHosts() []*consultingPattern {
 	for _, s := range specs {
 		typ := s.typ
 		out = append(out, &consultingPattern{name: s.name, description: s.desc, valuesSchema: s.schema, example: s.example, check: s.check, draw: func(c *consultingCanvas, v map[string]any) error {
+			if typ == "heatmap" {
+				return drawConsultingHeatmap(c, v)
+			}
+			if typ == "fishbone" || typ == "venn" {
+				if err := measureConsultingSVG(c, typ, v); err != nil {
+					return err
+				}
+			}
 			c.diagram = &types.DiagramSpec{Type: typ, Data: v}
 			return nil
 		}})
@@ -55,6 +64,23 @@ func checkConsultingHeatmap(v map[string]any) error {
 		row, ok := raw.([]any)
 		if !ok || len(row) != cols {
 			return fmt.Errorf("heatmap rows must match column labels")
+		}
+	}
+	return nil
+}
+
+// Consult the actual SVG layout rather than inventing a character-count cap.
+// Legacy raw diagrams may abbreviate labels; these closed consulting hosts
+// promise complete authored content and therefore refuse those placements.
+func measureConsultingSVG(c *consultingCanvas, typ string, v map[string]any) error {
+	findings, err := svggen.DryRender(&svggen.RequestEnvelope{Type: typ, Data: v, Output: svggen.OutputSpec{Width: int(c.w), Height: int(c.h), StrictFit: "strict"}})
+	if err != nil {
+		return c.refuse("diagram layout cannot fit: " + err.Error())
+	}
+	for _, f := range findings {
+		switch f.Code {
+		case svggen.FindingLabelTruncated, svggen.FindingLabelEllipsized, svggen.FindingLabelClipped, svggen.FindingOverflowSuppressed, svggen.FindingDiagramTextOverlap, svggen.FindingDiagramRegionOverflow:
+			return c.refuse("diagram content cannot be shown in full: " + f.Message)
 		}
 	}
 	return nil

@@ -1,3 +1,12 @@
+---
+title: "Consulting visual additions"
+type: documentation
+summary: "Native consulting visuals, chart contracts, and authoring alternatives"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, consulting-visuals]
+---
+
 # Consulting visual additions
 
 Choose the form from the claim; back to the [catalog](layout-catalog.md),
@@ -31,7 +40,8 @@ uses the full-slide `blank` layout so its headline stays inside the image band.
 | `bullet_chart` → `progress-list` | `rows` 3–8 `{label, actual, target, unit?}`; finite nonnegative actual, positive target; actual bar and target tick on a shared row scale. |
 | `image_hero` → `image-hero` | `image` with exactly one path/url, `headline` ≤160, optional eyebrow; `band: top|bottom|left` (default bottom). Full-slide image with native dark scrim and readable white text. Optional `takeaway` / `source` (≤200 each) stay inside the band; photo-overlapping automatic footer chrome is suppressed. On the raw path, slide/deck source and takeaway route into the same band; use `values.takeaway` instead of an external pattern callout. Use sparingly for opening or transitions. |
 
-Except source appendices, native text is measured at ≥12pt. A contract's
+Except source appendices and dense numeric-matrix value captions, native
+text is measured at ≥12pt. A contract's
 maximum count does not promise that every maximum-length field fits together;
 shorten the copy or allocate a larger frame when a measured refusal occurs.
 RACI/status matrices retain all rows at the readable floor; ordinary raw
@@ -42,6 +52,12 @@ Seven framework host kinds expose the existing diagram families directly:
 `pyramid`. Their closed data fields and examples come from the corresponding
 pattern; use live discovery rather than placing arbitrary diagram data in a
 kind. A quantitative heatmap differs from `risk_heatmap`'s likelihood × impact.
+Its row and column labels stay at 12pt. Numeric values use the dense-caption
+role (10pt minimum); the current native pipeline writes them at 12pt.
+Crowded or long labels are refused instead of shortened silently. Stakeholder
+labels also stay at 12pt, with explicit refusal when markers or labels cannot
+be placed without collisions. Fishbone frameworks refuse actual SVG content
+loss; the general raw diagram family retains its own contract.
 
 ## Three chart contracts
 
@@ -60,6 +76,10 @@ chart into a tiny segment to defeat that guard. Authored one-series legends
 or vertical gridlines on bar/line-family charts produce `REDUNDANT_LEGEND`
 / `CHART_VERTICAL_GRIDLINES` advice; intentional style is retained.
 
+A `spectrum` is a supporting band. Pair it with the argument it qualifies in
+a composition; recommendation recipes include that companion explicitly.
+The standalone semantic kind remains available and still reports sparse use.
+
 ## Flow alternatives
 
 Sankey is not supported. For origin/destination shares, use `stacked_bar`
@@ -77,6 +97,8 @@ title/footer chrome. `image-left` / `image-right` derive from native
 columns when no dedicated layout exists. Unsupported three/four/five-column
 aliases return an actionable alternative; use `regions` or a named pattern.
 Content `heading` reserves a styled heading above any native content type.
+Agenda aliases `contents`, `outline` and `toc` resolve to an available agenda
+host by its tags; a missing host is not advertised.
 
 A semantic deck can set `meta.chrome.sticker: Preliminary` (≤20 characters)
 or override it with slide `sticker`. A `section` with `show_chapters: true`

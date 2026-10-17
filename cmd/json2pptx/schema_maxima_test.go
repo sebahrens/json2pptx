@@ -508,6 +508,26 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 // process-flow pins (and agenda, next-steps) below record that newly visible extreme-schema debt; the
 // generated output of these payloads did not change.
 var schemaMaximaShrinkPt = map[string]float64{
+	"checklist":          0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"decision-tree":      0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"fishbone-framework": 0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"image-hero":         0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"ipo-flow":           0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"issue-tree":         0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"numeric-heatmap":    0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"pestel-framework":   0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"progress-list":      0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"prose-2col":         0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"raci-matrix":        0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"sources-list":       0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"spectrum":           0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"stakeholder-map":    0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"status-board":       0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"talent-nine-box":    0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"three-horizons":     0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"timeline-vertical":  0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"venn-framework":     0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+
 	"agenda":                       7.8, // Rule-based agenda (go-slide-creator-r3gsw): wider item column; nested cells measured (bzh34).
 	"agenda-with-images":           5.8,
 	"arch-stack":                   4.1,  // twelve 40-character component blocks per tier (go-slide-creator-6h1fy)
@@ -591,6 +611,26 @@ var schemaMaximaShrinkPt = map[string]float64{
 // the autofit measure took a bullet's hanging indent off its lines
 // (go-slide-creator-vn35f): their maximum payloads were never that large.
 var pStyleSchemaMaximaShrinkPt = map[string]float64{
+	"checklist":          0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"decision-tree":      0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"fishbone-framework": 0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"image-hero":         0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"ipo-flow":           0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"issue-tree":         0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"numeric-heatmap":    0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"pestel-framework":   0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"progress-list":      0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"prose-2col":         0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"raci-matrix":        0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"sources-list":       0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"spectrum":           0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"stakeholder-map":    0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"status-board":       0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"talent-nine-box":    0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"three-horizons":     0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"timeline-vertical":  0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+	"venn-framework":     0, // Extreme payload is measured/refused; see TestConsultingSchemaMaximaAreMeasured.
+
 	"agenda":                       7.8,
 	"agenda-with-images":           6.7,
 	"arch-stack":                   4.6, // component blocks (go-slide-creator-6h1fy)
@@ -656,6 +696,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 // rather than the largest the field bounds alone allow.
 func coherentMaximum(pattern string, v any) any {
 	dropIconAlternatives(v, 0)
+	v = coherentConsultingMaximum(pattern, v)
 	switch pattern {
 	case "card-grid":
 		// cells must number exactly columns x rows.

@@ -243,6 +243,10 @@ func wordingAuditDecks(t *testing.T) map[string][]byte {
 			continue
 		}
 		decks["kind/"+string(kind)] = deck(example)
+		// Fixed compositions have no pattern override; their default is already audited.
+		if !slices.Contains(semantic.PayloadFieldNames(kind), "pattern") {
+			continue
+		}
 		for _, c := range semantic.SlideAlternatives(kind, example) {
 			if c.Pattern == "" {
 				continue

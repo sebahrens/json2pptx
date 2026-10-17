@@ -1,4 +1,13 @@
-# Playbook: risk assurance
+---
+title: "Playbook: risk assurance"
+type: documentation
+summary: "json2pptx guide to playbook risk assurance"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Playbook: risk assurance
 
 Internal-audit and controls readouts: IT general controls (ITGC), SOX /
 ICFR, third-party assurance (SOC reports), control-design reviews, audit

@@ -40,10 +40,10 @@ func eightStepProcessSlides(t *testing.T) []any {
 	}
 	return []any{
 		map[string]any{"kind": "process", "title": "Eight steps deliver the savings in 12 months", "takeaway": "Each step has an owner and a date.", "steps": steps},
-		map[string]any{"kind": "process", "title": "Seven of them run before the first renewal date", "takeaway": "The last step runs for good.", "steps": steps[:7]},
+		map[string]any{"kind": "process", "title": "7 steps run before renewal", "takeaway": "The last step runs for good.", "steps": steps[:7]},
 		map[string]any{"kind": "process", "title": "A claim passes eight desks before it is paid", "takeaway": "Every desk adds a day.",
 			"steps": []any{"Intake", "Triage", "Assess", "Verify", "Approve", "Schedule", "Pay", "Close"}},
-		map[string]any{"kind": "process", "title": "Eight five-word steps take the claim to payment", "takeaway": "No step has two owners.",
+		map[string]any{"kind": "process", "title": "Eight steps complete a claim", "takeaway": "No step has two owners.",
 			"steps": []any{"Tag workloads and agree baseline", "Resize idle compute and storage", "Buy plans for base load", "Switch test systems off nightly",
 				"Set budgets and name owners", "Reopen the enterprise agreement now", "Report realised savings each month", "Make cost a release criterion"}},
 	}

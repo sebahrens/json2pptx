@@ -1,0 +1,20 @@
+# Add the documentation companion to the existing json2pptx deployment.
+# Streamable HTTP is opt-in and requires a bearer token, as the engine enforces.
+services:
+  wiki:
+    build:
+      context: .
+      dockerfile: Dockerfile.wiki
+      additional_contexts:
+        llm_wiki: https://github.com/pwc-ch-adv-ai/llm-wiki.git#9e7a1bffb0bb4b63d9efc758ff6fc078f402af00
+    command: ["serve", "--http", "8081"]
+    ports:
+      - "127.0.0.1:8081:8081"
+    environment:
+      JSON2PPTX_WIKI_HTTP_BIND: "0.0.0.0"
+      JSON2PPTX_WIKI_HTTP_TOKEN: ${JSON2PPTX_WIKI_HTTP_TOKEN:?Set a dedicated wiki bearer token of at least 32 safe characters}
+    volumes:
+      - wiki-state:/data
+    restart: unless-stopped
+volumes:
+  wiki-state:

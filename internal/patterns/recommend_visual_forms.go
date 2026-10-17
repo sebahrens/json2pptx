@@ -530,6 +530,10 @@ func applyTwinCueRouting(all []VisualCandidate, intentLower string) {
 
 // chartTypeSynonyms maps other words for a chart type onto the canonical one.
 var chartTypeSynonyms = map[string]string{
+	"butterfly":   "butterfly_chart",
+	"mekko":       "mekko_chart",
+	"marimekko":   "mekko_chart",
+	"combo":       "combo_chart",
 	"column":      "bar",
 	"doughnut":    "donut",
 	"bar-stacked": "stacked_bar",
@@ -544,6 +548,13 @@ var chartTypeSynonyms = map[string]string{
 func CanonicalChartType(name string) (string, bool) {
 	n := strings.ToLower(strings.TrimSpace(name))
 	n = strings.ReplaceAll(n, "-", "_")
+	// Several canonical names themselves end in _chart. Preserve exact
+	// registry names before accepting the historical short-name suffix.
+	for _, r := range chartRules {
+		if r.chartType == n {
+			return n, true
+		}
+	}
 	n = strings.TrimSuffix(n, "_chart")
 	if syn, ok := chartTypeSynonyms[n]; ok {
 		n = syn

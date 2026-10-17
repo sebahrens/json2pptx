@@ -631,7 +631,7 @@ func TestSemanticKindsMatchesListSlideKinds(t *testing.T) {
 	}
 	for i, want := range mcpCatalogue.SlideKinds {
 		got := listing.SlideKinds[i]
-		if got.Kind != want.Kind || got.Summary != oneLineSummary(want.Summary) ||
+		if got.Kind != want.Kind || got.Summary != catalogueKindSummary(want.Summary) ||
 			strings.Join(got.RequiredFields, ",") != strings.Join(want.RequiredFields, ",") {
 			t.Errorf("kind %d: CLI %+v does not match list_slide_kinds %s", i, got, want.Kind)
 		}
@@ -670,6 +670,9 @@ func TestSemanticKindsMatchesListSlideKinds(t *testing.T) {
 		gotExample, _ := json.Marshal(detail.SlideKind.Example)
 		if string(wantExample) != string(gotExample) {
 			t.Errorf("%s: CLI example differs from list_slide_kinds", want.Kind)
+		}
+		if detail.SlideKind.Summary != want.Summary {
+			t.Errorf("%s: named CLI detail lost full summary", want.Kind)
 		}
 		if len(detail.SlideKind.ItemSchema) == 0 {
 			t.Errorf("%s: detail carries no item_schema", want.Kind)

@@ -1,4 +1,13 @@
-# Agent journey through the MCP
+---
+title: "Agent journey through the MCP"
+type: documentation
+summary: "json2pptx guide to agent mcp journey"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Agent journey through the MCP
 
 The path an agent takes from a brief to a reviewed PPTX over `json2pptx mcp`,
 with what each response carries and where agents actually lost time. The

@@ -1,4 +1,13 @@
-# Visual vocabulary: message → kind
+---
+title: "Visual vocabulary: message \u2192 kind"
+type: documentation
+summary: "json2pptx guide to visual vocabulary"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Visual vocabulary: message → kind
 
 Pick the visual from the message, never the other way round. The left column
 is the sentence you are trying to make the audience accept; the right column

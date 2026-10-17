@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1.7
+# Source is an explicit named build context, pinned by Compose to the inspected
+# upstream 0.5.0 commit. A trusted local checkout can be supplied instead.
+FROM rust:1.95.0-bookworm AS wiki-builder
+WORKDIR /src
+COPY --from=llm_wiki / /src/
+RUN grep -q '^version = "0.5.0"$' Cargo.toml \
+    && cargo build --release --locked --bin pwc-llm-wiki \
+    && test "$(target/release/pwc-llm-wiki --version)" = 'pwc-llm-wiki 0.5.0'
+
+# Reuse the pinned Rust distribution for its git/runtime libraries. This favors
+# a verifiable source build over an unavailable upstream binary release.
+FROM rust:1.95.0-bookworm
+RUN useradd --uid 1000 --create-home wiki \
+    && mkdir -p /data /opt/json2pptx/docs \
+    && chown wiki:wiki /data
+COPY --from=wiki-builder /src/target/release/pwc-llm-wiki /usr/local/bin/pwc-llm-wiki
+COPY scripts/wiki.sh /usr/local/bin/json2pptx-wiki
+COPY wiki.toml /opt/json2pptx/wiki.toml
+COPY schemas /opt/json2pptx/schemas
+COPY docs/wiki /opt/json2pptx/docs/wiki
+ENV JSON2PPTX_WIKI_REPO=/opt/json2pptx \
+    JSON2PPTX_WIKI_STATE_DIR=/data
+USER wiki
+WORKDIR /opt/json2pptx
+ENTRYPOINT ["json2pptx-wiki"]
+CMD ["serve"]

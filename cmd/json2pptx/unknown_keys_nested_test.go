@@ -182,7 +182,7 @@ func TestUnknownKeys_NestedContainers(t *testing.T) {
 				"banner":{"text":"x","emphasis":"bold","emphasise":"bold"},
 				"callout":{"text":"x","txt":"x"},
 				"segments":[
-					{"size_pct":40,"size":40,"pattern":{"name":"kpi-3up","values":[],"overides":{},
+					{"size_pct":40,"size":"content","szie":40,"pattern":{"name":"kpi-3up","values":[],"overides":{},
 						"callout":{"text":"x","accent":"accent1","acent":"accent1"},
 						"bounds":{"x":0,"y":0,"width":100,"height":100,"hieght":100}}},
 					{"diagram":{"type":"bar_chart","data":{},"titel":"x","style":{"show_values":true,"palette":["accent1"]}}},
@@ -198,7 +198,7 @@ func TestUnknownKeys_NestedContainers(t *testing.T) {
 				"/slides/0/compose/segments/0/pattern/bounds/hieght",
 				"/slides/0/compose/segments/0/pattern/callout/acent",
 				"/slides/0/compose/segments/0/pattern/overides",
-				"/slides/0/compose/segments/0/size",
+				"/slides/0/compose/segments/0/szie",
 				"/slides/0/compose/segments/1/diagram/style/palette",
 				"/slides/0/compose/segments/1/diagram/titel",
 				"/slides/0/compose/segments/2/compose/segments/0/pattern/cell_override",

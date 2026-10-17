@@ -131,7 +131,7 @@ func (a *geomAccumulator) baselineReviewFindings() []patterns.FitFinding {
 			continue
 		}
 		f := layoutReviewFinding(patterns.ErrCodeBaselineMisalign, high.path+"/shape/text", "review", "Peer text starts on baselines more than 2pt apart; align the peers' text anchors and top insets.", map[string]any{"cells": []string{low.path, high.path}, "baseline_spread_pt": round1(high.baseline - low.baseline)})
-		f.Fix.Kind = "align_top_insets"
+		f.Fix = &patterns.FixSuggestion{Kind: "align_top_insets", Params: f.Fix.Params}
 		out = append(out, f)
 	}
 	return out
@@ -366,4 +366,40 @@ func layoutReviewSharedBaseline(text layoutReviewText) bool {
 	default:
 		return true
 	}
+}
+
+// layoutReviewFindingsAtAuthoredPaths retains measured advisories while mapping
+// generated pattern geometry to the nearest replaceable authored container.
+func layoutReviewFindingsAtAuthoredPaths(input *PresentationInput, findings []patterns.FitFinding) []patterns.FitFinding {
+	findings = chartFindingsAtAuthoredPaths(input, findings)
+	if len(findings) == 0 {
+		return findings
+	}
+	raw, err := json.Marshal(input)
+	if err != nil {
+		return findings
+	}
+	var document any
+	if json.Unmarshal(raw, &document) != nil {
+		return findings
+	}
+	for i := range findings {
+		fix := findings[i].Fix
+		if fix == nil {
+			continue
+		}
+		for _, key := range []string{"cells", "parent"} {
+			switch paths := fix.Params[key].(type) {
+			case string:
+				fix.Params[key] = deepestAuthoredPointer(document, paths)
+			case []string:
+				mapped := make([]string, len(paths))
+				for j, path := range paths {
+					mapped[j] = deepestAuthoredPointer(document, path)
+				}
+				fix.Params[key] = mapped
+			}
+		}
+	}
+	return findings
 }

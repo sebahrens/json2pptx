@@ -107,16 +107,14 @@ func TestListSlideKindsCycle(t *testing.T) {
 	}
 
 	catalogue := find(map[string]any{})
-	for _, word := range []string{"loop", "hub", "nested rings"} {
-		if !strings.Contains(catalogue.Summary, word) {
-			t.Errorf("the catalogue line does not say %q: %s", word, catalogue.Summary)
-		}
-	}
 	if got := catalogue.RequiredAliases["phases"]; len(got) != 2 || got[0] != "steps" || got[1] != "items" {
 		t.Errorf("required_aliases = %v, want phases: steps, items", catalogue.RequiredAliases)
 	}
 
 	named := find(map[string]any{"kinds": []any{"cycle"}})
+	if catalogue.Summary != catalogueKindSummary(named.Summary) {
+		t.Errorf("compact cycle summary = %q; full summary = %q", catalogue.Summary, named.Summary)
+	}
 	if named.Example["kind"] != "cycle" {
 		t.Errorf("example = %v", named.Example)
 	}

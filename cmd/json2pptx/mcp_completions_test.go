@@ -96,8 +96,15 @@ func TestMCPCompletionSharedEnumsAndUnknownRefs(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			got := completeRPC(t, s, map[string]string{"type": "ref/resource", "uri": test.uri}, test.name, "")
 			sort.Strings(test.want)
-			if !reflect.DeepEqual(got.Values, test.want) || got.Total != len(test.want) {
+			page := test.want[:min(100, len(test.want))]
+			if !reflect.DeepEqual(got.Values, page) || got.Total != len(test.want) || got.HasMore != (len(test.want) > len(page)) {
 				t.Fatalf("completion %s/%s = %+v, want %v", test.uri, test.name, got, test.want)
+			}
+			for _, omitted := range test.want[len(page):] {
+				narrowed := completeRPC(t, s, map[string]string{"type": "ref/resource", "uri": test.uri}, test.name, omitted)
+				if len(narrowed.Values) == 0 || narrowed.Values[0] != omitted {
+					t.Errorf("omitted completion %q not available by exact prefix: %+v", omitted, narrowed)
+				}
 			}
 		})
 	}

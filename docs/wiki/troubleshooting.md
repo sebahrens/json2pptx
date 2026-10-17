@@ -1,4 +1,13 @@
-# Troubleshooting
+---
+title: "Troubleshooting"
+type: documentation
+summary: "json2pptx guide to troubleshooting"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Troubleshooting
 
 Findings, refusals and renders that surprised agents in the journey runs, with
 the fix that worked. `describe_finding(code)` explains any code; the full

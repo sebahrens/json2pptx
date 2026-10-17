@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
 
 // The go-slide-creator-micna acceptance scan: every remedy a DeckSpec finding
@@ -89,14 +90,19 @@ func foreignPattern(text, kind string, own map[string]bool) string {
 // adviceWords are snake_case words advice may use that are not fields of a
 // kind: tools and their arguments, deck-level fields, and the names of the
 // quality gate's criteria.
-var adviceWords = map[string]bool{
-	"list_slide_kinds": true, "validate_deck_spec": true, "render_deck_spec": true, "describe_finding": true,
-	"list_templates": true, "deck_id": true, "raw_json2pptx": true,
-	"min_score": true, "max_topic_title_pct": true, "max_problem_slide_pct": true, "min_composition_score": true,
-	"did_you_mean": true, "accent_strategy": true, "type_scale": true, "required_layouts": true,
-	// The values of the regions kind's arrangement field.
-	"main_left": true, "main_right": true, "main_top": true, "main_bottom": true,
-}
+var adviceWords = func() map[string]bool {
+	words := map[string]bool{
+		"list_slide_kinds": true, "validate_deck_spec": true, "render_deck_spec": true, "describe_finding": true,
+		"list_templates": true, "deck_id": true, "raw_json2pptx": true,
+		"min_score": true, "max_topic_title_pct": true, "max_problem_slide_pct": true, "min_composition_score": true,
+		"did_you_mean": true, "accent_strategy": true, "type_scale": true, "required_layouts": true,
+	}
+	// Enum values are valid advice, but are not payload field names.
+	for _, value := range slides.RegionArrangements {
+		words[value] = true
+	}
+	return words
+}()
 
 // adviceTexts collects every sentence and string fact of a finding's remedy.
 func adviceTexts(f map[string]any) []string {

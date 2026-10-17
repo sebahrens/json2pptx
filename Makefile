@@ -79,7 +79,7 @@ ALL_CMDS := $(MAIN_CMDS) $(SVGGEN_CMDS)
 INSTALL_CMDS := json2pptx svggen svggen-server svggen-mcp
 
 .PHONY: all build build-main build-svggen install install-bin install-templates \
-        install-skill install-mcp uninstall \
+        install-skill install-mcp install-wiki uninstall \
         build-cross build-darwin-amd64 build-darwin-arm64 \
         build-linux-amd64 build-linux-arm64 build-windows-amd64 \
         ensure-templates dist-linux dist-windows release-check release \
@@ -121,7 +121,7 @@ bin/%: build
 #   make install SKIP_MCP=1               # Skip MCP config
 #   make install SKIP_TEMPLATES=1         # Skip template files
 
-install: build install-bin install-templates install-skill install-mcp
+install: build install-bin install-templates install-skill install-wiki install-mcp
 	@echo ""
 	@echo "==> Installation complete"
 	@echo "    Binaries:   $(PREFIX)/bin/"
@@ -178,6 +178,15 @@ ifndef SKIP_SKILL
 	@bash scripts/stage-skills.sh "$(SKILL_DEST)"
 endif
 
+# Ship source documentation and companion launcher together; no engine download.
+install-wiki:
+	@echo "==> Installing llm-wiki companion documentation..."
+	@mkdir -p "$(PREFIX)/bin"
+	@sh scripts/stage-wiki.sh "$(PREFIX)/share/json2pptx"
+	@cp scripts/wiki.sh "$(PREFIX)/bin/json2pptx-wiki"
+	@chmod +x "$(PREFIX)/bin/json2pptx-wiki"
+	@echo "    Install pwc-llm-wiki 0.5.0, then connect json2pptx-wiki serve as a companion MCP."
+
 install-mcp:
 ifndef SKIP_MCP
 	@echo "==> Registering MCP server with Claude Code (user scope)..."
@@ -210,6 +219,8 @@ uninstall:
 	@$(foreach cmd,$(INSTALL_CMDS), \
 		rm -f "$(PREFIX)/bin/$(cmd)$(EXE)" && \
 	) true
+	@rm -f "$(PREFIX)/bin/json2pptx-wiki"
+	@rm -rf "$(PREFIX)/share/json2pptx"
 	@rm -rf "$(HOME)/.json2pptx"
 	@for skill in skills/*/; do rm -rf "$(SKILL_DEST)/$$(basename "$$skill")"; done
 	@echo "    Done (MCP registration left in place — run: claude mcp remove --scope user json2pptx)"
@@ -275,6 +286,7 @@ dist-linux: release-check ensure-templates
 	cp bin/json2pptx-linux-amd64 $(DIST_STAGING)/bin/json2pptx
 	@$(call stage-templates,$(DIST_STAGING))
 	@$(call stage-skills,$(DIST_STAGING))
+	sh scripts/stage-wiki.sh "$(DIST_STAGING)/wiki-source"
 	cp scripts/install-dist.sh $(DIST_STAGING)/install.sh
 	chmod +x $(DIST_STAGING)/install.sh
 	@echo "==> Creating archive: $(DIST_ARCHIVE)"
@@ -291,6 +303,7 @@ dist-windows: release-check ensure-templates
 	cp bin/json2pptx-windows-amd64.exe $(WIN_DIST_STAGING)/bin/json2pptx.exe
 	@$(call stage-templates,$(WIN_DIST_STAGING))
 	@$(call stage-skills,$(WIN_DIST_STAGING))
+	sh scripts/stage-wiki.sh "$(WIN_DIST_STAGING)/wiki-source"
 	cp scripts/install-dist.ps1 $(WIN_DIST_STAGING)/install.ps1
 	@echo "==> Creating archive: $(WIN_DIST_ARCHIVE)"
 	cd dist && tar czf $(WIN_DIST_NAME).tar.gz $(WIN_DIST_NAME)

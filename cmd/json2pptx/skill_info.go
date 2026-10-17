@@ -955,8 +955,14 @@ func readyDiagramTypeNames() []string {
 	return names
 }
 
-// buildSupportedTypes returns the hardcoded lists of supported types.
+// buildSupportedTypes derives visual types from their capability registries.
 func buildSupportedTypes() skillSupportedTypes {
+	chartCaps := svggen.ChartCapabilities()
+	chartTypes := make([]string, len(chartCaps))
+	for i, capability := range chartCaps {
+		chartTypes[i] = capability.Type
+	}
+	sort.Strings(chartTypes)
 	return skillSupportedTypes{
 		SlideTypes: []string{
 			"title",
@@ -969,26 +975,9 @@ func buildSupportedTypes() skillSupportedTypes {
 			"section",
 			"diagram",
 		},
-		ChartTypes: []string{
-			"bar",
-			"line",
-			"pie",
-			"donut",
-			"area",
-			"radar",
-			"scatter",
-			"stacked_bar",
-			"bubble",
-			"stacked_area",
-			"grouped_bar",
-			"small_multiples",
-			"waterfall",
-			"funnel",
-			"gauge",
-			"treemap",
-		},
+		ChartTypes:          chartTypes,
 		DiagramTypes:        readyDiagramTypeNames(),
-		ChartCapabilities:   svggen.ChartCapabilities(),
+		ChartCapabilities:   chartCaps,
 		DiagramCapabilities: svggen.DiagramCapabilitiesReady(),
 		GridCellTypes:       []string{"shape", "table", "icon", "image", "diagram", "composite"},
 		ShapeGeometries:     buildShapeGeometries(),

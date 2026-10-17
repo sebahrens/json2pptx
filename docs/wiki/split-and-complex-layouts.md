@@ -1,4 +1,13 @@
-# Split and complex layouts
+---
+title: "Split and complex layouts"
+type: documentation
+summary: "json2pptx guide to split and complex layouts"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Split and complex layouts
 
 One slide, several things — done so it reads as one slide. Every recipe here
 was authored through the MCP by an agent that saw only the product, rendered,

@@ -24,6 +24,15 @@ How to cut a release (tag, archives, container image) is described in
 
 ### Added
 
+- Deployable llm-wiki companion for capability exploration: typed documentation,
+  real search and MCP tools, portable installation, and an authenticated HTTP
+  companion configuration. See `docs/wiki/wiki-engine-and-deployment.md`.
+
+- Consulting heatmaps retain full 12pt axis labels and readable numeric captions;
+  stakeholder maps retain 12pt labels and refuse collisions. Measured framework
+  placements refuse content loss, and spectrum recommendations include supporting
+  argument text. Discovery, preview assets and authored finding paths stay aligned.
+
 - Field-review improvements (schema 4.177.0): weighted table columns, process
   regions, planned cycle phases, longer measured KPI2/3 values, funnel stage
   highlighting and neutral hero-detail headings. Grouped-bar labels avoid

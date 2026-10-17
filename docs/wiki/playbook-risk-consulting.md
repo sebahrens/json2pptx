@@ -1,4 +1,13 @@
-# Playbook: risk consulting
+---
+title: "Playbook: risk consulting"
+type: documentation
+summary: "json2pptx guide to playbook risk consulting"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Playbook: risk consulting
 
 Enterprise-risk uplifts, regulatory remediation programmes, risk-appetite and
 three-lines-of-defence reviews, operational-resilience and third-party-risk

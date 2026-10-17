@@ -311,7 +311,13 @@ func delightExamplesFirstTry(t *testing.T) {
 	mc := refusalTestConfig(t)
 	slides := []any{}
 	for _, k := range semantic.AllSlideKinds() {
-		slides = append(slides, semantic.KindExample(k))
+		example := semantic.KindExample(k)
+		if k == semantic.KindImageHero {
+			if err := bindIllustrativeHeroImage(example); err != nil {
+				t.Fatal(err)
+			}
+		}
+		slides = append(slides, example)
 	}
 	spec := map[string]any{"meta": map[string]any{"title": "Every kind", "source": "Illustrative"}, "slides": slides}
 	env := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec, "template": delightTemplate}))
@@ -531,8 +537,13 @@ func delightCapacity(t *testing.T) {
 	bounds := regexp.MustCompile(`\d+–\d+`)
 	for _, k := range catalogue.SlideKinds {
 		if k.Kind == "next_steps" || k.Kind == "timeline" || k.Kind == "team" {
-			if !bounds.MatchString(k.Summary) {
-				t.Errorf("the catalogue line of %s states no count: %q", k.Kind, k.Summary)
+			res := mustCall(t, mc.handleListSlideKinds, map[string]any{"kinds": []any{k.Kind}})
+			var named struct {
+				SlideKinds []slideKindListEntry `json:"slide_kinds"`
+			}
+			structuredInto(t, res.StructuredContent, &named)
+			if len(named.SlideKinds) != 1 || named.SlideKinds[0].Kind != k.Kind || !bounds.MatchString(named.SlideKinds[0].Summary) {
+				t.Errorf("the named catalogue contract of %s states no count", k.Kind)
 			}
 		}
 	}

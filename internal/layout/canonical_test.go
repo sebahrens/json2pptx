@@ -362,3 +362,38 @@ func TestCanonicalAliasesPreferNativeHostsAndKeepSafeFallbacks(t *testing.T) {
 		}
 	}
 }
+
+func TestCanonicalAgendaAliasesResolveOnlyRealHosts(t *testing.T) {
+	native := types.LayoutMetadata{ID: "slideLayout8", Tags: []string{"agenda"}}
+	literal := types.LayoutMetadata{ID: "agenda"}
+	cases := []struct {
+		name    string
+		layouts []types.LayoutMetadata
+		want    string
+		ok      bool
+	}{
+		{name: "native", layouts: []types.LayoutMetadata{native}, want: "slideLayout8", ok: true},
+		{name: "literal", layouts: []types.LayoutMetadata{literal}, want: "agenda", ok: true},
+		{name: "native_preferred", layouts: []types.LayoutMetadata{literal, native}, want: "slideLayout8", ok: true},
+		{name: "nil"},
+		{name: "empty", layouts: []types.LayoutMetadata{}},
+		{name: "unrelated", layouts: []types.LayoutMetadata{{ID: "slideLayout2", Tags: []string{"content"}}}},
+		{name: "untagged", layouts: []types.LayoutMetadata{{ID: "slideLayout8"}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, alias := range []string{"agenda", "contents", "outline", "toc"} {
+				for _, input := range []string{alias, strings.ToUpper(alias), " \t" + strings.ToUpper(alias) + " \n"} {
+					id, ok := ResolveCanonicalLayoutID(input, tc.layouts)
+					want := tc.want
+					if !tc.ok {
+						want = input
+					}
+					if id != want || ok != tc.ok {
+						t.Errorf("%q resolved%q,%v; want%q,%v", input, id, ok, want, tc.ok)
+					}
+				}
+			}
+		})
+	}
+}

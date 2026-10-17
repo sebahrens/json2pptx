@@ -59,6 +59,11 @@ func kindSlideForPattern(pattern string) map[string]any {
 	if ex == nil {
 		return nil
 	}
+	if pattern == "image-hero" {
+		if err := bindIllustrativeHeroImage(ex); err != nil {
+			return nil
+		}
+	}
 	if style, ok := cycleStyleOfPattern[pattern]; ok {
 		// One kind draws the circular family; the style picks the pattern.
 		return semantic.CycleStyleExample(style)
@@ -373,6 +378,12 @@ func rawPatternSlide(reg *patterns.Registry, name string) (map[string]any, *patt
 	if err != nil {
 		return nil, nil, err
 	}
+	if name == "image-hero" {
+		object, _ := values.(map[string]any)
+		if err := bindIllustrativeHeroImage(object); err != nil {
+			return nil, nil, fmt.Errorf("image-hero illustration: %w", err)
+		}
+	}
 	pat, _ := reg.Get(name)
 	contract.Form = patterns.ContractFormRaw
 	contract.FieldPath = recipeSlidePath + ".slide.pattern.values"
@@ -478,22 +489,29 @@ func kindVersusRawFor(c *patterns.VisualCandidate) string {
 
 // attachCandidateRecipe gives one non-compose candidate its runnable call,
 // data contract, DeckSpec form and cross-references.
+func attachPatternCandidateRecipe(c *patterns.VisualCandidate, templateName string, reg *patterns.Registry) {
+	if c.Name == "spectrum" && attachSpectrumSupportingRecipe(c, templateName, reg) {
+		return
+	}
+	if setPatternKindRecipe(c, templateName) {
+		return
+	}
+	slide, contract, err := rawPatternSlide(reg, c.Name)
+	if err != nil {
+		return
+	}
+	c.DataContract = contract
+	c.NextToolCall = &patterns.ToolCallSuggestion{
+		Tool:         "render_deck_spec",
+		ArgsTemplate: map[string]any{"spec": recipeSpec(strings.ReplaceAll(c.Name, "-", " "), templateName, slide)},
+	}
+}
+
 func attachCandidateRecipe(c *patterns.VisualCandidate, templateName string, reg *patterns.Registry, hints map[string]skillDataFormat, ranking bool) {
 	c.AlsoAs = patterns.VisualAlsoAs(c.Category, c.Name)
 	switch c.Category {
 	case patterns.VisualCategoryPattern:
-		if setPatternKindRecipe(c, templateName) {
-			return
-		}
-		slide, contract, err := rawPatternSlide(reg, c.Name)
-		if err != nil {
-			return
-		}
-		c.DataContract = contract
-		c.NextToolCall = &patterns.ToolCallSuggestion{
-			Tool:         "render_deck_spec",
-			ArgsTemplate: map[string]any{"spec": recipeSpec(strings.ReplaceAll(c.Name, "-", " "), templateName, slide)},
-		}
+		attachPatternCandidateRecipe(c, templateName, reg)
 	case patterns.VisualCategoryChart:
 		dataKey := c.Name
 		// A ranking ("largest", "top 5") is the textbook horizontal bar chart:

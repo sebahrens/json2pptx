@@ -1,4 +1,13 @@
-# Quality and review
+---
+title: "Quality and review"
+type: documentation
+summary: "json2pptx guide to quality and review"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Quality and review
 
 What "done" means, what the engine checks for you, and what only your eyes
 can check. Back to the [hub](README.md). The contract is the completion rule

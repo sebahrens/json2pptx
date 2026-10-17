@@ -1,4 +1,13 @@
-# Deck archetypes: the canonical skeletons, mapped onto kinds
+---
+title: "Deck archetypes: the canonical skeletons, mapped onto kinds"
+type: documentation
+summary: "json2pptx guide to deck archetypes"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Deck archetypes: the canonical skeletons, mapped onto kinds
 
 What a partner expects to see, in what order, for the nine deliverables
 agents are most often asked for — each as a slide skeleton naming the

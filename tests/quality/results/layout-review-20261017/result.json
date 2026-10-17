@@ -78,7 +78,25 @@
       "go-slide-creator-27dsr",
       "go-slide-creator-gl185",
       "go-slide-creator-vg99y",
-      "go-slide-creator-eky0z"
+      "go-slide-creator-eky0z",
+      "go-slide-creator-u2gfu",
+      "go-slide-creator-hnp6l",
+      "go-slide-creator-70jfj",
+      "go-slide-creator-z2ut0",
+      "go-slide-creator-1te7z",
+      "go-slide-creator-5qd55",
+      "go-slide-creator-x5oed",
+      "go-slide-creator-p4t74",
+      "go-slide-creator-zf08m",
+      "go-slide-creator-kpzc5",
+      "go-slide-creator-lokuu",
+      "go-slide-creator-59dxq",
+      "go-slide-creator-mftca",
+      "go-slide-creator-58ptt",
+      "go-slide-creator-xdga4",
+      "go-slide-creator-mkc83",
+      "go-slide-creator-r86js",
+      "go-slide-creator-kjv64"
     ]
   },
   "templates": [
@@ -101,17 +119,17 @@
     "matrix_pipeline": "Actual semantic RACI/status_board output on both templates retains all10rows and12pt text; row pitch matches native compact measurement and includes the real legend gap. Boundary frames and larger template gutters refuse overflow; JSON cannot forge the internal floor.",
     "image_pipeline": "Native raster/SVG/fallback image layers keep ordering and full-cell frames; full-photo footer suppression and contained-photo footer retention verified; raw/semantic hero source/takeaway remain inside measured scrim",
     "related_scenarios": "Merged table units are not guessed; currencies/scales stay separate; used status colours only; deliberate gaps and unlike peer roles excluded; balanced splits preserve merged rows and source offsets",
-    "wiki_and_skills": "Wiki YAML and live region catalog validate; installed skill/reference,doc/metadata contracts and100KiB guide budget pass",
+    "wiki_and_skills": "Real pwc-llm-wiki 0.5.0 adopts 18 pages including 2 section hubs; strict frontmatter validation, full dry-run/ingest, stdio MCP discovery and search/read/list/stats/schema/config/ingest calls pass. Portable companion configuration, source and schemas ship alongside the Go MCP. Installed skill and unchanged 100KiB guide budget pass.",
     "payload_budgets": {
       "kind_catalog_bytes": 6014,
-      "compact_templates_bytes": 14962,
+      "compact_templates_bytes": 14800,
       "first_contact_bytes": 37986,
       "all_profile_bytes": 138298,
-      "recommendation_max_bytes": 16080,
+      "recommendation_max_bytes": 15690,
       "caps_increased": false,
       "core_profile_bytes": 101804,
-      "recommendation_mean_bytes": 7418,
-      "recommendation_headroom_bytes": 304
+      "recommendation_mean_bytes": 7179,
+      "recommendation_headroom_bytes": 694
     },
     "previews": {
       "layouts_refreshed": 108,
@@ -121,16 +139,21 @@
     },
     "agent_journey": "Recorded TestAgentJourneyMetrics: clean spec2calls,12flaw deck4calls/3validates,16paritypairs/0disagreements,16patches offered/9verified/0failing",
     "registry_contracts": "New consulting patterns satisfy direct typed-exemplar expansion, closed referenced schemas, declared motifs, selection guidance, type-scale constants and canonical size goldens; all focused registry guards pass.",
-    "discovery_parity": "Canonical aliases retain native hosts and generated two-column fallbacks; agenda discovery requires a real host. Image-hero planning, discovery and compilation all use blank. Region guidance covers the live9kinds/10arrangements.",
+    "discovery_parity": "Canonical aliases retain native hosts and generated two-column fallbacks; agenda discovery requires a real host. Image-hero planning, discovery and compilation all use blank. Region guidance covers the live9kinds/10arrangements. Agenda aliases resolve real slideLayoutN hosts by tag, including case/whitespace variants, and retain literal-ID fallback without inventing missing hosts.",
     "preview_asset_isolation": "Built-in image-hero previews explicitly bind an illustrative image; canonical exemplars and authored missing paths remain unchanged and normal asset refusal remains enforced.",
     "stress_coverage": "15 generated scenarios for Mekko/combo/butterfly cover minimum/dense/edge data, validate and render successfully.",
     "recommendation_consistency": "One contextual scoring pass precedes shortlist selection; score/band/rationale/composition stay consistent across pattern/chart/diagram/compose. Caller-only alternatives remain available;72/72 exact top-one evaluation passes.",
-    "chart_discovery": "Mekko/combo/butterfly recommendation contracts match authoritative required/optional data keys, point at slides[0].chart.data, and provide examples that validate/render without degrading."
+    "chart_discovery": "Mekko/combo/butterfly recommendation contracts match authoritative required/optional data keys, point at slides[0].chart.data, and provide examples that validate/render without degrading.",
+    "readable_maxima": "19 new patterns \u00d7 5 templates (including local p-style): 95 actual writer/geometry or explicit fit-refusal checks pass. Native numeric heatmap axes and stakeholder labels retain 12pt; dense numeric values use the documented 10pt-minimum caption role, promoted to 12pt in actual native output. Fishbone framework refuses actual SVG content loss.",
+    "authored_paths": "New layout review findings map merged-grid coordinates to authored JSON pointers, including nested layers; template-qa-deck validate/render parity passes on both templates.",
+    "supporting_placement": "Spectrum declares supporting-band placement and native recommendations compose it with substantive decision text. Seven formerly sparse exemplars now meet unchanged 29% ink and 1.5 margin gates across four templates.",
+    "wiki_deployment": "Actual0.5.0 engine: 18pages/2sections/0orphans, strict dry-run+ingest and31stdio MCP tools. HTTP /mcp unauthorized401, bearer initialize and wiki_search pass. Runtime edits survive restart, changed bundles warn without overwrite, interrupted seeds retry, reinstall removes obsolete source pages/schemas. Both archive recipes stage the bundle, native installed wrapper and Compose config pass. Docker image source build is configured but was not executed."
   },
   "visual_acceptance": {
     "native_regions_chapters_stickers": "18 rendered slides inspected across both templates",
     "consulting_visuals": "25-slide catalog on each template plus corrected white/black/top hero and10item checklist checks; no current text clipping,layer obscuring or hidden source/footer text",
-    "component_catalogs": "Component fixtures test layout contracts; they are not a finished client narrative."
+    "component_catalogs": "Component fixtures test layout contracts; they are not a finished client narrative.",
+    "consulting_followups": "18 additional exhibit slides inspected across midnight-blue and local p-style; final standalone heatmap and stakeholder decks render ok:true. Checked native axes/value contrast, complete labels, marker association and readable typography."
   },
   "evidence": {
     "local_directory": "/tmp/json2pptx-layout-review-20261017",

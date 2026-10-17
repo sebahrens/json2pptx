@@ -52,6 +52,16 @@ if (-not (Test-Path $Source)) {
 Copy-Item $Source (Join-Path $BinDir "json2pptx.exe") -Force
 Write-Host "    $BinDir\json2pptx.exe"
 
+# Ship documentation source on Windows; do not advertise a native sh launcher.
+$WikiSource = Join-Path $ScriptDir "wiki-source"
+if (Test-Path $WikiSource) {
+    $WikiDestination = Join-Path $Prefix "share\json2pptx"
+    if (Test-Path $WikiDestination) { Remove-Item $WikiDestination -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $WikiDestination) | Out-Null
+    Copy-Item $WikiSource $WikiDestination -Recurse -Force
+    Write-Host "    Wiki source: $WikiDestination (see deploy/README.md for container or Bash usage)"
+}
+
 # --- Install templates (lean distribution) ---
 
 $TemplateSrc = Join-Path $ScriptDir "templates"

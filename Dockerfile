@@ -69,6 +69,14 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /json2pptx /app/json2pptx
 
+# Versioned wiki source ships alongside the Go MCP; the engine runs as the
+# separate companion service (Dockerfile.wiki / deploy/docker-compose.wiki.yml).
+COPY wiki.toml /app/wiki.toml
+COPY schemas /app/schemas
+COPY docs/wiki /app/docs/wiki
+COPY deploy /app/deploy
+COPY scripts/wiki.sh /app/scripts/wiki.sh
+
 # Switch to non-root user
 USER appuser:appgroup
 

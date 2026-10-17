@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "json2pptx-wiki": {
+      "command": "json2pptx-wiki",
+      "args": ["serve"]
+    }
+  }
+}

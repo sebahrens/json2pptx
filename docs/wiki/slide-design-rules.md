@@ -1,4 +1,13 @@
-# Slide design rules: what a partner-level reviewer checks
+---
+title: "Slide design rules: what a partner-level reviewer checks"
+type: documentation
+summary: "json2pptx guide to slide design rules"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Slide design rules: what a partner-level reviewer checks
 
 The craft rules the strategy houses and the Big Four teach their consultants,
 stated as tests an agent can run on its own deck, and tied to the engine

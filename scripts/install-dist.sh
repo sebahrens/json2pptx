@@ -45,6 +45,8 @@ Options:
   -h, --help      Show this help
 
 Installs:
+  $PREFIX/bin/json2pptx-wiki               POSIX companion launcher (engine installed separately)
+  $PREFIX/share/json2pptx                  Portable wiki source, schemas, deployment guide
   $PREFIX/bin/json2pptx                    CLI binary (also serves as MCP server)
   ~/.claude/skills/*/                      Claude Code skills (unless --skip-skill)
   claude mcp add --scope user json2pptx    MCP server registration (unless --skip-mcp)
@@ -78,6 +80,14 @@ else
 fi
 chmod +x "$PREFIX/bin/json2pptx"
 echo "    $PREFIX/bin/json2pptx"
+
+# --- Install the companion source bundle (the engine is installed separately) ---
+if [ -d "$SCRIPT_DIR/wiki-source" ]; then
+  JSON2PPTX_WIKI_REPO="$SCRIPT_DIR/wiki-source" sh "$SCRIPT_DIR/wiki-source/scripts/stage-wiki.sh" "$PREFIX/share/json2pptx"
+  cp "$SCRIPT_DIR/wiki-source/scripts/wiki.sh" "$PREFIX/bin/json2pptx-wiki"
+  chmod +x "$PREFIX/bin/json2pptx-wiki"
+  echo "    Wiki: $PREFIX/share/json2pptx (connect json2pptx-wiki serve after installing pwc-llm-wiki 0.5.0)"
+fi
 
 # --- Install templates (lean distribution) ---
 

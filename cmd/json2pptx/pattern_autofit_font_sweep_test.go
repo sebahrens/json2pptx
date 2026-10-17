@@ -63,6 +63,7 @@ func TestPatternExemplarsStoreNoAutofitShrink(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
+				values = bindTestExemplarImage(t, p.Name(), values)
 				title := "Exemplar"
 				input := PresentationInput{
 					Template:       tpl,

@@ -106,8 +106,8 @@ repairs from advice.
   native layouts and full-slide images.
 
 Examples: [semantic specs](../../examples/semantic/) and
-[raw skeletons](examples/skeletons/README.md). In a checkout, `docs/wiki/`
-adds design recipes, the layout catalog and domain playbooks.
+[raw skeletons](examples/skeletons/README.md). Explore capabilities with companion `llm-wiki` (`json2pptx-wiki`);
+content lives in `docs/wiki/`.
 
 ## Operational boundaries
 

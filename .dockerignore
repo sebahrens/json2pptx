@@ -76,3 +76,11 @@ Thumbs.db
 # Debug files
 *.log
 *.pprof
+
+# Deployable llm-wiki source and its real engine schemas.
+!docs/wiki/
+!docs/wiki/**
+!schemas/
+!schemas/**
+!deploy/
+!deploy/**

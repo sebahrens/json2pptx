@@ -1,4 +1,13 @@
-# Playbook: technology and data
+---
+title: "Playbook: technology and data"
+type: documentation
+summary: "json2pptx guide to playbook technology and data"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Playbook: technology and data
 
 Platform business cases, architecture reviews, cloud and data migrations,
 vendor selections, data-governance and AI-readiness proposals. The worked

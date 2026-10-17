@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -22,7 +23,7 @@ import (
 // forms.
 
 // expandedSplitDeck: a cover, a split_slide of seven rows in pages of three
-// (rendered slides 2-4) and two more slides (rendered slides 5 and 6). The
+// balanced 3/2/2 across rendered slides 2-4, then two more slides (5 and 6). The
 // faults sit on page 2 (row 4), page 3 (row 6), the envelope's base and the
 // last slide.
 const expandedSplitDeck = `{"template": "midnight-blue", "slides": [
@@ -341,7 +342,7 @@ func TestAuthoredPathsAddress(t *testing.T) {
 		{"written shape, source known", patternDeck, "/slides/1/rendered_shapes/200/paragraphs/0", "/slides/1/shape_grid/rows/0/cells/0/shape/text", "/slides/1/shape_grid/rows/0/cells/0/shape/text", 2, false},
 		{"written shape, source unknown", patternDeck, "/slides/1/rendered_shapes/200", "", "/slides/1", 2, false},
 		{"split page title", expandedSplitDeck, "/slides/3/content/0", "", "/slides/1/base/content/0", 4, true},
-		{"split page row", expandedSplitDeck, "/slides/3/content/1/table_value/rows/0/2", "", "/slides/1/base/content/1/table_value/rows/6/2", 4, true},
+		{"split page row", expandedSplitDeck, "/slides/3/content/1/table_value/rows/1/2", "", "/slides/1/base/content/1/table_value/rows/6/2", 4, true},
 		{"split page headers", expandedSplitDeck, "/slides/2/content/1/table_value/headers/1", "", "/slides/1/base/content/1/table_value/headers/1", 3, true},
 		{"after the split", expandedSplitDeck, "/slides/4", "", "/slides/2", 5, true},
 		// A base that writes its table under the legacy "value" key.
@@ -700,5 +701,45 @@ func TestHumanFitReportAddressesAuthoredDeck(t *testing.T) {
 	}
 	if strings.Contains(report, "] /slides/") {
 		t.Errorf("fit report names /slides/N in a deck that has no slides array:\n%s", report)
+	}
+}
+
+// Origin offsets follow retained rows after balancing a short final page.
+func TestAuthoredSplitRowMatchesRetainedContent(t *testing.T) {
+	var input PresentationInput
+	if err := json.Unmarshal([]byte(expandedSplitDeck), &input); err != nil {
+		t.Fatal(err)
+	}
+	paths := newAuthoredPaths(&input)
+	var authored map[string]any
+	if err := json.Unmarshal([]byte(expandedSplitDeck), &authored); err != nil {
+		t.Fatal(err)
+	}
+	for i, slide := range input.Slides {
+		if slide.Origin == nil || !slide.Origin.SplitPage {
+			continue
+		}
+		_, table := findTableContent(slide.Content)
+		for row, cells := range table.Rows {
+			for col := range cells {
+				pointer := fmt.Sprintf("/slides/%d/content/1/table_value/rows/%d/%d", i, row, col)
+				mapped := paths.address(pointer, "")
+				source, ok := resolveSpecPointer(t, authored, mapped.Path)
+				if !ok {
+					t.Fatalf("retained cell %s maps outside authored data: %s", pointer, mapped.Path)
+				}
+				sourceJSON, err := json.Marshal(source)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var sourceCell TableCellInput
+				if err := json.Unmarshal(sourceJSON, &sourceCell); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(cells[col], sourceCell) {
+					t.Errorf("retained cell %s=%+v maps to %s=%+v", pointer, cells[col], mapped.Path, sourceCell)
+				}
+			}
+		}
 	}
 }

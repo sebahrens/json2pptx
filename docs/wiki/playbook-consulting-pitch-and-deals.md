@@ -1,4 +1,13 @@
-# Playbook: consulting pitch and deals
+---
+title: "Playbook: consulting pitch and deals"
+type: documentation
+summary: "json2pptx guide to playbook consulting pitch and deals"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Playbook: consulting pitch and deals
 
 Proposals, pitches, commercial / operational due diligence, information
 memoranda, investment-committee papers, 100-day plans. The worked deck is a

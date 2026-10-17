@@ -128,3 +128,38 @@ func TestImageHeroIllustrationBindingIsExactAndReportsWriteErrors(t *testing.T) 
 		t.Fatalf("pattern lost sample write error: %v", err)
 	}
 }
+
+// Test-owned raw exemplar fixtures opt into the same explicit illustration as
+// discovery recipes; authored assets never pass through this constructor.
+func bindTestExemplarImage(t *testing.T, name string, raw json.RawMessage) json.RawMessage {
+	t.Helper()
+	if name != "image-hero" {
+		return raw
+	}
+	var values map[string]any
+	if err := json.Unmarshal(raw, &values); err != nil {
+		t.Fatal(err)
+	}
+	if err := bindIllustrativeHeroImage(values); err != nil {
+		t.Fatal(err)
+	}
+	bound, err := json.Marshal(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return bound
+}
+
+func TestImageHeroRecommendationIllustrationIsRunnable(t *testing.T) {
+	rec := patterns.RecommendVisualResult{Candidates: []patterns.VisualCandidate{{Category: patterns.VisualCategoryPattern, Name: "image-hero"}}}
+	attachVisualRecipes(&rec, "midnight-blue")
+	if len(rec.Candidates) != 1 {
+		t.Fatal("lost hero recommendation")
+	}
+	candidate := rec.Candidates[0]
+	if candidate.NextToolCall == nil || candidate.DeckSpec == nil || candidate.DeckSpec.Kind != "image_hero" {
+		t.Fatalf("hero has no native authoring recipe: %+v", candidate)
+	}
+	assertRecipeValidates(t, semanticTestConfig(t), candidate)
+	assertRecipeRenders(t, semanticTestConfig(t), candidate)
+}

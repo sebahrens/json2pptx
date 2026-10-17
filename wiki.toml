@@ -1,0 +1,12 @@
+name = "json2pptx"
+description = "Agent guide to consulting decks, visual capabilities, authoring contracts, and review"
+wiki_root = "docs/wiki"
+
+[ingest]
+auto_commit = false
+
+[validation]
+type_strictness = "strict"
+
+[defaults]
+page_mode = "flat"

@@ -50,7 +50,7 @@ func SegmentFitFor(p Pattern) *SegmentFit {
 		fit.MinLabelColumnWidthPt = cycleRingLegendMinPt
 		fit.NarrowFallback = "stacked"
 		fit.FitNotes = "The intake lane stacks above the loop when the width left for labels after the intake steps, ring and gaps is below the minimum. Intake count and height affect this transition; stacked intake descriptions are omitted with a warning."
-	case "kpi-inline", "before-after-compact", "process-flow-compact":
+	case "kpi-inline", "before-after-compact", "process-flow-compact", "spectrum":
 		fit.SegmentOnly = true
 		fit.FitNotes = "Supporting band intended for a compose segment or region; alone on a slide it can report SLIDE_UNDERUSED."
 	}

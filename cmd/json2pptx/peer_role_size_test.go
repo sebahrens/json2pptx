@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -553,6 +554,12 @@ func readFirstSlideXML(t *testing.T, pptxPath string) string {
 // group written at several sizes. refused reports that generation refused the
 // payload as unreadable: it is past what the pattern holds, and a refusal is
 // not a mixed-size slide.
+func peerUnreadableRefusal(err error) bool {
+	message := err.Error()
+	return strings.Contains(message, "generation refused") ||
+		(strings.Contains(message, "text needs ") && strings.Contains(message, "at its written readable size but only ") && strings.Contains(message, "is allocated; split the content or enlarge the frame"))
+}
+
 func peerRoleCheck(t *testing.T, tpl, templatesDir, pattern, variant, scale string, values json.RawMessage) (shapes []peerShape, refused bool) {
 	t.Helper()
 	title := "Peers"
@@ -581,7 +588,7 @@ func peerRoleCheck(t *testing.T, tpl, templatesDir, pattern, variant, scale stri
 		defer cleanup()
 	}
 	if err != nil {
-		if variant != "exemplar" && strings.Contains(err.Error(), "generation refused") {
+		if variant != "exemplar" && peerUnreadableRefusal(err) {
 			return nil, true
 		}
 		t.Fatalf("generate: %v", err)
@@ -675,5 +682,24 @@ func TestPatternPeersShareOneTypeSize(t *testing.T) {
 				t.Skipf("%s on %s: generation refuses every uneven variant of the exemplar", p.Name(), tpl)
 			})
 		}
+	}
+}
+
+func TestPeerUnreadableRefusalIsSpecific(t *testing.T) {
+	for _, tc := range []struct {
+		name, message string
+		want          bool
+	}{
+		{"written geometry", "invalid slide specification: slide1: pattern: text needs 57pt at its written readable size but only 48pt is allocated; split the content or enlarge the frame; text is never clipped or reduced below its written readable size", true},
+		{"pipeline refusal", "generation refused: readable minimum would be exceeded", true},
+		{"missing asset", "invalid slide specification: missing hero.jpg", false},
+		{"bad payload", "invalid slide specification: pattern: text needs a string", false},
+		{"other allocation", "text needs memory but only 48pt is allocated", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := peerUnreadableRefusal(errors.New(tc.message)); got != tc.want {
+				t.Errorf("refusal=%v want%v", got, tc.want)
+			}
+		})
 	}
 }

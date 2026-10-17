@@ -106,19 +106,8 @@ func TestTemplatePatternMatrix(t *testing.T) {
 			t.Fatalf("marshal exemplar values for %q: %v", pat.Name(), mErr)
 		}
 
-		if pat.Name() == "image-hero" {
-			var values map[string]any
-			if err := json.Unmarshal(valuesJSON, &values); err != nil {
-				t.Fatal(err)
-			}
-			if err := bindIllustrativeHeroImage(values); err != nil {
-				t.Fatal(err)
-			}
-			valuesJSON, mErr = json.Marshal(values)
-			if mErr != nil {
-				t.Fatal(mErr)
-			}
-		}
+		valuesJSON = bindTestExemplarImage(t, pat.Name(), valuesJSON)
+
 		for _, tpl := range tplNames {
 			tplName := tpl
 			subName := pat.Name() + "/" + tplName

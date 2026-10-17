@@ -1,4 +1,13 @@
-# The slide estate: splitting it into segments
+---
+title: "The slide estate: splitting it into segments"
+type: documentation
+summary: "json2pptx guide to slide estate and segments"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## The slide estate: splitting it into segments
 
 How one slide's area is divided, what may stand in each part, at which widths
 a visual still draws as intended, and the order in which to reach for the

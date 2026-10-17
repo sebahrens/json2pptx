@@ -13,6 +13,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/placeholder"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 	"github.com/sebahrens/json2pptx/internal/semantic/slides"
@@ -231,14 +232,7 @@ func patternPreviewSpec(reg *patterns.Registry, name, templateName string) (map[
 	if err != nil {
 		return nil, err
 	}
-	if name == "image-hero" {
-		raw, _ := slide["slide"].(map[string]any)
-		pattern, _ := raw["pattern"].(map[string]any)
-		values, _ := pattern["values"].(map[string]any)
-		if err := bindIllustrativeHeroImage(values); err != nil {
-			return nil, fmt.Errorf("image-hero illustration: %w", err)
-		}
-	}
+
 	return recipeSpec(strings.ReplaceAll(name, "-", " "), templateName, slide), nil
 }
 
@@ -294,7 +288,7 @@ func bindIllustrativeHeroImage(values map[string]any) error {
 		copyImage[key] = value
 	}
 	copyImage["path"] = path
-	copyImage["alt"] = "Illustrative operations console; replace with your image"
+	copyImage["alt"] = placeholder.RecipeAltText("Illustrative operations console")
 	values["image"] = copyImage
 	return nil
 }

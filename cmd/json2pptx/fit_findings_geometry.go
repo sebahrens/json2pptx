@@ -167,7 +167,7 @@ func collectGeometry(input *PresentationInput, layouts []types.LayoutMetadata, s
 		if measured == nil {
 			continue
 		}
-		findings = append(findings, measured.layoutReviewFindings(safe, patternName)...)
+		findings = append(findings, layoutReviewFindingsAtAuthoredPaths(input, measured.layoutReviewFindings(safe, patternName))...)
 		// Sparse overall (SLIDE_UNDERUSED, an airiness advisory) and lopsided
 		// are different facts: a centred hero number is sparse and balanced,
 		// a row of cards over an empty bottom half is lopsided whether or not
@@ -395,7 +395,7 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 		}
 	}
 	for _, cell := range result.Cells {
-		cellPath := resolvedCellPath(basePath, cell)
+		cellPath := authoredGridCellPath(basePath, input, cell.RowIdx, cell.ColIdx) + cell.PathSuffix()
 		switch cell.Kind {
 		case shapegrid.CellKindShape:
 			a.ruledCell = false
@@ -1026,6 +1026,7 @@ const slideLowerBandMaxFrac = 1.0 / 3
 // descriptions and docs/PATTERNS.md say so; the value names the full-slide
 // pattern the remedy points to.
 var supportingBandPatterns = map[string]string{
+	"spectrum":             "matrix-2x2",
 	"process-flow-compact": "process-flow",
 	"kpi-inline":           "kpi-Nup",
 	"before-after-compact": "before-after",

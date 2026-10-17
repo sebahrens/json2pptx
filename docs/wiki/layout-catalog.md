@@ -1,4 +1,13 @@
-# Layout catalog: every kind, pattern, chart and diagram, and how to see it
+---
+title: "Layout catalog: every kind, pattern, chart and diagram, and how to see it"
+type: documentation
+summary: "json2pptx guide to layout catalog"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Layout catalog: every kind, pattern, chart and diagram, and how to see it
 
 What the engine can draw, in one place, so a visual is chosen from the full
 menu and not from the three an agent remembers. The live source is always the

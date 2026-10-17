@@ -1,4 +1,13 @@
-# Storyline and structure
+---
+title: "Storyline and structure"
+type: documentation
+summary: "json2pptx guide to storyline and structure"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## Storyline and structure
 
 How a consulting deck argues, and how that maps onto a DeckSpec. Read before
 authoring; the engine's gate (`score_deck`, `validate_deck_spec`) enforces the

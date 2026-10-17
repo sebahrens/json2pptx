@@ -118,11 +118,13 @@ func CanonicalNames() []string {
 // tag-based matching against the available template layouts.
 //
 // Resolution order:
-//  1. If the name is already a slideLayoutN ID, pass through unchanged.
-//  2. If the name is a generated layout ID (content-2-50-50, grid-2x2, etc.), pass through.
-//  3. If the name is a known alias (from LayoutAliases), resolve to the alias target.
-//  4. If the name is a canonical name, find the best matching layout by tags.
-//  5. Otherwise, return the name unchanged.
+//  1. Pass through concrete slideLayoutN IDs.
+//  2. Normalize portable aliases, then prefer native hosts by canonical tags.
+//     Image-side roles may use a native two-column host.
+//  3. Pass through explicit generated IDs, except agenda requires a real host.
+//  4. Use a portable two-column alias fallback, or another alias whose target
+//     ID actually exists in the template (including literal agenda).
+//  5. Return the original name and false when no host resolves.
 //
 // The second return value indicates whether the name was successfully resolved.
 func ResolveCanonicalLayoutID(name string, layouts []types.LayoutMetadata) (string, bool) {
@@ -140,6 +142,8 @@ func ResolveCanonicalLayoutID(name string, layouts []types.LayoutMetadata) (stri
 		normalized = "two-column-30-70"
 	case "2-col", "2col", "split":
 		normalized = "two-column"
+	case "contents", "outline", "toc":
+		normalized = "agenda"
 	}
 
 	// Check canonical names first — prefer native template layouts over generated ones
@@ -156,7 +160,7 @@ func ResolveCanonicalLayoutID(name string, layouts []types.LayoutMetadata) (stri
 	}
 
 	// Passthrough: generated layout IDs (content-2-50-50, grid-2x2, etc.)
-	if IsGeneratedLayout(name) && name != "agenda" {
+	if IsGeneratedLayout(name) && normalized != "agenda" {
 		return name, true
 	}
 

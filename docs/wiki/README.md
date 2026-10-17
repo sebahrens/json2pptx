@@ -1,4 +1,13 @@
-# json2pptx wiki: building consulting-grade decks with an agent
+---
+title: "json2pptx wiki: building consulting-grade decks with an agent"
+type: section
+summary: "Authoring guidance, worked consulting playbooks, and wiki navigation"
+status: active
+last_updated: "2026-10-17"
+tags: [json2pptx, deck-authoring]
+---
+
+## json2pptx wiki: building consulting-grade decks with an agent
 
 This wiki is for an agent (or the person steering one) that has to turn a
 brief into a deck a partner would present: a pitch or proposal, a deals

@@ -39,7 +39,7 @@ func (p *consultingPattern) NewValues() any       { return &map[string]any{} }
 func (p *consultingPattern) NewOverrides() any    { return &map[string]any{} }
 func (p *consultingPattern) NewCellOverride() any { return nil }
 func (p *consultingPattern) ExemplarValues() any {
-	raw, err := json.Marshal(p.example)
+	raw, err := json.Marshal(consultingExemplar(p.name, p.example))
 	if err != nil {
 		panic(err)
 	}
@@ -140,7 +140,7 @@ type consultingCanvas struct {
 }
 
 func (c *consultingCanvas) refuse(message string) error {
-	return &ValidationError{Pattern: c.name, Path: "values", Code: ErrCodeBodyTooLong, Message: message + "; split the content or enlarge the frame; text is never clipped or reduced below its written readable size", Fix: &FixSuggestion{Kind: "split_slide"}}
+	return &ValidationError{Pattern: c.name, Path: "values", Code: ErrCodeBodyTooLong, Message: message + "; split the content or enlarge the frame; text is never clipped or reduced below its written readable size", Fix: &FixSuggestion{Kind: "shorten_or_restructure"}}
 }
 func (c *consultingCanvas) shape(x, y, w, h float64, geometry, fill string, text json.RawMessage) error {
 	if w <= 0 || h <= 0 || x < -0.01 || y < -0.01 || x+w > c.w+.01 || y+h > c.h+.01 {
@@ -233,5 +233,5 @@ func (c *consultingCanvas) tableGrid() (*jsonschema.ShapeGridInput, error) {
 		return nil, c.refuse(fmt.Sprintf("matrix needs %.0fpt at 12pt but the frame holds %.0fpt", need+legendH+gap, c.h))
 	}
 	legend, _ := json.Marshal(map[string]any{"paragraphs": []visualParagraph{visualP(c.tableLegend, 10, false)}, "vertical_align": "ctr"})
-	return &jsonschema.ShapeGridInput{Gap: gap, Source: "pattern:" + c.name, VerifiedMatrixPattern: c.name, Columns: json.RawMessage(`[100]`), VerticalAlign: "top", Rows: []jsonschema.GridRowInput{{MinHeight: need, MaxHeight: need, Cells: []*jsonschema.GridCellInput{{Table: c.table}}}, {MinHeight: legendH, MaxHeight: legendH, Cells: []*jsonschema.GridCellInput{{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: visualRaw("none"), Text: legend}}}}}}, nil
+	return &jsonschema.ShapeGridInput{Gap: gap, Source: "pattern:" + c.name, VerifiedMatrixPattern: c.name, Columns: json.RawMessage(`[100]`), VerticalAlign: "ctr", Rows: []jsonschema.GridRowInput{{MinHeight: need, MaxHeight: need, Cells: []*jsonschema.GridCellInput{{Table: c.table}}}, {MinHeight: legendH, MaxHeight: legendH, Cells: []*jsonschema.GridCellInput{{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: visualRaw("none"), Text: legend}}}}}}, nil
 }

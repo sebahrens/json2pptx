@@ -74,7 +74,7 @@ var journeyCopy = struct {
 		"Key metrics":             "Spend is €7.8M over budget with a third of compute idle",
 		"Monthly spend trend":     "Monthly spend rose 26% in six months",
 		"Savings funnel":          "€9.6M of €14.2M identified savings is committed",
-		"Options comparison":      "Option B saves three times more than a clean-up",
+		"Options comparison":      "Option B saves 3× the clean-up",
 		"Savings by lever":        "Three levers deliver 80% of the savings",
 		"Savings by lever (2/2)":  "Five smaller levers add the last €2M",
 		"Decision":                "We ask for a decision on option B today",

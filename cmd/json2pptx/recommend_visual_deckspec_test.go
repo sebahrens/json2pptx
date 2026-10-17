@@ -52,6 +52,12 @@ func compileRecipe(t *testing.T, c patterns.VisualCandidate) (pattern string, ra
 	out, _ := json.Marshal(deck.Slides[0])
 	if p := deck.Slides[0].Pattern; p != nil {
 		pattern = p.Name
+	} else {
+		walkComposeSegments(deck.Slides[0].Compose, "", func(segment *SegmentInput, _ string) {
+			if segment.Pattern.Name == c.Name {
+				pattern = c.Name
+			}
+		})
 	}
 	return pattern, string(out)
 }
@@ -102,6 +108,17 @@ func TestRecommendVisualEveryPatternIsAuthorable(t *testing.T) {
 			compiled, _ := compileRecipe(t, c)
 			if compiled != name {
 				t.Errorf("%s: recipe compiles to pattern %q", name, compiled)
+			}
+			if supportingComposeRecipe(pat, c) {
+				if kind == "" {
+					rawOnly++
+				}
+				assertSupportingRecipeContract(t, c)
+				assertRecipeValidates(t, mc, c)
+				if !testing.Short() {
+					assertRecipeRenders(t, mc, c)
+				}
+				return
 			}
 			if kind != "" {
 				// The kind is the one whose recipe compiles to the pattern
@@ -497,7 +514,11 @@ func TestRecommendVisualChartTypeSpellings(t *testing.T) {
 		t.Errorf("compose name with a _chart spelling not canonicalised: %v", got)
 	}
 	for _, cc := range svggen.ChartCapabilities() {
-		for _, spelling := range []string{cc.Type, cc.Type + "_chart"} {
+		spellings := append([]string{cc.Type}, cc.Aliases...)
+		if !strings.HasSuffix(cc.Type, "_chart") {
+			spellings = append(spellings, cc.Type+"_chart")
+		}
+		for _, spelling := range spellings {
 			canon, ok := patterns.CanonicalChartType(spelling)
 			if !ok || canon != cc.Type {
 				t.Errorf("CanonicalChartType(%q) = %q, %v; want %q", spelling, canon, ok, cc.Type)
@@ -767,6 +788,54 @@ func TestConsultingChartRecommendationsPublishExactDataContract(t *testing.T) {
 					t.Errorf("offered example omits required data key%s", key)
 				}
 			}
+		})
+	}
+}
+
+func supportingComposeRecipe(p patterns.Pattern, c patterns.VisualCandidate) bool {
+	return patterns.SegmentFitFor(p).SegmentOnly && c.DataContract != nil && strings.Contains(c.DataContract.FieldPath, ".compose.")
+}
+func assertSupportingRecipeContract(t *testing.T, c patterns.VisualCandidate) {
+	t.Helper()
+	if c.SegmentFit == nil || !c.SegmentFit.SegmentOnly || c.DeckSpec == nil || c.DeckSpec.Kind != "raw_json2pptx" || c.DataContract.Form != patterns.ContractFormRaw {
+		t.Fatalf("supporting recipe contract is not explicit: %+v", c)
+	}
+	spec := recipeArgs(t, c)["spec"]
+	if lookupSpecPath(spec, c.DataContract.FieldPath) == nil {
+		t.Fatal("supporting pattern contract points at missing values")
+	}
+	if pattern, _ := compileRecipe(t, c); pattern != c.Name {
+		t.Fatalf("supporting recipe lost target leaf%s", c.Name)
+	}
+	companion := lookupSpecPath(spec, "slides[0].slide.compose.segments[1].text")
+	if companion == nil {
+		t.Fatal("supporting recipe lacks its argument companion")
+	}
+}
+func TestSpectrumRecommendationHasRunnableSupportingArgument(t *testing.T) {
+	for _, templateName := range []string{"midnight-blue", "abstract", "warm-coral"} {
+		t.Run(templateName, func(t *testing.T) {
+			rec := patterns.RecommendVisualResult{Candidates: []patterns.VisualCandidate{{Category: patterns.VisualCategoryPattern, Name: "spectrum"}}}
+			attachVisualRecipes(&rec, templateName)
+			c := rec.Candidates[0]
+			assertSupportingRecipeContract(t, c)
+			pattern, _ := patterns.Default().Get("spectrum")
+			expected, err := json.Marshal(pattern.(patterns.Exemplar).ExemplarValues())
+			if err != nil {
+				t.Fatal(err)
+			}
+			actual, err := json.Marshal(lookupSpecPath(recipeArgs(t, c)["spec"], c.DataContract.FieldPath))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(actual, expected) {
+				t.Fatal("composition changed the spectrum's exact exemplar values")
+			}
+			if body := lookupSpecPath(recipeArgs(t, c)["spec"], "slides[0].slide.compose.segments[1].text.body"); body == nil || body == "" {
+				t.Fatal("supporting argument is empty")
+			}
+			assertRecipeValidates(t, semanticTestConfig(t), c)
+			assertRecipeRenders(t, semanticTestConfig(t), c)
 		})
 	}
 }
