@@ -2281,9 +2281,8 @@ func TestRemoveNativeSVGPlaceholders(t *testing.T) {
 	}
 }
 
-// TestAppendNativeSVGRelationships tests adding SVG+PNG relationships
-func TestAppendNativeSVGRelationships(t *testing.T) {
-	ctx := newSinglePassContext("", nil, nil, false, nil)
+// TestWriteNewSlideRelationships_AppendsNativeSVG tests adding SVG+PNG relationships while preserving the layout and regular media.
+func TestWriteNewSlideRelationships_AppendsNativeSVG(t *testing.T) {
 
 	tests := []struct {
 		name          string
@@ -2318,14 +2317,21 @@ func TestAppendNativeSVGRelationships(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rels := pptx.RelationshipsXML{}
-			for i := 0; i < tt.initialRels; i++ {
-				rels.Relationships = append(rels.Relationships, pptx.RelationshipXML{
-					ID: fmt.Sprintf("rId%d", i+1),
-				})
+			ctx := newSinglePassContext("", nil, nil, false, nil)
+			for i := 1; i < tt.initialRels; i++ {
+				ctx.slideRelUpdates[1] = append(ctx.slideRelUpdates[1], mediaRel{mediaFileName: fmt.Sprintf("existing%d.png", i)})
 			}
-
-			ctx.appendNativeSVGRelationships(&rels, tt.nativeSVGs)
+			ctx.nativeSVGInserts[1] = tt.nativeSVGs
+			rels := writtenRelationshipsForTest(t, ctx, 1, "slideLayout7")
+			for i := 0; i < tt.initialRels; i++ {
+				wantTarget := "../slideLayouts/slideLayout7.xml"
+				if i > 0 {
+					wantTarget = fmt.Sprintf("../media/existing%d.png", i)
+				}
+				if i >= len(rels.Relationships) || rels.Relationships[i].ID != fmt.Sprintf("rId%d", i+1) || rels.Relationships[i].Target != wantTarget {
+					t.Fatalf("initial relationship %d lost: %+v", i, rels.Relationships)
+				}
+			}
 
 			if len(rels.Relationships) != tt.wantRelsCount {
 				t.Errorf("got %d relationships, want %d", len(rels.Relationships), tt.wantRelsCount)
@@ -3115,46 +3121,26 @@ func TestPopulateShapeText_BulletGroups_EmptyBody(t *testing.T) {
 	}
 }
 
-// TestLoadOrCreateRelationships tests loading relationships from template
-func TestLoadOrCreateRelationships(t *testing.T) {
-	templatePath := testutil.StandardTemplatePath(t)
-
-	reader, err := zip.OpenReader(templatePath)
+// New slides must receive their requested layout even if that slide number
+// already exists in the source template; no source-slide relationship is reused.
+func TestWriteNewSlideRelationships_RequestedLayout(t *testing.T) {
+	reader, err := zip.OpenReader(testutil.StandardTemplatePath(t))
 	if err != nil {
-		t.Fatalf("failed to open template: %v", err)
+		t.Fatal(err)
 	}
 	defer func() { _ = reader.Close() }()
-
-	ctx := newSinglePassContext("", nil, nil, false, nil)
-	ctx.templateReader = reader
-	ctx.templateIndex = utils.BuildZipIndex(&reader.Reader)
-
-	tests := []struct {
-		name         string
-		relsFileName string
-		wantEmpty    bool
-	}{
-		{
-			name:         "existing relationships file",
-			relsFileName: "ppt/slides/_rels/slide1.xml.rels",
-			wantEmpty:    false,
-		},
-		{
-			name:         "non-existent relationships file",
-			relsFileName: "ppt/slides/_rels/slide999.xml.rels",
-			wantEmpty:    true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rels := ctx.loadOrCreateRelationships(tt.relsFileName)
-
-			if tt.wantEmpty && len(rels.Relationships) > 0 {
-				t.Errorf("expected empty relationships, got %d", len(rels.Relationships))
+	for _, slideNum := range []int{1, 999} {
+		t.Run(strconv.Itoa(slideNum), func(t *testing.T) {
+			ctx := newSinglePassContext("", nil, nil, false, nil)
+			ctx.templateReader = reader
+			ctx.templateIndex = utils.BuildZipIndex(&reader.Reader)
+			rels := writtenRelationshipsForTest(t, ctx, slideNum, "slideLayout7")
+			if len(rels.Relationships) != 1 {
+				t.Fatalf("expected only requested layout relationship, got %+v", rels.Relationships)
 			}
-			if !tt.wantEmpty && len(rels.Relationships) == 0 {
-				t.Error("expected non-empty relationships")
+			rel := rels.Relationships[0]
+			if rel.ID != "rId1" || rel.Type != "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" || rel.Target != "../slideLayouts/slideLayout7.xml" {
+				t.Errorf("requested layout relationship not preserved: %+v", rel)
 			}
 		})
 	}

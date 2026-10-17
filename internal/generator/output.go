@@ -1192,42 +1192,6 @@ func (ctx *singlePassContext) writeNewSlideRelationships(slideNum int, layoutID 
 	return ctx.writeRelationshipsFile(relsFileName, rels)
 }
 
-// loadOrCreateRelationships loads existing relationships from the template or creates a new empty one.
-func (ctx *singlePassContext) loadOrCreateRelationships(relsFileName string) pptx.RelationshipsXML {
-	var existingRels pptx.RelationshipsXML
-	relsData, err := utils.ReadFileFromZipIndex(ctx.templateIndex, relsFileName)
-	if err == nil {
-		if parseErr := xml.Unmarshal(relsData, &existingRels); parseErr != nil {
-			existingRels = pptx.RelationshipsXML{
-				XMLName: xml.Name{Space: pptx.NsPackageRels, Local: "Relationships"},
-			}
-		}
-	} else {
-		existingRels = pptx.RelationshipsXML{
-			XMLName: xml.Name{Space: pptx.NsPackageRels, Local: "Relationships"},
-		}
-	}
-	return existingRels
-}
-
-// appendNativeSVGRelationships appends PNG and SVG relationships for native SVG inserts.
-func (ctx *singlePassContext) appendNativeSVGRelationships(rels *pptx.RelationshipsXML, nativeSVGs []nativeSVGInsert) {
-	for _, svg := range nativeSVGs {
-		// PNG relationship
-		rels.Relationships = append(rels.Relationships, pptx.RelationshipXML{
-			ID:     svg.pngRelID,
-			Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
-			Target: "../media/" + svg.pngMediaFile,
-		})
-		// SVG relationship
-		rels.Relationships = append(rels.Relationships, pptx.RelationshipXML{
-			ID:     svg.svgRelID,
-			Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
-			Target: "../media/" + svg.svgMediaFile,
-		})
-	}
-}
-
 // writeRelationshipsFile writes a relationships XML file to the output ZIP.
 func (ctx *singlePassContext) writeRelationshipsFile(relsFileName string, rels pptx.RelationshipsXML) error {
 	// Ensure the xmlns attribute is set for LibreOffice compatibility
