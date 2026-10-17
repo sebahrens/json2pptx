@@ -686,7 +686,7 @@ func GenerateAccentBarXML(bar *ResolvedAccentBar) ([]byte, error) {
 func GenerateImageOverlayXML(spec *OverlaySpec, id uint32, bounds pptx.RectEmu) ([]byte, error) {
 	color := spec.Color
 	if color == "" {
-		color = "000000"
+		color = "dk1"
 	}
 	color = strings.TrimPrefix(color, "#")
 
@@ -727,7 +727,7 @@ func GenerateImageTextXML(spec *ImageText, id uint32, bounds pptx.RectEmu) ([]by
 	}
 	color := spec.Color
 	if color == "" {
-		color = "FFFFFF"
+		color = "lt1"
 	}
 	align := spec.Align
 	if align == "" {

@@ -855,9 +855,9 @@ func TestGenerateImageOverlayXML(t *testing.T) {
 		if !strings.Contains(s, `prst="rect"`) {
 			t.Error("expected rect geometry")
 		}
-		// Default color 000000, default alpha 0.4 = 40000
-		if !strings.Contains(s, `000000`) {
-			t.Error("expected default black color")
+		// Default theme dark ink, default alpha 0.4 = 40000
+		if !strings.Contains(s, `<a:schemeClr val="dk1">`) {
+			t.Error("expected default theme dark color")
 		}
 		if !strings.Contains(s, `<a:alpha`) {
 			t.Error("expected alpha transparency")
@@ -905,9 +905,9 @@ func TestGenerateImageTextXML(t *testing.T) {
 		if !strings.Contains(s, `<p:sp>`) {
 			t.Error("expected p:sp element")
 		}
-		// Default white text
-		if !strings.Contains(s, `FFFFFF`) {
-			t.Error("expected default white color")
+		// Default theme light text
+		if !strings.Contains(s, `<a:schemeClr val="lt1"`) {
+			t.Error("expected default theme light color")
 		}
 	})
 

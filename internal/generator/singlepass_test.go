@@ -1820,6 +1820,10 @@ func TestGetPlaceholderBounds(t *testing.T) {
 
 // TestAllocateMediaSlot tests media slot allocation
 func TestAllocateMediaSlot(t *testing.T) {
+	dir := t.TempDir()
+	imagePath := writeTestPNG(t, dir, "image.png", 3, 2)
+	otherPath := writeTestPNG(t, dir, "photo.jpg", 4, 2)
+	noext := writeTestPNG(t, dir, "noext", 5, 2)
 	ctx := newSinglePassContext("", nil, nil, false, nil)
 	// Pre-seed the allocator so numbering starts at 5 (simulate 4 existing images)
 	ctx.media.ScanPaths([]string{"ppt/media/image4.png"})
@@ -1833,28 +1837,28 @@ func TestAllocateMediaSlot(t *testing.T) {
 	}{
 		{
 			name:              "new PNG file",
-			imagePath:         "/path/to/image.png",
+			imagePath:         imagePath,
 			wantMediaFile:     "image5.png",
 			wantNextAfter:     6,
 			wantExtensionUsed: "png",
 		},
 		{
 			name:              "same file returns cached",
-			imagePath:         "/path/to/image.png",
+			imagePath:         imagePath,
 			wantMediaFile:     "image5.png",
 			wantNextAfter:     6, // no increment
 			wantExtensionUsed: "png",
 		},
 		{
 			name:              "new JPG file",
-			imagePath:         "/path/to/photo.jpg",
-			wantMediaFile:     "image6.jpg",
+			imagePath:         otherPath,
+			wantMediaFile:     "image6.png",
 			wantNextAfter:     7,
-			wantExtensionUsed: "jpg",
+			wantExtensionUsed: "png",
 		},
 		{
-			name:              "file without extension defaults to png",
-			imagePath:         "/path/to/noext",
+			name:              "file without extension uses decoded png",
+			imagePath:         noext,
 			wantMediaFile:     "image7.png",
 			wantNextAfter:     8,
 			wantExtensionUsed: "png",

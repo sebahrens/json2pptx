@@ -16,9 +16,9 @@ import (
 func withTempCache(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	t.Setenv("TMPDIR", dir)
+	t.Setenv("JSON2PPTX_RENDER_CACHE_DIR", filepath.Join(dir, "cache"))
 	root := cacheDir()
-	if err := os.MkdirAll(root, 0o755); err != nil {
+	if err := os.MkdirAll(root, 0o700); err != nil {
 		t.Fatalf("make cache dir: %v", err)
 	}
 	return root

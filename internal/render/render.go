@@ -139,11 +139,6 @@ func loProfileArg(dir string) []string {
 	return []string{"-env:UserInstallation=file://" + filepath.ToSlash(abs)}
 }
 
-// cacheDir returns the directory used for rendered slide caches.
-func cacheDir() string {
-	return filepath.Join(os.TempDir(), "json2pptx-render-cache")
-}
-
 // hashFile computes the SHA-256 hash of a file's contents.
 func hashFile(path string) (string, error) {
 	data, err := os.ReadFile(path)
@@ -176,19 +171,26 @@ const cacheCompleteMarker = ".complete"
 // given key, indexed by slide number. Returns nil on a cache miss or when the
 // entry is incomplete.
 func getCachedPNGs(key string) []string {
-	dir := filepath.Join(cacheDir(), key)
+	root := cacheDir()
+	if privateCacheDirectory(root, false) != nil {
+		return nil
+	}
+	dir := filepath.Join(root, key)
+	if privateCacheDirectory(dir, false) != nil || !trustedCacheFile(filepath.Join(dir, cacheCompleteMarker)) {
+		return nil
+	}
 	marker, err := os.ReadFile(filepath.Join(dir, cacheCompleteMarker)) //nolint:gosec // path is internal (cache dir + key)
 	if err != nil {
 		return nil
 	}
 	n, err := strconv.Atoi(strings.TrimSpace(string(marker)))
-	if err != nil || n <= 0 {
+	if err != nil || n <= 0 || n > 100000 {
 		return nil
 	}
 	files := make([]string, n)
 	for i := range files {
 		files[i] = filepath.Join(dir, fmt.Sprintf("slide-%d.png", i))
-		if _, err := os.Stat(files[i]); err != nil {
+		if !trustedCacheFile(files[i]) {
 			return nil
 		}
 	}
@@ -201,7 +203,7 @@ func getCachedPNGs(key string) []string {
 // half-written entry.
 func storeCachePNGs(key string, pngs []string) {
 	root := cacheDir()
-	if err := os.MkdirAll(root, 0755); err != nil {
+	if err := privateCacheDirectory(root, true); err != nil {
 		return // best-effort caching
 	}
 	tmp, err := os.MkdirTemp(root, ".tmp-")
@@ -214,15 +216,16 @@ func storeCachePNGs(key string, pngs []string) {
 		if err != nil {
 			return
 		}
-		if err := os.WriteFile(filepath.Join(tmp, fmt.Sprintf("slide-%d.png", i)), data, 0644); err != nil { //nolint:gosec // path is internal
+		if err := os.WriteFile(filepath.Join(tmp, fmt.Sprintf("slide-%d.png", i)), data, 0600); err != nil { //nolint:gosec // path is internal
 			return
 		}
 	}
-	if err := os.WriteFile(filepath.Join(tmp, cacheCompleteMarker), []byte(strconv.Itoa(len(pngs))), 0644); err != nil { //nolint:gosec // path is internal
+	if err := os.WriteFile(filepath.Join(tmp, cacheCompleteMarker), []byte(strconv.Itoa(len(pngs))), 0600); err != nil { //nolint:gosec // path is internal
 		return
 	}
 	dir := filepath.Join(root, key)
-	_ = os.RemoveAll(dir)
+	// Never remove an entry another process may currently read. Atomic rename
+	// succeeds for a new key; existing entries remain until normal eviction.
 	_ = os.Rename(tmp, dir)
 }
 
@@ -574,17 +577,38 @@ func WriteArtifact(data []byte) (string, error) {
 // the write is skipped; one that differs only in encoding is replaced, which is
 // harmless because it shows the same pixels.
 func writeArtifact(data []byte, contentHash string) (string, error) {
-	if err := os.MkdirAll(artifactsDir(), 0755); err != nil {
+	if err := privateCacheDirectory(cacheDir(), true); err != nil {
+		return "", err
+	}
+	if err := privateCacheDirectory(artifactsDir(), true); err != nil {
 		return "", err
 	}
 	// path is internal: render cache dir + sha256 content hash, not user-tainted.
 	path := filepath.Join(artifactsDir(), fmt.Sprintf("slide-%s.png", contentHash))
-	if info, err := os.Stat(path); err == nil && info.Size() == int64(len(data)) { //nolint:gosec // path is internal (cache dir + content hash)
-		return path, nil
+	if trustedCacheFile(path) {
+		if existing, err := os.ReadFile(path); err == nil && pixelhash.Sum(existing) == contentHash {
+			return path, nil
+		}
 	}
-	if err := os.WriteFile(path, data, 0644); err != nil { //nolint:gosec // path is internal (cache dir + content hash)
+	// Atomic replacement never follows a forged symlink and concurrent readers
+	// cannot observe a partial artifact.
+	tmp, err := os.CreateTemp(artifactsDir(), ".tmp-artifact-")
+	if err != nil {
 		return "", err
 	}
+	defer func() { _ = os.Remove(tmp.Name()) }()
+	_, writeErr := tmp.Write(data)
+	closeErr := tmp.Close()
+	if writeErr != nil {
+		return "", writeErr
+	}
+	if closeErr != nil {
+		return "", closeErr
+	}
+	if err := os.Rename(tmp.Name(), path); err != nil {
+		return "", err
+	}
+
 	return path, nil
 }
 
@@ -1001,7 +1025,14 @@ func deckPNGsContext(ctx context.Context, pptxPath string, density int, force bo
 
 // InvalidateCache removes all cached render results.
 func InvalidateCache() error {
-	return os.RemoveAll(cacheDir())
+	root := cacheDir()
+	if os.IsNotExist(privateCacheDirectory(root, false)) {
+		return nil
+	}
+	if err := privateCacheDirectory(root, false); err != nil {
+		return err
+	}
+	return os.RemoveAll(root)
 }
 
 // CachedSlideHashes returns the pixel hashes (pixelhash.Sum, the same identity
@@ -1022,14 +1053,17 @@ func CachedSlideHashes(sourceHash string) map[int][]string {
 	if !isHexHash(sourceHash) {
 		return out
 	}
+	if privateCacheDirectory(cacheDir(), false) != nil {
+		return out
+	}
 	dirs, err := filepath.Glob(filepath.Join(cacheDir(), sourceHash+"-d*"))
 	if err != nil {
 		return out
 	}
 	sort.Strings(dirs)
 	for _, dir := range dirs {
-		pngs, gerr := filepath.Glob(filepath.Join(dir, "slide-*.png"))
-		if gerr != nil {
+		pngs := getCachedPNGs(filepath.Base(dir))
+		if len(pngs) == 0 {
 			continue
 		}
 		sortPNGsByIndex(pngs)

@@ -420,7 +420,7 @@ type ImageText struct {
 	Content       string  // Text content
 	Size          float64 // Font size in points (default: 14)
 	Bold          bool    // Bold text
-	Color         string  // Text color (hex or scheme ref). Default: "FFFFFF" (white)
+	Color         string  // Text color (hex or scheme ref). Default: "lt1" (theme light ink)
 	Align         string  // Horizontal alignment: "l", "ctr", "r". Default: "ctr"
 	VerticalAlign string  // Vertical alignment: "t", "ctr", "b". Default: "b" (bottom)
 	Font          string  // Font family. Default: theme minor font

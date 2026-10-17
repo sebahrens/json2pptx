@@ -192,7 +192,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	// Calculate widths before row capacity. Wrapped line counts depend on the
 	// actual column widths, so fixed-height capacity math can claim a table fits
 	// while PowerPoint or LibreOffice grows its rows beyond the frame.
-	colWidths, colWidthDeficit := tableSpecColumnWidths(table, config.Bounds.Width, config.DefaultSize)
+	colWidths, colWidthDeficit := tableSpecColumnWidths(table, config.Bounds.Width, config.DefaultSize, config.DefaultFont)
 
 	// Determine how many measured rows fit. If the table still overflows at the
 	// minimum font size, truncate data rows and replace the last visible row
@@ -531,7 +531,7 @@ func calculateColumnWidths(numCols int, availableWidth int64, headers []string, 
 	return widths
 }
 
-func calculateColumnWidthsWithDiag(numCols int, availableWidth int64, headers []string, rows [][]types.TableCell, fontSize int) ([]int64, bool) { //nolint:gocognit,gocyclo
+func calculateColumnWidthsWithDiag(numCols int, availableWidth int64, headers []string, rows [][]types.TableCell, fontSize int, fonts ...string) ([]int64, bool) { //nolint:gocognit,gocyclo
 	if numCols == 0 {
 		return nil, false
 	}
@@ -539,7 +539,7 @@ func calculateColumnWidthsWithDiag(numCols int, availableWidth int64, headers []
 		fontSize = engineDefaultRowFontSize
 	}
 	if financialTableColumns(numCols, rows) {
-		if widths, deficit, ok := financialTableWidths(numCols, availableWidth, headers, rows, fontSize); ok {
+		if widths, deficit, ok := financialTableWidths(numCols, availableWidth, headers, rows, fontSize, fonts...); ok {
 			return widths, deficit
 		}
 	}
@@ -753,12 +753,12 @@ func numericTableCell(value string) bool {
 // leaves just enough room for the label column, then gives every numeric
 // column an equal share. A 1.4-inch numeric floor on a full-width table keeps
 // quarter headers intact; narrow placeholders scale that floor to their size.
-func financialTableWidths(numCols int, availableWidth int64, headers []string, rows [][]types.TableCell, fontSize int) ([]int64, bool, bool) {
+func financialTableWidths(numCols int, availableWidth int64, headers []string, rows [][]types.TableCell, fontSize int, fonts ...string) ([]int64, bool, bool) {
 	if availableWidth <= int64(numCols) {
 		return nil, false, false
 	}
 	measure := func(value string, size int) (int64, bool) {
-		width, err := textfit.MeasureLineWidth(value, defaultFontFamily, float64(size)/100)
+		width, err := textfit.MeasureLineWidth(value, tableMeasureFont(fonts), float64(size)/100)
 		return width + 2*cellMargin, err == nil
 	}
 	var labelWidth, numericWidth int64
@@ -1106,7 +1106,7 @@ func generateDataCellContent(cell types.TableCell, isTotalsRow bool, config Tabl
 	// For delta columns, apply red/green text color based on content
 	var fontColorXML string
 	if !config.Style.UseTableStyle && colIdx >= 0 && colIdx < len(config.Style.ColumnTypes) && config.Style.ColumnTypes[colIdx] == "delta" {
-		fontColorXML = deltaTextColor(cell.Content)
+		fontColorXML = deltaTextColor(cell.Content, config.Theme)
 	}
 
 	if cell.TextColor != "" {
@@ -1161,22 +1161,27 @@ func cellRunsXML(rPr, text string) string {
 
 // deltaTextColor returns OOXML solidFill XML for delta column cells.
 // Positive values get green, negative values get red.
-func deltaTextColor(content string) string {
-	trimmed := strings.TrimSpace(content)
-	if trimmed == "" || trimmed == "0" || trimmed == "0%" {
+func deltaTextColor(content string, themes ...*types.ThemeInfo) string {
+	value, ok := parseCellNumber(content)
+	if !ok || value == 0 {
 		return ""
 	}
-	// Check for negative: starts with - or contains negative indicators
-	if strings.HasPrefix(trimmed, "-") || strings.HasPrefix(trimmed, "(") {
-		// Red for negative
-		return `<a:solidFill><a:srgbClr val="CC0000"/></a:solidFill>`
+	role, fallback := "positive", "007A33"
+	if value < 0 {
+		role, fallback = "negative", "CC0000"
 	}
-	// Check for positive: starts with + or is a number > 0
-	if strings.HasPrefix(trimmed, "+") || (len(trimmed) > 0 && trimmed[0] >= '1' && trimmed[0] <= '9') {
-		// Green for positive
-		return `<a:solidFill><a:srgbClr val="007A33"/></a:solidFill>`
+	var out bytes.Buffer
+	pptx.ResolveColorString(tableSemanticColor(role, fallback, themes...)).WriteTo(&out)
+	return out.String()
+}
+
+func tableSemanticColor(role, fallback string, themes ...*types.ThemeInfo) string {
+	if len(themes) > 0 && themes[0] != nil {
+		if color := themes[0].SemanticAccents[role]; color != "" {
+			return color
+		}
 	}
-	return ""
+	return fallback
 }
 
 // resolveConditionalFill returns an OOXML solidFill element for a conditional
@@ -1186,7 +1191,7 @@ func deltaTextColor(content string) string {
 // evaluated, so a cell tagged rule:"negative" was tinted whatever it said
 // (go-slide-creator-6hlu). Now a rule that does not match leaves the cell with
 // the table's normal fill, which is what "conditional" means.
-func resolveConditionalFill(cond *types.ConditionalFormat, content string) string {
+func resolveConditionalFill(cond *types.ConditionalFormat, content string, themes ...*types.ThemeInfo) string {
 	if cond == nil || !conditionalMatches(cond, content) {
 		return ""
 	}
@@ -1195,9 +1200,9 @@ func resolveConditionalFill(cond *types.ConditionalFormat, content string) strin
 		// Default fills based on rule
 		switch cond.Rule {
 		case "positive":
-			fill = "accent6" // typically green
+			fill = tableSemanticColor("positive", "accent6", themes...)
 		case "negative":
-			fill = "accent2" // typically red/orange
+			fill = tableSemanticColor("negative", "accent2", themes...)
 		default:
 			fill = "accent4"
 		}
@@ -1312,7 +1317,7 @@ var cellNumberRe = regexp.MustCompile(`-?\d[\d,\s]*(?:\.\d+)?`)
 // A percent sign is a unit, not a scale: "50%" is 50, so a threshold written
 // for percentages is written in the same units the cell shows.
 func parseCellNumber(content string) (float64, bool) {
-	text := strings.TrimSpace(content)
+	text := strings.ReplaceAll(strings.TrimSpace(content), "−", "-")
 	if text == "" {
 		return 0, false
 	}
@@ -1392,7 +1397,7 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 		// Determine cell fill — priority: conditional > highlight column > header/stripe
 		fillXML := ""
 		if !isHeader && conditional != nil {
-			fillXML = resolveConditionalFill(conditional, cellContent)
+			fillXML = resolveConditionalFill(conditional, cellContent, config.Theme)
 		}
 		if fillXML == "" && !isHeader && config.Style.HighlightColumn > 0 && colIdx == config.Style.HighlightColumn-1 {
 			fillXML = highlightColumnFillXML(config)
@@ -1550,27 +1555,8 @@ func mapToSchemeColor(colorName string) string {
 // escapeXMLText escapes special characters for XML text content and strips XML
 // 1.0 illegal control characters (see pptx.IsIllegalXMLChar).
 func escapeXMLText(s string) string {
-	var buf strings.Builder
-	for _, r := range s {
-		switch r {
-		case '&':
-			buf.WriteString("&amp;")
-		case '<':
-			buf.WriteString("&lt;")
-		case '>':
-			buf.WriteString("&gt;")
-		case '"':
-			buf.WriteString("&quot;")
-		case '\'':
-			buf.WriteString("&apos;")
-		default:
-			if pptx.IsIllegalXMLChar(r) {
-				continue
-			}
-			buf.WriteRune(r)
-		}
-	}
-	return buf.String()
+	// Preserve the table writer's existing apostrophe entity spelling.
+	return strings.ReplaceAll(pptx.EscapeXMLAttr(s), "'", "&apos;")
 }
 
 // measureTableCellsFit checks every cell in the table at the configured font
@@ -1585,7 +1571,7 @@ func measureTableCellsFit(table *types.TableSpec, config TableRenderConfig) erro
 	fontName := config.DefaultFont
 
 	// Estimate column widths — use the same proportional algorithm as rendering.
-	colWidths, _ := tableSpecColumnWidths(table, config.Bounds.Width, config.DefaultSize)
+	colWidths, _ := tableSpecColumnWidths(table, config.Bounds.Width, config.DefaultSize, config.DefaultFont)
 
 	// Row height for maxLines calculation.
 	var rowHeightEMU int64
@@ -1666,9 +1652,16 @@ func measureTableCellsFit(table *types.TableSpec, config TableRenderConfig) erro
 }
 
 // tableSpecColumnWidths is shared by strict fit and rendering.
-func tableSpecColumnWidths(table *types.TableSpec, width int64, fontSize int) ([]int64, bool) {
+func tableSpecColumnWidths(table *types.TableSpec, width int64, fontSize int, fonts ...string) ([]int64, bool) {
 	if widths := types.ResolveTableColumnWidths(table.ColumnWidths, len(table.Headers), width); widths != nil {
 		return widths, false
 	}
-	return calculateColumnWidthsWithDiag(len(table.Headers), width, table.Headers, table.Rows, fontSize)
+	return calculateColumnWidthsWithDiag(len(table.Headers), width, table.Headers, table.Rows, fontSize, fonts...)
+}
+
+func tableMeasureFont(fonts []string) string {
+	if len(fonts) > 0 && fonts[0] != "" {
+		return fonts[0]
+	}
+	return defaultFontFamily
 }

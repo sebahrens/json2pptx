@@ -43,10 +43,10 @@ func derivedColumnLayoutFinding(slide deckinput.SlideInput, slideIndex int) (pat
 // deriveLayoutMetadata mirrors the generator's chrome reservation followed by
 // its per-slide column split. It is used by preview and fit preflight; neither
 // may show the native 50/50 bounds for an asymmetric slide.
-func deriveLayoutMetadata(slide deckinput.SlideInput, base types.LayoutMetadata, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) (types.LayoutMetadata, error) {
+func deriveLayoutMetadata(slide deckinput.SlideInput, base types.LayoutMetadata, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, fonts ...string) (types.LayoutMetadata, error) {
 	percent := derivedColumnLeftPercent(slide)
 	if percent == 0 {
-		return withNativeHeadingBounds(slide, base), nil
+		return withNativeHeadingBounds(slide, base, fonts...), nil
 	}
 	derived := base
 	derived.Placeholders = append([]types.PlaceholderInfo(nil), base.Placeholders...)
@@ -95,7 +95,7 @@ func deriveLayoutMetadata(slide deckinput.SlideInput, base types.LayoutMetadata,
 			ph.MaxChars = max(1, int(int64(ph.MaxChars)*ph.Bounds.Width*ph.Bounds.Height/oldArea))
 		}
 	}
-	return withNativeHeadingBounds(slide, derived), nil
+	return withNativeHeadingBounds(slide, derived, fonts...), nil
 }
 
 func clipDerivedColumnToChrome(box types.BoundingBox, frame template.ChromeFrame) types.BoundingBox {
@@ -119,7 +119,7 @@ func clipDerivedColumnToChrome(box types.BoundingBox, frame template.ChromeFrame
 	return box
 }
 
-func withDerivedFitLayouts(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) (*PresentationInput, []types.LayoutMetadata, []patterns.FitFinding) {
+func withDerivedFitLayouts(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, fonts ...string) (*PresentationInput, []types.LayoutMetadata, []patterns.FitFinding) {
 	var slides []SlideInput
 	var derivedLayouts []types.LayoutMetadata
 	var errors []patterns.FitFinding
@@ -131,7 +131,7 @@ func withDerivedFitLayouts(input *PresentationInput, layouts []types.LayoutMetad
 		if base == nil {
 			continue // Existing layout-resolution finding handles an unknown ID.
 		}
-		derived, err := deriveLayoutMetadata(slide, *base, layouts, slideWidth, slideHeight)
+		derived, err := deriveLayoutMetadata(slide, *base, layouts, slideWidth, slideHeight, fonts...)
 		if err != nil {
 			errors = append(errors, patterns.FitFinding{ValidationError: patterns.ValidationError{
 				Path: slidepath.Slide(i) + "/layout_id", Code: patterns.ErrCodeLayoutUnresolvable, Message: err.Error(),
@@ -162,7 +162,7 @@ func hasNativeHeadings(slide deckinput.SlideInput) bool {
 	}
 	return false
 }
-func withNativeHeadingBounds(slide deckinput.SlideInput, base types.LayoutMetadata) types.LayoutMetadata {
+func withNativeHeadingBounds(slide deckinput.SlideInput, base types.LayoutMetadata, fonts ...string) types.LayoutMetadata {
 	if !hasNativeHeadings(slide) {
 		return base
 	}
@@ -174,7 +174,7 @@ func withNativeHeadingBounds(slide deckinput.SlideInput, base types.LayoutMetada
 				continue
 			}
 			old := ph.Bounds.Height
-			reserve := generator.NativeColumnHeadingReserve(content.Heading, ph.Bounds.Width)
+			reserve := generator.NativeColumnHeadingReserve(content.Heading, ph.Bounds.Width, fonts...)
 			ph.Bounds.Y += reserve
 			ph.Bounds.Height = max(int64(1), old-reserve)
 			if old > 0 && ph.MaxChars > 0 {
@@ -184,4 +184,11 @@ func withNativeHeadingBounds(slide deckinput.SlideInput, base types.LayoutMetada
 		}
 	}
 	return base
+}
+
+func nativeHeadingFont(theme *types.ThemeInfo) string {
+	if theme != nil {
+		return theme.BodyFont
+	}
+	return ""
 }

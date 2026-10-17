@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -109,7 +110,7 @@ func (r themePatchResult) changed() bool {
 // element, e.g. <a:accent1><a:srgbClr val="2E5090"/></a:accent1>. The inner
 // element may be srgbClr or sysClr, so both are replaced with an srgbClr.
 func clrSchemeSlotPattern(slot string) *regexp.Regexp {
-	return regexp.MustCompile(`(?s)(<a:` + slot + `>)\s*<a:(?:srgbClr|sysClr)\b[^>]*/>\s*(</a:` + slot + `>)`)
+	return clrSchemeSlotPatterns[slot]
 }
 
 var (
@@ -181,27 +182,7 @@ func replaceBetweenGroups(pattern *regexp.Regexp, s, literal string) string {
 // attribute. Font names are author-supplied, so a stray quote or ampersand must
 // not break the theme part.
 func escapeXMLAttrValue(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		if IsFontNameControlRune(r) {
-			continue // not representable in XML 1.0 (or pointless in a name)
-		}
-		switch r {
-		case '&':
-			b.WriteString("&amp;")
-		case '<':
-			b.WriteString("&lt;")
-		case '>':
-			b.WriteString("&gt;")
-		case '"':
-			b.WriteString("&quot;")
-		case '\'':
-			b.WriteString("&apos;")
-		default:
-			b.WriteRune(r)
-		}
-	}
-	return b.String()
+	return pptx.EscapeXMLAttr(s)
 }
 
 // IsFontNameControlRune reports whether r may not appear in a theme font name:
@@ -210,3 +191,11 @@ func escapeXMLAttrValue(s string) string {
 func IsFontNameControlRune(r rune) bool {
 	return unicode.IsControl(r) || r == 0xFFFE || r == 0xFFFF
 }
+
+var clrSchemeSlotPatterns = func() map[string]*regexp.Regexp {
+	result := map[string]*regexp.Regexp{}
+	for _, slot := range schemeColorElements {
+		result[slot] = regexp.MustCompile(`(?s)(<a:` + slot + `>)\s*<a:(?:srgbClr|sysClr)\b[^>]*/>\s*(</a:` + slot + `>)`)
+	}
+	return result
+}()

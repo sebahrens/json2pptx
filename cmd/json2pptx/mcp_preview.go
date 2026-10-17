@@ -549,9 +549,9 @@ func resolveSlidePlaceholders(slide *SlideInput, tctx *previewTemplateContext, r
 	}
 
 	selectedLayout, hasLayout := tctx.layoutByID[rs.LayoutID]
-	if hasLayout && derivedColumnLeftPercent(*slide) != 0 {
+	if hasLayout && (derivedColumnLeftPercent(*slide) != 0 || hasNativeHeadings(*slide)) {
 		var err error
-		selectedLayout, err = deriveLayoutMetadata(*slide, selectedLayout, tctx.layouts, tctx.slideWidth, tctx.slideHeight)
+		selectedLayout, err = deriveLayoutMetadata(*slide, selectedLayout, tctx.layouts, tctx.slideWidth, tctx.slideHeight, nativeHeadingFont(tctx.theme))
 		if err != nil {
 			return err
 		}

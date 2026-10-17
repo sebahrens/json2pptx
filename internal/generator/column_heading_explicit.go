@@ -32,7 +32,7 @@ func (ctx *singlePassContext) placeExplicitColumnHeadings(slide *slideXML, conte
 			return fmt.Errorf("heading requires a body/body_2 content placeholder")
 		}
 		bounds := *original.ShapeProperties.Transform
-		reserve := NativeColumnHeadingReserve(heading, bounds.Extent.CX)
+		reserve := NativeColumnHeadingReserve(heading, bounds.Extent.CX, ctx.themeFontName)
 		if bounds.Extent.CY <= reserve {
 			return fmt.Errorf("column heading leaves no content height")
 		}
@@ -60,8 +60,8 @@ func (ctx *singlePassContext) placeExplicitColumnHeadings(slide *slideXML, conte
 
 // NativeColumnHeadingReserve measures multi-line headings before content gets
 // its final rectangle, retaining the ordinary one-line band for short labels.
-func NativeColumnHeadingReserve(heading string, width int64) int64 {
-	measured, err := textfit.MeasureRun(heading, "Calibri", 14, max(int64(1), width-2*91440), 0)
+func NativeColumnHeadingReserve(heading string, width int64, fonts ...string) int64 {
+	measured, err := textfit.MeasureRun(heading, tableMeasureFont(fonts), 14, max(int64(1), width-2*91440), 0)
 	if err != nil {
 		return ColumnHeadingReserveEMU
 	}

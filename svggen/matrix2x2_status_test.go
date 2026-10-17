@@ -14,7 +14,7 @@ func TestMatrixStakeholderStatusLegendAndSize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if data.Points[0].Size != 20 || data.Points[0].Color == nil || *data.Points[0].Color != stakeholderStatusColors["supporter"] {
+	if data.Points[0].Size != 20 || data.Points[0].Status != "supporter" || data.Points[0].Color != nil {
 		t.Fatalf("lost status or size %+v", data.Points[0])
 	}
 	b, _, err := d.RenderWithBuilder(req)

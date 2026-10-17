@@ -1440,6 +1440,7 @@ func buildSvggenVocabularies() capabilitiesVocabularies {
 		svggen.FindingOverflowSuppressed,
 		svggen.FindingPercentScaleAmbiguous,
 		svggen.FindingPlotAreaCollapsed,
+		svggen.FindingFlatRange,
 		svggen.FindingPointOutOfRange,
 		svggen.FindingScatterLabelSkipped,
 		svggen.FindingTickThinned,

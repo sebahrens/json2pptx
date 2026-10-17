@@ -1,6 +1,6 @@
 package template
 
-import "strings"
+import "github.com/sebahrens/json2pptx/internal/pptx"
 
 // XML namespace constants used by synthesis.go for generating layout XML.
 const (
@@ -13,17 +13,10 @@ const (
 
 // xmlEscapeAttr escapes a string for use in an XML attribute value.
 func xmlEscapeAttr(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	s = strings.ReplaceAll(s, `"`, "&quot;")
-	return s
+	return pptx.EscapeXMLAttr(s)
 }
 
 // xmlEscapeText escapes a string for use as XML text content.
 func xmlEscapeText(s string) string {
-	s = strings.ReplaceAll(s, "&", "&amp;")
-	s = strings.ReplaceAll(s, "<", "&lt;")
-	s = strings.ReplaceAll(s, ">", "&gt;")
-	return s
+	return pptx.EscapeXMLText(s)
 }

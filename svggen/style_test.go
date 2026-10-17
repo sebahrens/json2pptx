@@ -978,12 +978,12 @@ func TestNewPaletteFromThemeColors(t *testing.T) {
 			wantName: "corporate", // Default palette name
 		},
 		{
-			name: "only non-accent colors returns default palette",
+			name: "only non-accent colors retain theme neutrals",
 			colors: []ThemeColorInput{
 				{Name: "dk1", RGB: "#000000"},
 				{Name: "lt1", RGB: "#FFFFFF"},
 			},
-			wantName: "corporate", // Default palette when no accents found
+			wantName: "theme", // Theme neutrals with default series accents
 		},
 		{
 			name: "full accent set creates theme palette with good-contrast colors",

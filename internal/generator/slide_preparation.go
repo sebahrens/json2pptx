@@ -196,7 +196,7 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 		ctx.contrastSwaps = append(ctx.contrastSwaps, enforceInheritedTextContrastExcept(
 			slide, layoutData, masterData,
 			bgHex, ctx.themeColors, input.slideIndex, override,
-			imageExclusions,
+			imageExclusions, ctx.masterStylesForLayout(input.slideSpec.LayoutID),
 		)...)
 	}
 

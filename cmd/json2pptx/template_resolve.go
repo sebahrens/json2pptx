@@ -79,6 +79,7 @@ func resolveTemplatesDir(flagValue string) (string, bool) {
 				return envDir, false
 			}
 			slog.Warn("templates dir from env var does not exist", "var", envName, "path", envDir)
+			return envDir, false
 		}
 	}
 
@@ -139,34 +140,7 @@ func resolveTemplatePath(templateName, flagTemplatesDir string) (string, func(),
 	}
 	filename := templateName + ".pptx"
 
-	// Build candidate directories in priority order.
-	var candidates []string
-
-	// 1. Explicit flag
-	if flagTemplatesDir != "" && flagTemplatesDir != "./templates" {
-		candidates = append(candidates, flagTemplatesDir)
-	}
-
-	// 2. Environment variables (new name first, then legacy)
-	for _, envName := range []string{envTemplatesDir, envTemplatesDirLegacy} {
-		if envDir := os.Getenv(envName); envDir != "" {
-			candidates = append(candidates, envDir)
-		}
-	}
-
-	// 3. Windows %LOCALAPPDATA%\json2pptx\templates (preferred over the home dotfile on Windows)
-	if winDir := localAppDataTemplatesDir(); winDir != "" {
-		candidates = append(candidates, winDir)
-	}
-
-	// 4. User home directory (new name first, then legacy)
-	if home, err := os.UserHomeDir(); err == nil {
-		candidates = append(candidates, filepath.Join(home, userTemplatesDir))
-		candidates = append(candidates, filepath.Join(home, userTemplatesDirLegacy))
-	}
-
-	// 5. Current directory
-	candidates = append(candidates, "./templates")
+	candidates := templateDiskSearchDirs(flagTemplatesDir)
 
 	// Search each candidate
 	for _, dir := range candidates {
@@ -290,4 +264,25 @@ func dirExists(path string) bool {
 func fileExists(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && !info.IsDir()
+}
+
+// Explicit configuration selects one disk source. Unconfigured discovery keeps
+// searching standard locations when a directory lacks the requested file.
+func templateDiskSearchDirs(flag string) []string {
+	if flag != "" && flag != "./templates" {
+		return []string{flag}
+	}
+	for _, name := range []string{envTemplatesDir, envTemplatesDirLegacy} {
+		if dir := os.Getenv(name); dir != "" {
+			return []string{dir}
+		}
+	}
+	var dirs []string
+	if dir := localAppDataTemplatesDir(); dir != "" {
+		dirs = append(dirs, dir)
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		dirs = append(dirs, filepath.Join(home, userTemplatesDir), filepath.Join(home, userTemplatesDirLegacy))
+	}
+	return append(dirs, "./templates")
 }

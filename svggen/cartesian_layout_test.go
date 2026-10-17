@@ -387,9 +387,9 @@ func TestAdaptYLabels_TickToLabelGapStrict(t *testing.T) {
 	}
 }
 
-// TestEnsureYAxisFits_EmitsClippedFinding asserts that EnsureYAxisFits emits a
+// TestEnsureYAxisFits_ResolvedMarginDoesNotReportClipping asserts that EnsureYAxisFits emits a
 // chart.label_clipped finding and grows MarginLeft when the budget is tight.
-func TestEnsureYAxisFits_EmitsClippedFinding(t *testing.T) {
+func TestEnsureYAxisFits_ResolvedMarginDoesNotReportClipping(t *testing.T) {
 	b := NewSVGBuilder(400, 300)
 	config := DefaultChartConfig(400, 300)
 	originalMargin := config.MarginLeft
@@ -406,22 +406,10 @@ func TestEnsureYAxisFits_EmitsClippedFinding(t *testing.T) {
 		t.Errorf("expected MarginLeft to grow above 10, got %v", config.MarginLeft)
 	}
 
-	// Verify a chart.label_clipped finding was emitted with severity=info.
-	found := false
 	for _, f := range b.Findings() {
 		if f.Code == FindingLabelClipped && f.Field == "y_axis.labels" {
-			found = true
-			if f.Severity != "info" {
-				t.Errorf("expected severity=info, got %q", f.Severity)
-			}
-			if f.Fix == nil || f.Fix.Kind != FixKindIncreaseCanvas {
-				t.Errorf("expected fix.kind=%q, got %+v", FixKindIncreaseCanvas, f.Fix)
-			}
-			break
+			t.Errorf("resolved margin reported clipping: %+v", f)
 		}
-	}
-	if !found {
-		t.Errorf("expected chart.label_clipped finding to be emitted, findings=%+v", b.Findings())
 	}
 
 	// Sanity: a small-domain default chart must not balloon the margin the way

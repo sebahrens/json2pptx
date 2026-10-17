@@ -252,6 +252,10 @@ func PopulateTableInShape(
 		AlignTop:         alignTop,
 	}
 
+	if theme != nil && (config.DefaultFont == "" || strings.HasPrefix(config.DefaultFont, "+")) {
+		config.DefaultFont = theme.BodyFont
+	}
+
 	// Generate table XML
 	result, err := GenerateTableXML(table, config)
 	if err != nil {

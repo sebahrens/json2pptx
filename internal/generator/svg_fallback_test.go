@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"image"
 	"image/png"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -169,114 +170,30 @@ func TestFormatDiagramType(t *testing.T) {
 }
 
 func TestInsertDiagramPlaceholder(t *testing.T) {
-	ctx := newSinglePassContext("/tmp/test.pptx", nil, nil, false, nil)
-
-	bounds := types.BoundingBox{
-		X:      914400,
-		Y:      914400,
-		Width:  914400 * 4,
-		Height: 914400 * 3,
-	}
-
-	slideNum := 1
-	shapeIdx := 2
-
-	ctx.insertDiagramPlaceholder(slideNum, bounds, shapeIdx, "bar_chart")
-
-	if len(ctx.slideRelUpdates[slideNum]) != 1 {
-		t.Fatalf("expected 1 media relationship, got %d", len(ctx.slideRelUpdates[slideNum]))
-	}
-
-	rel := ctx.slideRelUpdates[slideNum][0]
-
-	if rel.mediaFileName == "" {
-		t.Error("media filename is empty")
-	}
-	if len(rel.data) == 0 {
-		t.Error("media data is empty")
-	}
-	if rel.placeholderIdx != shapeIdx {
-		t.Errorf("placeholderIdx = %d, want %d", rel.placeholderIdx, shapeIdx)
-	}
-	if rel.offsetX != bounds.X || rel.offsetY != bounds.Y {
-		t.Error("offset mismatch")
-	}
-	if rel.extentCX != bounds.Width || rel.extentCY != bounds.Height {
-		t.Error("extent mismatch")
-	}
-	if !ctx.usedExtensions["png"] {
-		t.Error("png extension not tracked")
-	}
-
-	// Verify valid PNG
-	_, err := png.Decode(bytes.NewReader(rel.data))
-	if err != nil {
-		t.Errorf("embedded data is not valid PNG: %v", err)
-	}
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	bounds := types.BoundingBox{X: 914400, Y: 914400, Width: 4 * 914400, Height: 3 * 914400}
+	ctx.insertDiagramPlaceholder(1, bounds, 2, "bar_chart")
+	assertNativeFallback(t, ctx, bounds, 2, "Data unavailable")
 }
 
 func TestInsertSVGFallbackImage(t *testing.T) {
-	// Create a mock context
-	ctx := newSinglePassContext("/tmp/test.pptx", nil, nil, false, nil)
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	bounds := types.BoundingBox{X: 914400, Y: 914400, Width: 4 * 914400, Height: 3 * 914400}
+	ctx.insertSVGFallbackImage(1, bounds, 0)
+	assertNativeFallback(t, ctx, bounds, 0, "SVG Unavailable")
+}
 
-	// Set up bounds similar to a real placeholder (in EMUs)
-	// 4 inches wide x 3 inches tall at 914400 EMU/inch
-	bounds := types.BoundingBox{
-		X:      914400,     // 1 inch from left
-		Y:      914400,     // 1 inch from top
-		Width:  914400 * 4, // 4 inches wide
-		Height: 914400 * 3, // 3 inches tall
+func assertNativeFallback(t *testing.T, ctx *singlePassContext, bounds types.BoundingBox, shapeIdx int, text string) {
+	t.Helper()
+	if len(ctx.slideRelUpdates[1]) != 0 || len(ctx.nativeSVGInserts[1]) != 0 || len(ctx.panelShapeInserts[1]) != 1 {
+		t.Fatal("placeholder depends on media viewer support")
 	}
-
-	slideNum := 1
-	shapeIdx := 0
-
-	// Insert fallback
-	ctx.insertSVGFallbackImage(slideNum, bounds, shapeIdx)
-
-	// Verify media relationship was created
-	if len(ctx.slideRelUpdates[slideNum]) != 1 {
-		t.Fatalf("expected 1 media relationship, got %d", len(ctx.slideRelUpdates[slideNum]))
+	ins := ctx.panelShapeInserts[1][0]
+	if ins.bounds != bounds || ins.placeholderIdx != shapeIdx {
+		t.Fatalf("placeholder geometry lost %+v", ins)
 	}
-
-	rel := ctx.slideRelUpdates[slideNum][0]
-
-	if rel.mediaFileName == "" {
-		t.Error("media filename is empty")
-	}
-
-	if len(rel.data) == 0 {
-		t.Error("media data is empty")
-	}
-
-	if rel.offsetX != bounds.X {
-		t.Errorf("offsetX = %d, want %d", rel.offsetX, bounds.X)
-	}
-
-	if rel.offsetY != bounds.Y {
-		t.Errorf("offsetY = %d, want %d", rel.offsetY, bounds.Y)
-	}
-
-	if rel.extentCX != bounds.Width {
-		t.Errorf("extentCX = %d, want %d", rel.extentCX, bounds.Width)
-	}
-
-	if rel.extentCY != bounds.Height {
-		t.Errorf("extentCY = %d, want %d", rel.extentCY, bounds.Height)
-	}
-
-	if rel.placeholderIdx != shapeIdx {
-		t.Errorf("placeholderIdx = %d, want %d", rel.placeholderIdx, shapeIdx)
-	}
-
-	// Verify PNG extension was tracked
-	if !ctx.usedExtensions["png"] {
-		t.Error("png extension was not tracked")
-	}
-
-	// Verify the embedded data is a valid PNG
-	_, err := png.Decode(bytes.NewReader(rel.data))
-	if err != nil {
-		t.Errorf("embedded data is not valid PNG: %v", err)
+	ctx.finalizePanelGroupXML()
+	if !strings.Contains(ctx.panelShapeInserts[1][0].groupXML, text) {
+		t.Fatal("native fallback has no visible text")
 	}
 }

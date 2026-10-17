@@ -246,3 +246,30 @@ func axisBoundsFieldSchemas(fields map[string]*DataSchema) map[string]*DataSchem
 	fields["y_max"] = NumberDataSchema("Value-axis maximum. Omitted, the axis is computed from the data with headroom for labels. Rejected below the highest plotted value; rounded up to the nearest tick.")
 	return fields
 }
+
+// A line has no filled baseline area. Preserve the author's axis, but explain
+// when that scale hides most of a nonconstant trend; never suggest clipping data.
+func reportFlatLineRange(b *SVGBuilder, data ChartData, scale *LinearScale) {
+	low, high, ok := seriesValueRange(data, false)
+	axisLow, axisHigh := scale.DomainBounds()
+	span := axisHigh - axisLow
+	if !ok || high <= low || span <= 0 || (high-low)/span >= 0.15 {
+		return
+	}
+	step := math.Pow(10, math.Floor(math.Log10(high-low)))
+	suggested := math.Floor((low-(high-low)*0.1)/step) * step
+	field := "data.y_min"
+	if axisHigh-high > low-axisLow {
+		field = "data.y_max"
+		suggested = math.Ceil((high+(high-low)*0.1)/step) * step
+		if suggested >= axisHigh || suggested < high {
+			return
+		}
+	} else if suggested <= axisLow || suggested > low {
+		return
+	}
+	b.AddFinding(Finding{Field: field, Code: FindingFlatRange, Severity: "warning",
+		Message: fmt.Sprintf("Line values occupy %.1f%% of the plotted axis; consider %s=%g to make the trend visible while retaining every value.", 100*(high-low)/span, field, suggested),
+		Fix:     &FixSuggestion{Kind: FixKindExplicitScale, Params: map[string]any{"field": field, "value": suggested, "data_min": low, "data_max": high, "axis_min": axisLow, "axis_max": axisHigh, "range_share": (high - low) / span}},
+	})
+}

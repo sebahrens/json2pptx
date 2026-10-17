@@ -198,6 +198,7 @@ const (
 	FindingGlyphMissing              = core.FindingGlyphMissing
 	FindingFunnelStageIncrease       = core.FindingFunnelStageIncrease
 	FindingAxisNotZero               = core.FindingAxisNotZero
+	FindingFlatRange                 = core.FindingFlatRange
 
 	// Capacity limits (re-exported from core/limits.go).
 	MaxSeries     = core.MaxSeries

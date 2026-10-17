@@ -5,7 +5,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/utils"
@@ -116,27 +115,7 @@ func splitOnNewlines(text string) []string {
 // control characters (see pptx.IsIllegalXMLChar). Tab, newline, and carriage
 // return are preserved.
 func xmlEscapeString(s string) string {
-	var buf strings.Builder
-	for _, r := range s {
-		switch r {
-		case '&':
-			buf.WriteString("&amp;")
-		case '<':
-			buf.WriteString("&lt;")
-		case '>':
-			buf.WriteString("&gt;")
-		case '"':
-			buf.WriteString("&quot;")
-		case '\'':
-			buf.WriteString("&apos;")
-		default:
-			if pptx.IsIllegalXMLChar(r) {
-				continue
-			}
-			buf.WriteRune(r)
-		}
-	}
-	return buf.String()
+	return pptx.EscapeXMLText(s)
 }
 
 // generateNotesSlideRels creates the relationships file for a notes slide.

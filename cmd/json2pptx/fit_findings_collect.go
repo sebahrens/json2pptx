@@ -75,7 +75,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	findings = append(findings, collectNumberFormatFindings(input)...)
 	findings = append(findings, collectStatusColorFindings(input, theme)...)
 	var geometryErrors []patterns.FitFinding
-	input, layouts, geometryErrors = withDerivedFitLayouts(input, layouts, slideWidth, slideHeight)
+	input, layouts, geometryErrors = withDerivedFitLayouts(input, layouts, slideWidth, slideHeight, nativeHeadingFont(theme))
 	findings = append(findings, geometryErrors...)
 	findings = append(findings, collectGutterFindings(input, layouts, slideWidth, slideHeight)...)
 

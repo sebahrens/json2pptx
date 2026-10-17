@@ -2,7 +2,18 @@ package svggen
 
 import "fmt"
 
-var stakeholderStatusColors = map[string]Color{"supporter": MustParseColor("#2E7D32"), "neutral": MustParseColor("#6B7280"), "blocker": MustParseColor("#B71C1C")}
+var stakeholderStatuses = map[string]bool{"supporter": true, "neutral": true, "blocker": true}
+
+func stakeholderStatusColor(status string, palette *Palette) Color {
+	switch status {
+	case "supporter":
+		return palette.Success
+	case "blocker":
+		return palette.Error
+	default:
+		return palette.TextMuted
+	}
+}
 
 func validateMatrixPointStatus(data map[string]any) error {
 	raw, _ := toAnySlice(data["points"])
@@ -12,7 +23,7 @@ func validateMatrixPointStatus(data map[string]any) error {
 			continue
 		}
 		if status, set := point["status"]; set {
-			if _, ok := stakeholderStatusColors[fmt.Sprint(status)]; !ok {
+			if _, ok := stakeholderStatuses[fmt.Sprint(status)]; !ok {
 				return fmt.Errorf("data.points[%d].status must be supporter, neutral or blocker", i)
 			}
 			if _, set := point["color"]; set {
@@ -55,7 +66,7 @@ func drawMatrixStatusLegend(b *SVGBuilder, data Matrix2x2Data) error {
 		if !used[status] {
 			continue
 		}
-		color := stakeholderStatusColors[status]
+		color := stakeholderStatusColor(status, b.style.Palette)
 		if color.ContrastWith(b.style.Palette.Background) < 3 {
 			return consultingChartError("stakeholder status ink is not readable against the template background")
 		}

@@ -831,6 +831,8 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect, cap
 		}
 		if point.Color != nil {
 			color = *point.Color
+		} else if point.Status != "" {
+			color = stakeholderStatusColor(point.Status, style.Palette)
 		}
 
 		shape := mc.config.PointShape
@@ -1632,8 +1634,6 @@ func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, []Finding, error) 
 			if p, ok := pRaw.(map[string]any); ok {
 				if status, ok := p["status"].(string); ok {
 					point.Status = status
-					color := stakeholderStatusColors[status]
-					point.Color = &color
 				}
 				if label, ok := p["label"].(string); ok {
 					point.Label = label

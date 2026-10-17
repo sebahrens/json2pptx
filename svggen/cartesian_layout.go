@@ -424,23 +424,6 @@ func EnsureYAxisFits(b *SVGBuilder, config *ChartConfig, domainMin, domainMax fl
 	)
 	if res.ExtraLeftMargin > 0 {
 		config.MarginLeft += res.ExtraLeftMargin
-		b.AddFinding(Finding{
-			Field: "y_axis.labels",
-			Code:  FindingLabelClipped,
-			Message: fmt.Sprintf(
-				"y-axis label width %.1fpt exceeded available MarginLeft — grew left margin by %.1fpt",
-				res.WidestLabel, res.ExtraLeftMargin,
-			),
-			Severity: "info",
-			Fix: &FixSuggestion{
-				Kind: FixKindIncreaseCanvas,
-				Params: map[string]any{
-					"axis":                 "y",
-					"widest_label_pt":      res.WidestLabel,
-					"extra_left_margin_pt": res.ExtraLeftMargin,
-				},
-			},
-		})
 	}
 	return res
 }

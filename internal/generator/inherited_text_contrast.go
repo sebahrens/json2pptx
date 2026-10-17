@@ -75,14 +75,14 @@ func masterStyleForPlaceholder(phType string) string {
 // (1-based, as in lvlNpPr) of a placeholder inherits and where it came from. It
 // looks in the layout's matching placeholder first, then the master's text
 // styles — the renderer's own order.
-func inheritedTextStyleFragment(layoutXML, masterXML []byte, ph *placeholderXML, level int) (fragment, source string) {
+func inheritedTextStyleFragment(layoutXML, masterXML []byte, ph *placeholderXML, level int, cached ...map[string]string) (fragment, source string) {
 	if ph == nil {
 		return "", ""
 	}
 	if frag := layoutPlaceholderLevelStyle(layoutXML, ph, level); frag != "" {
 		return frag, inheritedSourceLayout
 	}
-	if frag := masterTextStyleLevel(masterXML, masterStyleForPlaceholder(ph.Type), level); frag != "" {
+	if frag := masterTextStyleLevel(masterXML, masterStyleForPlaceholder(ph.Type), level, cached...); frag != "" {
 		return frag, inheritedSourceMaster
 	}
 	return "", ""
@@ -184,7 +184,10 @@ func isTitleType(t string) bool { return t == "title" || t == "ctrTitle" }
 
 // attrValue reads one attribute out of an attribute list.
 func attrValue(attrs, name string) string {
-	re := regexp.MustCompile(`\b` + regexp.QuoteMeta(name) + `="([^"]*)"`)
+	re := placeholderAttrPatterns[name]
+	if re == nil {
+		return ""
+	}
 	if m := re.FindStringSubmatch(attrs); m != nil {
 		return m[1]
 	}
@@ -194,11 +197,17 @@ func attrValue(attrs, name string) string {
 // masterTextStyleLevel returns the fragment for one level (1-based) of one of
 // the master's <p:txStyles> entries (titleStyle / bodyStyle / otherStyle). A
 // style that defines no first level answers with its whole body for level 1.
-func masterTextStyleLevel(masterXML []byte, style string, level int) string {
+func masterTextStyleLevel(masterXML []byte, style string, level int, cached ...map[string]string) string {
 	if style == "" {
 		return ""
 	}
-	re := regexp.MustCompile(`(?s)<p:` + style + `>(.*?)</p:` + style + `>`)
+	if len(cached) > 0 && cached[0] != nil {
+		return cached[0][style+strconv.Itoa(level)]
+	}
+	re := masterStylePatterns[style]
+	if re == nil {
+		return ""
+	}
 	m := re.FindSubmatch(masterXML)
 	if m == nil {
 		return ""
@@ -324,7 +333,7 @@ func enforceInheritedTextContrast(slide *slideXML, layoutXML, masterXML []byte, 
 	return enforceInheritedTextContrastExcept(slide, layoutXML, masterXML, bgHex, themeColors, slideIndex, override, nil)
 }
 
-func enforceInheritedTextContrastExcept(slide *slideXML, layoutXML, masterXML []byte, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, excluded map[int]bool) []ContrastSwap {
+func enforceInheritedTextContrastExcept(slide *slideXML, layoutXML, masterXML []byte, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, excluded map[int]bool, cached ...map[string]string) []ContrastSwap {
 	if slide == nil || len(layoutXML) == 0 {
 		return nil
 	}
@@ -356,7 +365,7 @@ func enforceInheritedTextContrastExcept(slide *slideXML, layoutXML, masterXML []
 			if !used[level] || !levelNamesNoColor(shape, level) {
 				continue
 			}
-			swap, ok := inheritedLevelSwap(layoutXML, masterXML, ph, level, bg, themeColors, override)
+			swap, ok := inheritedLevelSwap(layoutXML, masterXML, ph, level, bg, themeColors, override, cached...)
 			if !ok {
 				continue
 			}
@@ -376,8 +385,8 @@ func enforceInheritedTextContrastExcept(slide *slideXML, layoutXML, masterXML []
 
 // inheritedLevelSwap resolves the colour one list level (1-based) of a
 // placeholder inherits and, when it fails WCAG on bg, the replacement for it.
-func inheritedLevelSwap(layoutXML, masterXML []byte, ph *placeholderXML, level int, bg svggen.Color, themeColors []types.ThemeColor, override map[string]string) (ContrastSwap, bool) {
-	fragment, source := inheritedTextStyleFragment(layoutXML, masterXML, ph, level)
+func inheritedLevelSwap(layoutXML, masterXML []byte, ph *placeholderXML, level int, bg svggen.Color, themeColors []types.ThemeColor, override map[string]string, cached ...map[string]string) (ContrastSwap, bool) {
+	fragment, source := inheritedTextStyleFragment(layoutXML, masterXML, ph, level, cached...)
 	if fragment == "" {
 		return ContrastSwap{}, false
 	}
@@ -385,7 +394,7 @@ func inheritedLevelSwap(layoutXML, masterXML []byte, ph *placeholderXML, level i
 	if hex == "" && source == inheritedSourceLayout {
 		// A layout can override only the font size or weight. Its colorless
 		// level fragment must not mask the color supplied by master txStyles.
-		masterFragment := masterTextStyleLevel(masterXML, masterStyleForPlaceholder(ph.Type), level)
+		masterFragment := masterTextStyleLevel(masterXML, masterStyleForPlaceholder(ph.Type), level, cached...)
 		hex, _ = inheritedColorFromFragment(masterFragment, override, themeColors)
 		if hex != "" {
 			source = inheritedSourceMaster
@@ -441,4 +450,42 @@ func (ctx *singlePassContext) masterXMLForLayout(layoutID string) []byte {
 	}
 	ctx.masterXMLCache[path] = data
 	return data
+}
+
+var placeholderAttrPatterns = map[string]*regexp.Regexp{
+	"type": regexp.MustCompile(`\btype="([^"]*)"`),
+	"idx":  regexp.MustCompile(`\bidx="([^"]*)"`),
+}
+var masterStylePatterns = map[string]*regexp.Regexp{
+	"titleStyle": regexp.MustCompile(`(?s)<p:titleStyle>(.*?)</p:titleStyle>`),
+	"bodyStyle":  regexp.MustCompile(`(?s)<p:bodyStyle>(.*?)</p:bodyStyle>`),
+	"otherStyle": regexp.MustCompile(`(?s)<p:otherStyle>(.*?)</p:otherStyle>`),
+}
+
+func (ctx *singlePassContext) masterStylesForLayout(layoutID string) map[string]string {
+	path := ctx.masterPathForLayout(layoutID)
+	if ctx.masterStyleCache == nil {
+		ctx.masterStyleCache = map[string]map[string]string{}
+	}
+	if styles, ok := ctx.masterStyleCache[path]; ok {
+		return styles
+	}
+	styles := map[string]string{}
+	data := ctx.masterXMLForLayout(layoutID)
+	for style, re := range masterStylePatterns {
+		match := re.FindSubmatch(data)
+		if match == nil {
+			continue
+		}
+		body := string(match[1])
+		for level := 1; level <= 9; level++ {
+			fragment := listStyleLevelElement(body, level)
+			if level == 1 && fragment == "" {
+				fragment = body
+			}
+			styles[style+strconv.Itoa(level)] = fragment
+		}
+	}
+	ctx.masterStyleCache[path] = styles
+	return styles
 }

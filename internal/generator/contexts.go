@@ -5,7 +5,6 @@ import (
 	"archive/zip"
 	"context"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -82,6 +81,7 @@ type tableInsert struct {
 
 // panelShapeInsert tracks a native panel shape group that replaces a placeholder shape.
 type panelShapeInsert struct {
+	fallbackLabel     string
 	placeholderIdx    int               // Shape index to remove
 	bounds            types.BoundingBox // Placeholder EMU bounds
 	panels            []nativePanelData // Parsed panel data
@@ -255,7 +255,8 @@ type OutputContext struct {
 //   - ChartContext: Chart rendering
 //   - OutputContext: Output files and warnings
 type singlePassContext struct {
-	ctx context.Context // propagated from Generate() for cancellation and timeouts
+	masterStyleCache map[string]map[string]string
+	ctx              context.Context // propagated from Generate() for cancellation and timeouts
 	ZipContext
 	SlideContext
 	MediaContext
@@ -454,9 +455,9 @@ func (ctx *singlePassContext) allocPNGForFile(imagePath string) string {
 	if existing, present := ctx.mediaFiles[imagePath]; present {
 		return existing
 	}
-	ext := filepath.Ext(imagePath)
-	if ext == "" {
-		ext = ".png"
+	ext, err := rasterMediaExtension(imagePath)
+	if err != nil {
+		return ""
 	}
 	mediaPath := ctx.media.Allocate(strings.TrimPrefix(ext, "."), "file:"+imagePath)
 	mediaFileName := pptx.MediaFilename(mediaPath)

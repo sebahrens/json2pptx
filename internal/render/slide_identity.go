@@ -254,15 +254,15 @@ func stabilizeSlidePNGs(pptxPath string, pngs []string, density int, force bool)
 	if err != nil || len(keys) != len(pngs) {
 		return
 	}
-	if err := os.MkdirAll(cacheDir(), 0755); err != nil {
+	if err := privateCacheDirectory(cacheDir(), true); err != nil {
 		return
 	}
 	now := time.Now()
 	for i, png := range pngs {
 		stored := visibleSlideStorePath(keys[i], density)
-		if !force {
+		if !force && trustedCacheFile(stored) {
 			if data, err := os.ReadFile(stored); err == nil && len(data) > 0 { //nolint:gosec // path is internal (cache dir + digest)
-				if os.WriteFile(png, data, 0644) == nil { //nolint:gosec // png is the renderer's own temp file
+				if os.WriteFile(png, data, 0600) == nil { //nolint:gosec // png is the renderer's own temp file
 					// Still in use: keep it from ageing out of the cache.
 					_ = os.Chtimes(stored, now, now)
 				}

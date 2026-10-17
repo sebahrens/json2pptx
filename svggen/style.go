@@ -1294,9 +1294,13 @@ func newPaletteFromThemeColors(themeColors []ThemeColorInput, enforce bool) *Pal
 		}
 	}
 
-	// If no accent colors found, return default palette
+	// A partial theme may declare only neutrals. Preserve them while using
+	// the default accent ladder for unspecified series colors.
 	if len(accentColors) == 0 {
-		return DefaultPalette()
+		if dk1 == nil && dk2 == nil && lt1 == nil && lt2 == nil {
+			return DefaultPalette()
+		}
+		accentColors = []Color{p.Accent1, p.Accent2, p.Accent3, p.Accent4, p.Accent5, p.Accent6}
 	}
 
 	// Set text colors based on dark/light theme colors
@@ -1312,6 +1316,9 @@ func newPaletteFromThemeColors(themeColors []ThemeColorInput, enforce bool) *Pal
 	if lt2 != nil {
 		p.Surface = *lt2
 	}
+
+	p.Border = p.TextPrimary.WithAlpha(0.15).BlendOver(p.Background)
+	p.TextMuted = EnsureContrast(p.TextPrimary.WithAlpha(0.55).BlendOver(p.Background), p.Background, WCAGAALarge)
 
 	// Info is a general accent; semantic Success/Error/Warning are resolved
 	// separately by hue or explicit template metadata in StyleGuideFromSpec.

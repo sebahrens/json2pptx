@@ -1725,6 +1725,7 @@ func (lc *LineChart) Draw(data ChartData) error {
 	yScale := NewLinearScale(yMin, yMax)
 	yScale.SetRangeLinear(plotArea.H, 0)
 	yScale.Nice(true)
+	lc.reportFlatRange(data, yScale)
 
 	// Draw grid (horizontal + optional vertical per chart_style override)
 	if lc.config.ShowGrid && !lc.labelled {
@@ -3495,6 +3496,10 @@ func (pc *PieChart) Draw(data ChartData) error {
 	centerX := pieArea.X + pieArea.W/2
 	centerY := pieArea.Y + pieArea.H/2
 	halfSize := math.Min(pieArea.W, pieArea.H) / 2
+	if halfSize <= 0 {
+		b.AddFinding(Finding{Code: FindingPlotAreaCollapsed, Severity: "warning", Message: "Pie plot area collapsed after reserving labels and legend; increase output dimensions."})
+		return nil
+	}
 	radiusScale := 0.9
 	// labelReachX is how far past the arc the outside labels reach sideways;
 	// the landscape group centring below keeps them clear of the legend.
@@ -4603,4 +4608,10 @@ func (sc *ScatterChart) resolvedXAxisConfig() AxisConfig {
 		return cfg
 	}
 	return sc.xAxisCfg
+}
+
+func (lc *LineChart) reportFlatRange(data ChartData, scale *LinearScale) {
+	if !lc.config.FillArea {
+		reportFlatLineRange(lc.builder, data, scale)
+	}
 }

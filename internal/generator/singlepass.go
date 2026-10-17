@@ -532,6 +532,10 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 				continue
 			}
 			mediaFileName := ctx.allocateMediaSlot(img.Path)
+			if mediaFileName == "" {
+				ctx.reportUnavailableImage("shape_grid image", img.Path, img.SourcePath, "unsupported or unreadable image format")
+				continue
+			}
 			placed, crop := gridImagePlacement(img)
 			ctx.recordPictureFrame(slideNum, placed)
 			ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
@@ -556,6 +560,10 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 					slidepath.SlideField(slideNum-startSlideNum, "background/image"), problem)
 			} else {
 				mediaFileName := ctx.allocateMediaSlot(bgPath)
+				if mediaFileName == "" {
+					ctx.reportUnavailableImage("background image", bgPath, slidepath.SlideField(slideNum-startSlideNum, "background/image"), "unsupported or unreadable image format")
+					continue
+				}
 				ctx.slideBgMedia[slideNum] = mediaRel{
 					imagePath:     bgPath,
 					mediaFileName: mediaFileName,

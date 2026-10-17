@@ -1271,6 +1271,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Set style.value_format.prefix to the intended symbol or code, such as $, €, £, or USD.",
 		},
 	},
+	"chart.flat_range": {Code: "chart.flat_range", Summary: "A narrow line trend occupies less than 15% of the plotted axis.", Severity: "warning", WhenEmitted: "A line chart has a nonconstant compressed range and a tighter axis bound preserves every value.", RemediationSteps: []string{"Consider setting fix.params.field (data.y_min or data.y_max) to fix.params.value; retain a zero baseline when the absolute comparison matters."}},
 	"chart.axis_not_zero": {
 		Code:        "chart.axis_not_zero",
 		Summary:     "An authored y_min starts the value axis above zero and hides more than half of the smallest bar.",

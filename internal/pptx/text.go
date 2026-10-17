@@ -323,7 +323,7 @@ func (r Run) writeHyperlink(buf *bytes.Buffer) {
 
 // escapeXMLText escapes special characters for XML text content and strips XML
 // 1.0 illegal control characters (see IsIllegalXMLChar).
-func escapeXMLText(s string) string {
+func EscapeXMLText(s string) string {
 	var buf bytes.Buffer
 	for _, r := range s {
 		switch r {
@@ -342,3 +342,5 @@ func escapeXMLText(s string) string {
 	}
 	return buf.String()
 }
+
+func escapeXMLText(s string) string { return EscapeXMLText(s) }

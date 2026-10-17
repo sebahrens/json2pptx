@@ -6,8 +6,10 @@ import (
 	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"strings"
 )
 
 // The bounded native-diagram adapter (go-slide-creator-3grgs).
@@ -382,6 +384,8 @@ func fitNativeFrameworkAt(kind string, bounds types.BoundingBox, panels []native
 func renderNativeInsert(ins *panelShapeInsert, base uint32, env nativeDiagramEnv) string {
 	surface := nativeSurface{colors: env.themeColors, authored: ins.authoredTints}
 	switch {
+	case ins.fallbackLabel != "":
+		return nativeMediaPlaceholderXML(ins, base, env.fontName)
 	case ins.swotMode:
 		return generateSWOTGroupXML(ins.panels, ins.bounds, base, ins.taxonomyTints)
 	case ins.pestelMode:
@@ -399,7 +403,7 @@ func renderNativeInsert(ins *panelShapeInsert, base uint32, env nativeDiagramEnv
 	case ins.processFlowMode:
 		return generateProcessFlowGroupXML(ins.panels, ins.bounds, base, ins.processFlowMeta)
 	case ins.heatmapMode:
-		return generateHeatmapGroupXML(ins.panels, ins.bounds, base, ins.heatmapMeta, env.themeColors)
+		return generateHeatmapGroupXML(ins.panels, ins.bounds, base, ins.heatmapMeta, env.themeColors, env.semanticAccents)
 	case ins.pyramidMode:
 		return generatePyramidGroupXML(ins.panels, ins.bounds, base, env.fontName, env.themeColors...)
 	case ins.houseDiagramMode:
@@ -541,4 +545,16 @@ func (ctx *singlePassContext) nativeDiagramEnv() nativeDiagramEnv {
 		themeColors:     ctx.themeColors,
 		semanticAccents: ctx.semanticAccents,
 	}
+}
+
+func nativeMediaPlaceholderXML(ins *panelShapeInsert, id uint32, font string) string {
+	paras := []pptx.Paragraph{}
+	for _, text := range strings.Split(ins.fallbackLabel, "\n") {
+		paras = append(paras, pptx.Paragraph{Align: "ctr", NoBullet: true, Runs: []pptx.Run{{Text: text, FontFamily: "+mn-lt", FontSize: 1400, Color: pptx.SchemeFill("dk2")}}})
+	}
+	xml, err := pptx.GenerateShape(pptx.ShapeOptions{ID: id, Name: "Media unavailable", Bounds: pptx.RectEmu{X: ins.bounds.X, Y: ins.bounds.Y, CX: ins.bounds.Width, CY: ins.bounds.Height}, Geometry: pptx.GeomRect, Fill: pptx.SchemeFill("lt2"), Line: pptx.NoLine(), Text: &pptx.TextBody{Anchor: "ctr", Wrap: "square", AutoFit: "normAutofit", ThemeFonts: pptx.ThemeFonts{Minor: font}, Paragraphs: paras}})
+	if err != nil {
+		return ""
+	}
+	return string(xml)
 }

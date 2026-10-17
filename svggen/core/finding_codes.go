@@ -168,6 +168,9 @@ const (
 	// truncation is visible; the finding is informational
 	// (go-slide-creator-929jm).
 	FindingAxisNotZero = "chart.axis_not_zero"
+
+	// FindingFlatRange reports a narrow line range compressed by the value axis.
+	FindingFlatRange = "chart.flat_range"
 )
 
 // FixKind constants for the Kind field of FixSuggestion.

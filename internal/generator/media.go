@@ -323,7 +323,7 @@ func (ctx *singlePassContext) processTableContent(slideNum, contentIdx int, item
 		tableSpec = &themed
 	}
 
-	result, err := PopulateTableInShape(tableSpec, placeholder, nil, styleResolver,
+	result, err := PopulateTableInShape(tableSpec, placeholder, &types.ThemeInfo{Colors: ctx.themeColors, SemanticAccents: ctx.semanticAccents, BodyFont: ctx.themeFontName}, styleResolver,
 		ctx.hasPopulatedSiblingBody(slideNum, shapeIdx))
 	if err != nil {
 		reason := fmt.Sprintf("failed to generate table XML: %v", err)
@@ -1362,6 +1362,10 @@ func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string
 
 	// Allocate media slot if not already present
 	mediaFileName := ctx.allocateMediaSlot(imagePath)
+	if mediaFileName == "" {
+		ctx.recordImagePlacementFailure(slideNum, shapeIdx, fmt.Errorf("unsupported or unreadable image format"))
+		return
+	}
 
 	// Track relationship update with position for p:pic insertion
 	// The placeholder shape will be removed and replaced with a p:pic element
@@ -1393,153 +1397,31 @@ func (ctx *singlePassContext) allocateMediaSlot(imagePath string) string {
 // insertSVGFallbackImage inserts a placeholder image indicating SVG rendering is unavailable.
 // This is used when SVG conversion tools are not available or conversion fails.
 //
-// When native SVG strategy is active, generates a minimal SVG placeholder instead
-// of a rasterized PNG, keeping the output PNG-free.
+// The placeholder is native OOXML for every conversion strategy so it remains
+// visible even when the viewer cannot display SVG and follows the template theme.
 func (ctx *singlePassContext) insertSVGFallbackImage(slideNum int, placeholderBounds types.BoundingBox, shapeIdx int) {
-	if ctx.svgConverter != nil && ctx.svgConverter.GetStrategy() == SVGStrategyNative {
-		ctx.insertSVGFallbackImageSVG(slideNum, placeholderBounds, shapeIdx)
-		return
-	}
-
-	// Calculate image dimensions in pixels from EMUs
-	// EMU = English Metric Unit, 914400 EMUs = 1 inch, at 96 DPI: 1 pixel = 9525 EMUs
-	const emuPerPixel = int64(types.EMUPerPixel)
-	width := int(placeholderBounds.Width / emuPerPixel)
-	height := int(placeholderBounds.Height / emuPerPixel)
-
-	// Generate fallback image
-	imgBytes, err := SVGFallbackImage(width, height)
-	if err != nil {
-		// If we can't even generate a fallback, just log and skip
-		ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to generate SVG fallback image: %v", err))
-		return
-	}
-
-	mediaFileName := ctx.allocPNG(fmt.Sprintf("svgfallback-s%d-x%d", slideNum, shapeIdx))
-
-	// Track relationship with byte data for p:pic insertion
-	ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
-		mediaFileName:  mediaFileName,
-		data:           imgBytes,
-		offsetX:        placeholderBounds.X,
-		offsetY:        placeholderBounds.Y,
-		extentCX:       placeholderBounds.Width,
-		extentCY:       placeholderBounds.Height,
-		placeholderIdx: shapeIdx,
-	})
+	ctx.insertSVGFallbackImageSVG(slideNum, placeholderBounds, shapeIdx)
 }
 
-// insertSVGFallbackImageSVG inserts a minimal SVG placeholder when SVG conversion
-// tools are unavailable and native SVG strategy is active.
+// insertSVGFallbackImageSVG is the legacy entry point for a native themed placeholder.
 func (ctx *singlePassContext) insertSVGFallbackImageSVG(slideNum int, placeholderBounds types.BoundingBox, shapeIdx int) {
-	const emuPerPoint = int64(types.EMUPerPoint)
-	w := int(placeholderBounds.Width / emuPerPoint)
-	h := int(placeholderBounds.Height / emuPerPoint)
-	if w < 100 {
-		w = 100
-	}
-	if h < 50 {
-		h = 50
-	}
-
-	svgData := []byte(fmt.Sprintf(
-		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`+
-			`<rect width="100%%" height="100%%" fill="#F0F0F0" stroke="#C8C8C8" stroke-width="1"/>`+
-			`<text x="50%%" y="45%%" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#808080">SVG Unavailable</text>`+
-			`<text x="50%%" y="55%%" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#808080">Install rsvg-convert</text>`+
-			`</svg>`,
-		w, h, w, h,
-	))
-
-	svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(fmt.Sprintf("svgfallbacksvg-s%d-x%d", slideNum, shapeIdx))
-
-	ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
-		svgData:        svgData,
-		pngData:        transparentPNG1x1,
-		svgMediaFile:   svgMediaFile,
-		pngMediaFile:   pngMediaFile,
-		offsetX:        placeholderBounds.X,
-		offsetY:        placeholderBounds.Y,
-		extentCX:       placeholderBounds.Width,
-		extentCY:       placeholderBounds.Height,
-		placeholderIdx: shapeIdx,
-		behindText:     true,
-	})
+	ctx.insertNativeMediaPlaceholder(slideNum, placeholderBounds, shapeIdx, "SVG Unavailable\nInstall rsvg-convert")
 }
 
 // insertDiagramPlaceholder inserts a styled placeholder image when a chart/diagram
 // fails validation or rendering. Instead of leaving a blank area, this shows the
 // diagram type name and "Data unavailable" in a professional placeholder.
 //
-// When native SVG strategy is active, generates a minimal SVG placeholder instead
-// of a rasterized PNG, keeping the output PNG-free.
+// The placeholder is native OOXML for every conversion strategy so it remains
+// visible even when the viewer cannot display SVG and follows the template theme.
 func (ctx *singlePassContext) insertDiagramPlaceholder(slideNum int, placeholderBounds types.BoundingBox, shapeIdx int, diagramType string) {
-	if ctx.svgConverter != nil && ctx.svgConverter.GetStrategy() == SVGStrategyNative {
-		ctx.insertDiagramPlaceholderSVG(slideNum, placeholderBounds, shapeIdx, diagramType)
-		return
-	}
-
-	const emuPerPixel = int64(types.EMUPerPixel)
-	width := int(placeholderBounds.Width / emuPerPixel)
-	height := int(placeholderBounds.Height / emuPerPixel)
-
-	imgBytes, err := DiagramPlaceholderImage(width, height, diagramType)
-	if err != nil {
-		ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to generate diagram placeholder image: %v", err))
-		return
-	}
-
-	mediaFileName := ctx.allocPNG(fmt.Sprintf("diagramph-s%d-x%d", slideNum, shapeIdx))
-
-	ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
-		mediaFileName:  mediaFileName,
-		data:           imgBytes,
-		offsetX:        placeholderBounds.X,
-		offsetY:        placeholderBounds.Y,
-		extentCX:       placeholderBounds.Width,
-		extentCY:       placeholderBounds.Height,
-		placeholderIdx: shapeIdx,
-	})
+	ctx.insertDiagramPlaceholderSVG(slideNum, placeholderBounds, shapeIdx, diagramType)
 }
 
-// insertDiagramPlaceholderSVG inserts a minimal SVG placeholder for failed diagrams
-// when native SVG strategy is active. The SVG shows the diagram type and
-// "Data unavailable" text. Uses the 1x1 transparent PNG as the OOXML blip fallback.
+// insertDiagramPlaceholderSVG inserts native themed text for failed diagrams;
+// the legacy name no longer implies an SVG dependency.
 func (ctx *singlePassContext) insertDiagramPlaceholderSVG(slideNum int, placeholderBounds types.BoundingBox, shapeIdx int, diagramType string) {
-	const emuPerPoint = int64(types.EMUPerPoint)
-	w := int(placeholderBounds.Width / emuPerPoint)
-	h := int(placeholderBounds.Height / emuPerPoint)
-	if w < 100 {
-		w = 100
-	}
-	if h < 50 {
-		h = 50
-	}
-
-	label := formatDiagramType(diagramType)
-	svgData := []byte(fmt.Sprintf(
-		`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" viewBox="0 0 %d %d">`+
-			`<rect width="100%%" height="100%%" fill="#F5F3F0" stroke="#D2CDC8" stroke-width="1"/>`+
-			`<text x="50%%" y="45%%" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#8C8782">%s</text>`+
-			`<text x="50%%" y="55%%" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#8C8782">Data unavailable</text>`+
-			`</svg>`,
-		w, h, w, h, label,
-	))
-
-	svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(fmt.Sprintf("diagramphsvg-s%d-x%d", slideNum, shapeIdx))
-
-	ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
-		svgData:        svgData,
-		pngData:        transparentPNG1x1,
-		svgMediaFile:   svgMediaFile,
-		pngMediaFile:   pngMediaFile,
-		offsetX:        placeholderBounds.X,
-		offsetY:        placeholderBounds.Y,
-		extentCX:       placeholderBounds.Width,
-		extentCY:       placeholderBounds.Height,
-		placeholderIdx: shapeIdx,
-		behindText:     true,
-	})
+	ctx.insertNativeMediaPlaceholder(slideNum, placeholderBounds, shapeIdx, formatDiagramType(diagramType)+"\nData unavailable")
 }
 
 // lastDiagramWarning returns the most recent warning that mentions the given placeholder ID.
@@ -1559,4 +1441,11 @@ func diagramSlideWidth(widths ...int64) int64 {
 		return widths[0]
 	}
 	return 12192000
+}
+
+func (ctx *singlePassContext) insertNativeMediaPlaceholder(slideNum int, bounds types.BoundingBox, shapeIdx int, label string) {
+	if ctx.panelShapeInserts == nil {
+		ctx.panelShapeInserts = map[int][]panelShapeInsert{}
+	}
+	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{placeholderIdx: shapeIdx, bounds: bounds, fallbackLabel: label})
 }

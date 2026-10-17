@@ -179,8 +179,11 @@ func CacheBytes() int64 {
 // scanCache lists every regular file under the cache directory.
 func scanCache() ([]cacheEntry, error) {
 	root := cacheDir()
-	if _, err := os.Stat(root); os.IsNotExist(err) {
-		return nil, nil
+	if err := privateCacheDirectory(root, false); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
 	var out []cacheEntry
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
@@ -205,6 +208,9 @@ func scanCache() ([]cacheEntry, error) {
 // that has aged out entirely does not leave a tree of empty per-deck folders.
 func pruneEmptyCacheDirs() {
 	root := cacheDir()
+	if privateCacheDirectory(root, false) != nil {
+		return
+	}
 	var dirs []string
 	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || !d.IsDir() || path == root {

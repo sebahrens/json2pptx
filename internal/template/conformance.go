@@ -3,7 +3,6 @@ package template
 import (
 	"encoding/xml"
 	"fmt"
-	"math"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -979,43 +978,9 @@ func checkColorPolarity(colorMap map[string]string) []ConformanceCheck {
 
 // hexLuminance computes relative luminance from a hex RGB string.
 func hexLuminance(hex string) float64 {
-	hex = strings.TrimPrefix(hex, "#")
-	if len(hex) != 6 {
+	color, err := svggen.ParseColor(hex)
+	if err != nil {
 		return 0
 	}
-
-	r := hexByte(hex[0:2])
-	g := hexByte(hex[2:4])
-	b := hexByte(hex[4:6])
-
-	rl := sRGBToLinear(float64(r) / 255.0)
-	gl := sRGBToLinear(float64(g) / 255.0)
-	bl := sRGBToLinear(float64(b) / 255.0)
-
-	return 0.2126*rl + 0.7152*gl + 0.0722*bl
-}
-
-// hexByte converts a 2-character hex string to a byte.
-func hexByte(s string) uint8 {
-	var v uint8
-	for _, c := range s {
-		v <<= 4
-		switch {
-		case c >= '0' && c <= '9':
-			v |= uint8(c - '0')
-		case c >= 'a' && c <= 'f':
-			v |= uint8(c - 'a' + 10)
-		case c >= 'A' && c <= 'F':
-			v |= uint8(c - 'A' + 10)
-		}
-	}
-	return v
-}
-
-// sRGBToLinear converts an sRGB channel value to linear.
-func sRGBToLinear(c float64) float64 {
-	if c <= 0.04045 {
-		return c / 12.92
-	}
-	return math.Pow((c+0.055)/1.055, 2.4)
+	return color.Luminance()
 }

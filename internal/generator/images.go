@@ -4,6 +4,8 @@ package generator
 import (
 	"encoding/xml"
 	"fmt"
+	"image"
+	"os"
 	"sort"
 	"strings"
 
@@ -98,4 +100,24 @@ func updateContentTypes(idx utils.ZipIndex, usedExtensions map[string]bool) ([]b
 
 	// Add XML header
 	return []byte(xml.Header + string(modifiedData)), nil
+}
+
+// Media suffixes describe the decoded bytes, not an untrusted filename.
+func rasterMediaExtension(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = f.Close() }()
+	_, format, err := image.DecodeConfig(f)
+	if err != nil {
+		return "", fmt.Errorf("decode image format: %w", err)
+	}
+	if format == "jpeg" {
+		format = "jpg"
+	}
+	if _, ok := imageExtensionContentTypes[format]; !ok {
+		return "", fmt.Errorf("unsupported image format %q", format)
+	}
+	return "." + format, nil
 }

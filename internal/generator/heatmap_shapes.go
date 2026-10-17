@@ -139,7 +139,7 @@ func decodeHeatmapMeta(encoded string) (minVal, maxVal float64, colorScale strin
 }
 
 // generateHeatmapGroupXML produces the complete <p:grpSp> XML for a heatmap grid.
-func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, meta heatmapMeta, themeColors []types.ThemeColor) string {
+func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, meta heatmapMeta, themeColors []types.ThemeColor, semanticAccents ...map[string]string) string {
 	if len(panels) < 2 {
 		slog.Warn("generateHeatmapGroupXML: insufficient panels", "got", len(panels))
 		return ""
@@ -235,7 +235,7 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 
 			// Compute fill based on value, then the value's own colour
 			// against the tint that fill produces.
-			tone := heatmapCellFill(val, minVal, maxVal, colorScale)
+			tone := heatmapCellFill(val, minVal, maxVal, colorScale, semanticAccents...)
 
 			shapeIdx++
 			cellXML := generateHeatmapCellXML(
@@ -267,7 +267,7 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 			b, err := pptx.GenerateShape(pptx.ShapeOptions{
 				ID: shapeIDBase + shapeIdx, Name: "Heatmap Scale",
 				Bounds:   pptx.RectEmu{X: barX + int64(i)*barW/5, Y: legendY + 70000, CX: barW/5 - heatmapGap/2, CY: 130000},
-				Geometry: pptx.GeomRect, Fill: heatmapCellFill(value, minVal, maxVal, colorScale).fill(),
+				Geometry: pptx.GeomRect, Fill: heatmapCellFill(value, minVal, maxVal, colorScale, semanticAccents...).fill(),
 				Line: pptx.Line{Width: 0, Fill: pptx.NoFill()},
 			})
 			if err == nil {
@@ -297,11 +297,14 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 // heatmapCellFill computes a fill for a heatmap cell.
 // Sequential: accent1 retained at 20% (lightest) to 100% (full accent).
 // Diverging: accent2 for low values, lt1 for midpoint, accent1 for high values.
-// Red: a fixed red ramp, independent of the template accent.
-func heatmapCellFill(value, minVal, maxVal float64, colorScale string) heatmapTone {
+// Red: the template negative role, falling back to #B91C1C without metadata.
+func heatmapCellFill(value, minVal, maxVal float64, colorScale string, semanticAccents ...map[string]string) heatmapTone {
 	base := "accent1"
 	if colorScale == "red" {
 		base = "#B91C1C"
+		if len(semanticAccents) > 0 && semanticAccents[0]["negative"] != "" {
+			base = semanticAccents[0]["negative"]
+		}
 	}
 	if maxVal == minVal {
 		// All values the same — use 50% tint.
