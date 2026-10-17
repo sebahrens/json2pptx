@@ -73,6 +73,9 @@ func TestCapabilities_SetupRoutes_AllListedInCapabilities(t *testing.T) {
 	// test OR AvailableEndpoints).
 	expectedRoutes := []string{
 		"GET /api/v1/health",
+		"GET /api/v1/ready",
+		"GET /api/v1/thumbnails/{filename}",
+		"GET /api/v1/semantic/kinds",
 		"GET /api/v1/capabilities",
 		"GET /api/v1/templates",
 		"GET /api/v1/templates/{name}",
@@ -298,7 +301,8 @@ func TestCapabilities_MCPOnlyFeatures_NonEmpty(t *testing.T) {
 	knownMCPTools := []string{
 		"generate_presentation",
 		"validate_input",
-		"expand_pattern",
+		"recommend_visual",
+		"plan_deck",
 	}
 
 	for _, tool := range knownMCPTools {

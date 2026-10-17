@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -37,10 +38,13 @@ type ImageConfig struct {
 
 // ServerConfig holds HTTP server configuration.
 type ServerConfig struct {
-	Port            int           `yaml:"port"`
-	ReadTimeout     time.Duration `yaml:"read_timeout"`
-	WriteTimeout    time.Duration `yaml:"write_timeout"`
-	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
+	Bind               string        `yaml:"bind"`
+	APIToken           string        `yaml:"-"` // Environment-only secret: JSON2PPTX_API_TOKEN.
+	CORSAllowedOrigins []string      `yaml:"cors_allowed_origins"`
+	Port               int           `yaml:"port"`
+	ReadTimeout        time.Duration `yaml:"read_timeout"`
+	WriteTimeout       time.Duration `yaml:"write_timeout"`
+	ShutdownTimeout    time.Duration `yaml:"shutdown_timeout"`
 	// MaxSlidesPerRequest caps slides per /convert request (0 = default 500).
 	MaxSlidesPerRequest int `yaml:"max_slides_per_request"`
 	// MaxConcurrentConverts bounds concurrent /convert requests (0 = default 4).
@@ -75,6 +79,7 @@ func DefaultConfig() Config {
 	return Config{
 		Server: ServerConfig{
 			Port:        8080,
+			Bind:        "127.0.0.1",
 			ReadTimeout: 30 * time.Second,
 			// Must exceed the /convert timeout (2m) so slow converts get a
 			// 504 response instead of a dropped connection.
@@ -153,6 +158,15 @@ func applyEnvOverrides(cfg *Config) {
 
 // applyServerEnvOverrides applies server-related environment variable overrides.
 func applyServerEnvOverrides(cfg *ServerConfig) {
+	if v := os.Getenv("JSON2PPTX_BIND"); v != "" {
+		cfg.Bind = v
+	}
+	if v, ok := os.LookupEnv("JSON2PPTX_API_TOKEN"); ok {
+		cfg.APIToken = v
+	}
+	if v, ok := os.LookupEnv("JSON2PPTX_CORS_ALLOWED_ORIGINS"); ok {
+		cfg.CORSAllowedOrigins = splitOrigins(v)
+	}
 	if v := os.Getenv("PORT"); v != "" {
 		if port, err := strconv.Atoi(v); err == nil {
 			cfg.Port = port
@@ -308,6 +322,19 @@ func parseCommaSeparated(s string) []string {
 
 // Validate checks that the configuration is valid.
 func (c *Config) Validate() error {
+	for _, origin := range c.Server.CORSAllowedOrigins {
+		if origin == "*" {
+			continue
+		}
+		u, err := url.Parse(origin)
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+			return fmt.Errorf("invalid CORS origin %q: use an exact http(s) origin or *", origin)
+		}
+	}
+	if strings.ContainsAny(c.Server.APIToken, " \t\r\n") {
+		return fmt.Errorf("JSON2PPTX_API_TOKEN must not contain whitespace")
+	}
+
 	if c.Server.Port < 1 || c.Server.Port > 65535 {
 		return fmt.Errorf("invalid server port: %d", c.Server.Port)
 	}
@@ -323,4 +350,14 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("storage file_retention must be positive, got %s", c.Storage.FileRetention)
 	}
 	return nil
+}
+
+func splitOrigins(value string) []string {
+	var origins []string
+	for _, part := range strings.Split(value, ",") {
+		if v := strings.TrimSpace(part); v != "" {
+			origins = append(origins, v)
+		}
+	}
+	return origins
 }

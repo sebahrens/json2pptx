@@ -174,6 +174,10 @@ func (s *semanticRenderService) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Template != "" && req.TemplatePath != "" {
+		writeError(w, http.StatusBadRequest, apierrors.CodeInvalidRequest, "template query and uploaded template cannot be combined", nil)
+		return
+	}
 	name, err := generateUniqueFilename()
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, apierrors.CodeGenerationError, "Failed to generate output filename", nil)
@@ -221,6 +225,7 @@ func (s *semanticRenderService) writeOutcome(w http.ResponseWriter, req Semantic
 			return
 		}
 		body["file_url"] = mustJSON("/api/v1/download/" + req.OutputFilename)
+		body["thumbnails_url"] = mustJSON("/api/v1/thumbnails/" + req.OutputFilename)
 		body["expires_at"] = mustJSON(time.Now().Add(effectiveRetention(s.retention)).Format(time.RFC3339))
 	}
 	writeJSON(w, status, body)

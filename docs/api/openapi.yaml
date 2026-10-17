@@ -21,6 +21,12 @@ info:
     the **CLI** (`json2pptx generate`).
 
     Use `GET /api/v1/capabilities` for a machine-readable feature boundary.
+    Binary binding defaults to loopback; JSON2PPTX_BIND or --bind opts into network access.
+    JSON2PPTX_API_TOKEN enables bearer authentication except public liveness.
+    JSON2PPTX_CORS_ALLOWED_ORIGINS enables exact-origin CORS (comma-separated; explicit * supported).
+    X-Request-ID accepts only [A-Za-z0-9._-] with length 1–64; other values are replaced.
+    Work endpoints share the conversion semaphore and return 503 RATE_LIMITED with Retry-After
+    when busy, or 504 REQUEST_TIMEOUT when the request deadline expires.
 
     ## Features
 
@@ -37,6 +43,10 @@ info:
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
+
+security:
+  - {}
+  - BearerAuth: []
 
 servers:
   - url: http://localhost:8080
@@ -59,6 +69,99 @@ tags:
     description: Semantic deck-spec validation, compilation, and rendering
 
 paths:
+  /api/v1/ready:
+    get:
+      tags: [Health]
+      summary: Check dependencies for the complete HTTP workflow
+      description: Checks readable template, writable output and LibreOffice/Poppler availability; does not launch conversion or validate every template.
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+        '503':
+          description: A dependency is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessResponse'
+
+  /api/v1/semantic/kinds:
+    get:
+      tags: [Semantic]
+      summary: Discover slide kinds and template-aware authoring budgets
+      description: Same catalogue and filters as MCP list_slide_kinds. Omit filters for all kinds and fields.
+      operationId: listSemanticKinds
+      parameters:
+        - name: kinds
+          in: query
+          schema: {type: string}
+          description: Comma-separated slide kind names
+        - name: fields
+          in: query
+          schema: {type: string}
+          description: Comma-separated catalogue fields, for example budgets
+        - name: template
+          in: query
+          schema: {type: string}
+          description: Registered template name for calibrated budgets
+      responses:
+        '200':
+          description: Shared list_slide_kinds catalogue
+          content:
+            application/json:
+              schema: {type: object, additionalProperties: true}
+        '400':
+          description: Invalid catalogue filters (FindingEnvelope) or template name (ErrorResponse)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/FindingEnvelope'
+                  - $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Catalogue provider unavailable in this server embedding
+
+  /api/v1/thumbnails/{filename}:
+    get:
+      tags: [Downloads]
+      summary: Inspect a generated artifact as inline PNG thumbnails
+      description: Only generated output files, no arbitrary paths or symlinks. Shares work limits and artifact retention with conversion. Requires LibreOffice and Poppler.
+      operationId: getThumbnails
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema: {type: string, pattern: '^[a-f0-9]{32}\.pptx$'}
+        - name: density
+          in: query
+          schema: {type: integer, minimum: 36, maximum: 150, default: 72}
+        - name: max_slides
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+        - name: slide_indices
+          in: query
+          schema: {type: string}
+          description: At most 50 comma-separated zero-based indices; overrides max_slides
+      responses:
+        '200':
+          description: Verifiable inline PNGs without local file paths
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThumbnailsResponse'
+        '400':
+          description: Invalid filename, limits or slide index
+        '404':
+          description: Generated artifact missing or expired
+        '503':
+          description: Shared work capacity exhausted (Retry-After header)
+        '504':
+          description: Render deadline expired
+
   /api/v1/health:
     get:
       tags:
@@ -68,6 +171,7 @@ paths:
       description: |
         Returns the current health status of the service, including version
         information and uptime.
+      security: []
       operationId: getHealth
       responses:
         '200':
@@ -123,11 +227,20 @@ paths:
       summary: Validate a semantic deck spec
       description: >
         Validates a semantic deck spec. The request body is the spec document
-        itself (JSON or YAML by Content-Type). Always responds 200; the result
-        lives in the returned FindingEnvelope. `valid` mirrors `findings.ok`.
+        itself (JSON or YAML by Content-Type). With a selected template, runs
+        scratch generation with native fit/readability, asset policy and strict
+        output validation, without publishing a file. Completed validation returns
+        200; valid mirrors findings.ok. validation_scope distinguishes schema,
+        compile, template_free and render checks. Transport failures use ErrorResponse.
+        An embedded schema-only validator rejects the template query parameter.
       operationId: validateSemanticDeckSpec
       parameters:
         - $ref: '#/components/parameters/SemanticStrict'
+        - name: template
+          in: query
+          schema:
+            type: string
+          description: Registered template; overrides meta.template with warnings.
       requestBody:
         required: true
         description: The semantic deck spec document.
@@ -145,8 +258,15 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [valid, findings]
+                required: [valid, findings, validation_scope]
                 properties:
+                  validation_scope:
+                    type: string
+                    enum: [schema, compile, template_free, render]
+                  warnings:
+                    type: array
+                    items:
+                      type: string
                   valid:
                     type: boolean
                     description: True when no finding has error severity (mirrors findings.ok).
@@ -227,6 +347,7 @@ paths:
         - Semantic
       summary: Compile and render a semantic deck spec to PPTX
       description: >
+        The template query parameter and an uploaded template are mutually exclusive (400 INVALID_REQUEST).
         Parses, validates and compiles a semantic deck spec, then renders it
         through the shared presentation runner (the same flow as
         `json2pptx semantic render` and the `render_deck_spec` MCP tool):
@@ -967,7 +1088,48 @@ paths:
                     pattern: bmc
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Required when JSON2PPTX_API_TOKEN is configured; health and CORS preflight remain public.
   schemas:
+    ReadinessResponse:
+      type: object
+      required: [ready, checks, missing_render_tools]
+      properties:
+        ready: {type: boolean}
+        checks:
+          type: object
+          properties:
+            templates: {type: boolean}
+            output: {type: boolean}
+            render_toolchain: {type: boolean}
+        missing_render_tools:
+          type: array
+          nullable: true
+          items: {type: string}
+    ThumbnailsResponse:
+      type: object
+      required: [slides, truncated]
+      properties:
+        slide_count: {type: integer}
+        truncated: {type: boolean}
+        selected:
+          type: array
+          items: {type: integer}
+        slides:
+          type: array
+          items:
+            type: object
+            properties:
+              index: {type: integer}
+              png_base64: {type: string, format: byte}
+              width: {type: integer}
+              height: {type: integer}
+              size_error: {type: string}
+              content_hash: {type: string}
+              source_hash: {type: string}
     CapabilitiesResponse:
       type: object
       required:
@@ -978,6 +1140,12 @@ components:
         - mcp_only_features
         - recommended_interface
       properties:
+        schema_version:
+          type: string
+          description: Executable schema version
+        schema_fingerprint:
+          type: string
+          description: Executable schema fingerprint
         surface:
           type: string
           enum: [http]
@@ -985,6 +1153,17 @@ components:
         version:
           type: string
           description: API version
+        semantic:
+          type: object
+          properties:
+            validation_mode:
+              type: string
+              enum: [schema_only, trial_render]
+            supported_operations:
+              type: array
+              items:
+                type: string
+          additionalProperties: true
         convert:
           type: object
           description: Feature boundary for POST /api/v1/convert
@@ -1025,6 +1204,12 @@ components:
         - version
         - uptime_seconds
       properties:
+        schema_version:
+          type: string
+          description: Executable schema version
+        schema_fingerprint:
+          type: string
+          description: Executable schema fingerprint
         status:
           type: string
           enum: [healthy]
@@ -1076,7 +1261,6 @@ components:
         aspect_ratio:
           type: string
           description: Slide aspect ratio
-          enum: ["16:9", "4:3"]
           example: "16:9"
         layout_count:
           type: integer
@@ -1103,8 +1287,13 @@ components:
         aspect_ratio:
           type: string
           description: Slide aspect ratio
-          enum: ["16:9", "4:3"]
           example: "16:9"
+        slide_width_emu:
+          type: integer
+          format: int64
+        slide_height_emu:
+          type: integer
+          format: int64
         layouts:
           type: array
           items:
@@ -1152,6 +1341,11 @@ components:
         - colors
         - fonts
       properties:
+        semantic_accents:
+          type: object
+          additionalProperties:
+            type: string
+          description: Semantic role to theme color mapping from template metadata
         colors:
           type: array
           items:
@@ -1495,6 +1689,9 @@ components:
         success:
           type: boolean
           enum: [true]
+        thumbnails_url:
+          type: string
+          description: Generated artifact thumbnail endpoint (semantic render)
         file_url:
           type: string
           description: Relative URL to download the generated file
@@ -1620,6 +1817,7 @@ components:
             - PANIC_RECOVERED
             - INTERNAL_ERROR
             - PATTERN_NOT_FOUND
+            - PATTERN_VALIDATION_FAILED
             - PATTERN_EXPAND_FAILED
             - UNSUPPORTED_FEATURE
         message:
@@ -1879,6 +2077,9 @@ components:
         ok:
           type: boolean
           description: True when a deck was written.
+        thumbnails_url:
+          type: string
+          description: Generated artifact thumbnail endpoint (semantic render)
         file_url:
           type: string
           description: Download path of the rendered deck (present on success).

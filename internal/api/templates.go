@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	apierrors "github.com/sebahrens/json2pptx/internal/api/errors"
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -172,6 +171,8 @@ func (ts *TemplateService) GetTemplateDetailsHandler() http.HandlerFunc {
 			Name:        name,
 			DisplayName: toDisplayName(name),
 			AspectRatio: aspectRatio,
+			SlideWidth:  analysis.SlideWidth,
+			SlideHeight: analysis.SlideHeight,
 			Layouts:     convertLayouts(analysis.Layouts),
 			Theme:       convertTheme(analysis.Theme),
 		}
@@ -182,88 +183,7 @@ func (ts *TemplateService) GetTemplateDetailsHandler() http.HandlerFunc {
 
 // GetOrAnalyzeTemplate retrieves template analysis from cache or analyzes it.
 func (ts *TemplateService) GetOrAnalyzeTemplate(templatePath string) (*types.TemplateAnalysis, error) {
-	// Try fast validation if cache supports it
-	if fastCache, ok := ts.cache.(types.FastValidationCache); ok {
-		if cached, ok := fastCache.GetWithFastValidation(templatePath); ok {
-			return cached, nil
-		}
-	} else {
-		if cached, ok := ts.cache.Get(templatePath); ok {
-			return cached, nil
-		}
-	}
-
-	// Cache miss - analyze template
-	var modTime time.Time
-	if info, err := os.Stat(templatePath); err == nil {
-		modTime = info.ModTime()
-	}
-
-	reader, err := template.OpenTemplate(templatePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open template: %w", err)
-	}
-	defer func() { _ = reader.Close() }()
-
-	layouts, err := template.ParseLayouts(reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse layouts: %w", err)
-	}
-
-	theme := template.ParseTheme(reader)
-
-	validationResult := template.ValidateTemplateMetadata(reader, ts.strictValidate)
-	if !validationResult.Valid {
-		return nil, fmt.Errorf("template validation failed: %v", validationResult.AllIssues())
-	}
-
-	metadata := validationResult.Metadata
-	template.ApplyMetadataHints(layouts, metadata)
-
-	aspectRatio := "16:9"
-	if metadata != nil && metadata.AspectRatio != "" {
-		aspectRatio = metadata.AspectRatio
-	}
-
-	analysis := &types.TemplateAnalysis{
-		TemplatePath: templatePath,
-		Hash:         reader.Hash(),
-		AspectRatio:  aspectRatio,
-		Layouts:      layouts,
-		Theme:        theme,
-		Metadata:     metadata,
-	}
-
-	// Synthesize missing layout capabilities (e.g., two-column)
-	_ = template.SynthesizeIfNeeded(reader, analysis)
-
-	// Normalize placeholder names to canonical form (title, body, body_2, image, etc.)
-	// This produces modified layout XML bytes stored in SyntheticFiles so the generator
-	// reads normalized shapes. Also updates layout metadata placeholder IDs in-place.
-	normalizedFiles, normErr := template.NormalizeLayoutFiles(reader, analysis.Layouts)
-	if normErr != nil {
-		return nil, fmt.Errorf("failed to normalize layouts: %w", normErr)
-	}
-	if len(normalizedFiles) > 0 {
-		if analysis.Synthesis == nil {
-			analysis.Synthesis = &types.SynthesisManifest{
-				SyntheticFiles: normalizedFiles,
-			}
-		} else {
-			for path, data := range normalizedFiles {
-				analysis.Synthesis.SyntheticFiles[path] = data
-			}
-		}
-	}
-
-	// Cache the analysis
-	if fastCache, ok := ts.cache.(types.FastValidationCache); ok && !modTime.IsZero() {
-		fastCache.SetWithModTime(templatePath, analysis, modTime)
-	} else {
-		ts.cache.Set(templatePath, analysis)
-	}
-
-	return analysis, nil
+	return template.Analyze(templatePath, ts.cache, ts.strictValidate)
 }
 
 // toDisplayName converts a template name to a display name.
@@ -308,7 +228,8 @@ func convertTheme(theme types.ThemeInfo) ThemeSummary {
 	}
 
 	return ThemeSummary{
-		Colors: colors,
+		SemanticAccents: theme.SemanticAccents,
+		Colors:          colors,
 		Fonts: FontInfo{
 			Title: theme.TitleFont,
 			Body:  theme.BodyFont,
@@ -346,6 +267,8 @@ type TemplateInfo struct {
 
 // TemplateDetailsResponse is the response for GET /api/v1/templates/{name}.
 type TemplateDetailsResponse struct {
+	SlideWidth  int64           `json:"slide_width_emu"`
+	SlideHeight int64           `json:"slide_height_emu"`
 	Name        string          `json:"name"`
 	DisplayName string          `json:"display_name"`
 	AspectRatio string          `json:"aspect_ratio"`
@@ -363,8 +286,9 @@ type LayoutSummary struct {
 
 // ThemeSummary contains theme information for API responses.
 type ThemeSummary struct {
-	Colors []string `json:"colors"`
-	Fonts  FontInfo `json:"fonts"`
+	SemanticAccents map[string]string `json:"semantic_accents,omitempty"`
+	Colors          []string          `json:"colors"`
+	Fonts           FontInfo          `json:"fonts"`
 }
 
 // FontInfo contains font information.

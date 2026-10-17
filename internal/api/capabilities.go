@@ -7,6 +7,8 @@ import (
 // CapabilitiesResponse describes the machine-readable feature boundary
 // of the HTTP API surface.
 type CapabilitiesResponse struct {
+	SchemaVersion        string               `json:"schema_version,omitempty"`
+	SchemaFingerprint    string               `json:"schema_fingerprint,omitempty"`
 	Surface              string               `json:"surface"`
 	Version              string               `json:"version"`
 	ConvertCapabilities  ConvertCapabilities  `json:"convert"`
@@ -28,6 +30,7 @@ type ConvertCapabilities struct {
 // DeferredOperations is kept (empty) so clients that read it see nothing
 // deferred.
 type SemanticCapabilities struct {
+	ValidationMode      string   `json:"validation_mode"`
 	SupportedOperations []string `json:"supported_operations"`
 	DeferredOperations  []string `json:"deferred_operations"`
 	RequestBody         string   `json:"request_body"`
@@ -38,11 +41,24 @@ type SemanticCapabilities struct {
 }
 
 // CapabilitiesHandler returns a handler for GET /api/v1/capabilities.
-func CapabilitiesHandler() http.HandlerFunc {
+func CapabilitiesHandler(configs ...ServerConfig) http.HandlerFunc {
+	cfg := ServerConfig{Version: "dev"}
+	if len(configs) > 0 {
+		cfg = configs[0]
+		if cfg.Version == "" {
+			cfg.Version = "dev"
+		}
+	}
+	validationMode := "schema_only"
+	if cfg.SemanticValidator != nil {
+		validationMode = "trial_render"
+	}
 	return func(w http.ResponseWriter, _ *http.Request) {
 		resp := CapabilitiesResponse{
-			Surface: "http",
-			Version: "1.0.0",
+			Surface:           "http",
+			Version:           cfg.Version,
+			SchemaVersion:     cfg.SchemaVersion,
+			SchemaFingerprint: cfg.SchemaFingerprint,
 			ConvertCapabilities: ConvertCapabilities{
 				SupportedSlideFields: []string{
 					"type", "title", "content", "speaker_notes",
@@ -53,7 +69,7 @@ func CapabilitiesHandler() http.HandlerFunc {
 				},
 				UnsupportedFeatures: []string{
 					"shape_grid (use MCP or CLI)",
-					"pattern / compose (use MCP expand_pattern then CLI)",
+					"pattern / compose (use HTTP semantic/render, MCP or CLI)",
 					"chart_value (use MCP generate_presentation)",
 					"diagram_value (use MCP generate_presentation)",
 					"table_value (use MCP generate_presentation)",
@@ -73,7 +89,8 @@ func CapabilitiesHandler() http.HandlerFunc {
 				},
 			},
 			SemanticCapabilities: SemanticCapabilities{
-				SupportedOperations: []string{"schema", "validate", "compile", "render"},
+				ValidationMode:      validationMode,
+				SupportedOperations: []string{"schema", "kinds", "validate", "compile", "render"},
 				DeferredOperations:  []string{},
 				RequestBody:         "Raw semantic deck spec document; application/json parsed as JSON, application/x-yaml as YAML.",
 				RenderRequestBody: "render also accepts multipart/form-data: a \"spec\" part (file or field), an optional " +
@@ -85,18 +102,21 @@ func CapabilitiesHandler() http.HandlerFunc {
 				},
 				DiagnosticContract: "validate/compile responses use the shared FindingEnvelope; render returns the " +
 					"`json2pptx semantic render` result object (diagnostics carry semantic_path plus raw_path); " +
-					"transport/request errors use the simple error envelope.",
-				RenderResponse: "200 with file_url (GET /api/v1/download/{filename}), expires_at, slide_count, content_hash, " +
+					"transport/request errors use the simple error envelope. validate reports validation_scope (schema, compile, template_free, render).",
+				RenderResponse: "200 with file_url (GET /api/v1/download/{filename}), thumbnails_url, expires_at, slide_count, content_hash, " +
 					"quality, deterministic_ready, publishable, warnings, diagnostics; 422 with ok=false, error and " +
 					"source-addressed diagnostics when the spec, template, assets or a quality gate refuses the render.",
 			},
 			AvailableEndpoints: []string{
 				"GET  /api/v1/health",
+				"GET  /api/v1/ready",
+				"GET  /api/v1/thumbnails/{filename}",
 				"GET  /api/v1/capabilities",
 				"GET  /api/v1/templates",
 				"GET  /api/v1/templates/{name}",
 				"GET  /api/v1/slide-types",
 				"GET  /api/v1/semantic/schema",
+				"GET  /api/v1/semantic/kinds",
 				"POST /api/v1/semantic/validate",
 				"POST /api/v1/semantic/compile",
 				"POST /api/v1/semantic/render",
@@ -110,9 +130,7 @@ func CapabilitiesHandler() http.HandlerFunc {
 			MCPOnlyFeatures: []string{
 				"generate_presentation (full PresentationInput with all content types)",
 				"validate_input (full schema validation)",
-				"expand_pattern (pattern → shape_grid expansion)",
-				"show_pattern (pattern schema introspection)",
-				"list_patterns (pattern catalog)",
+
 				"analyze_deck_rhythm (composition analysis)",
 				"recommend_visual (layout/pattern recommendation)",
 				"plan_deck (deck planning from brief)",

@@ -80,6 +80,9 @@ COPY scripts/wiki.sh /app/scripts/wiki.sh
 # Switch to non-root user
 USER appuser:appgroup
 
+# Containers explicitly opt into listening on their network interface.
+ENV JSON2PPTX_BIND=0.0.0.0
+
 # Default port
 EXPOSE 8080
 

@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"os/signal"
+	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -25,8 +29,12 @@ const serveReadHeaderTimeout = 10 * time.Second
 
 // newAPIHTTPServer builds the API http.Server from the server config.
 func newAPIHTTPServer(sc config.ServerConfig, handler http.Handler) *http.Server {
+	bind := sc.Bind
+	if bind == "" {
+		bind = "127.0.0.1"
+	}
 	return &http.Server{
-		Addr:         fmt.Sprintf(":%d", sc.Port),
+		Addr:         net.JoinHostPort(bind, strconv.Itoa(sc.Port)),
 		Handler:      handler,
 		ReadTimeout:  sc.ReadTimeout,
 		WriteTimeout: sc.WriteTimeout,
@@ -42,6 +50,7 @@ func newAPIHTTPServer(sc config.ServerConfig, handler http.Handler) *http.Server
 func runServe() error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 
+	bind := fs.String("bind", "", "Listen address (default: 127.0.0.1; use 0.0.0.0 for network access)")
 	port := fs.Int("port", 0, "HTTP port (overrides config file)")
 	configPath := fs.String("config", "", "Path to config file")
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
@@ -90,6 +99,9 @@ func runServe() error {
 	}
 
 	// Apply flag overrides
+	if *bind != "" {
+		cfg.Server.Bind = *bind
+	}
 	if *port != 0 {
 		cfg.Server.Port = *port
 	}
@@ -138,15 +150,19 @@ func runServe() error {
 
 	// Create API server
 	apiServer := api.NewServer(api.ServerConfig{
-		TemplatesDir:     cfg.Templates.Dir,
-		OutputDir:        cfg.Storage.OutputDir,
-		Cache:            cache,
-		Logger:           logger,
-		StrictValidation: cfg.Templates.IsStrictValidation(),
-		Version:          Version,
-		CommitSHA:        CommitSHA,
-		BuildTime:        BuildTime,
-		FileRetention:    cfg.Storage.FileRetention,
+		APIToken:           cfg.Server.APIToken,
+		CORSAllowedOrigins: cfg.Server.CORSAllowedOrigins,
+		SchemaVersion:      SchemaVersion,
+		SchemaFingerprint:  schemaFingerprint(),
+		TemplatesDir:       cfg.Templates.Dir,
+		OutputDir:          cfg.Storage.OutputDir,
+		Cache:              cache,
+		Logger:             logger,
+		StrictValidation:   cfg.Templates.IsStrictValidation(),
+		Version:            Version,
+		CommitSHA:          CommitSHA,
+		BuildTime:          BuildTime,
+		FileRetention:      cfg.Storage.FileRetention,
 		// Empty = unrestricted, as before; ALLOWED_IMAGE_PATHS opts in.
 		AllowedImagePaths:     cfg.Images.AllowedBasePaths,
 		MaxSlidesPerRequest:   cfg.Server.MaxSlidesPerRequest,
@@ -154,7 +170,9 @@ func runServe() error {
 		// The shared semantic render runner, built from the same loaded
 		// config so HTTP renders use this server's templates dir, SVG
 		// strategy and image allow-list (go-slide-creator-b7qqg.25).
-		SemanticRenderer: newHTTPSemanticRenderer(cfg),
+		SemanticRenderer:  newHTTPSemanticRenderer(cfg),
+		SemanticValidator: newHTTPSemanticValidator(cfg),
+		SemanticKinds:     newHTTPSemanticKinds(cfg, cache),
 		// One address form on every DeckSpec surface (go-slide-creator-pilpn).
 		SemanticFindings: finishSemanticFindingsForHTTP,
 	})
@@ -180,6 +198,14 @@ func runServe() error {
 	// Create HTTP server
 	server := newAPIHTTPServer(cfg.Server, apiServer)
 
+	var pprofServer *http.Server
+	// Close both listeners on startup errors as well as normal shutdown.
+	defer func() {
+		_ = server.Close()
+		if pprofServer != nil {
+			_ = pprofServer.Close()
+		}
+	}()
 	// Start pprof server if configured
 	if cfg.Server.PprofPort > 0 {
 		pprofMux := http.NewServeMux()
@@ -188,8 +214,8 @@ func runServe() error {
 		pprofMux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 		pprofMux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
 		pprofMux.HandleFunc("/debug/pprof/trace", pprof.Trace)
-		pprofAddr := fmt.Sprintf("%s:%d", cfg.Server.PprofBind, cfg.Server.PprofPort)
-		pprofServer := &http.Server{
+		pprofAddr := net.JoinHostPort(cfg.Server.PprofBind, strconv.Itoa(cfg.Server.PprofPort))
+		pprofServer = &http.Server{
 			Addr:              pprofAddr,
 			Handler:           pprofMux,
 			ReadHeaderTimeout: 10 * time.Second,
@@ -214,6 +240,7 @@ func runServe() error {
 	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigChan)
 
 	select {
 	case err := <-errChan:
@@ -226,10 +253,36 @@ func runServe() error {
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
 
-	if err := server.Shutdown(ctx); err != nil {
+	if err := shutdownHTTPServers(ctx, server, pprofServer); err != nil {
 		return fmt.Errorf("shutdown: %w", err)
 	}
 
 	slog.Info("server stopped")
 	return nil
+}
+
+// Both listeners stop accepting immediately, even when one has slow requests.
+func shutdownHTTPServers(ctx context.Context, servers ...*http.Server) error {
+	var wg sync.WaitGroup
+	errs := make(chan error, len(servers))
+	for _, server := range servers {
+		if server == nil {
+			continue
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := server.Shutdown(ctx); err != nil {
+				_ = server.Close()
+				errs <- err
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	var failures []error
+	for err := range errs {
+		failures = append(failures, err)
+	}
+	return errors.Join(failures...)
 }

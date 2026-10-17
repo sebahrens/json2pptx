@@ -58,7 +58,8 @@ const (
 	CodeUnsupportedFeature = "UNSUPPORTED_FEATURE"
 
 	// Server errors
-	CodeInternalError = "INTERNAL_ERROR"
+	CodeInternalError  = "INTERNAL_ERROR"
+	CodePanicRecovered = "PANIC_RECOVERED"
 )
 
 // Write writes a standardized JSON error response to the http.ResponseWriter.

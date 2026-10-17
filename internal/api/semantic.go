@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -42,9 +43,13 @@ import (
 // mirrors findings.ok (true when no finding has error severity) for a quick
 // pass/fail check; findings is the full shared envelope of semantic-path
 // diagnostics.
-type semanticValidateResponse struct {
-	Valid    bool                        `json:"valid"`
-	Findings diagnostics.FindingEnvelope `json:"findings"`
+type semanticValidateResponse = SemanticValidationOutcome
+
+type SemanticValidationOutcome struct {
+	ValidationScope string                      `json:"validation_scope"`
+	Warnings        []string                    `json:"warnings,omitempty"`
+	Valid           bool                        `json:"valid"`
+	Findings        diagnostics.FindingEnvelope `json:"findings"`
 }
 
 // semanticCompileResponse is the body of POST /api/v1/semantic/compile. On
@@ -92,7 +97,13 @@ func SemanticSchemaHandler() http.HandlerFunc {
 // optional strict query parameter (off|warn|strict, default warn) controls
 // advisory-rule severity. Always responds 200: validation completing is the
 // success case, and valid/findings.ok report whether the spec is clean.
+type SemanticValidator func(context.Context, []byte, string, semantic.Strictness, string) (SemanticValidationOutcome, error)
+
 func SemanticValidateHandler(finish ...SemanticFindingsFinisher) http.HandlerFunc {
+	return semanticValidateHandler(nil, nil, finish...)
+}
+
+func semanticValidateHandler(validator SemanticValidator, sem chan struct{}, finish ...SemanticFindingsFinisher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data, filename, ok := readSemanticBody(w, r)
 		if !ok {
@@ -103,13 +114,34 @@ func SemanticValidateHandler(finish ...SemanticFindingsFinisher) http.HandlerFun
 			return
 		}
 
+		if validator != nil {
+			if !acquireWork(w, sem) {
+				return
+			}
+			if sem != nil {
+				defer func() { <-sem }()
+			}
+			ctx, cancel := context.WithTimeout(r.Context(), DefaultConvertTimeout)
+			defer cancel()
+			outcome, err := validator(ctx, data, filename, strict, strings.TrimSpace(r.URL.Query().Get("template")))
+			if err != nil {
+				writeWorkError(w, ctx, err, "Semantic validation failed")
+				return
+			}
+			writeJSON(w, http.StatusOK, outcome)
+			return
+		}
+		if r.URL.Query().Has("template") {
+			writeError(w, http.StatusBadRequest, apierrors.CodeInvalidRequest, "This server has schema-only validation; template requires the trial validator", nil)
+			return
+		}
 		ds := semantic.Check(filename, data, strict)
 		env := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 			Subcommand:  "semantic_validate",
 			InputSHA256: diagnostics.ComputeInputSHA256(data),
 		}, ds)
 		finishFindings(finish, filename, data, &env)
-		writeJSON(w, http.StatusOK, semanticValidateResponse{Valid: env.OK, Findings: env})
+		writeJSON(w, http.StatusOK, semanticValidateResponse{Valid: env.OK, Findings: env, ValidationScope: "schema"})
 	}
 }
 
