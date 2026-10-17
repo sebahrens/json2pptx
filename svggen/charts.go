@@ -611,7 +611,9 @@ func (bc *BarChart) Draw(data ChartData) error {
 
 		// Draw annotations (reference lines, trendlines, callouts)
 		if len(data.Annotations) > 0 {
-			DrawAnnotations(b, data.Annotations, plotArea, xScale, yScale, data, colors)
+			if err := DrawAnnotations(b, data.Annotations, plotArea, xScale, yScale, data, colors); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1760,7 +1762,9 @@ func (lc *LineChart) Draw(data ChartData) error {
 
 	// Draw annotations (reference lines, trendlines, callouts)
 	if len(data.Annotations) > 0 {
-		DrawAnnotations(b, data.Annotations, plotArea, xScale, yScale, data, colors)
+		if err := DrawAnnotations(b, data.Annotations, plotArea, xScale, yScale, data, colors); err != nil {
+			return err
+		}
 	}
 
 	// Draw title

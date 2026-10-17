@@ -265,12 +265,56 @@ func TestRegionsContract(t *testing.T) {
 	props := item["properties"].(map[string]any)
 	regions := props["regions"].(map[string]any)
 	variants := regions["items"].(map[string]any)["oneOf"].([]any)
-	if len(variants) != 8 || regions["maxItems"] != 3 {
-		t.Fatalf("want 8 closed region variants and maxItems 3, got %d / %v", len(variants), regions["maxItems"])
+	if len(variants) != len(slides.RegionKinds) || regions["maxItems"] != 3 {
+		t.Fatalf("want %d closed region variants and maxItems 3, got %d / %v", len(slides.RegionKinds), len(variants), regions["maxItems"])
 	}
+	seen := make(map[string]bool, len(variants))
 	for _, v := range variants {
-		if v.(map[string]any)["additionalProperties"] != false {
-			t.Errorf("region variant %v is not closed", v.(map[string]any)["title"])
+		variant := v.(map[string]any)
+		if variant["additionalProperties"] != false {
+			t.Errorf("region variant %v is not closed", variant["title"])
+		}
+		fields := variant["properties"].(map[string]any)
+		kind := fields["kind"].(map[string]any)["const"].(string)
+		if seen[kind] {
+			t.Errorf("duplicate region variant %q", kind)
+		}
+		seen[kind] = true
+		if kind != slides.RegionProcess {
+			continue
+		}
+		wantFields := map[string]bool{"kind": true, "size_pct": true, "heading": true, "source": true, "steps": true}
+		if len(fields) != len(wantFields) {
+			t.Errorf("process region fields = %v", fields)
+		}
+		for field := range fields {
+			if !wantFields[field] {
+				t.Errorf("unexpected process region field %q", field)
+			}
+		}
+		required := variant["required"].([]any)
+		if len(required) != 2 || required[0] != "kind" || required[1] != "steps" {
+			t.Errorf("process region required fields = %v", required)
+		}
+		steps := fields["steps"].(map[string]any)
+		if steps["minItems"] != 3 || steps["maxItems"] != 6 {
+			t.Errorf("process step bounds = %v", steps)
+		}
+		step := steps["items"].(map[string]any)
+		if step["additionalProperties"] != false {
+			t.Error("process step object is not closed")
+		}
+		stepFields := step["properties"].(map[string]any)
+		if len(stepFields) != 2 || stepFields["label"] == nil || stepFields["description"] == nil {
+			t.Errorf("process step fields = %v", stepFields)
+		}
+		if required := step["required"].([]any); len(required) != 1 || required[0] != "label" {
+			t.Errorf("process step required fields = %v", required)
+		}
+	}
+	for _, kind := range slides.RegionKinds {
+		if !seen[kind] {
+			t.Errorf("region variant %q is missing", kind)
 		}
 	}
 	if arr := props["arrangement"].(map[string]any); len(arr["enum"].([]any)) != 6 {

@@ -37,7 +37,7 @@
     ],
     "build": "make passed; CLI refreshed for changed final rendering behavior.",
     "lint": "Pinned2.12.2 root and svggen passed after focused decomposition fixes.",
-    "skill_bundle_bytes": 102299,
+    "skill_bundle_bytes": 102357,
     "installed_skill": "Version4.177.0, exact installed-copy contract passed.",
     "previews": {
       "layouts": 108,
@@ -78,5 +78,15 @@
     "Font substitution and PowerPoint can differ from local LibreOffice pixels; content/geometry gates remain authoritative for new content."
   ],
   "integration_parent_commit": "8efdd7c228808dd4317df5fa590d2e1fe40d2f2f",
-  "concurrent_wiki_commit": "A separate docs-only commit landed in the shared checkout while implementation was in progress. It includes the pre-existing user wiki edits and the new inline-tags example; preserved intact as implementation parent."
+  "concurrent_wiki_commit": "A separate docs-only commit landed in the shared checkout while implementation was in progress. It includes the pre-existing user wiki edits and the new inline-tags example; preserved intact as implementation parent.",
+  "ci_followups": {
+    "first_delivery_commit": "ba0aa220ef08fb78f27c961d8877db990815d185",
+    "original_ci_run": "https://github.com/sebahrens/json2pptx/actions/runs/39046800369",
+    "go-slide-creator-7b6l4": "Existing annotation regression exposed callout/value overlap. Callouts now choose measured free space and clear leaders, with reference labels reserved before callouts regardless of input order. Focused tests cover all formatted labels, reordered annotations, multiple callouts, plot edges and impossible placements. Root inspected rendered chart; pinned SVG lint passed.",
+    "go-slide-creator-ls9tk": "Three legacy test fixtures still pinned the old12-character KPI limit/eight region variants. Updated real16/17-character boundaries and asserted all9 closed region contracts including process. Focused legacy/new KPI, preflight and region-contract tests passed; affected root packages lint passed.",
+    "previews": "One refresh after final annotation source; all101 tracked PNGs unchanged, only13 manifest source/cache identities updated.",
+    "wiki": "Catalog and troubleshooting explain grouped-label refusal, safe callout placement, funnel highlights, neutral hero headings and shared-autofit repairs.",
+    "local_evidence_dir": "/tmp/json2pptx-chart-callout-7b6l4",
+    "ci_policy": "Superseded original long-running CI will be cancelled after preserving failure logs; normal final-commit CI monitored without restarting passing jobs."
+  }
 }

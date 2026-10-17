@@ -193,7 +193,7 @@ the one-line descriptions with every override are in the repository's
 | `kpi-2up` … `kpi-6up` | `kpi_snapshot` | big-number cards with caption and optional `comparator`; an open row alone on a slide grows its dividers to half the area |
 | `kpi-inline` | raw, **segment only** | one content-sized KPI bar; alone on a slide it reports `SLIDE_UNDERUSED` |
 | `stat-hero` | `stat` | one oversized number, label, context |
-| `hero-detail` | raw | one dominant metric (`hero {value, label}`) over 2–4 `details[] {title, body}` cards |
+| `hero-detail` | raw | one dominant metric (`hero {value, label}`) over 2–4 `details[] {title, body}` cards; `values.detail_title_color: dk1` keeps the headings neutral |
 | `metric-list` | raw | vertical "by the numbers": 3–7 `items[] {label, value, detail}`, right-aligned accent values, one `highlight` row, takeaway band |
 | `chart-insights-split` | `chart_insight` | chart panel + insights column with optional headline number and so-what |
 | `horizontal-bar-with-callouts` | raw | 3–8 ranked `bars[] {label, value, callout}` with a per-bar insight callout column (`unit`, `max_value`); the callout column drops when none is given |
@@ -314,7 +314,17 @@ Charts render as native SVG with a PNG fallback. Author them in a
 | Component of a whole | `pie`, `donut` (≤6 slices; `group_small_below_pct` folds the tail), `treemap` | `{categories, values}` |
 | Correlation | `scatter`, `bubble` | `{points[{x, y, size, label}]}` |
 | A walk between totals | `waterfall` | `{points[{label, value, type: total \| increase \| decrease \| subtotal}]}`; totals checked to 0.5% |
-| Stages, funnels, gauges | `funnel` (`steps`), `gauge` (`bullet` style), `radar` | per type; see `chart_capabilities` |
+| Stages, funnels, gauges | `funnel` (`steps`), `gauge` (`bullet` style), `radar` | per type; funnel `data.highlight` takes stage names or zero-based indices: selected stages use accent1, the rest neutral; see `chart_capabilities` |
+
+Grouped bars stagger close value labels and bold highlighted values. Series
+highlights select the series palette; a category-name highlight bolds that
+category's values while preserving the series colours and legend. If labels
+cannot fit the frame without collisions, `diagram.region_overflow` asks for
+fewer series or categories, a split chart, or a larger frame. Annotation
+callouts move their text and leaders clear of existing labels; reference
+labels reserve space first, regardless of input order. A callout that cannot
+fit reports the same refusal: shorten it, reduce annotations, or enlarge the
+frame.
 
 Diagrams: svggen `timeline`, `venn`, `org_chart`, `gantt`, `matrix_2x2`,
 `fishbone`; native OOXML `process_flow`, `pyramid`, `swot`,

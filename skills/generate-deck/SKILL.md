@@ -61,6 +61,7 @@ as given, and repeat ([FINDINGS.md](FINDINGS.md)). For a visual no kind
 covers (gantt, venn, swimlane, ...), a `recommend_visual` candidate carries
 `data_contract` and a runnable `next_tool_call` (`render_deck_spec` with a
 `raw_json2pptx` slide); rewrite its sample content first (TOOLS.md).
+Chart callouts avoid labels; overcrowded callouts refuse.
 One measure across 2–6 groups, same periods: `small_multiples`
 (RULES.md 10i). Several views proving
 one title may share a slide; unrelated conclusions get separate slides.

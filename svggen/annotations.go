@@ -121,17 +121,25 @@ func isPeak(index int, values []float64) bool {
 // DrawAnnotations renders all annotations onto the chart plot area.
 // It accepts the plot area, scales, and chart data for coordinate mapping.
 func DrawAnnotations(b *SVGBuilder, annotations []Annotation, plotArea Rect,
-	xScale Scale, yScale *LinearScale, data ChartData, colors []Color) {
+	xScale Scale, yScale *LinearScale, data ChartData, colors []Color) error {
+	// Fixed reference/trend labels reserve their boxes before movable callouts,
+	// regardless of the author's annotation order.
 	for _, ann := range annotations {
 		switch ann.Kind {
 		case AnnotationReferenceLine:
 			drawReferenceLine(b, ann, plotArea, xScale, yScale)
 		case AnnotationTrendline:
 			drawTrendline(b, ann, plotArea, xScale, yScale, data, colors)
-		case AnnotationCallout:
-			drawCallout(b, ann, plotArea, xScale, yScale)
 		}
 	}
+	for _, ann := range annotations {
+		if ann.Kind == AnnotationCallout {
+			if err := drawCallout(b, ann, plotArea, xScale, yScale); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // drawReferenceLine draws a horizontal or vertical reference line across the plot area.
@@ -271,7 +279,7 @@ func drawTrendline(b *SVGBuilder, ann Annotation, plotArea Rect,
 
 // drawCallout draws a callout arrow pointing to a data point with a label.
 func drawCallout(b *SVGBuilder, ann Annotation, plotArea Rect,
-	xScale Scale, yScale *LinearScale) {
+	xScale Scale, yScale *LinearScale) error {
 	style := b.StyleGuide()
 
 	lineColor := style.Palette.TextPrimary
@@ -288,12 +296,12 @@ func drawCallout(b *SVGBuilder, ann Annotation, plotArea Rect,
 		if catIdx >= 0 && catIdx < len(cats) {
 			targetX = plotArea.X + xs.Scale(cats[catIdx])
 		} else {
-			return
+			return nil
 		}
 	case *LinearScale:
 		targetX = plotArea.X + xs.Scale(ann.X)
 	default:
-		return
+		return nil
 	}
 
 	targetY := plotArea.Y + yScale.Scale(ann.Y)
@@ -305,45 +313,31 @@ func drawCallout(b *SVGBuilder, ann Annotation, plotArea Rect,
 		text = ann.Label
 	}
 	if text == "" {
-		return
-	}
-
-	// Offset the callout text above and to the right
-	offsetX := 30.0
-	offsetY := -30.0
-	labelX := targetX + offsetX
-	labelY := targetY + offsetY
-
-	// Clamp label within plot area
-	if labelX+80 > plotArea.X+plotArea.W {
-		offsetX = -30
-		labelX = targetX + offsetX
-	}
-	if labelY < plotArea.Y+10 {
-		offsetY = 30
-		labelY = targetY + offsetY
+		return nil
 	}
 
 	b.Push()
-
-	// Draw connecting line from label to target
-	b.SetStrokeColor(lineColor)
-	b.SetStrokeWidth(1)
-	b.DrawLine(labelX, labelY, targetX, targetY)
-
-	// Draw a small circle at the target point
+	defer b.Pop()
+	b.SetFontSize(math.Max(style.Typography.SizeSmall, b.MinFontSize()))
+	face, err := b.safeFace(colorToRGBA(lineColor))
+	if err != nil {
+		return err
+	}
+	width, _ := b.MeasureText(text)
+	metrics := face.Metrics()
+	height := (metrics.Ascent + metrics.Descent) * mmToPt
+	box, ok := placeCalloutLabel(b, plotArea, Point{X: targetX, Y: targetY}, width, height)
+	if !ok {
+		return calloutGeometryError(b, text, plotArea)
+	}
+	// Start the leader at the nearest edge of the measured text box.
+	anchor := calloutLeaderStart(box, Point{X: targetX, Y: targetY})
+	b.SetStrokeColor(lineColor).SetStrokeWidth(1)
+	b.DrawLine(anchor.X, anchor.Y, targetX, targetY)
 	b.SetFillColor(lineColor)
 	b.DrawCircle(targetX, targetY, 3)
-
-	// Draw the label text
-	b.SetFontSize(style.Typography.SizeSmall)
-	align := TextAlignLeft
-	if offsetX < 0 {
-		align = TextAlignRight
-	}
-	b.DrawText(text, labelX, labelY-4, align, TextBaselineAlphabetic)
-
-	b.Pop()
+	b.DrawText(text, box.X, box.Y, TextAlignLeft, TextBaselineTop)
+	return nil
 }
 
 // =============================================================================

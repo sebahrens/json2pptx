@@ -190,13 +190,22 @@ func TestKpi3up(t *testing.T) {
 			wantErr: "values[0].big is required",
 		},
 		{
-			name: "big_exceeds_maxlen",
+			name: "big_at_extended_maxlen",
 			values: Kpi3upValues{
-				{Big: "1234567890123", Small: "ARR"},
+				{Big: "1234567890123456", Small: "ARR"},
 				{Big: "127%", Small: "NRR"},
 				{Big: "12d", Small: "Sales cycle"},
 			},
-			wantErr: "exceeds maxLength 12",
+			wantNoErr: true,
+		},
+		{
+			name: "big_exceeds_maxlen",
+			values: Kpi3upValues{
+				{Big: "12345678901234567", Small: "ARR"},
+				{Big: "127%", Small: "NRR"},
+				{Big: "12d", Small: "Sales cycle"},
+			},
+			wantErr: "exceeds maxLength 16",
 		},
 		{
 			name: "missing_small",

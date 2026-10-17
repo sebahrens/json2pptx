@@ -135,7 +135,7 @@ func TestCompile_PreflightBlocksInvalidRawEscapeHatch(t *testing.T) {
 					"pattern": map[string]any{
 						"name": "kpi-2up",
 						"values": []any{
-							map[string]any{"big": "WAY TOO LONG!", "small": "Revenue"},
+							map[string]any{"big": "12345678901234567", "small": "Revenue"},
 							map[string]any{"big": "23%", "small": "Growth"},
 						},
 					},
