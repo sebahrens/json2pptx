@@ -140,6 +140,11 @@ second template.
 
 ## Repair discipline
 
+- Refusals and `CONTENT_DROPPED` always remain visible, even beyond the default
+  five findings per slide. Optional advice fills remaining slots;
+  `findings_truncated` counts only suppressed advice. Partial output retains
+  each skipped slide's authored location and original refusal; resolve every
+  omission before delivery. Use `verbose_fit` for all advice.
 - Patch at the finding's `path` with `deck_id` + `patch`; take a
   `patch_verified` fix as given.
   Compose findings map through bands and gaps to the authored segment,

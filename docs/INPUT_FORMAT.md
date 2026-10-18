@@ -18,16 +18,10 @@ The raw schema is generated from the Go input structs in `internal/deckinput` (a
 ## Minimum complete deck
 ```json
 {
-  "template": "warm-coral",
-  "output_filename": "review.pptx",
-  "slides": [
-    {
-      "layout_id": "title",
-      "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Q1 Review"}
-      ]
-    }
-  ]
+  "template": "warm-coral", "output_filename": "review.pptx",
+  "slides": [{"layout_id": "title", "content": [
+    {"placeholder_id": "title", "type": "text", "text_value": "Q1 Review"}
+  ]}]
 }
 ```
 A presentation is a top-level object with a `template` and a non-empty `slides` array. Each slide pins a layout via `layout_id` (canonical id, e.g. `title`, `content`, `two-column`, `section`, `blank`) or hints `slide_type` (`title`, `content`, `chart`, `section`, `two-column`, `diagram`, `image`, `comparison`, `blank`). At least one of the two must be set. `template` is a registered template NAME (a `.pptx` in the templates directory or the embedded set, without the extension) and never takes a path; `template_path` is the bring-your-own form — `{"template_path": "./client-brand.pptx", "slides": [...]}` — for a `.pptx` the engine has not registered. Set exactly one. On the CLI a relative `template_path` resolves against the deck JSON's own directory; over MCP against the call's `base_dir` (server CWD when omitted), and it must stay inside it after `~`/`$VAR` and symlink expansion — an escape is refused with `INVALID_PATH`. `examine_template`, `list_templates`, `validate_input`, `preview_presentation_plan`, `generate_presentation`, `score_deck` and `render_deck_spec` all accept it, and a `render_deck_spec` `deck_id` keeps the file and its `base_dir` for later deck_id-only calls; `get_started(task:"onboard-template")` walks the vetting sequence. Copying the file into the templates directory registers it live, no restart, as a normal `template`.
@@ -36,14 +30,10 @@ To preview the same input against another registered template without editing th
 ## A typical content slide
 
 ```json
-{
-  "layout_id": "content",
-  "content": [
-    {"placeholder_id": "title", "type": "text", "text_value": "Highlights"},
-    {"placeholder_id": "body",  "type": "bullets", "bullets_value": ["Revenue +25%", "NPS at all-time high", "OpEx flat"]}
-  ],
-  "speaker_notes": "Hit the revenue point first."
-}
+{"layout_id": "content", "content": [
+  {"placeholder_id": "title", "type": "text", "text_value": "Highlights"},
+  {"placeholder_id": "body", "type": "bullets", "bullets_value": ["Revenue +25%", "NPS at all-time high", "OpEx flat"]}
+], "speaker_notes": "Hit the revenue point first."}
 ```
 
 A slide's `content` array is a list of typed items, each targeting a placeholder by its canonical id (`title`, `subtitle`, `body`, `body_2`, `body_3`, `image`, `image_2`). The schema enforces the `type` → typed-value pairing via an `if`/`then` discriminator chain:
@@ -203,25 +193,17 @@ Native two-column aliases support 60/40, 40/60, 70/30 and 30/70 splits; `stacked
 
 ## Accent strategy
 
-Top-level `accent_strategy` chooses pattern accent colours: `"primary"`
-(default) keeps the primary fill, `"rotate"` varies the template accents
-across slides while skipping unreadable or negative-semantic accents, and `"section-keyed"` gives slides in the same section the
-same accent. It changes accent selection, not the template palette; explicit
-pattern accent overrides remain authoritative. In DeckSpec use
-`meta.accent_strategy` with the same values.
+Top-level `accent_strategy`: `"primary"` (default) keeps the primary fill; `"rotate"` varies template accents across slides, skipping unreadable or negative-semantic accents; `"section-keyed"` gives a section one accent. Explicit pattern accent overrides win. The template palette stays unchanged. DeckSpec uses `meta.accent_strategy` with the same values.
 
 ## Theme override
 
 The deck's visual identity comes from the chosen `template`. Override deck-wide colors or fonts with `theme_override`:
 
 ```json
-{
-  "theme_override": {
-    "colors": {"accent1": "#E31837"},
-    "title_font": "Georgia",
-    "body_font": "Arial"
-  }
-}
+{"theme_override": {
+  "colors": {"accent1": "#E31837"},
+  "title_font": "Georgia", "body_font": "Arial"
+}}
 ```
 
 Each `colors` value must be six hex digits with an optional leading `#` (`#E31837` or `E31837`). Three-digit shorthand (`#abc`), color names (`navy`) and anything else are rejected by `validate` / `generate` with code `invalid_color` at path `/theme_override/colors/<slot>`, because the value is written verbatim into the theme part. Font names are inserted literally (XML-escaped; `$` has no special meaning); a font name containing control characters is rejected with code `INVALID_PARAMETER` at `/theme_override/title_font` or `/theme_override/body_font`. In `design_mode: "constrained"` (the default), raw hex colors are restricted; switch to `design_mode: "free"` for exploratory/artistic decks.
@@ -258,16 +240,6 @@ Errors carry structured `code` fields catalogued in `docs/FIT_FINDINGS.md` (with
 
 ## Generation policies and full findings
 
-`json2pptx generate deck.json --out deck.pptx --fit-report` prints the full JSON
-render report. Add `--verbose-fit` to bypass the per-slide finding budget.
-`--placeholder-policy off|warn|strict` shares validation's unfinished-copy policy;
-`strict` refuses unresolved `__FILL__` tokens before writing an artifact.
-`--base-dir /absolute/assets` selects the root for relative templates and assets
-in both generation and `--dry-run`; by default the deck file's directory is used
-(stdin uses the current working directory). These flags use the same boundary
-checks and merged finding collection as MCP generation.
+`json2pptx generate deck.json --out deck.pptx --fit-report` prints the full JSON render report; `--verbose-fit` bypasses the per-slide finding budget. `--placeholder-policy off|warn|strict` shares validation's unfinished-copy policy; `strict` refuses unresolved `__FILL__` tokens before writing an artifact. `--base-dir /absolute/assets` sets the root for relative templates and assets in generation and `--dry-run`; the default is the deck file's directory (current directory for stdin). MCP uses the same boundary checks and merged findings.
 
-MCP `generate_presentation` exposes `ok`, `pptx_path`, `quality_summary` and
-`diagnostics` alongside the compatibility keys `success`, `output_path`,
-`quality` and `fit_findings`. `ok` means the file was written; consult
-`deterministic_ready` and `publishable` for the delivery verdict.
+MCP `generate_presentation` returns `ok`, `pptx_path`, `quality_summary` and `diagnostics` alongside compatibility keys `success`, `output_path`, `quality` and `fit_findings`. `ok` means the file was written; consult `deterministic_ready` and `publishable` for the delivery verdict.

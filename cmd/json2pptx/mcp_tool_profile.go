@@ -428,7 +428,7 @@ func toolIsAdvertised(name string) bool {
 // prose. This common policy bounds both raw/core and all-tools catalogues.
 func withConciseToolDescription(tool mcp.Tool) mcp.Tool {
 	if len([]rune(tool.Description)) > 220 {
-		tool.Description = cutSummaryAtWord(tool.Description, 128) + fmt.Sprintf(` Full documentation: get_started tool:%q.`, tool.Name)
+		tool.Description = cutSummaryAtWord(tool.Description, 128) + fmt.Sprintf(` Details: get_started tool:%q.`, tool.Name)
 	}
 	return tool
 }

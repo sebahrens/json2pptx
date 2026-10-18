@@ -18,6 +18,7 @@ import (
 	"image/png"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -52,11 +53,15 @@ func withTextChunk(t *testing.T, data []byte, key, value string) []byte {
 // metadata. The review must verify; wrong-slide and foreign images must not.
 func TestSubmitVisualReview_MetadataOnlyDifferenceVerifies(t *testing.T) {
 	pptxPath, sha, _ := renderReviewFixture(t)
-	t.Setenv("TMPDIR", t.TempDir()) // isolate the render cache (os.TempDir)
+	cacheRoot, err := os.MkdirTemp(t.TempDir(), "private-cache-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JSON2PPTX_RENDER_CACHE_DIR", cacheRoot)
 
 	dir := t.TempDir()
-	cacheEntry := filepath.Join(os.TempDir(), "json2pptx-render-cache", sha+"-d100")
-	if err := os.MkdirAll(cacheEntry, 0o755); err != nil {
+	cacheEntry := filepath.Join(cacheRoot, sha+"-d100")
+	if err := os.Mkdir(cacheEntry, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	var reviewed []string
@@ -73,6 +78,12 @@ func TestSubmitVisualReview_MetadataOnlyDifferenceVerifies(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(cacheEntry, fmt.Sprintf("slide-%d.png", i)), refreshed, 0o600); err != nil {
 			t.Fatal(err)
 		}
+	}
+
+	// Match the cache writer: publish the slide-count marker after every PNG
+	// exists, so the real reader can distinguish this fixture from a partial entry.
+	if err := os.WriteFile(filepath.Join(cacheEntry, ".complete"), []byte(strconv.Itoa(len(reviewed))), 0o600); err != nil {
+		t.Fatal(err)
 	}
 
 	out, err := submitVisualReview(submitVisualReviewInput{PPTXPath: pptxPath, PPTXRevision: sha, Slides: allSlides(reviewed, "approved")})

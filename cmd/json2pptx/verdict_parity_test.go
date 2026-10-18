@@ -524,7 +524,9 @@ func verdictMutations() []verdictMutation {
 		{"control: two text blocks merged in one placeholder", "bullets", false, onLayout("content",
 			block("body", "text", "text_value", `"Revenue grew."`), block("body", "text", "text_value", `"Margin held."`))},
 		{"control: a block in each column", "bullets", false, onLayout("two-column", bulletsOn("body"), bulletsOn("body_2"))},
-		{"control: bullet_groups without groups", "bullets", false, retype("bullets_value", "bullet_groups", "bullet_groups_value", `{"groups": []}`)},
+		{"bullet_groups without groups or body", "bullets", true, retype("bullets_value", "bullet_groups", "bullet_groups_value", `{"groups": []}`)},
+		{"control: bullet_groups with a group", "bullets", false, retype("bullets_value", "bullet_groups", "bullet_groups_value", `{"groups": [{"header": "Next step", "bullets": ["Launch the pilot"]}]}`)},
+		{"control: bullet_groups with body fallback", "bullets", false, retype("bullets_value", "bullet_groups", "bullet_groups_value", `{"body": "Revenue grew by 18%.", "groups": []}`)},
 	}
 }
 
@@ -532,6 +534,9 @@ func verdictMutations() []verdictMutation {
 // go-slide-creator-9k5fh was filed on and one of each refusal family. CI's
 // race shards run -short; the integration corpus job runs every case.
 var verdictCoreMutations = map[string]bool{
+	"bullet_groups without groups or body":           true,
+	"control: bullet_groups with a group":            true,
+	"control: bullet_groups with body fallback":      true,
 	"control: unchanged":                             true,
 	"template and template_path":                     true,
 	"template_path that is not there":                true,

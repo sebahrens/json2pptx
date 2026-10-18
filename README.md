@@ -772,18 +772,21 @@ See [cmd/README.md](cmd/README.md) for the full command index — purpose, a usa
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/v1/health` | Health check with version info |
+| `GET` | `/api/v1/health` | Lightweight liveness check with version info |
+| `GET` | `/api/v1/ready` | Check readable templates, writable output, and render dependencies; returns 200 when ready or 503 otherwise |
 | `GET` | `/api/v1/capabilities` | Machine-readable HTTP feature boundary (supported fields, MCP-only features, endpoint list) |
 | `GET` | `/api/v1/templates` | List available templates |
 | `GET` | `/api/v1/templates/{name}` | Template details (layouts, colors, fonts) |
 | `GET` | `/api/v1/slide-types` | List supported slide types |
 | `POST` | `/api/v1/convert` | Convert JSON slides to PPTX |
 | `GET` | `/api/v1/download/{filename}` | Download generated file (expires after 1 hour by default) |
+| `GET` | `/api/v1/thumbnails/{filename}` | Render a server-generated PPTX to base64 PNG thumbnails; accepts `density`, `max_slides`, and zero-based `slide_indices`, never arbitrary paths or URLs |
 | `GET` | `/api/v1/patterns` | List available named patterns |
 | `GET` | `/api/v1/patterns/{name}` | Pattern details and schema |
 | `POST` | `/api/v1/patterns/{name}/validate` | Validate input against a pattern's schema |
 | `POST` | `/api/v1/patterns/{name}/expand` | Expand a pattern into a shape grid |
 | `GET` | `/api/v1/semantic/schema` | Semantic deck-spec JSON Schema |
+| `GET` | `/api/v1/semantic/kinds` | Discover semantic kinds, contracts, examples, and budgets; optional `kinds`, `fields`, and registered `template` filters |
 | `POST` | `/api/v1/semantic/validate` | Validate semantic YAML/JSON and return semantic diagnostics |
 | `POST` | `/api/v1/semantic/compile` | Compile semantic specs to raw `PresentationInput` JSON |
 | `POST` | `/api/v1/semantic/render` | Compile and render semantic specs to PPTX |
@@ -818,6 +821,9 @@ Set environment variables directly or via a `.env` file. See `.env.example` for 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `8080` | HTTP server port |
+| `JSON2PPTX_BIND` | `127.0.0.1` | HTTP bind address (Docker explicitly uses `0.0.0.0`) |
+| `JSON2PPTX_API_TOKEN` | | Optional bearer token for HTTP requests; environment-only |
+| `JSON2PPTX_CORS_ALLOWED_ORIGINS` | | Comma-separated exact browser origins; CORS disabled when empty, explicit `*` allows any origin |
 | `TEMPLATES_DIR` | `./templates` | Template directory |
 | `OUTPUT_DIR` | `./output` | Output directory |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
@@ -832,7 +838,7 @@ Set environment variables directly or via a `.env` file. See `.env.example` for 
 | `JSON2PPTX_ALLOW_SETTINGS_WRITE` | `0` | Set to `1` to enable `register_template_setting` / `delete_template_setting` |
 | `PPROF_PORT` / `PPROF_BIND` | | pprof endpoint |
 
-The HTTP API (`serve`) has no built-in authentication, CORS policy, rate limiting or per-request timeout setting. Run it behind a reverse proxy or gateway that provides them when exposing it beyond localhost.
+The HTTP API (`serve`) binds to localhost by default; use `--bind` or `JSON2PPTX_BIND` to expose it. Setting `JSON2PPTX_API_TOKEN` requires `Authorization: Bearer <token>` on every route except `GET`/`HEAD /api/v1/health`, including readiness, downloads, thumbnails, and semantic discovery. An empty token permits unauthenticated access. Allowed CORS preflights need no token; actual requests still require it. Configure browser origins with `JSON2PPTX_CORS_ALLOWED_ORIGINS` or `server.cors_allowed_origins`. Use a reverse proxy for TLS and rate limiting when exposing the API remotely; see [HTTP access and browser clients](docs/api/README.md#access-and-browser-clients) for details.
 
 ### SVG Conversion Strategies
 

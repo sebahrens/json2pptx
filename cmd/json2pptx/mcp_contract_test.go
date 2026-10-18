@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -335,49 +337,78 @@ func TestMCPValidateWithDiagnostics_ContractShape(t *testing.T) {
 		t.Error("legacy 'diagnostics' field must not be present")
 	}
 
-	envRaw, ok := raw["findings"]
-	if !ok {
-		t.Fatal("validate response missing 'findings' envelope")
-	}
-	var env map[string]json.RawMessage
-	if err := json.Unmarshal(envRaw, &env); err != nil {
-		t.Fatalf("findings is not an object: %v", err)
-	}
-	for _, key := range []string{"schema_version", "tool", "subcommand", "ok", "summary", "findings"} {
-		if _, ok := env[key]; !ok {
-			t.Errorf("findings envelope missing required key %q", key)
+	// Schema 5 exposes the envelope at the top level. The former nested
+	// envelope remains under legacy_findings for the migration cycle.
+	for _, key := range []string{"schema_version", "tool", "subcommand", "ok", "summary", "findings", "legacy_findings"} {
+		if _, ok := raw[key]; !ok {
+			t.Errorf("validate response missing required key %q", key)
 		}
 	}
-	var subcommand string
-	_ = json.Unmarshal(env["subcommand"], &subcommand)
-	if subcommand != "validate_input" {
-		t.Errorf("findings.subcommand = %q, want validate_input", subcommand)
+	var env diagnostics.FindingEnvelope
+	if err := json.Unmarshal(b, &env); err != nil {
+		t.Fatalf("invalid flat findings envelope: %v", err)
 	}
-	var inputSHA string
-	_ = json.Unmarshal(env["input_sha256"], &inputSHA)
-	if len(inputSHA) != 64 {
-		t.Errorf("findings.input_sha256 = %q, want 64-hex-char digest", inputSHA)
+	if env.SchemaVersion != diagnostics.SchemaVersion || env.Tool != diagnostics.DefaultTool || env.Subcommand != "validate_input" {
+		t.Errorf("unexpected envelope identity: version=%q tool=%q subcommand=%q", env.SchemaVersion, env.Tool, env.Subcommand)
 	}
-
-	var findings []map[string]json.RawMessage
-	if err := json.Unmarshal(env["findings"], &findings); err != nil {
-		t.Fatalf("findings.findings is not an array: %v", err)
+	if !env.OK || string(raw["valid"]) != "true" {
+		t.Errorf("warning-only validation must retain ok=true and valid=true: %s", b)
 	}
-	if len(findings) == 0 {
-		t.Fatal("expected non-empty findings for unknown key")
+	if env.Summary == "" || !strings.Contains(env.Summary, "warning") {
+		t.Errorf("summary must describe the warning: %q", env.Summary)
 	}
-	// Each finding carries the namespaced code, message, severity, and category.
-	for i, f := range findings {
-		for _, field := range []string{"id", "code", "message", "severity", "category"} {
-			if _, ok := f[field]; !ok {
-				t.Errorf("findings[%d] missing required field %q", i, field)
+	if digest, err := hex.DecodeString(env.InputSHA256); err != nil || len(digest) != 32 {
+		t.Errorf("input_sha256 = %q, want SHA-256 hex digest", env.InputSHA256)
+	}
+	for key, want := range map[string]string{"slide_count": "1", "chart_count": "0", "diagram_count": "0", "table_count": "0", "shape_count": "0"} {
+		if string(raw[key]) != want {
+			t.Errorf("%s = %s, want %s", key, raw[key], want)
+		}
+	}
+	var slides []json.RawMessage
+	if err := json.Unmarshal(raw["slides"], &slides); err != nil || len(slides) != 1 {
+		t.Errorf("slides must contain the single validated slide: %s (%v)", raw["slides"], err)
+	}
+	if len(env.Findings) == 0 {
+		t.Fatal("expected a non-empty top-level findings array for unknown key")
+	}
+	unknownKeys := 0
+	ids := make(map[string]bool)
+	for i, f := range env.Findings {
+		if f.ID == "" || f.Code == "" || f.Message == "" || f.Severity == "" || f.Category == "" {
+			t.Errorf("findings[%d] missing required non-empty fields: %+v", i, f)
+		}
+		if ids[f.ID] {
+			t.Errorf("duplicate finding ID %q", f.ID)
+		}
+		ids[f.ID] = true
+		if !strings.HasPrefix(f.Code, f.Category+".") {
+			t.Errorf("findings[%d] code %q does not match namespace %q", i, f.Code, f.Category)
+		}
+		if f.Severity == diagnostics.SeverityError {
+			t.Errorf("valid warning-only deck has error finding: %+v", f)
+		}
+		if strings.HasSuffix(f.Code, ".unknown_key") {
+			unknownKeys++
+			if f.Severity != diagnostics.SeverityWarning || f.Evidence["path"] != "/tmplate" {
+				t.Errorf("unknown key must locate the warning at /tmplate: %+v", f)
+			}
+			if f.Remediation == nil || f.Remediation.Primary == nil {
+				t.Errorf("unknown key has no actionable repair: %+v", f)
+			} else if fix := f.Remediation.Primary; !diagnostics.IsValidAction(fix.Action) || fix.Params["from"] != "tmplate" || fix.Params["to"] != "template" {
+				t.Errorf("unknown key repair must rename tmplate to template: %+v", fix)
 			}
 		}
-		var code string
-		_ = json.Unmarshal(f["code"], &code)
-		if !strings.Contains(code, ".") {
-			t.Errorf("findings[%d] code %q is not namespaced", i, code)
-		}
+	}
+	if unknownKeys != 1 {
+		t.Errorf("got %d unknown-key findings, want one", unknownKeys)
+	}
+	var legacy diagnostics.FindingEnvelope
+	if err := json.Unmarshal(raw["legacy_findings"], &legacy); err != nil {
+		t.Fatalf("legacy_findings must remain an envelope object: %v", err)
+	}
+	if !reflect.DeepEqual(env, legacy) {
+		t.Errorf("migration envelope differs from flat metadata/findings: flat=%+v legacy=%+v", env, legacy)
 	}
 }
 

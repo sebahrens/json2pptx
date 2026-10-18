@@ -118,7 +118,10 @@ func generateSkippingRefusedSlides(ctx context.Context, input *PresentationInput
 			break
 		}
 		inputIdx, location := locateRefusal(input, genReq.Slides, layouts, specToInput, loss)
-		res.GridVisualFindings = append(res.GridVisualFindings, refusedSlideSkipped(inputIdx, location, loss))
+		res.GridVisualFindings = append(res.GridVisualFindings,
+			patterns.FitFinding{ValidationError: *loss, Action: "refuse"},
+			refusedSlideSkipped(inputIdx, location, loss),
+		)
 		res.GridDiagWarnings = append(res.GridDiagWarnings, fmt.Sprintf("%s: skipped (partial mode), generation refused it: %s", location, loss.Message))
 		genReq.Slides = append(append([]generator.SlideSpec(nil), genReq.Slides[:specIdx]...), genReq.Slides[specIdx+1:]...)
 		specToInput = append(append([]int(nil), specToInput[:specIdx]...), specToInput[specIdx+1:]...)

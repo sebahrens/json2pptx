@@ -2,9 +2,8 @@
 name: generate-deck
 schema_version: 5.0.0
 description: >-
-  Create or revise PowerPoint decks with json2pptx. Use for presentation and
-  slide-deck requests that need template-aware authoring, validation, rendering,
-  and visual review.
+  Create or revise PowerPoint decks with json2pptx. Apply template-aware
+  authoring, validation, rendering and visual review.
 ---
 
 # Deck Generation Skill
@@ -16,8 +15,7 @@ run `json2pptx skill install`; `skill status` checks installed files.
 Without runtime render tooling, deliver as **UNREVIEWED**. Use live schemas:
 `get_started(tool:"<name>")` returns a full schema; `tools/list` is abridged.
 
-**Completion rule (single source — same text as `get_started.completion_protocol.rule` and the MCP
-server `instructions`):** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
+**Completion:** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
 
 **Read before authoring:** [QUALITY.md](QUALITY.md) — ghost deck of
 titles first, full-sentence action titles (≤15 words, carrying the number),
@@ -41,9 +39,8 @@ is not finished. Back matter: `sections[].appendix: true` or raw
 Default for content-bearing decks: author real content as a DeckSpec; call `list_slide_kinds` → `validate_deck_spec` → `render_deck_spec`. Revise a DeckSpec with `deck_id` + `patch` on `validate_deck_spec` / `render_deck_spec`. Use the raw PresentationInput path only when the spec cannot express a needed feature or the source deck is already raw; on that path, inspect chosen patterns with `show_pattern` / `expand_pattern`, then call `validate_input` (with `fit_report: true`) before `generate_presentation`. `make_deck` creates an exemplar skeleton, never a publishable deck. On either path, render every slide of the final revision and inspect its image before approval.
 <!-- workflow-contract:end -->
 
-For a new content-bearing deck, write a semantic **DeckSpec** (`meta` plus
-`slides[].kind`, or chapter-based `structure`). `get_started(task:"brief")`
-returns this path as its `sequence` (`hidden_tools` names the callable rest). `plan_deck` with
+A **DeckSpec** uses `meta` and `slides[].kind`, or chaptered `structure`.
+`get_started(task:"brief")` returns the `sequence` and callable `hidden_tools`. `plan_deck` with
 `format:"deckspec"` drafts the storyline. Use `list_deck_archetypes` and
 `explain_deck_spec` to plan its structure and check its rhythm.
 `list_slide_kinds` lists the kinds;
@@ -58,8 +55,7 @@ covers (gantt, swimlane, ...), a `recommend_visual` candidate carries
 `raw_json2pptx` slide); rewrite its sample content first (TOOLS.md).
 Chart callouts avoid labels or refuse. Stakeholder maps protect axis labels.
 One measure across 2–6 groups, same periods: `small_multiples`
-(RULES.md 10i). Several views proving
-one title may share a slide; unrelated conclusions get separate slides.
+(RULES.md 10i). Share a slide only for views proving one title.
 Prefer `kind: regions`; only when its region kinds cannot express the
 slide, make that one slide `raw_json2pptx` ([WORKFLOW.md](WORKFLOW.md) →
 spatial planning). Read [DECKSPEC.md](DECKSPEC.md) for budgets,
@@ -128,4 +124,5 @@ Text args over 2 MiB fail. Raced `deck_id` patches return `STALE_REVISION`: relo
 Render assets resolve against `base_dir`; URLs are fetched, missing assets fail.
 Stored template paths and base directories remain bound to the handle.
 
-Responses are compact. Scale advice needs an authored chart-data edit and revalidation.
+Scale advice: edit authored chart data, then revalidate.
+Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.

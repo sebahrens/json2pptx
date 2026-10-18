@@ -2683,12 +2683,12 @@ Each finding includes a structured `fix` object with a machine-readable `kind`:
 
 ## Per-Slide Finding Budget
 
-To prevent noisy output on dense decks, findings are capped at **5 per slide** by default. Within each slide, findings are ranked by:
+To limit optional advice on dense decks, the default target is **5 findings per slide**. Refusals and `CONTENT_DROPPED` findings always remain visible, even when they alone exceed that target. Remaining slots are filled by:
 
 1. **Severity** — `refuse` > `shrink_or_split` > `review` > `info`
 2. **Actionability** — findings with a `fix` object rank above those without
 
-When more than 5 findings exist on a slide, the top 5 are returned plus a summary finding with code `findings_truncated`:
+When optional advice is suppressed, a `findings_truncated` summary counts only that omitted advice. Mandatory findings never count as suppressed:
 
 ```json
 {

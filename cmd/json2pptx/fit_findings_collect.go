@@ -38,9 +38,9 @@ func themeWithDeckOverride(theme *types.ThemeInfo, input *PresentationInput) *ty
 	return &overridden
 }
 
-// DefaultFindingBudget is the maximum number of findings returned per slide
-// before overflow is summarised. Use verbose=true in BudgetFitFindings to
-// bypass the limit.
+// DefaultFindingBudget is the per-slide target before optional findings are
+// summarised. Refusals and content omissions are always retained. Use
+// verbose=true in BudgetFitFindings to bypass the limit.
 const DefaultFindingBudget = 5
 
 // collectFitFindings runs all fit-report detectors (text overflow, placeholder
@@ -284,7 +284,8 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 // findings are ranked by severity (ActionRank descending) then actionability
 // (findings with a Fix set are ranked above those without). If a slide exceeds
 // the budget, only the top findings are kept and a summary finding is appended
-// indicating how many were suppressed.
+// indicating how many were suppressed. Refusals and CONTENT_DROPPED findings
+// take priority and are never suppressed, even when they exceed the budget.
 //
 // When verbose is true the budget is not applied and all findings are returned.
 func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool) []patterns.FitFinding {
@@ -299,6 +300,7 @@ func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool)
 	// Group findings by slide index.
 	type group struct {
 		slideIdx int
+		required int
 		items    []patterns.FitFinding
 	}
 	order := []int{} // insertion-order slide indices
@@ -313,12 +315,21 @@ func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool)
 			order = append(order, si)
 		}
 		g.items = append(g.items, f)
+		if mandatoryFitFinding(f.Code, f.Action) {
+			g.required++
+		}
 	}
 
-	// Sort each group: ActionRank desc, then Fix-present before Fix-absent.
+	// Reserve slots for mandatory findings, then rank optional advice by action
+	// and whether it includes a fix.
 	for _, si := range order {
 		g := bySlide[si]
 		sort.SliceStable(g.items, func(i, j int) bool {
+			mi := mandatoryFitFinding(g.items[i].Code, g.items[i].Action)
+			mj := mandatoryFitFinding(g.items[j].Code, g.items[j].Action)
+			if mi != mj {
+				return mi
+			}
 			ri := patterns.ActionRank(g.items[i].Action)
 			rj := patterns.ActionRank(g.items[j].Action)
 			if ri != rj {
@@ -337,12 +348,13 @@ func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool)
 	var result []patterns.FitFinding
 	for _, si := range order {
 		g := bySlide[si]
-		if len(g.items) <= budget {
+		keep := max(budget, g.required)
+		if len(g.items) <= keep {
 			result = append(result, g.items...)
 			continue
 		}
-		result = append(result, g.items[:budget]...)
-		suppressed := g.items[budget:]
+		result = append(result, g.items[:keep]...)
+		suppressed := g.items[keep:]
 		path := slidepath.Slide(si)
 		if si < 0 {
 			path = "/slides/?"
@@ -374,6 +386,12 @@ func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool)
 	return result
 }
 
+// mandatoryFitFinding protects the deck verdict and explicit source omissions
+// from being hidden by a response-size budget. Their severity stays unchanged.
+func mandatoryFitFinding(code, action string) bool {
+	return action == "refuse" || code == patterns.ErrCodeContentDropped
+}
+
 // budgetLocalFindings applies the same per-slide budget as BudgetFitFindings
 // but operates on the local fitFinding type used by generateFitReport.
 func budgetLocalFindings(findings []fitFinding, budget int, verbose bool) []fitFinding {
@@ -386,6 +404,7 @@ func budgetLocalFindings(findings []fitFinding, budget int, verbose bool) []fitF
 
 	type group struct {
 		slideIdx int
+		required int
 		items    []fitFinding
 	}
 	order := []int{}
@@ -400,11 +419,19 @@ func budgetLocalFindings(findings []fitFinding, budget int, verbose bool) []fitF
 			order = append(order, si)
 		}
 		g.items = append(g.items, f)
+		if mandatoryFitFinding(f.Code, f.Action) {
+			g.required++
+		}
 	}
 
 	for _, si := range order {
 		g := bySlide[si]
 		sort.SliceStable(g.items, func(i, j int) bool {
+			mi := mandatoryFitFinding(g.items[i].Code, g.items[i].Action)
+			mj := mandatoryFitFinding(g.items[j].Code, g.items[j].Action)
+			if mi != mj {
+				return mi
+			}
 			ri := patterns.ActionRank(g.items[i].Action)
 			rj := patterns.ActionRank(g.items[j].Action)
 			if ri != rj {
@@ -422,12 +449,13 @@ func budgetLocalFindings(findings []fitFinding, budget int, verbose bool) []fitF
 	var result []fitFinding
 	for _, si := range order {
 		g := bySlide[si]
-		if len(g.items) <= budget {
+		keep := max(budget, g.required)
+		if len(g.items) <= keep {
 			result = append(result, g.items...)
 			continue
 		}
-		result = append(result, g.items[:budget]...)
-		suppressed := g.items[budget:]
+		result = append(result, g.items[:keep]...)
+		suppressed := g.items[keep:]
 		path := slidepath.Slide(si)
 		if si < 0 {
 			path = "/slides/?"

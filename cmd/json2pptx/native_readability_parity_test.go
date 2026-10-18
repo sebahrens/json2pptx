@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -136,6 +137,74 @@ func TestReadabilityRefusalNamesSlideAndPartialSkipsIt(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("no CONTENT_DROPPED finding for the skipped slide: %+v", partial.FitFindings)
+	}
+}
+
+// Conversion skips and successive render refusals must keep authored paths,
+// even when preflight is off and the generator sees a shrinking slide slice.
+func TestPartialGenerationRetainsMultipleLocatedOmissions(t *testing.T) {
+	var input PresentationInput
+	readJSONFile(t, filepath.Join("testdata", "native_readability", "bmc_dense.json"), &input)
+	applyDefaults(&input)
+	input.Template = "modern"
+	input.Slides = []SlideInput{
+		input.Slides[0],
+		{SlideType: "content", Pattern: &PatternInput{Name: "nonexistent-partial-test-pattern"}},
+		input.Slides[1],
+		input.Slides[0],
+		input.Slides[1],
+	}
+	run, cleanup, err := RunPresentation(t.Context(), &input, RenderOptions{
+		TemplatesDir: testTemplatesDir, OutputDir: t.TempDir(), StrictFit: "off", Partial: true,
+	})
+	defer cleanup()
+	if err != nil {
+		t.Fatalf("partial generation failed: %v", err)
+	}
+	if run.GenResult == nil || run.GenResult.SlideCount != 2 {
+		t.Fatalf("expected two surviving title slides, got %+v", run.GenResult)
+	}
+	if _, err := os.Stat(run.OutputPath); err != nil {
+		t.Fatalf("partial deck not written: %v", err)
+	}
+	for _, fullPreflight := range []bool{false, true} {
+		t.Run(fmt.Sprintf("full_preflight_%v", fullPreflight), func(t *testing.T) {
+			findings := assembleGenerationFindings(&input, run, fullPreflight, false)
+			drops, refusals := map[string]int{}, map[string]int{}
+			for _, f := range findings {
+				if f.Code == patterns.ErrCodeContentDropped {
+					drops[f.Path]++
+					if f.Action != "review" {
+						t.Errorf("omission severity changed: %+v", f)
+					}
+				}
+				if f.Code == patterns.ErrCodeTextBelowReadableMin && f.Action == "refuse" {
+					refusals[f.Path]++
+				}
+			}
+			if len(drops) != 3 {
+				t.Fatalf("expected exactly three skipped authored slides: %+v", drops)
+			}
+			for _, idx := range []int{1, 2, 4} {
+				path := fmt.Sprintf("/slides/%d", idx)
+				if drops[path] != 1 {
+					t.Errorf("omission count at %s = %d, want 1", path, drops[path])
+				}
+				if idx == 1 {
+					continue // Conversion failed before rendering this slide.
+				}
+				refusedPath := path + "/content/1/diagram_value"
+				if refusals[refusedPath] == 0 {
+					t.Errorf("lost source refusal at %s: %+v", refusedPath, findings)
+				}
+				for _, f := range findings {
+					if f.Code == patterns.ErrCodeContentDropped && f.Path == path &&
+						(f.Fix == nil || f.Fix.Params["cause"] != patterns.ErrCodeTextBelowReadableMin || f.Fix.Params["refused_path"] != refusedPath) {
+						t.Errorf("lost omission cause at %s: %+v", path, f)
+					}
+				}
+			}
+		})
 	}
 }
 
