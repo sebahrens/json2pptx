@@ -46,7 +46,8 @@ jobs:
             page=$((page + 1))
           done
           echo "Calibrating from CI run $run, job $job"
-          if ! gh api "repos/{owner}/{repo}/actions/jobs/$job/logs" > /tmp/green-ci.log; then
+          # Raw job logs contain ANSI sequences; save them to a file for parsing.
+          if ! gh api "repos/{owner}/{repo}/actions/jobs/$job/logs" --allow-escape-sequences > /tmp/green-ci.log; then
             echo "::error::Failed to download logs for CI run $run, job $job" >&2
             exit 1
           fi
