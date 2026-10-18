@@ -288,9 +288,11 @@ PPTX writing uses modern-template; corpus-headless writes the full matrix.
 alongside its deliberately sparse (at least one second) table. The shard runner
 reports the default-weight inventory and warns on growth, failing above
 `CI_TEST_MAX_UNMEASURED` (100 by default). Legacy tables without the count emit a
-refresh warning. The scheduled **Refresh test durations** workflow downloads the
-latest successful main CI log every Monday (or on manual dispatch), regenerates
-the table, and uploads `calibrated-test-durations` for review and commit. It does
+refresh warning. The scheduled **Refresh test durations** workflow selects the
+latest successful main CI run with a completed successful CLI shard step every
+Monday (or on manual dispatch). It skips metadata-only runs, searches all attempts
+after partial reruns, and downloads the newest successful CLI job's log. It regenerates
+the table and uploads `calibrated-test-durations` for review and commit. It does
 not substitute laptop timings or commit thousands of default-weight entries.
 After fixture changes, review that artifact before updating the tracked table.
 
