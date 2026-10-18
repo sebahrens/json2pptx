@@ -11,14 +11,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Regenerate from the latest successful main CI run
+      - name: Regenerate from the latest successful main CLI shard run
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          run=$(gh run list --workflow ci.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId')
-          test -n "$run"
-          gh run view "$run" --log > /tmp/green-ci.log
-          DURATIONS_SOURCE="CI run $run" scripts/ci_test_durations.sh /tmp/green-ci.log > /tmp/ci_test_durations.txt
+          set -euo pipefail
+          run=
+          job=
+          page=1
+          # Metadata-only green runs skip the test job; continue through history
+          # until the CLI shard step actually succeeded, without a lookback cap.
+          while [ -z "$run" ]; do
+            if ! candidates=$(gh api "repos/{owner}/{repo}/actions/workflows/ci.yml/runs?branch=main&status=success&per_page=100&page=$page" --jq '.workflow_runs[].id'); then
+              echo "::error::Failed to list successful main CI runs (page $page)" >&2
+              exit 1
+            fi
+            if [ -z "$candidates" ]; then
+              echo "::error::No successful main CI run with a successful CLI shard step was found" >&2
+              exit 1
+            fi
+            for candidate in $candidates; do
+              # Partial reruns can retain CLI success from an earlier attempt.
+              # Prefer the newest successful CLI job across all attempts.
+              if ! job=$(gh api "repos/{owner}/{repo}/actions/runs/$candidate/jobs?filter=all&per_page=100" --paginate | jq -sr '[.[].jobs[] | select(.status == "completed" and .conclusion == "success") | select(any(.steps[]?; .name == "Test with coverage (cmd/json2pptx)" and .status == "completed" and .conclusion == "success"))] | sort_by(.run_attempt // 0, .started_at // "", .id) | last | .id // empty'); then
+                echo "::error::Failed to inspect jobs for CI run $candidate" >&2
+                exit 1
+              fi
+              if [ -n "$job" ]; then
+                run=$candidate
+                break
+              fi
+              echo "Skipping CI run $candidate: no successful CLI shard step"
+            done
+            page=$((page + 1))
+          done
+          echo "Calibrating from CI run $run, job $job"
+          if ! gh api "repos/{owner}/{repo}/actions/jobs/$job/logs" > /tmp/green-ci.log; then
+            echo "::error::Failed to download logs for CI run $run, job $job" >&2
+            exit 1
+          fi
+          DURATIONS_SOURCE="CI run $run job $job" scripts/ci_test_durations.sh /tmp/green-ci.log > /tmp/ci_test_durations.txt
           grep -q '^[0-9]' /tmp/ci_test_durations.txt
           grep -q '^# Measured top-level tests: [1-9]' /tmp/ci_test_durations.txt
       - uses: actions/upload-artifact@v6
