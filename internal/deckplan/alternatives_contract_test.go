@@ -14,6 +14,11 @@ func TestPlanAlternativesPreserveComparisonAndAdjacency(t *testing.T) {
 	} {
 		plan := BuildDeckPlan(patterns.Default(), Params{Brief: brief, SlideBudget: 10}, nil)
 		for i, s := range plan.Slides {
+			if briefHasComparisonMatrix(brief) && s.NarrativeRole == "comparison" {
+				if s.RecommendedPattern != "table-highlight" || s.SuggestedPatternFallback == "comparison-2col" || s.SuggestedPatternFallback == "before-after" {
+					t.Errorf("three-option criteria matrix lost its contract: %+v", s)
+				}
+			}
 			for _, a := range s.Alternatives {
 				if !planningPatternCompatible(a.PatternName, s.NarrativeRole, brief) {
 					t.Errorf("%s: incompatible %s for %s", brief, a.PatternName, s.NarrativeRole)

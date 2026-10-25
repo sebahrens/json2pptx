@@ -774,6 +774,9 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 		if role == "comparison" {
 			slides[i].RecommendedPattern = pickComparisonPattern(brief, usedPatterns, "")
 			slides[i].Rationale = "comparison slot: two-sided comparison pattern"
+			if slides[i].RecommendedPattern == "table-highlight" {
+				slides[i].Rationale = "comparison slot: option-by-criterion matrix"
+			}
 			usedPatterns = append(usedPatterns, slides[i].RecommendedPattern)
 			continue
 		}
@@ -909,6 +912,11 @@ func recommendForRole(reg *patterns.Registry, patternList []patInfo, role, inten
 // Automatic planning must not invent the subject matter a visual requires.
 // Incidental mentions of teams in a rollout are not biographies.
 func planningPatternCompatible(name, role, intent string) bool {
+	if role == "comparison" && briefHasComparisonMatrix(intent) {
+		// A criteria matrix must keep every option and criterion. Two-sided
+		// patterns cannot hold a three-vendor comparison without dropping one.
+		return name == "table-highlight"
+	}
 	if role == "comparison" && !containsStr(comparisonFamily, patternFamily(name)) {
 		return false
 	}
@@ -951,6 +959,9 @@ func patternSupportsNarrativeRole(patternList []patInfo, name, role string) bool
 // wins so two comparison slots alternate; exclude (when non-empty) is never
 // returned unless it is the only option.
 func pickComparisonPattern(brief string, used []string, exclude string) string {
+	if briefHasComparisonMatrix(brief) {
+		return "table-highlight"
+	}
 	lower := strings.ToLower(brief)
 	order := comparisonFamily
 	for _, kw := range []string{"before", "after", "current state", "future state", "as-is", "to-be", "transformation"} {

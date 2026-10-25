@@ -763,6 +763,6 @@ Two attributed `quote` voices compile to two equal, editable columns with shared
 
 Pictures accept `focal_point: {x: 0.1, y: 0.5}` in source fractions. A cover crop follows that subject, including image-case and region compilation, headshots, and source-image callout anchors. Omit it for the centered default.
 
-Planning ranks mapped text capacity and compatible alternatives, and does not turn rollout quantities such as “40 teams” into biographies. Variety includes visual motifs. Card grids try legal arrangements against actual text and frame dimensions when rows/columns are absent; authored dimensions are preserved. Post-expansion open-card warnings check the measured block before using character guidance.
+Criteria-based vendor/option comparisons use `table-highlight`, preserving all options and criteria; two-column alternatives are omitted for that contract. Planning ranks mapped text capacity and compatible alternatives, and does not turn rollout quantities such as “40 teams” into biographies. Variety includes visual motifs. Card grids try legal arrangements against actual text and frame dimensions when rows/columns are absent; authored dimensions are preserved. Post-expansion open-card warnings check the measured block before using character guidance.
 
 A runnable five-slide example is [`examples/semantic/layout_creativity.yaml`](../examples/semantic/layout_creativity.yaml), combining a named quote pair, percent-formatted chart and focal crop.
