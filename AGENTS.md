@@ -104,7 +104,7 @@ templates/           # Built-in PPTX templates
 
 ## Dependencies
 
-- Go 1.26.9+
+- Go 1.26.10+
 - librsvg or resvg (for SVG-to-PNG conversion)
 - Optional: Inkscape (for EMF conversion)
 

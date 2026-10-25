@@ -16,6 +16,8 @@ How to cut a release (tag, archives, container image) is described in
 
 ## [Unreleased]
 
+- Require Go 1.26.10 for builds and container images to include the crypto/x509 certificate-trust fix ([GO-2026-6809](https://pkg.go.dev/vuln/GO-2026-6809)).
+
 - Schema 5.1.0: content-aware layout capacity and card arrangements, motif-aware recommendations, compatible planning alternatives, paired quotes, focal image crops and semantic chart number formatting. Explicit paragraph alignment survives finishing; grid links avoid occupied cells; log bar annotations retain their context. Rhythm density and visual QA use measured evidence and the canonical typography policy. The authoring docs and wiki describe these controls.
 
 ## [1.2.0] - 2026-10-18

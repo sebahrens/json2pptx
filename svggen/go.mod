@@ -1,6 +1,6 @@
 module github.com/sebahrens/json2pptx/svggen
 
-go 1.26.9
+go 1.26.10
 
 require (
 	github.com/mark3labs/mcp-go v0.45.0
