@@ -69,6 +69,7 @@ digits and `kpi-6up` about 9 on the narrowest templates.
 **Placement.** Patterns follow the slide size: on a larger slide
 (business-template, 14.7 × 8.3in) pattern text and row heights render about
 10% larger (12 → 13pt, 14 → 15pt); authored `shape_grid` sizes are kept.
+`card-grid` auto dimensions use copy and aspect; authored rows/columns stand. Open-card overflow checks actual fit; budgets are hints.
 Box patterns are content-sized: `kpi-Nup` cards, `card-grid`
 rows, `before-after` panels and `strategy-house` pillars hug their text (≤
 1.6× its height). A slide's own pattern block that needs under 75% of the

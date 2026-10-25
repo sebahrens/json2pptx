@@ -321,6 +321,9 @@ func (c regionCheck) dense(field, msg string) {
 // and the budgets its visual holds.
 var regionContentRules = map[string]func(regionCheck){
 	slides.RegionChart: func(c regionCheck) {
+		if chart, ok := c.r["chart"].(map[string]any); ok {
+			validateChartValueFormat(c.path+".chart", chart, c.s)
+		}
 		chart, ok := c.r["chart"].(map[string]any)
 		if !ok {
 			c.required("chart", "chart region requires a chart {type, data}")
@@ -392,6 +395,9 @@ var regionContentRules = map[string]func(regionCheck){
 		}
 	},
 	slides.RegionImage: func(c regionCheck) {
+		if image, ok := c.r["image"].(map[string]any); ok {
+			validateImageFocalPoint(c.path+".image", image, c.s)
+		}
 		if !slides.RegionHasImage(c.r) {
 			c.required("image", "image region requires image {path|url}")
 		}

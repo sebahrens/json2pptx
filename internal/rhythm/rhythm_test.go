@@ -225,9 +225,9 @@ func TestAnalyze_AccentBalance(t *testing.T) {
 func TestAnalyze_DensityClasses(t *testing.T) {
 	slides := []rhythm.Slide{
 		// Low density: single text content.
-		{ContentKinds: []string{"text"}},
+		{ContentKinds: []string{"text"}, Text: "A short statement"},
 		// High density: table + chart + bullets.
-		{ContentKinds: []string{"table", "chart", "bullets"}},
+		{ContentKinds: []string{"table", "chart", "bullets"}, Text: strings.Repeat("Detailed evidence with additional context. ", 300)},
 	}
 
 	result := rhythm.Analyze(slides)

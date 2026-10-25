@@ -170,10 +170,11 @@ func (p *imageTextSplit) ImageAssets(values any) []ImageAssetRef {
 
 func (p *imageTextSplit) Schema() *Schema {
 	imageSchema := ObjectSchema(map[string]*Schema{
-		"path": StringSchema(0).WithDescription("Local .png / .jpg file (relative paths resolve against the deck JSON directory)"),
-		"url":  StringSchema(0).WithDescription("HTTPS image URL (downloaded and cached)"),
-		"alt":  StringSchema(200).WithDescription("Alt text (defaults to the caption or heading)"),
-		"fit":  EnumSchema("cover", "contain").WithDescription("\"cover\" (default) fills the frame and crops the long axis (photos); \"contain\" keeps the whole picture (screenshots, exhibits)").WithDefault("cover"),
+		"focal_point": ImageFocalPointSchema(),
+		"path":        StringSchema(0).WithDescription("Local .png / .jpg file (relative paths resolve against the deck JSON directory)"),
+		"url":         StringSchema(0).WithDescription("HTTPS image URL (downloaded and cached)"),
+		"alt":         StringSchema(200).WithDescription("Alt text (defaults to the caption or heading)"),
+		"fit":         EnumSchema("cover", "contain").WithDescription("\"cover\" (default) fills the frame and crops the long axis (photos); \"contain\" keeps the whole picture (screenshots, exhibits)").WithDefault("cover"),
 	}, nil).WithAdditionalProperties(false).WithDescription("The picture; omit to render a dashed placeholder labelled with image_label")
 
 	metric := ObjectSchema(map[string]*Schema{
@@ -226,6 +227,9 @@ func (p *imageTextSplit) Validate(values, overrides any, cellOverrides map[int]a
 		}
 	}
 	if v.Image != nil {
+		if !v.Image.FocalPoint.Valid() {
+			errs = append(errs, newValidationError(name, "image.focal_point", ErrCodeInvalidShape, "focal_point x and y must be finite fractions in [0,1]", nil))
+		}
 		if strings.TrimSpace(v.Image.Path) == "" && strings.TrimSpace(v.Image.URL) == "" {
 			errs = append(errs, newValidationError(name, "image", ErrCodeRequired,
 				"image-text-split: image needs a path or url (omit image to render a placeholder)", ProvideValueFix("image.path")))
@@ -437,7 +441,7 @@ func itsImageColumn(ctx ExpandContext, v *ImageTextSplitValues, lay itsLayout) *
 		// Fit reaches the grid cell unchanged: cover (the default) for a
 		// photograph, contain for a screenshot or exhibit whose header and
 		// footer are part of the evidence (go-slide-creator-zifd3).
-		img := &jsonschema.GridImageInput{Path: v.Image.Path, URL: v.Image.URL, Alt: v.Image.Alt, Fit: v.Image.Fit}
+		img := &jsonschema.GridImageInput{Path: v.Image.Path, URL: v.Image.URL, Alt: v.Image.Alt, Fit: v.Image.Fit, FocalPoint: v.Image.FocalPoint}
 		if strings.TrimSpace(img.Alt) == "" {
 			img.Alt = firstNonEmpty(v.Caption, v.Heading, v.ImageLabel, "Image")
 		}

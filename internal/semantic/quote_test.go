@@ -30,7 +30,7 @@ func TestQuoteCompileAndPreflight(t *testing.T) {
 		{"single shorthand", "pull-quote", map[string]any{"title": "Customer voice", "quote": "Faster month end", "attribution": "A. Lee"}, false},
 		{"three voices", "quote-cluster", map[string]any{"title": "Customer voices", "quotes": quoteItems(3)}, false},
 		{"eight voices", "quote-cluster", map[string]any{"title": "Customer voices", "testimonials": quoteItems(8)}, false},
-		{"two voices", "", map[string]any{"title": "Customer voices", "quotes": quoteItems(2)}, true},
+		{"two voices", "quote-cluster", map[string]any{"title": "Customer voices", "quotes": quoteItems(2)}, false},
 		{"nine voices", "", map[string]any{"title": "Customer voices", "voices": quoteItems(9)}, true},
 		{"missing attribution", "", map[string]any{"title": "Customer voice", "quote": "Faster month end"}, true},
 		{"long single quote", "", map[string]any{"title": "Customer voice", "quote": strings.Repeat("word ", 110), "attribution": "A. Lee"}, true},

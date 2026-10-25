@@ -25,6 +25,7 @@ import (
 	"bytes"
 	"fmt"
 	"image"
+	"math"
 	// Register PNG and JPEG decoders for image.Decode.
 	_ "image/jpeg"
 	_ "image/png"
@@ -379,18 +380,18 @@ func nonBackgroundRatio(img image.Image, bg color8, x0, y0, x1, y1 int) float64 
 	}
 	w := x1 - x0
 	h := y1 - y0
-	stride := 1
-	// Cap per-edge sampling at ~10k pixels to keep this fast on large images.
-	if total := w * h; total > 10000 {
-		// Stride the larger dimension so we sample ~10k cells.
-		stride = (total / 10000)
-		if stride < 1 {
-			stride = 1
-		}
-	}
+	// Stratify in normalized coordinates: scaling an image must not change
+	// the sampling phase. Vary the point within each stratum to avoid aliasing
+	// regularly spaced text baselines and table rules. At most 10k samples.
+	nx := min(w, min(10000, max(1, int(math.Sqrt(10000*float64(w)/float64(h))))))
+	ny := min(h, max(1, 10000/nx))
 	var seen, nonBG int
-	for y := y0; y < y1; y += stride {
-		for x := x0; x < x1; x += stride {
+	for iy := range ny {
+		for ix := range nx {
+			fx := (float64((ix*73+iy*37)%997) + 0.5) / 997
+			fy := (float64((ix*53+iy*97)%991) + 0.5) / 991
+			x := x0 + int((float64(ix)+fx)*float64(w)/float64(nx))
+			y := y0 + int((float64(iy)+fy)*float64(h)/float64(ny))
 			seen++
 			if !nearBackground(img, x, y, bg) {
 				nonBG++

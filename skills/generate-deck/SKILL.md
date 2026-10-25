@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 5.0.0
+schema_version: 5.1.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Apply template-aware
   authoring, validation, rendering and visual review.
@@ -10,12 +10,12 @@ description: >-
 
 **Visual standard:** Apply [native slide composition](RULES.md#native-slide-composition).
 
-Call `get_started(skill_version:"5.0.0")` first. On `skill_warning`,
+Call `get_started(skill_version:"5.1.0")` first. On `skill_warning`,
 run `json2pptx skill install`; `skill status` checks installed files.
 Without runtime render tooling, deliver as **UNREVIEWED**. Use live schemas:
 `get_started(tool:"<name>")` returns a full schema; `tools/list` is abridged.
 
-**Completion:** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
+**Completion:** Render and inspect every slide of the CURRENT revision with `render_deck_thumbnails`. A passing gate, score or validation is only a precondition. After repairs, re-render and inspect changed slides with `slide_indices`, then make one full-deck pass over the revision you ship.
 
 **Read before authoring:** [QUALITY.md](QUALITY.md) — ghost deck of
 titles first, full-sentence action titles (≤15 words, carrying the number),

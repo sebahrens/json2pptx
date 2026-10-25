@@ -130,6 +130,8 @@ For common business slide shapes — KPI cards, process flows, BMC canvas, matri
 
 Pattern field shapes and overrides are documented in `docs/PATTERNS.md`. An expansion can be edited and resubmitted as a `shape_grid`: it carries `source: "pattern:<name>"`, which exempts the engine's own font sizes from constrained mode's absolute-size rule — keep the stamp, or those sizes are refused as if you had written them (raw hex is refused either way).
 
+Images accept `focal_point: {"x": 0.1, "y": 0.5}` in `image_value`, grid `image`, semantic `image_case.image` / image regions, and photo-taking patterns. Coordinates are source-image fractions in [0,1]. With `fit: "cover"`, the crop moves toward that subject; omitted keeps centered cover. `contain` keeps the whole picture. `anchor_image` callouts use the same crop transform.
+
 ## Charts and diagrams
 
 ```json
@@ -243,3 +245,5 @@ Errors carry structured `code` fields catalogued in `docs/FIT_FINDINGS.md` (with
 `json2pptx generate deck.json --out deck.pptx --fit-report` prints the full JSON render report; `--verbose-fit` bypasses the per-slide finding budget. `--placeholder-policy off|warn|strict` shares validation's unfinished-copy policy; `strict` refuses unresolved `__FILL__` tokens before writing an artifact. `--base-dir /absolute/assets` sets the root for relative templates and assets in generation and `--dry-run`; the default is the deck file's directory (current directory for stdin). MCP uses the same boundary checks and merged findings.
 
 MCP `generate_presentation` returns `ok`, `pptx_path`, `quality_summary` and `diagnostics` alongside compatibility keys `success`, `output_path`, `quality` and `fit_findings`. `ok` means the file was written; consult `deterministic_ready` and `publishable` for the delivery verdict.
+
+Automatic card-grid arrangements use copy and frame aspect when rows/columns are omitted; explicit dimensions stand. Raw paragraph `align` is preserved. Nonadjacent grid links detour around occupied cells; if no gutter route fits, generation requests more routing space.

@@ -363,7 +363,11 @@ func resolveGrid(grid *Grid, alloc *pptx.ShapeIDAllocator, plan *composePlan) (*
 	bands := resolveRowBands(grid, rowYOffsets, rowHeightsEMU, alloc)
 	accentBars = append(accentBars, resolveRowRules(grid, rowYOffsets, rowHeightsEMU, rowGapEMU, alloc)...)
 	connectors := resolveRowConnectors(grid, cells, rowCellIDs, rowYOffsets, rowHeightsEMU, alloc)
-	connectors = append(connectors, resolveLinks(grid, cells, rowCellIDs, alloc)...)
+	links, linkErr := resolveLinks(grid, cells, rowCellIDs, alloc)
+	if linkErr != nil {
+		return nil, linkErr
+	}
+	connectors = append(connectors, links...)
 	alignFirstColumnText(cells, gridX, grid.TextLeft)
 	// Text grows per peer group, not per cell (go-slide-creator-riyh7): each
 	// shape measures how far its own text may grow, peers take the smallest

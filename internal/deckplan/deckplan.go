@@ -790,7 +790,7 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 		slides[i].RecommendedPattern, slides[i].Rationale = recommendForRole(reg, patternList, role, buildIntent(role, brief), audience, usedPatterns, i)
 		if slides[i].RecommendedPattern == "" {
 			// Fallback: pick from taxonomy.
-			slides[i].RecommendedPattern = fallbackPattern(role, patternList, usedPatterns)
+			slides[i].RecommendedPattern = fallbackPattern(role, patternList, usedPatterns, brief)
 			slides[i].Rationale = "fallback selection for " + role
 		}
 		usedPatterns = append(usedPatterns, slides[i].RecommendedPattern)
@@ -895,12 +895,33 @@ func recommendForRole(reg *patterns.Registry, patternList []patInfo, role, inten
 	opts := &patterns.RecommendOptions{RecentPatterns: usedPatterns, PreferVariety: true, SlideIndex: slideIndex}
 	rec := patterns.Recommend(reg, intent, &patterns.ContentHints{Audience: audience}, len(patternList), opts)
 	for _, c := range substantiveCandidates(rec) {
+		if !planningPatternCompatible(c.PatternName, role, intent) {
+			continue
+		}
 		if role == "evidence" && !patternSupportsNarrativeRole(patternList, c.PatternName, "evidence") {
 			continue
 		}
 		return c.PatternName, c.Rationale
 	}
 	return "", ""
+}
+
+// Automatic planning must not invent the subject matter a visual requires.
+// Incidental mentions of teams in a rollout are not biographies.
+func planningPatternCompatible(name, role, intent string) bool {
+	if role == "comparison" && !containsStr(comparisonFamily, patternFamily(name)) {
+		return false
+	}
+	if name == "team-bios" || name == "contact-directory" {
+		lower := strings.ToLower(intent)
+		for _, cue := range []string{"meet the team", "our team:", "our people:", "team introduction", "introduce the team", "team overview", "team profiles", "team bios", "biograph", "headshot", "advisors", "leadership team:", "engagement team:", "name and role", "names and roles", "contact directory", "key contacts", "who we are"} {
+			if strings.Contains(lower, cue) {
+				return true
+			}
+		}
+		return false
+	}
+	return true
 }
 
 // A generic recommender fallback helps an interactive user refine an intent,
@@ -1052,7 +1073,7 @@ func contentSeedForRole(role, brief string, idx, total int) string {
 var genericFallbackBonus = map[string]float64{"card-grid": 0.2, "labeled-rows": 0.1}
 
 // fallbackPattern picks a pattern from taxonomy when recommend_pattern returns nothing.
-func fallbackPattern(role string, patternList []patInfo, used []string) string {
+func fallbackPattern(role string, patternList []patInfo, used []string, brief string) string {
 	taxRoles := narrativeRoleToTaxonomy[role]
 	usedCount := make(map[string]int)
 	for _, u := range used {
@@ -1066,6 +1087,9 @@ func fallbackPattern(role string, patternList []patInfo, used []string) string {
 	}
 	var candidates []candidate
 	for _, pi := range patternList {
+		if !planningPatternCompatible(pi.name, role, brief) {
+			continue
+		}
 		// A -compact variant is a height-capped companion for composing
 		// beside other content; with nothing in the brief to say the slot
 		// needs one, it is never the stand-alone default. Equal scores are
@@ -1667,8 +1691,16 @@ func computeAlternativesForSlot(reg *patterns.Registry, slides []Slide, idx int,
 
 	out := make([]Alternative, 0, MaxAlternatives)
 	seen := map[string]bool{current: true}
+	for _, neighbor := range []int{idx - 1, idx + 1} {
+		if neighbor >= 0 && neighbor < len(slides) {
+			seen[patternFamily(slides[neighbor].RecommendedPattern)] = true
+		}
+	}
+	allowed := func(name string) bool {
+		return !seen[name] && !seen[patternFamily(name)] && planningPatternCompatible(name, role, intent)
+	}
 	for _, c := range substantiveCandidates(rec) {
-		if seen[c.PatternName] {
+		if !allowed(c.PatternName) {
 			continue
 		}
 		seen[c.PatternName] = true
@@ -1691,7 +1723,7 @@ func computeAlternativesForSlot(reg *patterns.Registry, slides []Slide, idx int,
 			patternList = append(patternList, patInfo{name: p.Name(), taxonomy: p.Taxonomy()})
 		}
 		for _, fallback := range taxonomyFallbackCandidates(role, patternList, recent) {
-			if seen[fallback] {
+			if !allowed(fallback) {
 				continue
 			}
 			seen[fallback] = true

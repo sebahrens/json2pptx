@@ -13,7 +13,7 @@ import (
 func TestValidatePatternCatchesExpandContentBudgets(t *testing.T) {
 	cells := make([]any, 12)
 	for i := range cells {
-		cells[i] = map[string]any{"header": fmt.Sprintf("Card %d", i+1), "body": strings.Repeat("x", 105)}
+		cells[i] = map[string]any{"header": fmt.Sprintf("Card %d", i+1), "body": strings.Repeat("W", 300)}
 	}
 	args := map[string]any{
 		"name":           "card-grid",

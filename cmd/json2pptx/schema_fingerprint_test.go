@@ -138,7 +138,8 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// cell text ink and layout-review repair vocabulary.
 	// 5.0.0 flattens validation responses and adds MCP transport aliases; the
 	// hashed authoring structs and enums are unchanged.
-	const wantFingerprint = "bb7ad471bb831a5c"
+	// 5.1.0 includes the shared image contracts and normalized focal point.
+	const wantFingerprint = "51c83e54be34d817"
 
 	got := schemaFingerprint()
 

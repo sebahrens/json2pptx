@@ -113,7 +113,7 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 - **Text fit checking** (`strict_fit`: `off|warn|strict`) -- structured findings; refuse on overflow when strict
 - **Fit findings + repair loop** -- typed diagnostics with JSON Pointer paths; `repair_slide` patches one slide at a time
 - **Deterministic visual scoring** -- `score_deck` runs full generation and grades the output 0-100 with a composition axis
-- **Deck rhythm analysis** -- `analyze_deck_rhythm` flags pattern repetition, accent imbalance, density variance
+- **Deck rhythm analysis** -- `analyze_deck_rhythm` reports visual motifs, accent heaviness and content occupancy with measured/estimated/unknown evidence
 - **Deck planning** -- `plan_deck` turns a brief into a structured slide outline with rhythm rules
 - **PPTX read-back** -- `read_presentation` extracts placeholders/shapes/tables from an existing PPTX without LibreOffice
 - **HTTP API** -- REST endpoints for programmatic generation

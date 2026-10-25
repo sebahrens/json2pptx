@@ -82,7 +82,8 @@ func validateBarScale(req *RequestEnvelope, stacked bool) error {
 		if stacked {
 			return &ValidationError{Field: "style.scale", Code: ErrCodeInvalidValue, Message: "log scale is not supported for stacked bar charts"}
 		}
-		return nil
+		categories, _ := toStringSlice(req.Data["categories"])
+		return validateLogAnnotations(extractAnnotations(req.Data), len(categories))
 	default:
 		return &ValidationError{Field: "style.scale", Code: ErrCodeInvalidValue, Message: "bar chart scale must be 'linear' or 'log'", Value: req.Style.Scale}
 	}

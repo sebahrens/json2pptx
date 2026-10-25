@@ -16,9 +16,8 @@ import (
 // hand. Both quote visuals already exist — pull-quote for one, quote-cluster
 // for several — so this is a compiler over them, not new rendering.
 //
-// The count decides the visual: one quote is a pull-quote, three to eight are
-// a cluster. Two quotes use the content fallback because the cluster pattern
-// requires at least three.
+// The count decides the visual: one quote is a pull-quote, two to eight are
+// a cluster. A pair has two equal columns and a shared attribution baseline.
 
 const (
 	// Pull-quote budgets, from the pattern's own schema.
@@ -238,8 +237,6 @@ func QuoteOverBudget(body map[string]any) string {
 	switch {
 	case len(quotes) == 0:
 		return ""
-	case len(quotes) == 2:
-		return "has 2 quotes; quote-cluster needs at least 3"
 	case len(quotes) > quoteClusterMaxCount:
 		return fmt.Sprintf("has %d quotes; quote-cluster draws at most %d", len(quotes), quoteClusterMaxCount)
 	}

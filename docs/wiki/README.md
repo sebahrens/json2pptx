@@ -3,7 +3,7 @@ title: "json2pptx wiki: building consulting-grade decks with an agent"
 type: section
 summary: "Authoring guidance, worked consulting playbooks, and wiki navigation"
 status: active
-last_updated: "2026-10-18"
+last_updated: "2026-10-25"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -42,6 +42,8 @@ the engine is right and the page has a bug: fix it in the same change.
 | [Split and complex layouts](split-and-complex-layouts.md) | The recipe book for those slides: chart beside narrative, bridge beside implication, status boards, before/after, photo with callouts, architecture rails, long tables, raw composites, a loop beside the words. |
 | [Quality and review](quality-and-review.md) | Before claiming a deck is done: the gates, the ten-point rubric, the second-template pass, what the tools cannot see. |
 | [Troubleshooting](troubleshooting.md) | When a finding, a refusal or a render surprises you. |
+
+Content-aware layout selection, paired quotes, focal crops and chart number formats are covered in the [layout catalog](layout-catalog.md), [slide design rules](slide-design-rules.md) and [quality guide](quality-and-review.md).
 
 See [Consulting visual additions](consulting-visual-additions.md) for the new native kinds, chart contracts and selection alternatives.
 

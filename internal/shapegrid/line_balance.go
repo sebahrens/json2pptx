@@ -76,7 +76,7 @@ func unifyCardAlignment(tb *pptx.TextBody) {
 		}
 	}
 	for i := 0; i < firstLeft; i++ {
-		if tb.Paragraphs[i].Align == "ctr" {
+		if tb.Paragraphs[i].Align == "ctr" && !tb.Paragraphs[i].ExplicitAlign {
 			tb.Paragraphs[i].Align = "l"
 		}
 	}

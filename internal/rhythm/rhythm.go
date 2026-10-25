@@ -127,6 +127,8 @@ type SlideInfo struct {
 	SlideIndex               int     `json:"slide_index"`
 	Pattern                  string  `json:"pattern"`                     // pattern name, "shape_grid", "content", or slide_type
 	DensityClass             string  `json:"density_class"`               // "low", "med", "high"
+	DensitySource            string  `json:"density_source"`              // measured, estimated, unknown
+	DensityOccupancy         float64 `json:"density_occupancy,omitempty"` // text/visual load over available area
 	AccentRole               string  `json:"accent_role"`                 // primary accent color used, or "none"
 	DominantVisual           string  `json:"dominant_visual"`             // "chart", "diagram", "table", "text", "grid", "pattern"
 	Motif                    string  `json:"motif"`                       // visual motif ("tiles", "open-columns", "table", …) or "none"
@@ -323,7 +325,7 @@ func fingerprint(idx int, s Slide) SlideInfo {
 		}
 	}
 
-	info.DensityClass = densityClass(s)
+	info.DensityClass, info.DensityOccupancy, info.DensitySource = measureDensity(s)
 	info.AccentRole = primaryAccent(s)
 	info.WithinSlideAccentVariety = countDistinctAccents(s)
 	info.cellCount = s.CellCount
@@ -462,49 +464,6 @@ func dominantVisual(s Slide) string {
 		}
 	}
 	return "text"
-}
-
-// densityClass estimates content density from the slide projection.
-func densityClass(s Slide) string {
-	weight := 0
-
-	for _, kind := range s.ContentKinds {
-		switch kind {
-		case "text":
-			weight += 1
-		case "bullets":
-			weight += 2
-		case "body_and_bullets", "bullet_groups":
-			weight += 3
-		case "table":
-			weight += 4
-		case "chart", "diagram":
-			weight += 3
-		case "image":
-			weight += 2
-		default:
-			weight += 1
-		}
-	}
-
-	if s.HasShapeGrid {
-		weight += 4
-	}
-	if s.HasPattern {
-		weight += 3
-	}
-	if s.HasCompose {
-		weight += 5
-	}
-
-	switch {
-	case weight <= 2:
-		return "low"
-	case weight <= 5:
-		return "med"
-	default:
-		return "high"
-	}
 }
 
 // primaryAccent returns the first accent color reference on a slide (a raw
@@ -646,24 +605,30 @@ func computeDensityCV(slides []SlideInfo) float64 {
 		return 0.0
 	}
 
-	// Map density_class to numeric for CV calculation.
-	classToScore := map[string]float64{"low": 1, "med": 2, "high": 3}
-
-	sum := 0.0
+	var known []SlideInfo
 	for _, s := range slides {
-		sum += classToScore[s.DensityClass]
+		if s.DensitySource != "unknown" && s.DensitySource != "" {
+			known = append(known, s)
+		}
 	}
-	mean := sum / float64(len(slides))
+	if len(known) < 2 {
+		return 0
+	}
+	sum := 0.0
+	for _, s := range known {
+		sum += s.DensityOccupancy
+	}
+	mean := sum / float64(len(known))
 	if mean == 0 {
 		return 0.0
 	}
 
 	variance := 0.0
-	for _, s := range slides {
-		diff := classToScore[s.DensityClass] - mean
+	for _, s := range known {
+		diff := s.DensityOccupancy - mean
 		variance += diff * diff
 	}
-	variance /= float64(len(slides))
+	variance /= float64(len(known))
 	stddev := math.Sqrt(variance)
 
 	cv := stddev / mean
@@ -965,17 +930,18 @@ func computeCompositionScore(r *Result) int {
 	}
 
 	// Penalize very low density variation (all slides same density = monotonous).
-	if r.Aggregates.DensityCV < 0.1 && len(r.PerSlide) > 3 {
+	knownDensity := 0
+	for _, s := range r.PerSlide {
+		if s.DensitySource != "unknown" && s.DensitySource != "" {
+			knownDensity++
+		}
+	}
+	if r.Aggregates.DensityCV < 0.1 && knownDensity > 3 {
 		score -= 10
 	}
 
-	// Penalize accent imbalance — if one accent dominates >80%.
-	for _, frac := range r.Aggregates.AccentBalance {
-		if frac > 0.8 && len(r.Aggregates.AccentBalance) > 1 {
-			score -= 10
-			break
-		}
-	}
+	// A restrained primary accent is intentional. Excessive solid fills and
+	// strong-accent runs are reported separately; palette rotation is no goal.
 
 	if score < 0 {
 		score = 0

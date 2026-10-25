@@ -432,6 +432,12 @@ func RouteOutline(source, target ShapeOptions, horizontal bool) ConnectorRoute {
 	return r
 }
 
+// OutlineAnchor returns the exact connection point and site on a preset's
+// visible outline, respecting mirroring and adjustments.
+func OutlineAnchor(o ShapeOptions, side ConnectionSide) (x, y int64, site int) {
+	return outlineAnchor(o, side)
+}
+
 // outlineAnchor is the point where a connector meets the middle of one side
 // of a shape as drawn, and the preset connection site at that point (-1 when
 // the preset has none there).

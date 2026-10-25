@@ -595,7 +595,9 @@ func (bc *BarChart) Draw(data ChartData) error {
 		// Draw bars using log scale
 		bc.drawBars(displayData, plotArea, xScale, nil, colors)
 
-		// Annotations not supported on log-scale charts (no linear yScale)
+		if err := DrawAnnotations(b, data.Annotations, plotArea, xScale, bc.logScale, data, colors); err != nil {
+			return err
+		}
 	} else {
 		yScale := barLinearYScale(yMin, yMax, plotArea.H, barNegativeLabelClearance(b, style, bc.config, yMin))
 		bc.yScaleForLabels = yScale

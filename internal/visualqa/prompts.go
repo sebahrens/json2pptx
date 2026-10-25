@@ -1,5 +1,24 @@
 package visualqa
 
+import (
+	"fmt"
+	"github.com/sebahrens/json2pptx/internal/tokens"
+)
+
+// TypographyPolicy is shared by every visual inspection entry point. Role
+// floors come from the same tokens as the generation gate; source chrome has
+// its own intentional size and must not be judged as body copy.
+func TypographyPolicy(viewingMode string) string {
+	mode := tokens.ParseViewingMode(viewingMode)
+	return fmt.Sprintf("Typography policy (viewing_mode=%s): recommended body %.0fpt, card titles %.0fpt, captions %.0fpt. Minimum readable body %.0fpt, card body %.0fpt, card titles %.0fpt, captions/dense tables %.0fpt, slide titles %.0fpt. Source chrome is intentionally %.0fpt. Evaluate text by its role; canonical body copy need not match the card-title size.",
+		tokens.ViewingModeInputName(mode), tokens.TypeScaleBodyPt, tokens.TypeScaleSubheadPt, tokens.TypeScaleCaptionPt,
+		float64(tokens.MinReadableHPt(mode, tokens.TextRoleBody))/100,
+		float64(tokens.MinReadableHPt(mode, tokens.TextRoleCardBody))/100,
+		float64(tokens.MinReadableHPt(mode, tokens.TextRoleCardTitle))/100,
+		float64(tokens.MinReadableHPt(mode, tokens.TextRoleCaption))/100,
+		float64(tokens.MinReadableHPt(mode, tokens.TextRoleTitle))/100, tokens.SourceLinePt)
+}
+
 // systemPrompt is the shared system prompt for all slide types.
 const systemPrompt = `You are a ruthless visual QA inspector for PowerPoint slides rendered from a Go PPTX generator.
 Your job is to find visual defects — not content/grammar issues.
@@ -50,8 +69,8 @@ failed check; do not replace the checklist with general praise.
 2. ROW BASELINES: compare the first text baseline of peer cards, columns, KPI
    blocks, and summary points. A visible stair-step or difference above about
    1% of slide height is alignment (P1/P2).
-3. TYPE SIZE: body copy should look at least 14pt equivalent; captions and
-   sources at least 8pt. Smaller text is font_size even if technically legible.
+3. TYPE SIZE: use the role and viewing-mode policy below. Do not mistake
+   canonical body copy, dense captions or source chrome for undersized text.
 4. SOURCE LINE: source/footer text must use a consistent size and baseline,
    remain inset from the edge, and align with the slide grid.
 5. COMPLETENESS: all expected text/shapes must be present with no truncation,
@@ -59,7 +78,7 @@ failed check; do not replace the checklist with general praise.
 
 Then verify these general quality targets:
 - All input text/bullets are present and readable (no truncation, no overflow)
-- Font sizes are appropriate (title prominent, body ≥14pt equivalent)
+- Font sizes follow the supplied role policy (title prominent, body readable)
 - Text and background have adequate contrast (WCAG AA)
 - Content is properly aligned and evenly spaced
 - No elements overlap or extend beyond slide boundaries
@@ -94,7 +113,7 @@ var slideTypePrompts = map[string]string{
 	"content": `Inspect this CONTENT SLIDE (bullets/text) image. Focus on:
 - Title: readable, properly sized and positioned at top
 - Bullet text: all items visible, not truncated or overflowing
-- Font size: bullets should be readable (minimum ~14pt equivalent), not too small for dense lists
+- Font size: bullets follow the supplied body floor; dense lists remain readable
 - Bullet hierarchy: consistent indentation and spacing
 - Text does not overlap with other elements
 - Footer area clearance (text should not extend to bottom edge)

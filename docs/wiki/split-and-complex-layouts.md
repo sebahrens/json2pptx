@@ -3,7 +3,7 @@ title: "Split and complex layouts"
 type: documentation
 summary: "json2pptx guide to split and complex layouts"
 status: active
-last_updated: "2026-10-18"
+last_updated: "2026-10-25"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -660,3 +660,7 @@ leaf forms follow the normal asset, colour and content-loss validators.
 
 See [Consulting visual additions](consulting-visual-additions.md) for RACI,
 status boards, trees, stakeholder placement and progress against target.
+
+## Cropping and chart notation in a split
+
+When a photo or headshot loses its subject in a narrow segment, set the image reference's `focal_point: {x: 0.1, y: 0.5}` to the subject's source-image coordinates; retain `fit: cover` to keep the frame filled. For screenshots whose complete evidence matters, use `fit: contain`. In chart regions, `chart.value_format` carries percent/currency/compact notation through compilation to both ticks and labels; the region's `unit` remains its heading unit. Two customer voices can be a semantic `quote` pair instead of a generic bullet page.

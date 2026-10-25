@@ -121,7 +121,12 @@ func isPeak(index int, values []float64) bool {
 // DrawAnnotations renders all annotations onto the chart plot area.
 // It accepts the plot area, scales, and chart data for coordinate mapping.
 func DrawAnnotations(b *SVGBuilder, annotations []Annotation, plotArea Rect,
-	xScale Scale, yScale *LinearScale, data ChartData, colors []Color) error {
+	xScale Scale, yScale NumericScale, data ChartData, colors []Color) error {
+	if _, log := yScale.(*LogScale); log {
+		if err := validateLogAnnotations(annotations, len(data.Categories)); err != nil {
+			return err
+		}
+	}
 	// Fixed reference/trend labels reserve their boxes before movable callouts,
 	// regardless of the author's annotation order.
 	for _, ann := range annotations {
@@ -144,7 +149,7 @@ func DrawAnnotations(b *SVGBuilder, annotations []Annotation, plotArea Rect,
 
 // drawReferenceLine draws a horizontal or vertical reference line across the plot area.
 func drawReferenceLine(b *SVGBuilder, ann Annotation, plotArea Rect,
-	xScale Scale, yScale *LinearScale) {
+	xScale Scale, yScale NumericScale) {
 	style := b.StyleGuide()
 
 	lineColor := style.Palette.TextSecondary
@@ -203,7 +208,7 @@ func drawReferenceLine(b *SVGBuilder, ann Annotation, plotArea Rect,
 
 // drawTrendline draws a linear regression overlay on a specific series.
 func drawTrendline(b *SVGBuilder, ann Annotation, plotArea Rect,
-	xScale Scale, yScale *LinearScale, data ChartData, colors []Color) {
+	xScale Scale, yScale NumericScale, data ChartData, colors []Color) {
 	style := b.StyleGuide()
 
 	// Find the series by name
@@ -279,7 +284,7 @@ func drawTrendline(b *SVGBuilder, ann Annotation, plotArea Rect,
 
 // drawCallout draws a callout arrow pointing to a data point with a label.
 func drawCallout(b *SVGBuilder, ann Annotation, plotArea Rect,
-	xScale Scale, yScale *LinearScale) error {
+	xScale Scale, yScale NumericScale) error {
 	style := b.StyleGuide()
 
 	lineColor := style.Palette.TextPrimary
@@ -337,6 +342,39 @@ func drawCallout(b *SVGBuilder, ann Annotation, plotArea Rect,
 	b.SetFillColor(lineColor)
 	b.DrawCircle(targetX, targetY, 3)
 	b.DrawText(text, box.X, box.Y, TextAlignLeft, TextBaselineTop)
+	return nil
+}
+
+// A linear regression in data space is not a straight line on a log axis.
+// Refuse that unsupported treatment explicitly; never omit authored context.
+func validateLogAnnotations(annotations []Annotation, categoryCount int) error {
+	for i, ann := range annotations {
+		field := fmt.Sprintf("data.annotations[%d]", i)
+		invalid := func(key, message string) error {
+			return &ValidationError{Field: field + "." + key, Code: ErrCodeInvalidValue, Message: message}
+		}
+		switch ann.Kind {
+		case AnnotationTrendline:
+			return invalid("kind", "trendline on a logarithmic bar chart is unsupported; use a linear axis or an authored positive reference line")
+		case AnnotationReferenceLine:
+			if ann.Axis == "x" {
+				if ann.Value < 0 || ann.Value >= float64(categoryCount) || math.Trunc(ann.Value) != ann.Value {
+					return invalid("value", "reference category index is outside the chart")
+				}
+			} else if ann.Value <= 0 || math.IsNaN(ann.Value) || math.IsInf(ann.Value, 0) {
+				return invalid("value", "logarithmic reference line requires a positive finite value")
+			}
+		case AnnotationCallout:
+			if ann.Y <= 0 || math.IsNaN(ann.Y) || math.IsInf(ann.Y, 0) {
+				return invalid("y", "logarithmic callout requires a positive finite y value")
+			}
+			if ann.X < 0 || ann.X >= float64(categoryCount) || math.Trunc(ann.X) != ann.X {
+				return invalid("x", "callout category index is outside the chart")
+			}
+		default:
+			return invalid("kind", "unsupported annotation kind on logarithmic bar chart")
+		}
+	}
 	return nil
 }
 

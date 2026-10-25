@@ -120,6 +120,9 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 			if cell.Image != nil && cell.Image.Fit != "" && cell.Image.Fit != "cover" && cell.Image.Fit != "contain" {
 				errs = append(errs, fmt.Errorf("row %d col %d: invalid image fit %q; valid values are \"cover\" or \"contain\" (omit for cover)", r, ci, cell.Image.Fit))
 			}
+			if cell.Image != nil && !cell.Image.FocalPoint.Valid() {
+				errs = append(errs, fmt.Errorf("row %d col %d: image focal_point x and y must be finite fractions in [0,1]", r, ci))
+			}
 
 			// Empty spacer cells are not skipped: they claim their
 			// col_span × row_span footprint exactly as Resolve does, so span

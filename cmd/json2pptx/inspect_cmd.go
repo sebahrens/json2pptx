@@ -30,6 +30,7 @@ func runInspect() error {
 	slideInfoPath := fs.String("slide-info", "", "JSON file containing [{index, slide_type?, title?}] metadata (optional)")
 	templateName := fs.String("template", "", "Template name to echo back on the report (optional)")
 	model := fs.String("model", "", "Claude model override (default: claude-haiku-4-5-20251001)")
+	viewingMode := fs.String("viewing-mode", "present", "Typography policy: present or read")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx inspect --images <dir> [options]\n\n")
@@ -69,9 +70,10 @@ func runInspect() error {
 		}
 		args["slide_info"] = slideInfo
 	}
-	if *templateName != "" {
-		args["deck_metadata"] = map[string]any{"template": *templateName}
+	if *viewingMode != "present" && *viewingMode != "read" {
+		return cliInvalidArg("--viewing-mode must be present or read")
 	}
+	args["deck_metadata"] = map[string]any{"template": *templateName, "viewing_mode": *viewingMode}
 	if *model != "" {
 		args["model"] = *model
 	}

@@ -45,8 +45,8 @@ These criteria evaluate the deck as a whole, not individual slides. Use the `ana
 | Metric | Threshold | Meaning |
 |--------|-----------|---------|
 | `longest_run` | ≤ 2 | Consecutive slides sharing the same layout or pattern type. Runs of 3+ feel monotonous. |
-| `accent_dominance` | < 0.7 | Fraction of accent-colored elements using the single most-used accent. Above 0.7 = palette underuse. |
-| `density_cv` | ≥ 0.15 | Coefficient of variation of per-slide content density. Below 0.15 = every slide looks the same weight (flat pacing). |
+| Accent restraint | purposeful | A primary semantic accent may dominate. Check excessive solid-accent fills and strong-accent runs; do not rotate the palette merely to increase colour variety. |
+| `density_cv` | inspect evidence | Variation of content occupancy. `density_source` distinguishes measured grids, estimated text load and unknown geometry; unknown slides do not create flat-pacing penalties. A coefficient below 0.1 across more than three known slides affects composition scoring. |
 | `narrative_arc` | present | Deck should have a recognizable opening (title/agenda), evidence body, and closing (summary/CTA). Missing any leg is a composition gap. |
 
 **Rationale**: Per-slide QA catches rendering defects but cannot detect structural monotony, accent imbalance, or missing narrative emphasis. These metrics surface issues that only become visible when considering the deck holistically.

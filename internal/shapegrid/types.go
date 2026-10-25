@@ -398,8 +398,9 @@ type IconSpec struct {
 
 // ImageSpec defines an image to embed in a grid cell.
 type ImageSpec struct {
-	Path string // File path to the image (SVG, PNG, JPG, etc.)
-	Alt  string // Alt text / description for accessibility
+	FocalPoint *types.ImageFocalPoint
+	Path       string // File path to the image (SVG, PNG, JPG, etc.)
+	Alt        string // Alt text / description for accessibility
 	// Geometry is the picture frame's preset shape: "" / "rect" or "ellipse".
 	Geometry string
 	// Fit is the image placement inside the frame: "" / "cover" or
@@ -531,6 +532,7 @@ func (c ResolvedCell) PathSuffix() string {
 
 // ResolvedConnector is a connector line between two adjacent cells in a row.
 type ResolvedConnector struct {
+	NoArrow   bool           // An intermediate segment of an obstacle detour; only the last has an arrow.
 	Bounds    pptx.RectEmu   // Position and size of the connector
 	ID        uint32         // Unique shape ID
 	Spec      *ConnectorSpec // Connector styling

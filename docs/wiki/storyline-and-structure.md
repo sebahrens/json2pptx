@@ -3,7 +3,7 @@ title: "Storyline and structure"
 type: documentation
 summary: "json2pptx guide to storyline and structure"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-25"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -179,3 +179,7 @@ Numbers with units and bases; "EUR 11.2M" not "11.2"; "61 of the last 90
 nights" not "frequently"; name the owner and the date on every action; one
 decimal where the source has one. Say what the audience must decide in the
 first slide and the last.
+
+## Keep planning alternatives faithful
+
+A layout alternative must still express the original claim: a comparison does not become a timeline just to vary the page. `plan_deck` filters comparison alternatives to compatible comparisons and excludes neighboring visual families; an empty or shorter alternative list is preferable to an incompatible suggestion. A rollout reaching “40 teams” is evidence about scale, not a request for biographies. Introduce people explicitly when a team page is intended. Layout selection compares the mapped prose, bullet text and individual slots with the available placeholder capacity before choosing among structurally adequate layouts.

@@ -96,7 +96,7 @@ func TestCardGridWarnsWithTheBudgetForItsShape(t *testing.T) {
 	for i := range dense.Cells {
 		dense.Cells[i].Body = strings.Repeat("W", budget+1)
 	}
-	warnings := warner.PostExpandWarnings(ExpandContext{}, dense, nil)
+	warnings := warner.PostExpandWarnings(ExpandContext{}, dense, &CardGridOverrides{Style: "filled"})
 	if len(warnings) != 12 {
 		t.Fatalf("got %d warnings for 12 over-budget cards, want 12: %v", len(warnings), warnings)
 	}
@@ -111,13 +111,13 @@ func TestCardGridWarnsWithTheBudgetForItsShape(t *testing.T) {
 	small := &CardGridValues{Columns: 2, Rows: 1, Cells: []CardGridCell{
 		{Header: "Header", Body: strings.Repeat("W", 300)}, {Header: "Header", Body: strings.Repeat("W", 300)},
 	}}
-	if got := warner.PostExpandWarnings(ExpandContext{}, small, nil); len(got) != 0 {
+	if got := warner.PostExpandWarnings(ExpandContext{}, small, &CardGridOverrides{Style: "filled"}); len(got) != 0 {
 		t.Errorf("a 2x1 grid at the schema maximum warned: %v", got)
 	}
 	for i := range dense.Cells {
 		dense.Cells[i].Body = strings.Repeat("W", budget)
 	}
-	if got := warner.PostExpandWarnings(ExpandContext{}, dense, nil); len(got) != 0 {
+	if got := warner.PostExpandWarnings(ExpandContext{}, dense, &CardGridOverrides{Style: "filled"}); len(got) != 0 {
 		t.Errorf("4x3 cards at their measured budget warned: %v", got)
 	}
 }

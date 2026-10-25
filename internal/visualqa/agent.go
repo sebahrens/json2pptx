@@ -169,7 +169,7 @@ func (a *Agent) InspectSlide(ctx context.Context, imgData []byte, info SlideInfo
 	reqBody := apiRequest{
 		Model:     a.model,
 		MaxTokens: a.maxTokens,
-		System:    systemPrompt,
+		System:    systemPrompt + "\n\n" + TypographyPolicy(info.ViewingMode),
 		Messages: []apiMessage{
 			{
 				Role: "user",

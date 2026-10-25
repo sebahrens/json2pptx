@@ -1359,6 +1359,7 @@ func chartDataShape(chartType string) (string, map[string]any) {
 // chart.series form is NOT read by the compiler (it only reads chart.data), so
 // it no longer counts as data.
 func validateChartData(chartPath string, chart map[string]any, s *semDiags) {
+	validateChartValueFormat(chartPath, chart, s)
 	chartType, _ := chart["type"].(string)
 	shape, example := chartDataShape(chartType)
 	dataPath := chartPath + ".data"

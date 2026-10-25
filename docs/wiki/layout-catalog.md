@@ -3,7 +3,7 @@ title: "Layout catalog: every kind, pattern, chart and diagram, and how to see i
 type: documentation
 summary: "json2pptx guide to layout catalog"
 status: active
-last_updated: "2026-10-18"
+last_updated: "2026-10-25"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -71,7 +71,7 @@ field that caused it.
 | `roadmap` | 3–6 `phases[] {name, date_label, description \| items, milestone, active}` + 0–4 `parallel_tracks`, `parallel_label`, `current_phase` (`phase-roadmap`) | — | bullets |
 | `org` | `nodes[] {id, name, title, parent}`; one root, ≤7 nodes, ≤3 levels (`org_chart`) | — | indented list |
 | `team` | 1–8 `members[] {name, role, bio, photo \| photo_label}` (`team-bios`) | — | bullets |
-| `quote` | `quotes[] {text, name, role}`; or the one-quote shorthand `quote` + `attribution` + `role` | 1 → `pull-quote`; 3–8 → `quote-cluster` | bullets (2 quotes always do) |
+| `quote` | `quotes[] {text, name, role}`; or the one-quote shorthand `quote` + `attribution` + `role` | 1 → `pull-quote`; 2–8 → `quote-cluster` | bullets for missing names or over-budget copy |
 | `image_case` | `image {path \| url, alt, fit}`, `callouts[] {label, x, y}`, `eyebrow`, `heading`, `body`, ≤5 `bullets`, ≤3 `metrics`, `caption`, `image_width_pct` 30–60, `image_side` (`image-text-split`) | — | content slide |
 | `next_steps` | 2–6 `actions[] {action ≤90, owner ≤30, date ≤20}` + 0–3 `decisions` (≤120), `decisions_label` (`next-steps`). A phase prefix repeated in every action ("Before the pilot: …") belongs in `date` (≤20 chars); with no `owner` and no `date` the slide is a bare numbered list, so give every action an owner (a role is enough). Actions that fall into 3–6 phases with several items each are a `roadmap` | owner / date columns drop when no action has one | bullets |
 | `closing` | the template's closing layout: short title + subtitle, or a few bullets | — | — |
@@ -301,7 +301,7 @@ the one-line descriptions with every override are in the repository's
 | `contact-directory` | raw | 1–4 groups of up to 24 people in rows of 3–5, headshot or initials disc + name + title |
 | `dual-org-ladder` | raw | two org columns of 2–4 paired roles with a centre arrow (joint venture, engagement team); `overrides.style: lines \| tiles` |
 | `pull-quote` | `quote` (1) | italic quote with attribution and optional headshot |
-| `quote-cluster` | `quote` (3–8) | 3-column grid of attributed quotes; `overrides.style: bubble \| tile` |
+| `quote-cluster` | `quote` (2–8) | Two paired columns for two voices, otherwise a 3-column grid of attributed quotes; `overrides.style: bubble \| tile` |
 | `image-text-split` | `image_case` | photo cover-cropped beside eyebrow / heading / body / bullets / metrics |
 | `icon-row` | raw | 3–5 icons over captions; `overrides.style: tile` |
 
@@ -412,3 +412,9 @@ it is validated field by field and patched by path.
   `strategy_proposal`, `project_roadmap`, `market_analysis`) sets a default
   template and whether the rhythm checks expect a synthesis slide; see
   [deck-archetypes.md](deck-archetypes.md).
+
+## Additional authoring controls
+
+Chart objects in `chart_insight` and chart regions accept `value_format` beside `type`, `title` and `data`. Use `{style: percent, input_scale: fraction, decimals: 1}` for 0.25 → 25.0%, `{style: currency, prefix: "€"}` for currency, or `{style: compact}` for short magnitudes. Value-axis ticks and data labels use the same notation. Log bar/grouped-bar charts keep reference lines and callouts; nonpositive coordinates and unsupported log trendlines produce explicit diagnostics.
+
+Two attributed voices now use two equal `quote-cluster` columns with aligned attribution rows. One voice remains a pull quote and 3–8 keep the existing cluster. Missing names or excessive copy still report a source-mapped fallback. Automatic `card-grid` rows/columns are measured choices rather than a fixed lookup by count; explicit dimensions keep their authored arrangement.

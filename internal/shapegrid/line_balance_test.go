@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"regexp"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -11,6 +12,17 @@ import (
 )
 
 var marRPattern = regexp.MustCompile(`marR="(\d+)"`)
+
+func TestAuthoredMixedAlignmentSurvivesShapeEmission(t *testing.T) {
+	spec := &ShapeSpec{Geometry: "rect", Text: json.RawMessage(`{"paragraphs":[{"content":"Centered heading","size":18,"bold":true,"align":"ctr"},{"content":"Left body copy","size":12,"align":"l"}]}`)}
+	xml, err := GenerateCellShapeXML(ResolvedCell{ShapeSpec: spec, ID: 1, Bounds: pptx.RectEmu{CX: PtToEMU(400), CY: PtToEMU(120)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(xml), `algn="ctr"`) || !strings.Contains(string(xml), `algn="l"`) {
+		t.Fatalf("authored mixed alignment was lost: %s", xml)
+	}
+}
 
 func TestBalanceHeadingRemovesOneWordLastLine(t *testing.T) {
 	const heading = "Production use is now the norm, not the exception"

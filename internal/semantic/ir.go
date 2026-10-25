@@ -769,7 +769,7 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 	case KindQuote:
 		return []CompositionCandidate{
 			visual("pull-quote", "one attributed quotation"),
-			visual("quote-cluster", "3–8 attributed stakeholder quotations"),
+			visual("quote-cluster", "2–8 attributed stakeholder quotations"),
 			{Layout: "content", Reason: "bullets preserve two quotes or copy outside the patterns' bounds"},
 		}
 	case KindBridge:

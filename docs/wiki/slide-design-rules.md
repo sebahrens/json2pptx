@@ -3,7 +3,7 @@ title: "Slide design rules: what a partner-level reviewer checks"
 type: documentation
 summary: "json2pptx guide to slide design rules"
 status: active
-last_updated: "2026-10-17"
+last_updated: "2026-10-25"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -207,3 +207,9 @@ slides:
 | No ask, "Thank you" closer | `CLOSING_WITHOUT_NEXT_STEPS`, `missing_next_steps` | `next_steps` with `decisions` |
 | Placeholder text, stale "Draft" | `SEMANTIC_WEAK_CONTENT` for recipe text; stickers not caught | Search the spec for "Replace with", "TBD", "Draft" before the second-template pass |
 | Looks right in the validator, wrong on the page | by design: `deterministic_ready` is not a visual verdict | Render every slide, on two templates; `submit_visual_review` |
+
+## Content-led variety and emphasis
+
+Request variety when a different visual form serves the same message: switching between `icon-row`, `stylish-panels` and `kpi-inline` can still repeat the open-column motif. Recommendations now consider that shared look as well as exact pattern names. Explicit author choices remain authoritative. Keep a restrained semantic accent; palette dominance alone is not a defect and adding one justified secondary accent does not lower the composition score.
+
+Leave card rows/columns unset to compare legal arrangements against the actual frame, written text sizes and last-row balance. Supply dimensions when they are part of the argument. Character budgets are pre-authoring guidance: open-card overflow advice first checks whether the measured block fits. Explicit paragraph `align` choices survive typographic finishing, so a centered headline can intentionally sit above left-aligned prose in one editable shape.

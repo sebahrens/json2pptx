@@ -3,7 +3,7 @@ title: "Quality and review"
 type: documentation
 summary: "json2pptx guide to quality and review"
 status: active
-last_updated: "2026-10-18"
+last_updated: "2026-10-25"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -168,3 +168,9 @@ reviewed PPTX, the per-slide images you looked at, and the
 `submit_visual_review` response. The journey harness under
 [`tests/quality/journey/`](https://github.com/sebahrens/json2pptx/tree/main/tests/quality/journey) shows the full
 evidence shape (`calls.jsonl`, `resp-NNN.json`, `images/`).
+
+## Read the evidence behind density and typography
+
+Rhythm reports `density_source`: `measured` uses the resolved grid and wrapped text, `estimated` measures available text in one reference frame when template geometry is unavailable, and `unknown` means neither supplied enough evidence. `density_occupancy` is content load divided by area; sparse and dense prose no longer have the same density merely because both use text. Unknown slides are excluded from the density-variation penalty. Compare estimates as estimates, then inspect the actual rendering.
+
+Visual QA uses the generation role policy: canonical body is 12pt, card titles 14pt, captions 10pt, and source chrome intentionally 9pt. Pass `deck_metadata: {viewing_mode: "read"}` to `inspect_slide_images`, or `inspect --viewing-mode read`, for a report rather than the projected `present` default. Minimum floors follow the shared role tokens. Pixel balance checks sample normalized coordinates with bounded work so increasing render resolution does not erase thin-line/table findings.

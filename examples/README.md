@@ -184,3 +184,5 @@ The canonical equivalent is:
 ```
 
 Raw OOXML names (`Title 1`, `Content Placeholder 2`, `Subtitle 2`, `Text Placeholder 1`) resolve via semantic fallback but are not portable across templates. Portable IDs (`title`, `subtitle`, `body`, `body_2`) resolve at the exact tier and work across all templates.
+
+`semantic/layout_creativity.yaml` demonstrates paired attributed quotes, semantic chart number formatting and a focal image crop. Render it with `json2pptx semantic render --spec examples/semantic/layout_creativity.yaml --templates-dir templates --output /tmp/layout-creativity.pptx`; override `--template` to inspect portability.

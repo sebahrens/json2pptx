@@ -20,7 +20,7 @@ import (
 // Picture insertion and the overlay resolver (anchor_image targets) both call
 // this, so a callout endpoint is computed with exactly the transform that
 // places the picture.
-func GridImagePlacement(path string, frame types.BoundingBox, fit string) utils.ImagePlacement {
+func GridImagePlacement(path string, frame types.BoundingBox, fit string, focal ...*types.ImageFocalPoint) utils.ImagePlacement {
 	mode := utils.PlaceCover
 	if strings.EqualFold(fit, utils.PlaceContain) {
 		mode = utils.PlaceContain
@@ -34,7 +34,7 @@ func GridImagePlacement(path string, frame types.BoundingBox, fit string) utils.
 				// Fit using proportional integers to preserve fractional SVG
 				// units while exposing natural pixels to px-space anchors.
 				scale := 1000000 / math.Max(sw, sh)
-				p := utils.PlaceImage(max(1, int(math.Round(sw*scale))), max(1, int(math.Round(sh*scale))), frame, mode)
+				p := utils.PlaceImage(max(1, int(math.Round(sw*scale))), max(1, int(math.Round(sh*scale))), frame, mode, focal...)
 				p.PixelW, p.PixelH = sw, sh
 				return p
 			}
@@ -43,14 +43,14 @@ func GridImagePlacement(path string, frame types.BoundingBox, fit string) utils.
 	if err != nil {
 		return utils.PlaceImage(0, 0, frame, utils.PlaceStretch)
 	}
-	return utils.PlaceImage(w, h, frame, mode)
+	return utils.PlaceImage(w, h, frame, mode, focal...)
 }
 
 // gridImagePlacement places a shape_grid picture insert: its on-slide frame
 // and the a:srcRect crop (nil when nothing is trimmed).
 func gridImagePlacement(img ImageInsert) (types.BoundingBox, *pptx.SrcRect) {
 	frame := types.BoundingBox{X: img.OffsetX, Y: img.OffsetY, Width: img.ExtentCX, Height: img.ExtentCY}
-	p := GridImagePlacement(img.Path, frame, img.Fit)
+	p := GridImagePlacement(img.Path, frame, img.Fit, img.FocalPoint)
 	return p.Bounds, imageCoverCrop(p.Crop)
 }
 

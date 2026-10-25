@@ -180,6 +180,9 @@ func checkNativeImageFitEnums(contents []ContentInput, prefix string) []*pattern
 				errs = append(errs, err)
 			}
 		}
+		if image != nil && !image.FocalPoint.Valid() {
+			errs = append(errs, &patterns.ValidationError{Pattern: "input", Path: fmt.Sprintf("%s/content/%d/%s/focal_point", prefix, ci, field), Code: string(diagnostics.CodeInvalidParameter), Message: "focal_point x and y must be finite fractions in [0,1]"})
+		}
 	}
 	return errs
 }

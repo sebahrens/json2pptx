@@ -27,7 +27,10 @@ func ValidateImageFit(fit string) error {
 // aspect ratio in the native frame; it never stretches or crops evidence.
 // The transform itself is utils.PlaceImage, shared with shape_grid pictures
 // and the overlay resolver that points callouts at source-image pixels.
-func imagePlacement(path string, frame types.BoundingBox, fit string) (types.BoundingBox, *pptx.SrcRect, error) {
+func imagePlacement(path string, frame types.BoundingBox, fit string, focal ...*types.ImageFocalPoint) (types.BoundingBox, *pptx.SrcRect, error) {
+	if len(focal) > 0 && !focal[0].Valid() {
+		return frame, nil, fmt.Errorf("image focal_point x and y must be finite fractions in [0,1]")
+	}
 	if fit != fitContainStart {
 		if err := ValidateImageFit(fit); err != nil {
 			return frame, nil, err
@@ -47,7 +50,7 @@ func imagePlacement(path string, frame types.BoundingBox, fit string) (types.Bou
 		}
 		return frame, nil, fmt.Errorf("read image dimensions: %w", err)
 	}
-	p := utils.PlaceImage(w, h, frame, mode)
+	p := utils.PlaceImage(w, h, frame, mode, focal...)
 	if mode != utils.PlaceCover && (p.Bounds.Width <= 0 || p.Bounds.Height <= 0) {
 		return frame, nil, fmt.Errorf("contained image has zero extent")
 	}

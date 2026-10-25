@@ -890,7 +890,7 @@ func scoreCapacity(layout types.LayoutMetadata, slide types.SlideDefinition) flo
 		// layouts with small per-column bullet limits (e.g., maxBullets=3),
 		// causing single-column layouts to outscore them and silently drop
 		// the second slot's content (charts, diagrams, etc.).
-		return score
+		return math.Min(score, mappedTextCapacity(layout, slide))
 	}
 
 	bulletCount := len(slide.Content.Bullets)
@@ -900,7 +900,7 @@ func scoreCapacity(layout types.LayoutMetadata, slide types.SlideDefinition) flo
 
 	// If no bullets, capacity is perfect
 	if bulletCount == 0 {
-		return score
+		return math.Min(score, mappedTextCapacity(layout, slide))
 	}
 
 	maxBullets := layout.Capacity.MaxBullets
@@ -910,7 +910,7 @@ func scoreCapacity(layout types.LayoutMetadata, slide types.SlideDefinition) flo
 
 	// Perfect fit
 	if bulletCount <= maxBullets {
-		return score
+		return math.Min(score, mappedTextCapacity(layout, slide))
 	}
 
 	// Penalize overflow, but never below capacityOverflowFloor: the layout has
@@ -921,7 +921,7 @@ func scoreCapacity(layout types.LayoutMetadata, slide types.SlideDefinition) flo
 	penalty := overflow / float64(maxBullets)
 	score = math.Max(capacityOverflowFloor, score-penalty)
 
-	return score
+	return math.Min(score, mappedTextCapacity(layout, slide))
 }
 
 // capacityOverflowFloor is the lowest capacity score a structurally sufficient

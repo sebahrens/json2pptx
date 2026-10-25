@@ -1374,16 +1374,18 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 					return nil, cliSlideErrorAt(slidepath.ContentIndex(slideNum-1, j), "slide %d, content %d: image path is required", slideNum, j+1)
 				}
 				item.Value = generator.ImageContent{
-					Path: img.Path,
-					Alt:  img.Alt,
-					Fit:  img.Fit,
+					Path:       img.Path,
+					Alt:        img.Alt,
+					Fit:        img.Fit,
+					FocalPoint: img.FocalPoint,
 				}
 			} else {
 				// Legacy path: parse from Value json.RawMessage
 				var img struct {
-					Path string `json:"path"`
-					Alt  string `json:"alt"`
-					Fit  string `json:"fit,omitempty"`
+					Path       string                 `json:"path"`
+					Alt        string                 `json:"alt"`
+					Fit        string                 `json:"fit,omitempty"`
+					FocalPoint *types.ImageFocalPoint `json:"focal_point,omitempty"`
 				}
 				if err := json.Unmarshal(ci.Value, &img); err != nil {
 					return nil, cliSlideErrorAt(slidepath.ContentIndex(slideNum-1, j), "slide %d, content %d: invalid image value: %w", slideNum, j+1, err)
@@ -1392,9 +1394,10 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 					return nil, cliSlideErrorAt(slidepath.ContentIndex(slideNum-1, j), "slide %d, content %d: image path is required", slideNum, j+1)
 				}
 				item.Value = generator.ImageContent{
-					Path: img.Path,
-					Alt:  img.Alt,
-					Fit:  img.Fit,
+					Path:       img.Path,
+					Alt:        img.Alt,
+					Fit:        img.Fit,
+					FocalPoint: img.FocalPoint,
 				}
 			}
 

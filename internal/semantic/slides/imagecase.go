@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // Image-case slides (go-slide-creator-q31s).
@@ -136,9 +137,10 @@ func imageCaseCalloutLabels(body map[string]any) []string {
 
 // imageCaseImage is the pattern's image reference.
 type imageCaseImage struct {
-	Path string `json:"path,omitempty"`
-	URL  string `json:"url,omitempty"`
-	Alt  string `json:"alt,omitempty"`
+	FocalPoint *types.ImageFocalPoint `json:"focal_point,omitempty"`
+	Path       string                 `json:"path,omitempty"`
+	URL        string                 `json:"url,omitempty"`
+	Alt        string                 `json:"alt,omitempty"`
 	// Fit is "cover" (default: fill the frame, crop the long axis) or
 	// "contain" (keep the whole screenshot or exhibit) (go-slide-creator-zifd3).
 	Fit string `json:"fit,omitempty"`
@@ -328,7 +330,7 @@ func compileImageCaseTwoColumn(in Input, v imageCaseValues) (*deckinput.SlideInp
 	// callouts cannot be anchored to it: their labels stay as text.
 	bullets = append(bullets, imageCaseCalloutLabels(in.Body)...)
 
-	img := &deckinput.ImageInput{Path: v.Image.Path, URL: v.Image.URL, Alt: firstNonEmpty(v.Image.Alt, v.Caption, v.ImageLabel), Fit: v.Image.Fit}
+	img := &deckinput.ImageInput{Path: v.Image.Path, URL: v.Image.URL, Alt: firstNonEmpty(v.Image.Alt, v.Caption, v.ImageLabel), Fit: v.Image.Fit, FocalPoint: v.Image.FocalPoint}
 	contents := []deckinput.ContentInput{{PlaceholderID: imagePH, Type: "image", ImageValue: img}}
 	var textItem deckinput.ContentInput
 	var textField string
@@ -415,6 +417,13 @@ func imageCaseImageFrom(body map[string]any) *imageCaseImage {
 				URL:  strField(t, "url"),
 				Alt:  strField(t, "alt"),
 				Fit:  strings.ToLower(strField(t, "fit")),
+			}
+			if raw, ok := t["focal_point"].(map[string]any); ok {
+				x, xok := numberField(raw, "x")
+				y, yok := numberField(raw, "y")
+				if xok && yok {
+					img.FocalPoint = &types.ImageFocalPoint{X: x, Y: y}
+				}
 			}
 			if img.Path != "" || img.URL != "" {
 				return img

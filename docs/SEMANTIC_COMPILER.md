@@ -92,7 +92,7 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 | Kind | Pattern | Payload | Fits the visual when |
 |------|---------|---------|----------------------|
 | `kpi_snapshot` | `kpi-2up`…`kpi-6up` | `kpis: [{value,label,delta?,comparator?}]` | 2–6 KPIs; `value` ≤12 chars is a hard maximum — on one line five KPIs hold about 11 digits and six about 9 on the narrowest shipped template (`list_slide_kinds` budgets measures `kpis[].value` per template and count; a longer value is `BODY_TOO_LONG` with `max_chars`); `comparator` (alias `vs`, ≤24 chars, "vs plan +4 pts") renders as its own line under the caption |
-| `chart_insight` | `chart-insights-split` | `chart: {type,data}`, `insights: [string]`, `insight?: string` | 1–6 bullets or one scalar `insight` rendered as a so-what callout; a usable chart with neither takes the `takeaway` as that so-what callout (the band does not repeat it), so the chart is never silently dropped and the slide is not reported `takeaway_missing` |
+| `chart_insight` | `chart-insights-split` | `chart: {type,data,value_format?}`, `insights: [string]`, `insight?: string` | 1–6 bullets or one scalar `insight` rendered as a so-what callout; a usable chart with neither takes the `takeaway` as that so-what callout (the band does not repeat it), so the chart is never silently dropped and the slide is not reported `takeaway_missing` |
 | `comparison` | `comparison-2col` | `columns: [{title, items:[string]}, …]`, `connectors?`, `highlight_column?` (`left` / `right` / a header), `highlight_row?` (0-based index or cell text) | exactly 2 columns with equal, non-empty item counts (≤10 rows); `connectors` and `highlight_column` compile to the pattern's `overrides`, `highlight_row` to `rows[i].highlight` (a row or a column, not both); on 3+ columns the three are `SEMANTIC_PATTERN_NOT_AVAILABLE` |
 | `stat` | `stat-hero` | `value`, `label` (+ `unit?`, `context?`, `source?`) | the number ≤20 chars, label ≤80, unit ≤10, context ≤120, source ≤80 |
 | `timeline` | `timeline-horizontal` | `milestones: [{label, date?, end_date?, body?}]` | 3–7 milestones; label ≤60 chars, date ≤30, body ≤200; with any `end_date` the dates must be readable as dates (`2026-03`, `Mar 2026`, `Q1 2026`, …) to be drawn to scale |
@@ -754,3 +754,15 @@ new kind-to-pattern routes, closed input contracts, native layout/chrome
 options and Mekko/combo/butterfly chart data. Live `list_slide_kinds` examples
 and `item_schema_full` are authoritative. Typed hosts retain validation and
 source paths rather than accepting arbitrary diagram fields.
+
+## Content-aware composition controls
+
+Chart objects in `chart_insight` and `regions` accept `value_format` alongside `type`, `title` and `data`: `{style: percent, input_scale: fraction, decimals: 1}` prints 0.25 as 25.0% on both value ticks and labels. Currency uses `style: currency` with `prefix: "€"`; compact notation uses `style: compact`. The object is closed; decimals range from 0 to 3. Omitted formatting keeps the existing defaults.
+
+Two attributed `quote` voices compile to two equal, editable columns with shared attribution baselines; one uses `pull-quote`, 3–8 keep the existing cluster. Copy outside the pattern budgets still reports its source-mapped fallback.
+
+Pictures accept `focal_point: {x: 0.1, y: 0.5}` in source fractions. A cover crop follows that subject, including image-case and region compilation, headshots, and source-image callout anchors. Omit it for the centered default.
+
+Planning ranks mapped text capacity and compatible alternatives, and does not turn rollout quantities such as “40 teams” into biographies. Variety includes visual motifs. Card grids try legal arrangements against actual text and frame dimensions when rows/columns are absent; authored dimensions are preserved. Post-expansion open-card warnings check the measured block before using character guidance.
+
+A runnable five-slide example is [`examples/semantic/layout_creativity.yaml`](../examples/semantic/layout_creativity.yaml), combining a named quote pair, percent-formatted chart and focal crop.

@@ -421,6 +421,7 @@ func buildInputSchema() map[string]any {
 		{"BulletGroupsInput", reflect.TypeOf(BulletGroupsInput{})},
 		{"BulletGroupInput", reflect.TypeOf(BulletGroupInput{})},
 		{"ImageInput", reflect.TypeOf(ImageInput{})},
+		{"ImageFocalPoint", reflect.TypeOf(types.ImageFocalPoint{})},
 		{"ShapeGridInput", reflect.TypeOf(jsonschema.ShapeGridInput{})},
 		{"GridBoundsInput", reflect.TypeOf(jsonschema.GridBoundsInput{})},
 		{"GridRowInput", reflect.TypeOf(jsonschema.GridRowInput{})},
@@ -456,6 +457,9 @@ func buildInputSchema() map[string]any {
 	for _, entry := range typeRegistry {
 		defs[entry.name] = reflectStructSchema(entry.name, entry.typ)
 	}
+	defs["ImageFocalPoint"] = map[string]any{"type": "object", "additionalProperties": false, "required": []string{"x", "y"}, "properties": map[string]any{
+		"x": map[string]any{"type": "number", "minimum": 0, "maximum": 1}, "y": map[string]any{"type": "number", "minimum": 0, "maximum": 1},
+	}}
 
 	if tableDef, ok := defs["TableInput"].(map[string]any); ok {
 		if props, ok := tableDef["properties"].(map[string]any); ok {
@@ -663,6 +667,7 @@ var knownTypeRefMap = map[reflect.Type]string{
 	reflect.TypeOf(BulletGroupsInput{}):             "#/$defs/BulletGroupsInput",
 	reflect.TypeOf(BulletGroupInput{}):              "#/$defs/BulletGroupInput",
 	reflect.TypeOf(ImageInput{}):                    "#/$defs/ImageInput",
+	reflect.TypeOf(types.ImageFocalPoint{}):         "#/$defs/ImageFocalPoint",
 	reflect.TypeOf(jsonschema.ShapeGridInput{}):     "#/$defs/ShapeGridInput",
 	reflect.TypeOf(jsonschema.GridBoundsInput{}):    "#/$defs/GridBoundsInput",
 	reflect.TypeOf(jsonschema.GridRowInput{}):       "#/$defs/GridRowInput",

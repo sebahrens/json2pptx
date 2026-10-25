@@ -561,10 +561,11 @@ type BulletGroupInput struct {
 
 // ImageInput maps to generator.ImageContent.
 type ImageInput struct {
-	Path string `json:"path,omitempty"`
-	URL  string `json:"url,omitempty"` // HTTP/HTTPS URL to download the image from
-	Alt  string `json:"alt,omitempty"`
-	Fit  string `json:"fit,omitempty"` // "cover" (default) or "contain"
+	FocalPoint *types.ImageFocalPoint `json:"focal_point,omitempty"`
+	Path       string                 `json:"path,omitempty"`
+	URL        string                 `json:"url,omitempty"` // HTTP/HTTPS URL to download the image from
+	Alt        string                 `json:"alt,omitempty"`
+	Fit        string                 `json:"fit,omitempty"` // "cover" (default) or "contain"
 }
 
 // JSONFooter configures slide footer injection.

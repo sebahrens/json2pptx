@@ -1,0 +1,40 @@
+meta:
+  title: A clearer rollout story
+  template: midnight-blue
+  source: Illustrative customer research and operating data
+slides:
+  - kind: title
+    title: Better evidence makes the rollout decision clearer
+    subtitle: Paired voices, consistent numbers, and intentional image cropping
+  - kind: quote
+    title: Both customers value the time returned to their teams
+    quotes:
+      - text: We can act on the numbers while the week is still in progress.
+        name: A. Lee
+        role: Operations lead
+      - text: Month end now leaves time to explain the result, not rebuild it.
+        name: J. Rivera
+        role: Finance lead
+  - kind: chart_insight
+    title: Gross margin funds the next rollout wave
+    chart:
+      type: bar
+      value_format: {style: percent, input_scale: fraction, decimals: 0}
+      data:
+        categories: [Pilot, Wave 1, Wave 2]
+        series:
+          - name: Gross margin
+            values: [0.20, 0.26, 0.32]
+    insight: The additional twelve points pay for local onboarding.
+  - kind: image_case
+    title: Keep the operating subject visible beside its story
+    image:
+      path: ../images/site-photo-sample.png
+      fit: cover
+      focal_point: {x: 0.1, y: 0.5}
+    heading: Make the next step concrete
+    body: Put the subject inside the crop, then use the adjacent space to explain the operational change.
+    caption: Illustrative site image; focal point uses source-image fractions.
+  - kind: closing
+    title: Approve the next wave
+    subtitle: Retain the operating evidence and fund local onboarding.

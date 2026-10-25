@@ -27,8 +27,9 @@ type slideInputForQA struct {
 }
 
 type presentationForQA struct {
-	Template string            `json:"template"`
-	Slides   []slideInputForQA `json:"slides"`
+	Template    string            `json:"template"`
+	ViewingMode string            `json:"viewing_mode"`
+	Slides      []slideInputForQA `json:"slides"`
 }
 
 func cmdQA(args []string) {
@@ -77,7 +78,7 @@ func cmdQA(args []string) {
 	// Build SlideImage list with type metadata.
 	images := make([]visualqa.SlideImage, len(slideImages))
 	for i, img := range slideImages {
-		info := visualqa.SlideInfo{Index: i}
+		info := visualqa.SlideInfo{Index: i, ViewingMode: pres.ViewingMode}
 		if i < len(pres.Slides) {
 			s := pres.Slides[i]
 			info.Type = inferSlideType(s)

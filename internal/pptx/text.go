@@ -57,13 +57,15 @@ type ThemeFonts struct {
 
 // Paragraph represents a DrawingML paragraph (a:p).
 type Paragraph struct {
-	Align      string     // Alignment: "l", "ctr", "r", "just"
-	Runs       []Run      // Text runs in this paragraph
-	Bullet     *BulletDef // Optional bullet definition
-	NoBullet   bool       // Emit <a:buNone/> (explicitly suppress bullets)
-	MarginL    int64      // Left margin in EMU
-	Indent     int64      // First-line indent in EMU (negative for hanging indent)
-	SpaceAfter int        // Space after paragraph in hundredths of a point (e.g. 600 = 6pt)
+	// ExplicitAlign protects an authored choice from automatic card finishing.
+	ExplicitAlign bool
+	Align         string     // Alignment: "l", "ctr", "r", "just"
+	Runs          []Run      // Text runs in this paragraph
+	Bullet        *BulletDef // Optional bullet definition
+	NoBullet      bool       // Emit <a:buNone/> (explicitly suppress bullets)
+	MarginL       int64      // Left margin in EMU
+	Indent        int64      // First-line indent in EMU (negative for hanging indent)
+	SpaceAfter    int        // Space after paragraph in hundredths of a point (e.g. 600 = 6pt)
 
 	// MarginR is the paragraph's right margin in EMU (a:pPr marR). It narrows
 	// the wrapping measure of a single paragraph, e.g. to balance a heading's

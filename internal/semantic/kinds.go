@@ -173,7 +173,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindQuote: {
 		Kind:            KindQuote,
-		Summary:         "One attributed quote renders as pull-quote; 3–8 render as quote-cluster. Two quotes, missing attributions, and over-budget copy degrade to quote bullets with a finding.",
+		Summary:         "One attributed quote renders as pull-quote; 2–8 render as quote-cluster (two form a paired treatment). Missing attributions and over-budget copy degrade to quote bullets with a finding.",
 		RequiredFields:  []string{"quotes"},
 		RequiredAliases: map[string][]string{"quotes": {"testimonials", "voices", "quote", "text"}},
 		TypicalFields:   []string{"title", "takeaway", "attribution", "role"},

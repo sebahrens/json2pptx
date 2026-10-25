@@ -105,7 +105,7 @@ func TestQuoteClusterDenseCombinedCopyWarning(t *testing.T) {
 
 func TestQuoteCluster_Validate_Valid(t *testing.T) {
 	p, _ := Default().Get("quote-cluster")
-	for _, n := range []int{3, 4, 5, 6, 7, 8} {
+	for _, n := range []int{2, 3, 4, 5, 6, 7, 8} {
 		if err := p.Validate(validQuoteClusterValues(n), nil, nil); err != nil {
 			t.Errorf("n=%d: unexpected validation error: %v", n, err)
 		}
@@ -114,10 +114,10 @@ func TestQuoteCluster_Validate_Valid(t *testing.T) {
 
 func TestQuoteCluster_Validate_TooFew(t *testing.T) {
 	p, _ := Default().Get("quote-cluster")
-	v := validQuoteClusterValues(2)
+	v := validQuoteClusterValues(1)
 	err := p.Validate(v, nil, nil)
 	if err == nil {
-		t.Fatal("expected validation error for fewer than 3 quotes")
+		t.Fatal("expected validation error for fewer than 2 quotes")
 	}
 	if !strings.Contains(err.Error(), "pull-quote") {
 		t.Errorf("expected hint to mention pull-quote, got: %v", err)

@@ -910,7 +910,7 @@ func regionImage(r map[string]any) (regionBuild, error) {
 	}
 	return regionBuild{
 		cell: &deckinput.GridCellInput{Image: &deckinput.GridImageInput{
-			Path: img.Path, URL: img.URL, Alt: firstNonEmpty(img.Alt, strField(r, "caption"), strField(r, "heading")), Fit: img.Fit,
+			Path: img.Path, URL: img.URL, Alt: firstNonEmpty(img.Alt, strField(r, "caption"), strField(r, "heading")), Fit: img.Fit, FocalPoint: img.FocalPoint,
 		}},
 		links: []SourceLink{{RawPath: ".image", SemanticPath: ".image"}},
 	}, nil

@@ -125,7 +125,7 @@ var imageCaseMetricKeys = keyGroups([]string{"value", "number", "stat"}, []strin
 var imageCaseCalloutKeys = []string{"label", "x", "y", "units"}
 
 // imageCaseImageKeys are the keys the image object may carry.
-var imageCaseImageKeys = []string{"path", "url", "alt", "fit"}
+var imageCaseImageKeys = []string{"path", "url", "alt", "fit", "focal_point"}
 
 // decisionOptionKeys are the keys a decision option object may carry.
 var decisionOptionKeys = keyGroups(
@@ -225,7 +225,7 @@ var roadmapPhaseKeys = keyGroups(
 )
 
 // chartObjectKeys are the keys chartSpec reads from the chart object.
-var chartObjectKeys = []string{"type", "title", "data"}
+var chartObjectKeys = []string{"type", "title", "data", "value_format"}
 
 // entryKeyAliases records, per closed entry object, which of its keys are
 // aliases: the key set (sorted, comma-joined) maps to alias → canonical. The
@@ -419,7 +419,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 	KindQuote: withFields(withFields(map[string]payloadField{
 		"title":        strField("Slide title."),
 		"takeaway":     strField("One-line takeaway footer."),
-		"quotes":       {typ: "array", itemStrings: true, itemKeys: quoteItemKeys, desc: "3–8 attributed quotes for quote-cluster, or one for pull-quote. Each item is {text, name, role?}; un-attributed items use a content fallback."},
+		"quotes":       {typ: "array", itemStrings: true, itemKeys: quoteItemKeys, desc: "2–8 attributed quotes for quote-cluster, or one for pull-quote. Each item is {text, name, role?}; un-attributed items use a content fallback."},
 		"testimonials": {typ: "array", itemStrings: true, itemKeys: quoteItemKeys, desc: "Alias for quotes."},
 		"voices":       {typ: "array", itemStrings: true, itemKeys: quoteItemKeys, desc: "Alias for quotes."},
 		"quote":        strField("One-quote shorthand: quotation text."),
@@ -732,6 +732,9 @@ func validateUnknownFields(path string, slide SlideSpec, s *semDiags) {
 			}
 		case f.typ == "object" && len(f.objectKeys) > 0:
 			m, _ := v.(map[string]any)
+			if containsKey(f.objectKeys, "focal_point") {
+				validateImageFocalPoint(path+"."+key, m, s)
+			}
 			for _, ck := range sortedKeys(m) {
 				if !containsKey(f.objectKeys, ck) {
 					s.unknownField(path+"."+key+"."+ck, ck, sortedCopy(f.objectKeys),

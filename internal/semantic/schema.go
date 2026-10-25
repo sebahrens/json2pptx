@@ -325,6 +325,10 @@ func objectKeySchemas(keys []string) map[string]any {
 			p["items"] = map[string]any{"type": []any{"number", "string"}}
 		case "data":
 			p["description"] = "Chart data. Bar/line/area: {categories:[…], series:[{name, values:[…]}]}. Pie/donut: {categories:[…], values:[…]}."
+		case "value_format":
+			p = chartValueFormatSchema()
+		case "focal_point":
+			p = imageFocalPointSchema()
 		case "type":
 			p["description"] = "Chart type, e.g. bar, line, pie, donut, stacked_bar, funnel (recommend_visual names the type for an intent). The \"_chart\" spellings (bar_chart, line_chart) are accepted aliases."
 		}
@@ -491,9 +495,70 @@ func CompactSchemaAt(base string) map[string]any {
 	delete(out, "$schema")
 	compactSchemaDefinitions(out)
 	hoistRepeatedItemSchemas(out)
+	hoistRepeatedValueSchemas(out)
 	minifySchemaDefinitionNames(out)
 	rewriteSchemaRefs(out, strings.TrimSuffix(base, "/"))
 	return out
+}
+
+// hoistRepeatedValueSchemas shares repeated closed object-valued fields,
+// including focal points and chart number formats. List entries have already
+// been shared above; traversing their definitions also covers nested photos.
+func hoistRepeatedValueSchemas(root map[string]any) {
+	defs, _ := root["$defs"].(map[string]any)
+	if defs == nil {
+		return
+	}
+	type site struct {
+		properties map[string]any
+		key        string
+		value      map[string]any
+	}
+	groups := map[string][]site{}
+	var collect func(any)
+	collect = func(node any) {
+		switch node := node.(type) {
+		case map[string]any:
+			properties, _ := node["properties"].(map[string]any)
+			for key, raw := range properties {
+				value, _ := raw.(map[string]any)
+				if value["type"] == "object" && value["additionalProperties"] == false {
+					encoded, err := json.Marshal(value)
+					if err == nil && len(encoded) > 120 {
+						groups[string(encoded)] = append(groups[string(encoded)], site{properties, key, value})
+					}
+				}
+			}
+			for _, child := range node {
+				collect(child)
+			}
+		case []any:
+			for _, child := range node {
+				collect(child)
+			}
+		}
+	}
+	collect(root)
+	keys := make([]string, 0, len(groups))
+	for key, sites := range groups {
+		if len(sites) > 1 {
+			keys = append(keys, key)
+		}
+	}
+	// Share children before parents, retaining references inside shared parents.
+	sort.Slice(keys, func(i, j int) bool {
+		if len(keys[i]) != len(keys[j]) {
+			return len(keys[i]) < len(keys[j])
+		}
+		return keys[i] < keys[j]
+	})
+	for i, key := range keys {
+		name := fmt.Sprintf("O%d", i)
+		defs[name] = groups[key][0].value
+		for _, site := range groups[key] {
+			site.properties[site.key] = map[string]any{"$ref": "#/$defs/" + name}
+		}
+	}
 }
 
 // hoistRepeatedItemSchemas shares the closed list-entry objects that recur

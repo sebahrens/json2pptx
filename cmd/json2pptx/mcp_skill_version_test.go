@@ -55,7 +55,7 @@ func TestGetStartedSkillVersionWarning(t *testing.T) {
 	}{
 		{"stale", "4.130.0", true, false},
 		{"current", SchemaVersion, false, false},
-		{"newer", "5.0.0", false, false},
+		{"newer", "999.0.0", false, false},
 		{"malformed", "4.x", false, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

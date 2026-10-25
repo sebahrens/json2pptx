@@ -16,6 +16,8 @@ How to cut a release (tag, archives, container image) is described in
 
 ## [Unreleased]
 
+- Schema 5.1.0: content-aware layout capacity and card arrangements, motif-aware recommendations, compatible planning alternatives, paired quotes, focal image crops and semantic chart number formatting. Explicit paragraph alignment survives finishing; grid links avoid occupied cells; log bar annotations retain their context. Rhythm density and visual QA use measured evidence and the canonical typography policy. The authoring docs and wiki describe these controls.
+
 ## [1.2.0] - 2026-10-18
 
 Ships input/MCP schema **5.0.0** (authoring fingerprint `bb7ad471bb831a5c`).

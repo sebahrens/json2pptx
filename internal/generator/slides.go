@@ -241,6 +241,7 @@ type IconInsert struct {
 // ImageInsert describes an image file to embed in a slide as a p:pic element.
 // Used by shape_grid cells with CellKindImage.
 type ImageInsert struct {
+	FocalPoint *types.ImageFocalPoint
 	// BehindShapes keeps image-cell overlays and layers above their base picture.
 	BehindShapes bool
 	Path         string // File path to the image
@@ -373,10 +374,11 @@ type MediaFailure struct {
 
 // ImageContent represents image content to embed.
 type ImageContent struct {
-	Path   string             // File path to image
-	Alt    string             // Alt text for accessibility
-	Fit    string             // "cover" (default) or "contain" to retain all source evidence
-	Bounds *types.BoundingBox // Optional bounds override
+	FocalPoint *types.ImageFocalPoint
+	Path       string             // File path to image
+	Alt        string             // Alt text for accessibility
+	Fit        string             // "cover" (default) or "contain" to retain all source evidence
+	Bounds     *types.BoundingBox // Optional bounds override
 }
 
 // Generator defines the interface for PPTX generation.

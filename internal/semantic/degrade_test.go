@@ -18,7 +18,7 @@ func degradeCases() map[string]SlideSpec {
 		"quote": {Kind: KindQuote, Body: map[string]any{
 			"title": "Voices", "quotes": []any{
 				map[string]any{"text": "First", "name": "A"},
-				map[string]any{"text": "Second", "name": "B"},
+				map[string]any{"text": "Second"}, // missing attribution still degrades; a named pair now has its own visual
 			},
 		}},
 		"executive_summary": {Kind: KindExecutiveSummary, Body: map[string]any{

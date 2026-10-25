@@ -326,7 +326,7 @@ func (mc *mcpConfig) runVisualQALoop(
 		return result
 	}
 
-	infos := visualQASlideInfos(input.Slides)
+	infos := visualQASlideInfos(input.Slides, input.ViewingMode)
 	mode := ""
 
 	for pass := 1; pass <= cfg.MaxPasses; pass++ {
@@ -552,7 +552,7 @@ func runVisualQAPaletteAudit(outputPath string) *visualQAPaletteAudit {
 // visualQASlideInfos derives per-slide inspection metadata (type + title) from
 // the deck so the vision prompt can be tuned per slide. Type defaults to
 // "content" to match inspect_slide_images's own default.
-func visualQASlideInfos(slides []SlideInput) map[int]visualqa.SlideInfo {
+func visualQASlideInfos(slides []SlideInput, viewingMode string) map[int]visualqa.SlideInfo {
 	infos := make(map[int]visualqa.SlideInfo, len(slides))
 	for i := range slides {
 		role := strings.TrimSpace(slides[i].SlideType)
@@ -577,9 +577,10 @@ func visualQASlideInfos(slides []SlideInput) map[int]visualqa.SlideInfo {
 			role = "content"
 		}
 		infos[i] = visualqa.SlideInfo{
-			Index: i,
-			Type:  role,
-			Title: extractTitleFromSlide(&slides[i]),
+			Index:       i,
+			Type:        role,
+			Title:       extractTitleFromSlide(&slides[i]),
+			ViewingMode: viewingMode,
 		}
 	}
 	return infos

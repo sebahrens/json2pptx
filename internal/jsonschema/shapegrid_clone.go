@@ -84,6 +84,7 @@ func cloneGridShape(s *ShapeSpecInput) *ShapeSpecInput {
 func cloneGridImage(s *GridImageInput) *GridImageInput {
 	out := clonePointer(s)
 	if out != nil {
+		out.FocalPoint = clonePointer(s.FocalPoint)
 		out.Overlay = clonePointer(s.Overlay)
 		out.Text = clonePointer(s.Text)
 	}

@@ -1236,7 +1236,7 @@ func (ctx *singlePassContext) processImageContent(slideNum, contentIdx int, item
 
 	// Handle SVG files with appropriate strategy
 	if IsSVGFile(imagePath) {
-		ctx.processSVGImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx, fit)
+		ctx.processSVGImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx, fit, imgContent.FocalPoint)
 		return
 	}
 
@@ -1249,13 +1249,13 @@ func (ctx *singlePassContext) processImageContent(slideNum, contentIdx int, item
 	}
 
 	// Process regular (non-SVG) image
-	ctx.processRegularImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx, fit)
+	ctx.processRegularImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx, fit, imgContent.FocalPoint)
 }
 
 // processSVGImage handles SVG files based on the configured conversion strategy.
-func (ctx *singlePassContext) processSVGImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int, fit string) {
+func (ctx *singlePassContext) processSVGImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int, fit string, focal ...*types.ImageFocalPoint) {
 	if ctx.svgConverter.GetStrategy() == SVGStrategyNative {
-		ctx.processNativeSVG(slideNum, imagePath, alt, placeholderBounds, shapeIdx, fit)
+		ctx.processNativeSVG(slideNum, imagePath, alt, placeholderBounds, shapeIdx, fit, focal...)
 		return
 	}
 
@@ -1267,11 +1267,11 @@ func (ctx *singlePassContext) processSVGImage(slideNum int, imagePath string, al
 	}
 
 	// Process as regular image with converted path
-	ctx.processRegularImage(slideNum, convertedPath, alt, placeholderBounds, shape, shapeIdx, fit)
+	ctx.processRegularImage(slideNum, convertedPath, alt, placeholderBounds, shape, shapeIdx, fit, focal...)
 }
 
 // processNativeSVG handles native SVG embedding with PNG fallback.
-func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shapeIdx int, fit string) {
+func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shapeIdx int, fit string, focal ...*types.ImageFocalPoint) {
 	if !ctx.svgConverter.IsPNGAvailable() {
 		ctx.warnings = append(ctx.warnings, fmt.Sprintf("SVG file %s: rsvg-convert not available, using placeholder", imagePath))
 		ctx.insertSVGFallbackImage(slideNum, placeholderBounds, shapeIdx)
@@ -1288,7 +1288,7 @@ func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, a
 	ctx.svgCleanupFuncs = append(ctx.svgCleanupFuncs, cleanup)
 
 	// Crop the native SVG and its PNG fallback to the same placeholder frame.
-	placeholderBounds, crop, err := imagePlacement(pngPath, placeholderBounds, fit)
+	placeholderBounds, crop, err := imagePlacement(pngPath, placeholderBounds, fit, focal...)
 	if err != nil {
 		ctx.recordImagePlacementFailure(slideNum, shapeIdx, err)
 		return
@@ -1341,8 +1341,8 @@ func (ctx *singlePassContext) convertSVGToRaster(imagePath string, placeholderBo
 }
 
 // processRegularImage handles non-SVG images (PNG, JPG, etc.) or converted SVGs.
-func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int, fit string) {
-	placeholderBounds, crop, err := imagePlacement(imagePath, placeholderBounds, fit)
+func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int, fit string, focal ...*types.ImageFocalPoint) {
+	placeholderBounds, crop, err := imagePlacement(imagePath, placeholderBounds, fit, focal...)
 	if err != nil {
 		ctx.recordImagePlacementFailure(slideNum, shapeIdx, err)
 		return

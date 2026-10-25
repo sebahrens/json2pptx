@@ -50,7 +50,7 @@ func ImagePixelSize(path string) (int, int, error) {
 // PlaceImage places an imgW × imgH pixel image in frame with the given fit
 // (PlaceCover, PlaceContain, PlaceContainStart or PlaceStretch; any other
 // value stretches). An unknown image size stretches.
-func PlaceImage(imgW, imgH int, frame types.BoundingBox, fit string) ImagePlacement {
+func PlaceImage(imgW, imgH int, frame types.BoundingBox, fit string, focal ...*types.ImageFocalPoint) ImagePlacement {
 	p := ImagePlacement{Bounds: frame, PixelW: float64(imgW), PixelH: float64(imgH)}
 	if imgW <= 0 || imgH <= 0 {
 		p.PixelW, p.PixelH = 0, 0
@@ -59,6 +59,18 @@ func PlaceImage(imgW, imgH int, frame types.BoundingBox, fit string) ImagePlacem
 	switch fit {
 	case PlaceCover:
 		p.Crop = CoverCrop(imgW, imgH, frame.Width, frame.Height)
+		if len(focal) > 0 && focal[0] != nil && focal[0].Valid() {
+			f := focal[0]
+			// Keep the total crop byte-identical to centered cover; only move
+			// its window. A focal point near an edge clamps the window there.
+			xTrim, yTrim := p.Crop.L+p.Crop.R, p.Crop.T+p.Crop.B
+			p.Crop.L = int(clampUnit(f.X-(1-float64(xTrim)/100000)/2)*100000 + 0.5)
+			p.Crop.L = min(xTrim, p.Crop.L)
+			p.Crop.R = xTrim - p.Crop.L
+			p.Crop.T = int(clampUnit(f.Y-(1-float64(yTrim)/100000)/2)*100000 + 0.5)
+			p.Crop.T = min(yTrim, p.Crop.T)
+			p.Crop.B = yTrim - p.Crop.T
+		}
 	case PlaceContain, PlaceContainStart:
 		p.Bounds = containBounds(imgW, imgH, frame)
 		if fit == PlaceContainStart {

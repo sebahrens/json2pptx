@@ -3,7 +3,7 @@ title: "The slide estate: splitting it into segments"
 type: documentation
 summary: "json2pptx guide to slide estate and segments"
 status: active
-last_updated: "2026-10-18"
+last_updated: "2026-10-25"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -450,3 +450,9 @@ Render both output pages and inspect all four sides of the white border and
 all three panels. They should span the widescreen canvas without clipping or
 shrinking into a square. For your own source, inspect edge labels and source
 text too: `contain` preserves them but cannot guarantee readability.
+
+## Fit the composition to its subject
+
+Image references accept `focal_point: {x: 0.1, y: 0.5}` as source-image fractions: cover cropping keeps that subject in frame, while `contain` still retains the whole picture. This works for image regions, image-case slides, headshots and raw image cells. Image callout anchors use the same crop transform, so changing the frame or template keeps them on their source pixel. Omitted focal points preserve centered cover.
+
+Raw grid `links` connecting nonadjacent cells try clear gutter lanes around occupied shapes and text. Only the final native connector segment carries an arrow; its endpoints remain attached to the true source and target. When no route fits inside the grid, generation asks for a free row/column gutter or repositioned nodes instead of drawing through an unrelated box.

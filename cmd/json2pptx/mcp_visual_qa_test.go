@@ -209,10 +209,13 @@ func TestVisualQASlideInfosUseActualSemanticRoles(t *testing.T) {
 		{Pattern: &PatternInput{Name: "timeline-horizontal"}},
 		{Content: []ContentInput{{Type: "chart"}}},
 	}
-	infos := visualQASlideInfos(slides)
+	infos := visualQASlideInfos(slides, "read")
 	for i, want := range []string{"kpi_snapshot", "pattern:timeline-horizontal", "chart"} {
 		if infos[i].Type != want {
 			t.Errorf("slide %d role=%q want %q", i, infos[i].Type, want)
+		}
+		if infos[i].ViewingMode != "read" {
+			t.Errorf("slide %d lost the deck's read-mode typography policy", i)
 		}
 	}
 }

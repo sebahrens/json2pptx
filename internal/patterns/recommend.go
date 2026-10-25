@@ -888,12 +888,12 @@ var rules = []rule{
 		rationale: "text-sidebar when a slide is mostly running text with one message worth pulling out",
 	},
 
-	// Quote cluster — 3-8 stakeholder quote bubbles
+	// Quote cluster — 2-8 attributed stakeholder quotes
 	{
 		pattern:   "quote-cluster",
 		keywords:  []string{"voice of customer", "voice of the customer", "voc", "stakeholder quotes", "customer quotes", "user quotes", "quote cluster", "quote wall", "stakeholder voices", "research quotes", "interview quotes", "what customers said"},
 		baseScore: 0.92,
-		rationale: "Structured 3-column grid of 3–8 attributed stakeholder quote bubbles",
+		rationale: "Paired columns for two, or a cluster of up to eight attributed stakeholder quotes",
 		itemMin:   3,
 		itemMax:   8,
 	},
@@ -1545,16 +1545,31 @@ func applyOrderedStepsRouting(flat []scored, intentLower string, hints *ContentH
 
 // applyRecencyDecay penalizes patterns that appear in the recency map.
 func applyRecencyDecay(flat []scored, recencyCount map[string]int) {
+	motifs := recentMotifs(recencyCount)
 	for i := range flat {
 		flat[i].preDecayScore = flat[i].score
+		// Counts and compact variants of one look do not provide visual
+		// variety. Distinctive diagrams/charts keep their own identity.
+		motif := PatternMotif(flat[i].rule.pattern)
+		if !motif.Distinctive() {
+			flat[i].score -= 0.10 * float64(min(motifs[motif], 3))
+		}
 		if count, ok := recencyCount[flat[i].rule.pattern]; ok && count > 0 {
 			penalty := 0.15 * float64(count)
 			flat[i].score -= penalty
-			if flat[i].score < 0 {
-				flat[i].score = 0
-			}
+		}
+		flat[i].score = math.Max(0, flat[i].score)
+	}
+}
+
+func recentMotifs(recent map[string]int) map[Motif]int {
+	counts := map[Motif]int{}
+	for name, n := range recent {
+		if motif := PatternMotif(name); motif.Valid() {
+			counts[motif] += n
 		}
 	}
+	return counts
 }
 
 // collectNearMisses finds patterns scoring between 0.35 and 0.5.
@@ -1574,8 +1589,11 @@ func collectNearMisses(flat []scored, hints *ContentHints) []NearMiss {
 
 // findDiversityCandidate returns the highest-scoring pattern not in recencyCount.
 func findDiversityCandidate(flat []scored, recencyCount map[string]int) *scored {
+	motifs := recentMotifs(recencyCount)
 	for i := range flat {
-		if _, used := recencyCount[flat[i].rule.pattern]; !used && flat[i].score >= 0.5 {
+		motif := PatternMotif(flat[i].rule.pattern)
+		fresh := motif.Distinctive() || motifs[motif] == 0
+		if _, used := recencyCount[flat[i].rule.pattern]; !used && fresh && flat[i].score >= 0.5 {
 			c := flat[i]
 			c.diversityBonus = true
 			return &c

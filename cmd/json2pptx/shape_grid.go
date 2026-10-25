@@ -1474,10 +1474,11 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 	}
 	if c.Image != nil {
 		imgSpec := &shapegrid.ImageSpec{
-			Path:     c.Image.Path,
-			Alt:      c.Image.Alt,
-			Geometry: c.Image.Geometry,
-			Fit:      c.Image.Fit,
+			FocalPoint: c.Image.FocalPoint,
+			Path:       c.Image.Path,
+			Alt:        c.Image.Alt,
+			Geometry:   c.Image.Geometry,
+			Fit:        c.Image.Fit,
 		}
 		if c.Image.Overlay != nil {
 			imgSpec.Overlay = &shapegrid.OverlaySpec{
@@ -1871,14 +1872,15 @@ func iconAltText(spec *shapegrid.IconSpec) string {
 // generateImageCellXML produces XML overlays/text and image inserts for an image cell.
 func generateImageCellXML(cell shapegrid.ResolvedCell, alloc *pptx.ShapeIDAllocator) ([][]byte, []generator.ImageInsert, error) {
 	imgs := []generator.ImageInsert{{
-		Path:     cell.ImageSpec.Path,
-		Alt:      cell.ImageSpec.Alt,
-		Geometry: cell.ImageSpec.Geometry,
-		Fit:      cell.ImageSpec.Fit,
-		OffsetX:  cell.Bounds.X,
-		OffsetY:  cell.Bounds.Y,
-		ExtentCX: cell.Bounds.CX,
-		ExtentCY: cell.Bounds.CY,
+		FocalPoint: cell.ImageSpec.FocalPoint,
+		Path:       cell.ImageSpec.Path,
+		Alt:        cell.ImageSpec.Alt,
+		Geometry:   cell.ImageSpec.Geometry,
+		Fit:        cell.ImageSpec.Fit,
+		OffsetX:    cell.Bounds.X,
+		OffsetY:    cell.Bounds.Y,
+		ExtentCX:   cell.Bounds.CX,
+		ExtentCY:   cell.Bounds.CY,
 	}}
 	var shapes [][]byte
 	if cell.ImageSpec.Overlay != nil {
@@ -3087,7 +3089,7 @@ func generateConnectorXML(conn shapegrid.ResolvedConnector) ([]byte, error) {
 	}
 
 	// Add arrowhead for "arrow" style
-	if spec.Style == "arrow" {
+	if spec.Style == "arrow" && !conn.NoArrow {
 		head := "med"
 		if spec.Head == "sm" || spec.Head == "lg" {
 			head = spec.Head

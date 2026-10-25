@@ -19,6 +19,12 @@ type Scale interface {
 	SetRange(min, max float64) Scale
 }
 
+// NumericScale maps numeric values for annotations on linear or log axes.
+type NumericScale interface {
+	Scale
+	Scale(float64) float64
+}
+
 // =============================================================================
 // Linear Scale
 // =============================================================================

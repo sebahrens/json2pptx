@@ -3,7 +3,7 @@ title: "Visual vocabulary: message \u2192 kind"
 type: documentation
 summary: "json2pptx guide to visual vocabulary"
 status: active
-last_updated: "2026-10-18"
+last_updated: "2026-10-25"
 tags: [json2pptx, deck-authoring]
 ---
 
@@ -97,7 +97,7 @@ slides:
 | "When things happen" | `timeline` (3–7 dated stops) · `roadmap` (3–6 phases, 0–4 `parallel_tracks`) | An `end_date` turns a timeline into bars. |
 | "Who does what by when" | `next_steps` | 2–6 actions `{action, owner, date}`, 0–3 `decisions`. Always the closer. |
 | "Who we are" | `team` (1–8, `photo` or initials `photo_label`) | Role on every card. |
-| "What a stakeholder said" | `quote` (1 → pull quote, 3–8 → cluster) | Two quotes degrade to bullets. |
+| "What a stakeholder said" | `quote` (1 → pull quote, 2–8 → cluster) | Two voices use paired columns; missing names degrade to bullets. |
 | "Look at this" | `image_case` (picture + body + `callouts`) | For a comparable, a screenshot, a site. |
 | "Use this complete SVG or PNG as the slide" | Raw `PresentationInput`: `blank` + one-cell `shape_grid` | Explicit bounds `0, 0, 100, 100`; nested `image.fit: "contain"`; leave cell `fit` unset. [Full-slide recipe](slide-estate-and-segments.md#7-a-complete-slide-supplied-as-svg-or-png). |
 | "The numbers in full" | `table` (≤ 6 columns, ≤ 9 data rows) | Right-align numbers; `column_widths: [1, 3]` gives glossary definitions more room; `totals_row: true`; backup detail to an appendix. |

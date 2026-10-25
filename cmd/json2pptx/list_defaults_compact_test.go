@@ -33,7 +33,7 @@ func TestListTemplatesDefaultIsCompact(t *testing.T) {
 	// Read-only templates, a private cache and a test-owned output directory.
 	t.Parallel()
 	mc := &mcpConfig{
-		templatesDir: "../../templates",
+		templatesDir: shippedTemplatesDir(t),
 		outputDir:    t.TempDir(),
 		cache:        template.NewMemoryCache(24 * time.Hour),
 	}

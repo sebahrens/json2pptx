@@ -87,7 +87,7 @@ func TestContrastPredictionSharesGenerationShapeList(t *testing.T) {
 	var grid ShapeGridInput
 	if err := json.Unmarshal([]byte(`{
 		"columns": 3,
-		"links": [{"from": [0, 0], "to": [2, 2], "connector": {"style": "arrow"}}],
+		"links": [{"from": [0, 0], "to": [0, 1], "connector": {"style": "arrow"}}],
 		"rows": [
 			{"connector": {"style": "arrow"}, "cells": [
 				{"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Plan", "size": 12, "color": "lt1"}}, "accent_bar": {"position": "left", "color": "accent2"}},

@@ -656,7 +656,7 @@ func (ctx *overlayCtx) resolveImageAnchor(ai *OverlayAnchorImageInput) (resolved
 		return resolvedPoint{}, fmt.Errorf("anchor_image row=%d col=%d is not an image cell", ai.Row, ai.Col)
 	}
 	frame := types.BoundingBox{X: cell.Bounds.X, Y: cell.Bounds.Y, Width: cell.Bounds.CX, Height: cell.Bounds.CY}
-	place := generator.GridImagePlacement(cell.ImageSpec.Path, frame, cell.ImageSpec.Fit)
+	place := generator.GridImagePlacement(cell.ImageSpec.Path, frame, cell.ImageSpec.Fit, cell.ImageSpec.FocalPoint)
 
 	u, v := ai.X, ai.Y
 	switch strings.ToLower(strings.TrimSpace(ai.Units)) {

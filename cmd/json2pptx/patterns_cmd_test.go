@@ -260,7 +260,7 @@ func TestPatternsValidate(t *testing.T) {
 	t.Run("card_grid_overflow", func(t *testing.T) {
 		cells := make([]map[string]string, 12)
 		for i := range cells {
-			cells[i] = map[string]string{"header": "Card", "body": strings.Repeat("x", 105)}
+			cells[i] = map[string]string{"header": "Card", "body": strings.Repeat("W", 300)}
 		}
 		content, err := json.Marshal(map[string]any{"columns": 4, "rows": 3, "cells": cells})
 		if err != nil {

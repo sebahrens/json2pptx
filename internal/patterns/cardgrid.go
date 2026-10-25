@@ -175,6 +175,15 @@ func (c *cardGrid) PostExpandWarnings(ctx ExpandContext, values, overrides any) 
 	}
 	budgets := CardGridBodyBudgets(ctx, v, o)
 	var warnings []string
+	// Character budgets are planning hints. A post-expansion overflow warning
+	// must first establish that the actual open composition exceeds its frame.
+	if cardGridStyle(v, o) == cardGridStyleOpen {
+		grid, err := c.Expand(ctx, v, o, nil)
+		_, areaH := sizingAreaPt(ctx)
+		if err == nil && cardGridHeight(grid) <= areaH {
+			return nil
+		}
+	}
 	for i, cell := range v.Cells {
 		budget := budgets[i]
 		if n := runeLen(cell.Body); n > budget {
@@ -588,6 +597,9 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	columns, gridRows, ok := vals.Shape()
 	if !ok {
 		return nil, fmt.Errorf("card-grid: %d cells cannot be placed on columns=%d rows=%d", len(vals.Cells), vals.Columns, vals.Rows)
+	}
+	if vals.Columns == 0 && vals.Rows == 0 {
+		columns, gridRows = c.chooseShape(ctx, vals, ovr, cellOverrides, columns, gridRows)
 	}
 	// A last row that is not full keeps the card width of the rows above it
 	// and is centred by default. Centring needs half-column steps, so a

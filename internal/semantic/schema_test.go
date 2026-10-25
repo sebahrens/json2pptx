@@ -232,6 +232,7 @@ func TestHoistedItemSchemasPreserveEveryKindField(t *testing.T) {
 	}
 	before, after := build(), build()
 	hoistRepeatedItemSchemas(after)
+	hoistRepeatedValueSchemas(after)
 	beforeBytes, _ := json.Marshal(before)
 	afterBytes, _ := json.Marshal(after)
 	if len(afterBytes) >= len(beforeBytes) {
@@ -253,6 +254,9 @@ func TestHoistedItemSchemasPreserveEveryKindField(t *testing.T) {
 		name := kindDefName(kind)
 		beforeProps := beforeDefs[name].(map[string]any)["properties"].(map[string]any)
 		afterProps := afterDefs[name].(map[string]any)["properties"].(map[string]any)
+		if !reflect.DeepEqual(beforeProps, inlineItemRefs(afterProps, afterDefs)) {
+			t.Errorf("%s fields changed when repeated schemas were hoisted", kind)
+		}
 		for fieldName, value := range beforeProps {
 			beforeField := value.(map[string]any)
 			beforeItem, hasItem := beforeField["items"]
@@ -276,8 +280,8 @@ func TestHoistedItemSchemasPreserveEveryKindField(t *testing.T) {
 func inlineItemRefs(node any, defs map[string]any) any {
 	switch t := node.(type) {
 	case map[string]any:
-		if ref, ok := t["$ref"].(string); ok && strings.HasPrefix(ref, "#/$defs/I") {
-			return defs[strings.TrimPrefix(ref, "#/$defs/")]
+		if ref, ok := t["$ref"].(string); ok && (strings.HasPrefix(ref, "#/$defs/I") || strings.HasPrefix(ref, "#/$defs/O")) {
+			return inlineItemRefs(defs[strings.TrimPrefix(ref, "#/$defs/")], defs)
 		}
 		out := make(map[string]any, len(t))
 		for k, v := range t {

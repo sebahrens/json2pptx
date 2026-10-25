@@ -529,7 +529,7 @@ func delightValidatePattern(t *testing.T) {
 func delightCapacity(t *testing.T) {
 	mc := refusalTestConfig(t)
 	res := mustCall(t, mc.handleRecommendVisual, map[string]any{"intent": "eight customer quotes", "template": delightTemplate})
-	wantAll(t, "recommend_visual", structuredText(t, res), `"name":"quote-cluster"`, `"capacity":"3-8"`)
+	wantAll(t, "recommend_visual", structuredText(t, res), `"name":"quote-cluster"`, `"capacity":"2-8"`)
 	var catalogue struct {
 		SlideKinds []slideKindListEntry `json:"slide_kinds"`
 	}

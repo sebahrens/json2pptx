@@ -24,9 +24,11 @@ import (
 // budget in runes.
 func PhotoSchema(describe string, altMax int) *Schema {
 	return ObjectSchema(map[string]*Schema{
-		"path": StringSchema(0).WithDescription("Local .png / .jpg file (relative paths resolve against the deck JSON directory)"),
-		"url":  StringSchema(0).WithDescription("HTTPS image URL (downloaded and cached)"),
-		"alt":  StringSchema(altMax).WithDescription("Alt text for screen readers"),
+		"path":        StringSchema(0).WithDescription("Local .png / .jpg file (relative paths resolve against the deck JSON directory)"),
+		"url":         StringSchema(0).WithDescription("HTTPS image URL (downloaded and cached)"),
+		"alt":         StringSchema(altMax).WithDescription("Alt text for screen readers"),
+		"fit":         EnumSchema("cover", "contain"),
+		"focal_point": ImageFocalPointSchema(),
 	}, nil).WithAdditionalProperties(false).WithDescription(describe)
 }
 
@@ -40,6 +42,12 @@ func validatePatternPhoto(pattern, path string, img *jsonschema.GridImageInput, 
 		return nil
 	}
 	var errs []error
+	if !img.FocalPoint.Valid() {
+		errs = append(errs, newValidationError(pattern, path+".focal_point", ErrCodeInvalidShape, "focal_point x and y must be finite fractions in [0,1]", nil))
+	}
+	if err := validatePhotoFit(pattern, path, img.Fit); err != nil {
+		errs = append(errs, err)
+	}
 	if strings.TrimSpace(img.Path) == "" && strings.TrimSpace(img.URL) == "" {
 		errs = append(errs, newValidationError(pattern, path, ErrCodeRequired,
 			pattern+": "+path+" needs a path or url (omit it to render the placeholder)",
@@ -78,8 +86,13 @@ func patternPhotoCell(img *jsonschema.GridImageInput, defaultAlt string) *jsonsc
 		alt = defaultAlt
 	}
 	return &jsonschema.GridCellInput{
-		Image: &jsonschema.GridImageInput{Path: img.Path, URL: img.URL, Alt: alt},
+		Image: &jsonschema.GridImageInput{Path: img.Path, URL: img.URL, Alt: alt, Fit: img.Fit, FocalPoint: img.FocalPoint},
 	}
+}
+
+// ImageFocalPointSchema is shared by every photo-taking pattern.
+func ImageFocalPointSchema() *Schema {
+	return ObjectSchema(map[string]*Schema{"x": NumberSchema(0, 1), "y": NumberSchema(0, 1)}, []string{"x", "y"}).WithAdditionalProperties(false).WithDescription("Subject in source-image fractions; cover crops toward it. Omit for centered cover.")
 }
 
 // headshotDisc is the shared tint and initials ink of the people patterns'

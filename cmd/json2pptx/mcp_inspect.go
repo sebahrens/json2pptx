@@ -53,7 +53,7 @@ func mcpInspectSlideImagesTool() mcp.Tool {
 	return mcp.NewTool("inspect_slide_images",
 		mcp.WithDescription(`Run visual QA on rendered slide images. Returns a visualqa.Report with per-slide findings {severity (P0-P3), category, description, location, suggested_fixes}; suggested_fixes map to repair_slide fix kinds, so a finding pipes into repair_slide as {kind: "autofix_visual", params: {category: "<finding.category>"}}. Loop: render_deck_thumbnails → inspect_slide_images → repair → re-render.
 
-slide_images[]: {index (0-based), path (absolute .png/.jpg/.jpeg; no "..") or png_base64 (raw base64, no data: prefix), slide_type?, title?}.
+Paths must be absolute .png/.jpg/.jpeg without ".."; base64 must omit the data: prefix.
 
 With ANTHROPIC_API_KEY set, Claude vision runs (Report.mode="vision") merged with conservative pixel geometry (source="deterministic", including a P2 unused-lower-region check on content/table slides). Without it, a pure-Go pass checks that layout balance plus blank slides, edge-band overflow and aspect ratio (Report.mode="heuristic"; other findings source="heuristic", P3).
 
@@ -64,12 +64,13 @@ HEURISTIC MODE CANNOT APPROVE A DECK: an empty findings list means only that the
 			mcp.Description(`Slide images to inspect. Each entry: {index: int, path?: string, png_base64?: string, slide_type?: string, title?: string}. Exactly one of path or png_base64 must be set per entry.`),
 		),
 		mcp.WithArray("slide_info",
-			mcp.Description(`Optional per-slide metadata, indexed by "index". Use to supply slide_type/title without re-encoding the slide_images array. Entries here override slide_images[].slide_type / .title when both are present.`),
+			mcp.Description(`Optional {index, slide_type?, title?} entries; supplied fields override slide_images metadata at the same index.`),
 		),
 		mcp.WithObject("deck_metadata",
-			mcp.Description(`Optional deck-level metadata. Recognized keys: template (string). Echoed back on the report.template field.`),
+			mcp.Description(`Template echo; viewing_mode: present (default) or read for typography policy.`),
 			mcp.Properties(map[string]any{
-				"template": map[string]any{"type": "string"},
+				"template":     map[string]any{"type": "string"},
+				"viewing_mode": map[string]any{"type": "string", "enum": []string{"present", "read"}},
 			}),
 		),
 		mcp.WithString("model",
@@ -125,9 +126,16 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 
 	// Optional deck metadata (template echo).
 	template := ""
+	viewingMode := "present"
 	if obj, ok := request.GetArguments()["deck_metadata"].(map[string]any); ok {
 		if t, ok := obj["template"].(string); ok {
 			template = t
+		}
+		if m, ok := obj["viewing_mode"].(string); ok && m != "" {
+			if m != "present" && m != "read" {
+				return api.MCPSimpleError("INVALID_PARAMETER", "deck_metadata.viewing_mode must be present or read"), nil
+			}
+			viewingMode = m
 		}
 	}
 
@@ -145,6 +153,7 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 			pathByIndex[entry.Index] = entry.Path
 		}
 		info := buildInspectSlideInfo(entry.Index, entry.SlideType, entry.Title, infoByIdx)
+		info.ViewingMode = viewingMode
 		slideImages = append(slideImages, visualqa.SlideImage{Info: info, Data: data})
 	}
 

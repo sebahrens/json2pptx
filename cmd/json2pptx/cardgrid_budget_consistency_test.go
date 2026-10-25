@@ -35,7 +35,7 @@ func TestCardGridBudgetAndWarningStayConsistent(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				return &PatternInput{Name: "card-grid", Values: raw}
+				return &PatternInput{Name: "card-grid", Overrides: json.RawMessage(`{"style":"filled"}`), Values: raw}
 			}
 			pi := makeInput()
 			grid, warnings, err := expandPattern(pi, tc.ctx, patterns.Default())
@@ -83,7 +83,7 @@ func TestCardGridBudgetSurvivesUnresolvableExpandedGrid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pi := &PatternInput{Name: "card-grid", Values: raw}
+	pi := &PatternInput{Name: "card-grid", Overrides: json.RawMessage(`{"style":"filled"}`), Values: raw}
 	ctx := patterns.ExpandContext{LayoutBounds: patterns.LayoutBounds{Width: 8229600, Height: 4229100}}
 	budgets, _ := computePatternCellBudgets(nil, ctx, pi)
 	if len(budgets) != 2 || budgets[0].MaxChars == 0 || budgets[1].ActualChars != len("Second") {
@@ -121,9 +121,9 @@ func TestCardGridBudgetRespectsBoundsAndCallout(t *testing.T) {
 		}
 		return budgets[0].MaxChars
 	}
-	base := budgetFor(&PatternInput{Name: "card-grid", Values: raw})
-	bounded := budgetFor(&PatternInput{Name: "card-grid", Values: raw, MaxHeightPct: 50})
-	withCallout := budgetFor(&PatternInput{Name: "card-grid", Values: raw, Callout: &patterns.PatternCallout{Text: "Takeaway\nSecond line\nThird line"}})
+	base := budgetFor(&PatternInput{Name: "card-grid", Overrides: json.RawMessage(`{"style":"filled"}`), Values: raw})
+	bounded := budgetFor(&PatternInput{Name: "card-grid", Overrides: json.RawMessage(`{"style":"filled"}`), Values: raw, MaxHeightPct: 50})
+	withCallout := budgetFor(&PatternInput{Name: "card-grid", Overrides: json.RawMessage(`{"style":"filled"}`), Values: raw, Callout: &patterns.PatternCallout{Text: "Takeaway\nSecond line\nThird line"}})
 	if bounded >= base || withCallout >= base {
 		t.Errorf("bounds/callout should reduce the body budget: base=%d bounded=%d callout=%d", base, bounded, withCallout)
 	}
@@ -134,7 +134,7 @@ func TestCardGridBudgetRespectsBoundsAndCallout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pi := &PatternInput{Name: "card-grid", Values: longRaw, Callout: &patterns.PatternCallout{Text: "Takeaway\nSecond line\nThird line"}}
+	pi := &PatternInput{Name: "card-grid", Overrides: json.RawMessage(`{"style":"filled"}`), Values: longRaw, Callout: &patterns.PatternCallout{Text: "Takeaway\nSecond line\nThird line"}}
 	grid, warnings, err := expandPattern(pi, ctx, patterns.Default())
 	if err != nil {
 		t.Fatal(err)

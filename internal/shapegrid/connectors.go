@@ -2,6 +2,7 @@ package shapegrid
 
 import (
 	"encoding/json"
+	"fmt"
 	"maps"
 	"slices"
 	"sort"
@@ -115,9 +116,9 @@ func resolveRowConnectors(grid *Grid, cells []ResolvedCell, rowCellIDs [][]int,
 // A link whose endpoint does not resolve to a visible anchor cell (out of
 // range, a spacer, an invisible shape) is skipped rather than drawn into
 // empty space.
-func resolveLinks(grid *Grid, cells []ResolvedCell, rowCellIDs [][]int, alloc *pptx.ShapeIDAllocator) []ResolvedConnector {
+func resolveLinks(grid *Grid, cells []ResolvedCell, rowCellIDs [][]int, alloc *pptx.ShapeIDAllocator) ([]ResolvedConnector, error) {
 	if len(grid.Links) == 0 {
-		return nil
+		return nil, nil
 	}
 	find := func(row, col int) (int, bool) {
 		if row < 0 || row >= len(rowCellIDs) {
@@ -140,6 +141,14 @@ func resolveLinks(grid *Grid, cells []ResolvedCell, rowCellIDs [][]int, alloc *p
 		src, tgt := cells[a], cells[b]
 		sameCol := l.FromCol == l.ToCol
 		route := pptx.RouteOutline(connectorEnd(src), connectorEnd(tgt), !sameCol)
+		if linkRouteBlocked(route, !sameCol && elbowNeeded(route), cells, a, b) {
+			detour, ok := routeLinkDetour(grid, cells, a, b, l.Spec, alloc)
+			if !ok {
+				return nil, fmt.Errorf("link [%d,%d] -> [%d,%d] has no unobstructed route inside grid bounds; add a free column/row gutter or reposition nodes", l.FromRow, l.FromCol, l.ToRow, l.ToCol)
+			}
+			out = append(out, detour...)
+			continue
+		}
 		out = append(out, ResolvedConnector{
 			Bounds:    route.Bounds,
 			ID:        alloc.Alloc(),
@@ -153,7 +162,7 @@ func resolveLinks(grid *Grid, cells []ResolvedCell, rowCellIDs [][]int, alloc *p
 			FlipV:     route.FlipV,
 		})
 	}
-	return out
+	return out, nil
 }
 
 // connectorEnd describes a resolved cell to the connector router: its bounds

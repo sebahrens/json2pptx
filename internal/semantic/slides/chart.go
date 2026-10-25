@@ -287,9 +287,19 @@ func chartSpec(body map[string]any) *types.DiagramSpec {
 	if ctype == "" || !hasData || len(data) == 0 {
 		return nil
 	}
-	return &types.DiagramSpec{
+	spec := &types.DiagramSpec{
 		Type:  ctype,
 		Title: strField(raw, "title"),
 		Data:  data,
 	}
+	if rawFormat, ok := raw["value_format"].(map[string]any); ok {
+		encoded, err := json.Marshal(rawFormat)
+		if err == nil {
+			var format types.ValueFormatSpec
+			if json.Unmarshal(encoded, &format) == nil {
+				spec.Style = &types.DiagramStyle{ValueFormat: &format}
+			}
+		}
+	}
+	return spec
 }

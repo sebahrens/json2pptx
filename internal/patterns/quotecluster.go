@@ -12,7 +12,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// quote-cluster pattern — structured 3-col grid of stakeholder quotes
+// quote-cluster pattern — paired voices or a grid of stakeholder quotes
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -23,16 +23,16 @@ type quoteCluster struct{}
 
 func (q *quoteCluster) Name() string { return "quote-cluster" }
 func (q *quoteCluster) Description() string {
-	return "Structured 3-column grid of 3–8 attributed stakeholder quotes: open quotes under a quote mark, speech bubbles or tiles as styles, one optionally highlighted"
+	return "Editable grid of 2–8 attributed quotes: two paired columns or a larger cluster; open quotes, speech bubbles or tiles, one optionally highlighted"
 }
 func (q *quoteCluster) UseWhen() string {
-	return "Voice-of-customer or stakeholder research slide showing 3–8 short quotes from different people; prefer pull-quote when only one quote is the focal point, card-grid for non-quote text cards"
+	return "Voice-of-customer or stakeholder research slide showing 2–8 short quotes from different people; prefer pull-quote when only one quote is the focal point, card-grid for non-quote text cards"
 }
 func (q *quoteCluster) NotWhen() string {
 	return "Single quote (use pull-quote), more than 8 quotes (split across slides), or items are non-quote feature cards (use card-grid)"
 }
 func (q *quoteCluster) Version() int      { return 1 }
-func (q *quoteCluster) CellsHint() string { return "3-8" }
+func (q *quoteCluster) CellsHint() string { return "2-8" }
 func (q *quoteCluster) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
 		Category:      "narrative",
@@ -70,7 +70,7 @@ type QuoteClusterItem struct {
 	Highlight bool `json:"highlight,omitempty"`
 }
 
-// QuoteClusterValues holds the cluster of quote bubbles (3–8 quotes).
+// QuoteClusterValues holds the cluster of quote bubbles (2–8 quotes).
 type QuoteClusterValues struct {
 	Quotes []QuoteClusterItem `json:"quotes"`
 }
@@ -100,7 +100,7 @@ type QuoteClusterCellOverride = CellOverride
 // ---------------------------------------------------------------------------
 
 const (
-	quoteClusterMinQuotes = 3
+	quoteClusterMinQuotes = 2
 	quoteClusterMaxQuotes = 8
 	quoteClusterColumns   = 3
 	quoteClusterTextMax   = 240
@@ -202,7 +202,7 @@ func (q *quoteCluster) Schema() *Schema {
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"quotes": ArraySchema(quoteSchema, quoteClusterMinQuotes, quoteClusterMaxQuotes).WithDescription("Stakeholder quotes (3–8). Quotes auto-flow into a 3-column grid; the last row left-aligns when not full."),
+			"quotes": ArraySchema(quoteSchema, quoteClusterMinQuotes, quoteClusterMaxQuotes).WithDescription("Stakeholder quotes (2–8). A pair uses two equal columns; others auto-flow into a 3-column grid; the last row left-aligns when not full."),
 		},
 		[]string{"quotes"},
 	).WithAdditionalProperties(false)
@@ -319,7 +319,7 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 	// A bubble and the attribution under it are two shapes, each with its
 	// own text margin: three rows of them do not fit a content area, so 7–8
 	// bubbles take four columns and stay on two rows.
-	columns := quoteClusterColumns
+	columns := min(quoteClusterColumns, len(v.Quotes))
 	if style == "bubble" && len(v.Quotes) > 2*quoteClusterColumns {
 		columns = quoteClusterBubbleWideColumns
 	}
@@ -365,7 +365,7 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 			// this the rows stretch to fill the content area and every quote is as
 			// tall as the longest one in its row, so "It just works." sat in the
 			// top fifth of a tall tinted box (go-slide-creator-pr3g).
-			rows = append(rows, contentSizedRow(ctx, cells, quoteClusterColumns))
+			rows = append(rows, contentSizedRow(ctx, cells, columns))
 		default:
 			rows = append(rows, quoteClusterBubbleRow(ctx, cells, quotes, r, columns, sizes, accent))
 		}
@@ -500,7 +500,7 @@ func (q *quoteCluster) expandOpen(ctx ExpandContext, v *QuoteClusterValues, ovr 
 
 // expandOpenAt lays the open cluster out at one type setting.
 func (q *quoteCluster) expandOpenAt(ctx ExpandContext, v *QuoteClusterValues, cellOverrides map[int]any, accent string, anyHighlight bool, sc quoteClusterOpenScale) *jsonschema.ShapeGridInput {
-	columns := quoteClusterColumns
+	columns := min(quoteClusterColumns, len(v.Quotes))
 	colW := quoteClusterColWidthPt(ctx, columns)
 	fonts := ctx.themeFonts()
 	none := json.RawMessage(`"none"`)

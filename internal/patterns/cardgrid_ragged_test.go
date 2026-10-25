@@ -85,7 +85,7 @@ func TestCardGridRaggedLastRow(t *testing.T) {
 	} {
 		// The filled tile: one grid row per row of cards.
 		t.Run(fmt.Sprintf("filled_%d_%s", tc.cells, tc.lastRow), func(t *testing.T) {
-			vals := &CardGridValues{Cells: raggedCards(tc.cells)}
+			vals := &CardGridValues{Columns: cardGridAutoColumns(tc.cells), Cells: raggedCards(tc.cells)}
 			ovr := &CardGridOverrides{LastRow: tc.lastRow, Style: "filled"}
 			if err := p.Validate(vals, ovr, nil); err != nil {
 				t.Fatalf("validate: %v", err)
@@ -124,7 +124,7 @@ func TestCardGridRaggedLastRow(t *testing.T) {
 		// cards, each placed like the filled row, and one full-width spacer row
 		// between two rows of cards — 4N-1 grid rows.
 		t.Run(fmt.Sprintf("open_%d_%s", tc.cells, tc.lastRow), func(t *testing.T) {
-			vals := &CardGridValues{Cells: raggedCards(tc.cells)}
+			vals := &CardGridValues{Columns: cardGridAutoColumns(tc.cells), Cells: raggedCards(tc.cells)}
 			ovr := &CardGridOverrides{LastRow: tc.lastRow}
 			if err := p.Validate(vals, ovr, nil); err != nil {
 				t.Fatalf("validate: %v", err)
@@ -224,7 +224,7 @@ func TestCardGridRaggedLastRow(t *testing.T) {
 func TestCardGridRaggedOpenRowSharesHeadingBaseline(t *testing.T) {
 	cells := raggedCards(5)
 	cells[3].Header = "A header long enough to wrap onto a second line in a third-width card"
-	grid, err := (&cardGrid{}).Expand(ExpandContext{}, &CardGridValues{Cells: cells}, nil, nil)
+	grid, err := (&cardGrid{}).Expand(ExpandContext{}, &CardGridValues{Columns: 3, Cells: cells}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,7 +260,7 @@ func TestCardGridRaggedOpenRowSharesHeadingBaseline(t *testing.T) {
 func TestCardGridRaggedRowSharesBodyBaseline(t *testing.T) {
 	cells := raggedCards(5)
 	cells[3].Header = "A header long enough to wrap onto a second line in a third-width card"
-	grid, err := (&cardGrid{}).Expand(ExpandContext{}, &CardGridValues{Cells: cells}, &CardGridOverrides{Style: "filled"}, nil)
+	grid, err := (&cardGrid{}).Expand(ExpandContext{}, &CardGridValues{Columns: 3, Cells: cells}, &CardGridOverrides{Style: "filled"}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

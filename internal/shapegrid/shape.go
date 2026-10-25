@@ -453,7 +453,7 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 	// Try string first
 	var s string
 	if err := json.Unmarshal(raw, &s); err == nil {
-		return buildTextBody(s, 0, false, false, "ctr", "ctr", "", "", pptx.ShapeTextInsets()), nil
+		return buildTextBody(s, 0, false, false, "", "ctr", "", "", pptx.ShapeTextInsets()), nil
 	}
 
 	// Object form — try to detect paragraphs array variant
@@ -519,6 +519,7 @@ func normalizeVerticalAlign(v string) string {
 // buildTextBody creates a TextBody with wrapping text.
 func buildTextBody(content string, sizePt float64, bold, italic bool, align, vAlign, color, font string,
 	insets [4]int64) *pptx.TextBody {
+	explicitAlign := align != ""
 	if align == "" {
 		align = "ctr"
 	}
@@ -556,6 +557,9 @@ func buildTextBody(content string, sizePt float64, bold, italic bool, align, vAl
 		DetectNumbered: true,
 		InlineTags:     true,
 	})
+	for i := range paragraphs {
+		paragraphs[i].ExplicitAlign = explicitAlign
+	}
 
 	return &pptx.TextBody{
 		Wrap:       "square",
@@ -570,6 +574,7 @@ func buildTextBody(content string, sizePt float64, bold, italic bool, align, vAl
 // buildParagraphsTextBody creates a TextBody from individually styled paragraphs.
 func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultFont string,
 	insets [4]int64) *pptx.TextBody {
+	explicitDefaultAlign := defaultAlign != ""
 	if defaultAlign == "" {
 		defaultAlign = "ctr"
 	}
@@ -625,8 +630,8 @@ func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultF
 		}
 
 		paragraphs[i] = pptx.Paragraph{
-			Align: align,
-			Runs:  runs,
+			Align: align, ExplicitAlign: d.Align != "" || explicitDefaultAlign,
+			Runs: runs,
 		}
 		if d.SpaceAfter > 0 {
 			paragraphs[i].SpaceAfter = int(d.SpaceAfter * 100)

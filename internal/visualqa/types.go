@@ -177,7 +177,8 @@ func (r *Report) Summarize() {
 
 // SlideInfo provides context about a slide for the QA agent.
 type SlideInfo struct {
-	Index int    // Zero-based slide index
-	Type  string // Slide type (title, content, chart, etc.)
-	Title string // Slide title if available
+	ViewingMode string // present (default) or read; the generation typography policy
+	Index       int    // Zero-based slide index
+	Type        string // Slide type (title, content, chart, etc.)
+	Title       string // Slide title if available
 }
